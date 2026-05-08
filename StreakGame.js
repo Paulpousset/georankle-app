@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Image, Appearance, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Image, Appearance, Dimensions, Platform } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Trophy, RefreshCcw, Moon, Sun, Heart, TrendingUp, Home } from 'lucide-react-native';
@@ -40,6 +40,8 @@ const getFlagUrl = (cca3) => {
   if (!code) return `https://flagcdn.com/w160/un.png`; 
   return `https://flagcdn.com/w160/${code.toLowerCase()}.png`;
 };
+
+const isMobile = Platform.OS === 'ios' || Platform.OS === 'android';
 
 export default function StreakGame({ isDarkMode, setIsDarkMode, setGameMode, language = 'fr', setLanguage, user }) {
   const [currentCountry, setCurrentCountry] = useState(null);
@@ -154,50 +156,111 @@ export default function StreakGame({ isDarkMode, setIsDarkMode, setGameMode, lan
         <StatusBar style={isDarkMode ? "light" : "dark"} />
         
         <View style={themeStyles.header}>
-          <TouchableOpacity onPress={() => setGameMode('menu')} style={[themeStyles.iconBtn, { marginRight: 10, backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
-            <Home color="#10b981" size={20} />
-          </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={themeStyles.title}>GeoStreak</Text>
-          </View>
-          <View style={styles.statsContainer}>
-            <View style={styles.statBox}>
-              <Text style={styles.statLabel}>STREAK</Text>
-              <Text style={styles.statValue}>{score}</Text>
-            </View>
-            <View style={styles.statBox}>
-              <Text style={styles.statLabel}>BEST</Text>
-              <Text style={[styles.statValue, { color: '#fbbf24' }]}>{bestStreak}</Text>
-            </View>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-            <TouchableOpacity onPress={() => setLanguage(language === 'fr' ? 'en' : 'fr')} style={[themeStyles.iconBtn, { minWidth: 40, alignItems: 'center' }]}>
-              <Text style={{ color: isDarkMode ? "#fff" : "#1e293b", fontWeight: "bold", fontSize: 12 }}>{language.toUpperCase()}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setIsDarkMode(!isDarkMode)} style={themeStyles.iconBtn}>
-              {isDarkMode ? <Sun color="#fbbf24" size={20} /> : <Moon color="#64748b" size={20} />}
-            </TouchableOpacity>
-          </View>
+          {!isMobile ? (
+            <>
+              <TouchableOpacity onPress={() => setGameMode('menu')} style={[themeStyles.iconBtn, { marginRight: 10, backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
+                <Home color="#10b981" size={20} />
+              </TouchableOpacity>
+              <View style={{ flex: 1 }}>
+                <Text style={themeStyles.title}>GeoStreak</Text>
+              </View>
+              <View style={styles.statsContainer}>
+                <View style={styles.statBox}>
+                  <Text style={styles.statLabel}>STREAK</Text>
+                  <Text style={styles.statValue}>{score}</Text>
+                </View>
+                <View style={styles.statBox}>
+                  <Text style={styles.statLabel}>BEST</Text>
+                  <Text style={[styles.statValue, { color: '#fbbf24' }]}>{bestStreak}</Text>
+                </View>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+                <TouchableOpacity onPress={() => setLanguage(language === 'fr' ? 'en' : 'fr')} style={[themeStyles.iconBtn, { minWidth: 40, alignItems: 'center' }]}>
+                  <Text style={{ color: isDarkMode ? "#fff" : "#1e293b", fontWeight: "bold", fontSize: 12 }}>{language.toUpperCase()}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setIsDarkMode(!isDarkMode)} style={themeStyles.iconBtn}>
+                  {isDarkMode ? <Sun color="#fbbf24" size={20} /> : <Moon color="#64748b" size={20} />}
+                </TouchableOpacity>
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                <TouchableOpacity onPress={() => setGameMode('menu')} style={[themeStyles.iconBtn, { marginRight: 8, backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
+                  <Home color="#10b981" size={18} />
+                </TouchableOpacity>
+                <Text style={themeStyles.title}>GeoStreak</Text>
+              </View>
+
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <View style={styles.statsContainer}>
+                  <View style={styles.statBox}>
+                    <Text style={styles.statLabel}>STREAK</Text>
+                    <Text style={styles.statValue}>{score}</Text>
+                  </View>
+                  <View style={[styles.statDivider, { backgroundColor: isDarkMode ? '#334155' : '#e2e8f0', width: 1, height: 20, marginHorizontal: 4 }]} />
+                  <View style={styles.statBox}>
+                    <Text style={styles.statLabel}>BEST</Text>
+                    <Text style={[styles.statValue, { color: '#fbbf24' }]}>{bestStreak}</Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity onPress={() => setLanguage(language === 'fr' ? 'en' : 'fr')} style={[themeStyles.iconBtn, { minWidth: 40, alignItems: 'center' }]}>
+                  <Text style={{ color: isDarkMode ? "#fff" : "#1e293b", fontWeight: "bold", fontSize: 12 }}>{language.toUpperCase()}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setIsDarkMode(!isDarkMode)} style={themeStyles.iconBtn}>
+                  {isDarkMode ? <Sun color="#fbbf24" size={18} /> : <Moon color="#64748b" size={18} />}
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
         </View>
         
         <View style={styles.gameArea}>
-            <View style={{ backgroundColor: '#10b98120', padding: 12, borderRadius: 12, marginBottom: 20, borderLeftWidth: 4, borderLeftColor: '#10b981', width: '100%', maxWidth: 700 }}>
+            {!isMobile ? (
+              <>
+                <View style={{ backgroundColor: '#10b98120', padding: 12, borderRadius: 12, marginBottom: 20, borderLeftWidth: 4, borderLeftColor: '#10b981', width: '100%', maxWidth: 700 }}>
                   <Text style={{ color: isDarkMode ? '#f8fafc' : '#065f46', fontSize: 17, fontWeight: '600', textAlign: 'center' }}>
                     {language === 'fr' 
                       ? "Trouvez le thème où ce pays est le mieux classé mondialement. Une seule erreur et le streak retombe à zéro !" 
                       : "Find the theme where this country ranks best globally. One mistake and your streak resets to zero!"}
                   </Text>
                 </View>
-            <View style={themeStyles.card}>
-                
-                <Image source={{ uri: getFlagUrl(currentCountry.cca3) }} style={styles.flag} />
-                <Text style={[styles.countryName, !isDarkMode && { color: '#1e293b' }]}>
-                  {language === 'fr' ? currentCountry.name : (currentCountry.name_en || currentCountry.name)}
-                </Text>
-                <Text style={styles.instruction}>
-                  {language === 'fr' ? 'Quel est son meilleur classement ?' : 'What is its best ranking?'}
-                </Text>
-            </View>
+                <View style={themeStyles.card}>
+                    <Image source={{ uri: getFlagUrl(currentCountry.cca3) }} style={styles.flag} />
+                    <Text style={[styles.countryName, !isDarkMode && { color: '#1e293b' }]}>
+                      {language === 'fr' ? currentCountry.name : (currentCountry.name_en || currentCountry.name)}
+                    </Text>
+                    <Text style={styles.instruction}>
+                      {language === 'fr' ? 'Quel est son meilleur classement ?' : 'What is its best ranking?'}
+                    </Text>
+                </View>
+              </>
+            ) : (
+              <>
+                <View style={{ backgroundColor: '#10b98120', padding: 8, borderRadius: 10, marginBottom: 12, borderLeftWidth: 4, borderLeftColor: '#10b981', width: '100%', maxWidth: 700 }}>
+                  <Text style={{ color: isDarkMode ? '#f8fafc' : '#065f46', fontSize: 13, fontWeight: '600', textAlign: 'center' }}>
+                    {language === 'fr' 
+                      ? "Trouvez le thème où ce pays est le mieux classé mondialement." 
+                      : "Find the theme where this country ranks best globally."}
+                  </Text>
+                </View>
+                <View style={[themeStyles.card, { padding: 15 }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 15 }}>
+                        <Image source={{ uri: getFlagUrl(currentCountry.cca3) }} style={[styles.flag, { marginBottom: 0, width: 80, height: 55 }]} />
+                        <View style={{ flex: 1 }}>
+                            <Text style={[styles.countryName, !isDarkMode && { color: '#1e293b' }, { fontSize: 24, textAlign: 'left' }]}>
+                              {language === 'fr' ? currentCountry.name : (currentCountry.name_en || currentCountry.name)}
+                            </Text>
+                            <Text style={[styles.instruction, { marginTop: 2, fontSize: 12 }]}>
+                              {language === 'fr' ? 'Quel est son meilleur classement ?' : 'What is its best ranking?'}
+                            </Text>
+                        </View>
+                    </View>
+                </View>
+              </>
+            )}
+
 
           <View style={styles.optionsGrid}>
             {options.map((theme) => (
@@ -244,21 +307,22 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f172a', userSelect: 'none' },
   containerLight: { backgroundColor: '#f8fafc' },
   header: { 
-    paddingHorizontal: 20, 
-    paddingVertical: 15, 
+    paddingHorizontal: 15, 
+    paddingVertical: 10, 
     flexDirection: 'row', 
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#1e293b'
+    borderBottomColor: '#1e293b',
+    minHeight: 60
   },
   headerLight: { backgroundColor: '#fff', borderBottomColor: '#e2e8f0' },
-  title: { fontSize: 22, fontWeight: '900', color: '#f8fafc' },
+  title: { fontSize: 18, fontWeight: '900', color: '#f8fafc' },
   titleLight: { color: '#1e293b' },
-  statsContainer: { flexDirection: 'row', gap: 15, marginRight: 15 },
-  statBox: { alignItems: 'center' },
-  statLabel: { fontSize: 8, color: '#64748b', fontWeight: 'bold' },
-  statValue: { fontSize: 20, color: '#10b981', fontWeight: '900' },
-  iconBtn: { padding: 8, backgroundColor: '#1e293b', borderRadius: 12 },
+  statsContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1e293b', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, marginRight: 5 },
+  statBox: { alignItems: 'center', paddingHorizontal: 4 },
+  statLabel: { fontSize: 7, color: '#64748b', fontWeight: 'bold' },
+  statValue: { fontSize: 16, color: '#10b981', fontWeight: '900' },
+  iconBtn: { padding: 6, backgroundColor: '#1e293b', borderRadius: 10 },
   iconBtnLight: { backgroundColor: '#f1f5f9', borderWidth: 1, borderColor: '#e2e8f0' },
   gameArea: { flex: 1, padding: 16, justifyContent: 'flex-start', alignItems: 'center', paddingTop: 20 },
   card: { backgroundColor: '#1e293b', padding: 25, borderRadius: 24, alignItems: 'center', marginBottom: 15, borderWidth: 1, borderColor: '#334155', width: '100%', maxWidth: 700 },

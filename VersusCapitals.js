@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Image, Dimensions, Animated, TextInput } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Image, Dimensions, Animated, TextInput, Platform } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { Home, Users, Trophy, Timer, CheckCircle, HelpCircle, Eye } from 'lucide-react-native';
+import { Home, Users, Trophy, Timer, CheckCircle, HelpCircle, Eye, Moon, Sun } from 'lucide-react-native';
 import Fuse from 'fuse.js';
 
 import countriesStats from './assets/countries_stats.json';
@@ -41,7 +41,9 @@ const getFlagUrl = (cca3) => {
   return `https://flagcdn.com/w160/${code.toLowerCase()}.png`;
 };
 
-export default function VersusCapitals({ isDarkMode, setGameMode, language }) {
+const isMobile = Platform.OS === 'ios' || Platform.OS === 'android';
+
+export default function VersusCapitals({ isDarkMode, setIsDarkMode, setGameMode, language }) {
   const [numPlayers, setNumPlayers] = useState(null); // null, 2, or 3
   const [gameType, setGameType] = useState('CAPITAL'); // 'CAPITAL', 'FLAG', or 'MIX'
   const [currentQuestionType, setCurrentQuestionType] = useState('CAPITAL'); // Resolved type for current question
@@ -255,11 +257,49 @@ export default function VersusCapitals({ isDarkMode, setGameMode, language }) {
         <SafeAreaView style={[styles.container, !isDarkMode && styles.containerLight]}>
           <StatusBar style={isDarkMode ? "light" : "dark"} />
           <View style={styles.menuContainer}>
-            <TouchableOpacity onPress={() => setGameMode('menu')} style={[styles.backBtn, { marginBottom: 40 }]}>
-              <Home color={isDarkMode ? "#fff" : "#1e293b"} size={24} />
-            </TouchableOpacity>
+            <View style={{ 
+              position: 'absolute', 
+              top: isMobile ? 10 : 20, 
+              left: 20,
+              zIndex: 10
+            }}>
+              <TouchableOpacity 
+                onPress={() => setGameMode('menu')} 
+                style={{ 
+                  width: 45, 
+                  height: 45, 
+                  borderRadius: 12, 
+                  backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+              >
+                <Home color="#10b981" size={24} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ 
+              position: 'absolute', 
+              top: isMobile ? 10 : 20, 
+              right: 20,
+              zIndex: 10
+            }}>
+              <TouchableOpacity 
+                onPress={() => setIsDarkMode(!isDarkMode)} 
+                style={{ 
+                  width: 45, 
+                  height: 45, 
+                  borderRadius: 12, 
+                  backgroundColor: isDarkMode ? '#1e293b' : '#e2e8f0',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+              >
+                {isDarkMode ? <Sun color="#fbbf24" size={24} /> : <Moon color="#475569" size={24} />}
+              </TouchableOpacity>
+            </View>
             
-            <Trophy color="#fbbf24" size={80} style={{ marginBottom: 20 }} />
+            <Trophy color="#fbbf24" size={80} style={{ marginBottom: 10, marginTop: isMobile ? 60 : 0 }} />
             <Text style={[styles.menuTitle, !isDarkMode && { color: '#1e293b' }]}>
               {language === 'fr' ? 'VERSUS' : 'VERSUS'}
             </Text>
@@ -293,14 +333,14 @@ export default function VersusCapitals({ isDarkMode, setGameMode, language }) {
 
             {/* Match Format Selection */}
             <View style={{ marginBottom: 15, width: '100%', maxWidth: 400 }}>
-              <Text style={{ color: isDarkMode ? '#cbd5e1' : '#475569', fontWeight: 'bold', marginBottom: 5, marginLeft: 5 }}>
+              <Text style={{ color: isDarkMode ? '#cbd5e1' : '#475569', fontWeight: 'bold', marginBottom: 10, marginLeft: 5, fontSize: 12, letterSpacing: 1 }}>
                 {language === 'fr' ? 'FORMAT DU MATCH' : 'MATCH FORMAT'}
               </Text>
               <View style={{ flexDirection: 'row', gap: 8, backgroundColor: isDarkMode ? '#1e293b' : '#e2e8f0', padding: 5, borderRadius: 15 }}>
                 {[1, 3, 5, 7].map(format => (
                   <TouchableOpacity 
                     key={format}
-                    style={[{ flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 12 }, matchFormat === format && { backgroundColor: '#8b5cf6' }]} 
+                    style={[{ flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 12 }, matchFormat === format && { backgroundColor: '#8b5cf6' }]} 
                     onPress={() => setMatchFormat(format)}
                   >
                     <Text style={{ color: matchFormat === format ? '#fff' : (isDarkMode ? '#94a3b8' : '#64748b'), fontWeight: 'bold' }}>
@@ -313,18 +353,18 @@ export default function VersusCapitals({ isDarkMode, setGameMode, language }) {
 
             {/* Rounds per set Selection */}
             <View style={{ marginBottom: 30, width: '100%', maxWidth: 400 }}>
-              <Text style={{ color: isDarkMode ? '#cbd5e1' : '#475569', fontWeight: 'bold', marginBottom: 5, marginLeft: 5 }}>
+              <Text style={{ color: isDarkMode ? '#cbd5e1' : '#475569', fontWeight: 'bold', marginBottom: 10, marginLeft: 5, fontSize: 12, letterSpacing: 1 }}>
                 {language === 'fr' ? 'TOURS PAR MANCHE' : 'TURNS PER SET'}
               </Text>
               <View style={{ flexDirection: 'row', gap: 8, backgroundColor: isDarkMode ? '#1e293b' : '#e2e8f0', padding: 5, borderRadius: 15 }}>
                 {[3, 5, 10, 15].map(rounds => (
                   <TouchableOpacity 
                     key={rounds}
-                    style={[{ flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 12 }, totalRounds === rounds && { backgroundColor: '#f59e0b' }]} 
+                    style={[{ flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 12 }, totalRounds === rounds && { backgroundColor: '#10b981' }]} 
                     onPress={() => setTotalRounds(rounds)}
                   >
                     <Text style={{ color: totalRounds === rounds ? '#fff' : (isDarkMode ? '#94a3b8' : '#64748b'), fontWeight: 'bold' }}>
-                      {rounds} {language === 'fr' ? 'Tours' : 'Turns'}
+                      {rounds}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -333,12 +373,12 @@ export default function VersusCapitals({ isDarkMode, setGameMode, language }) {
             
             <View style={styles.modeSelectionGrid}>
               <TouchableOpacity style={styles.playerPickBtn} onPress={() => setNumPlayers(2)}>
-                <Users color="#fff" size={32} />
+                <Users color="#fff" size={28} />
                 <Text style={styles.playerPickText}>1 VS 1</Text>
               </TouchableOpacity>
               
               <TouchableOpacity style={[styles.playerPickBtn, { backgroundColor: '#8b5cf6' }]} onPress={() => setNumPlayers(3)}>
-                <Users color="#fff" size={32} />
+                <Users color="#fff" size={28} />
                 <Text style={styles.playerPickText}>1 VS 1 VS 1</Text>
               </TouchableOpacity>
             </View>
@@ -357,76 +397,191 @@ export default function VersusCapitals({ isDarkMode, setGameMode, language }) {
         
         {/* Header */}
         <View style={[styles.header, !isDarkMode && styles.headerLight]}>
-          <TouchableOpacity onPress={() => setNumPlayers(null)} style={[styles.iconBtn, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
-            <Home color="#10b981" size={20} />
-          </TouchableOpacity>
-          <View style={styles.scoreBoard}>
-            <View style={[styles.playerScore, currentPlayer === 1 && { borderBottomWidth: 3, borderBottomColor: '#3b82f6' }]}>
-                <Text style={[styles.playerLabel, { color: '#3b82f6' }]}>P1</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-                  <Text style={[styles.scoreValue, !isDarkMode && { color: '#1e293b' }]}>{scores[1]}</Text>
-                  {matchFormat > 1 && <Text style={{ color: '#3b82f6', fontSize: 10, fontWeight: 'bold' }}>⭐{matchScores[1]}</Text>}
+          {!isMobile ? (
+            <>
+              <TouchableOpacity 
+                onPress={() => setNumPlayers(null)} 
+                style={{ 
+                  width: 40, 
+                  height: 40, 
+                  borderRadius: 10, 
+                  backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginRight: 10
+                }}
+              >
+                <Home color="#10b981" size={20} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => setIsDarkMode(!isDarkMode)} 
+                style={{ 
+                  width: 40, 
+                  height: 40, 
+                  borderRadius: 10, 
+                  backgroundColor: isDarkMode ? '#1e293b' : '#e2e8f0',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginRight: 10
+                }}
+              >
+                {isDarkMode ? <Sun color="#fbbf24" size={20} /> : <Moon color="#475569" size={20} />}
+              </TouchableOpacity>
+              <View style={[styles.scoreBoard, !isDarkMode && styles.scoreBoardLight]}>
+                <View style={[styles.playerScore, currentPlayer === 1 && { borderBottomWidth: 3, borderBottomColor: '#3b82f6' }]}>
+                    <Text style={[styles.playerLabel, { color: '#3b82f6' }]}>P1</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
+                      <Text style={[styles.scoreValue, !isDarkMode && { color: '#1e293b' }]}>{scores[1]}</Text>
+                      {matchFormat > 1 && <Text style={{ color: '#3b82f6', fontSize: 10, fontWeight: 'bold' }}>⭐{matchScores[1]}</Text>}
+                    </View>
                 </View>
-            </View>
-            <View style={[styles.playerScore, currentPlayer === 2 && { borderBottomWidth: 3, borderBottomColor: '#ef4444' }]}>
-                <Text style={[styles.playerLabel, { color: '#ef4444' }]}>P2</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-                  <Text style={[styles.scoreValue, !isDarkMode && { color: '#1e293b' }]}>{scores[2]}</Text>
-                  {matchFormat > 1 && <Text style={{ color: '#ef4444', fontSize: 10, fontWeight: 'bold' }}>⭐{matchScores[2]}</Text>}
+                <View style={[styles.playerScore, currentPlayer === 2 && { borderBottomWidth: 3, borderBottomColor: '#ef4444' }]}>
+                    <Text style={[styles.playerLabel, { color: '#ef4444' }]}>P2</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
+                      <Text style={[styles.scoreValue, !isDarkMode && { color: '#1e293b' }]}>{scores[2]}</Text>
+                      {matchFormat > 1 && <Text style={{ color: '#ef4444', fontSize: 10, fontWeight: 'bold' }}>⭐{matchScores[2]}</Text>}
+                    </View>
                 </View>
-            </View>
-            {numPlayers === 3 && (
-              <View style={[styles.playerScore, currentPlayer === 3 && { borderBottomWidth: 3, borderBottomColor: '#10b981' }]}>
-                  <Text style={[styles.playerLabel, { color: '#10b981' }]}>P3</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-                    <Text style={[styles.scoreValue, !isDarkMode && { color: '#1e293b' }]}>{scores[3]}</Text>
-                    {matchFormat > 1 && <Text style={{ color: '#10b981', fontSize: 10, fontWeight: 'bold' }}>⭐{matchScores[3]}</Text>}
+                {numPlayers === 3 && (
+                  <View style={[styles.playerScore, currentPlayer === 3 && { borderBottomWidth: 3, borderBottomColor: '#10b981' }]}>
+                      <Text style={[styles.playerLabel, { color: '#10b981' }]}>P3</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
+                        <Text style={[styles.scoreValue, !isDarkMode && { color: '#1e293b' }]}>{scores[3]}</Text>
+                        {matchFormat > 1 && <Text style={{ color: '#10b981', fontSize: 10, fontWeight: 'bold' }}>⭐{matchScores[3]}</Text>}
+                      </View>
                   </View>
-              </View>
-            )}
-            <View style={styles.roundInfo}>
-                <Text style={styles.roundText}>{currentRound}/{totalRounds}</Text>
-                {matchFormat > 1 && (
-                  <Text style={{ color: '#8b5cf6', fontSize: 8, fontWeight: 'bold', textAlign: 'center', marginTop: 2 }}>BO{matchFormat}</Text>
                 )}
-            </View>
-          </View>
+                <View style={styles.roundInfo}>
+                    <Text style={styles.roundText}>{currentRound}/{totalRounds}</Text>
+                    {matchFormat > 1 && (
+                      <Text style={{ color: '#8b5cf6', fontSize: 8, fontWeight: 'bold', textAlign: 'center', marginTop: 2 }}>BO{matchFormat}</Text>
+                    )}
+                </View>
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                <TouchableOpacity 
+                  onPress={() => setNumPlayers(null)} 
+                  style={{ 
+                    width: 36, 
+                    height: 36, 
+                    borderRadius: 10, 
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    marginRight: 8
+                  }}
+                >
+                  <Home color="#10b981" size={18} />
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  onPress={() => setIsDarkMode(!isDarkMode)} 
+                  style={{ 
+                    width: 36, 
+                    height: 36, 
+                    borderRadius: 10, 
+                    backgroundColor: isDarkMode ? '#1e293b' : '#e2e8f0',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    marginRight: 8
+                  }}
+                >
+                  {isDarkMode ? <Sun color="#fbbf24" size={16} /> : <Moon color="#475569" size={16} />}
+                </TouchableOpacity>
+                <View style={styles.roundInfo}>
+                    <Text style={styles.roundText}>{currentRound}/{totalRounds}</Text>
+                    {matchFormat > 1 && (
+                      <Text style={{ color: '#8b5cf6', fontSize: 7, fontWeight: 'bold', textAlign: 'center' }}>BO{matchFormat}</Text>
+                    )}
+                </View>
+              </View>
+
+              <View style={[styles.scoreBoard, !isDarkMode && styles.scoreBoardLight]}>
+                <View style={[styles.playerScore, currentPlayer === 1 && { borderBottomWidth: 3, borderBottomColor: '#3b82f6' }]}>
+                    <Text style={[styles.playerLabel, { color: '#3b82f6' }]}>P1</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
+                      <Text style={[styles.scoreValue, !isDarkMode && { color: '#1e293b' }]}>{scores[1]}</Text>
+                      {matchFormat > 1 && <Text style={{ color: '#3b82f6', fontSize: 9, fontWeight: 'bold' }}>⭐{matchScores[1]}</Text>}
+                    </View>
+                </View>
+                <View style={[styles.playerScore, currentPlayer === 2 && { borderBottomWidth: 3, borderBottomColor: '#ef4444' }]}>
+                    <Text style={[styles.playerLabel, { color: '#ef4444' }]}>P2</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
+                      <Text style={[styles.scoreValue, !isDarkMode && { color: '#1e293b' }]}>{scores[2]}</Text>
+                      {matchFormat > 1 && <Text style={{ color: '#ef4444', fontSize: 9, fontWeight: 'bold' }}>⭐{matchScores[2]}</Text>}
+                    </View>
+                </View>
+                {numPlayers === 3 && (
+                  <View style={[styles.playerScore, currentPlayer === 3 && { borderBottomWidth: 3, borderBottomColor: '#10b981' }]}>
+                      <Text style={[styles.playerLabel, { color: '#10b981' }]}>P3</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
+                        <Text style={[styles.scoreValue, !isDarkMode && { color: '#1e293b' }]}>{scores[3]}</Text>
+                        {matchFormat > 1 && <Text style={{ color: '#10b981', fontSize: 9, fontWeight: 'bold' }}>⭐{matchScores[3]}</Text>}
+                      </View>
+                  </View>
+                )}
+              </View>
+            </>
+          )}
         </View>
 
         <View style={styles.gameArea}>
-            <Text style={[styles.turnIndicator, { color: playerColor }]}>
+            <Text style={[styles.turnIndicator, { color: playerColor, fontSize: isMobile ? 16 : 18, marginBottom: isMobile ? 10 : 20 }]}>
                 {language === 'fr' ? `Tour Joueur ${currentPlayer}` : `Player ${currentPlayer}'s Turn`}
             </Text>
 
-            <View style={[styles.card, !isDarkMode && styles.cardLight]}>
-                <Image source={{ uri: getFlagUrl(question.cca3) }} style={styles.flag} />
-                {currentQuestionType === 'CAPITAL' && (
-                  <Text style={[styles.countryName, !isDarkMode && { color: '#1e293b' }]}>
-                    {language === 'fr' ? question.name : (question.name_en || question.name)}
+            {!isMobile ? (
+              <View style={[styles.card, !isDarkMode && styles.cardLight]}>
+                  <Image source={{ uri: getFlagUrl(question.cca3) }} style={styles.flag} />
+                  {currentQuestionType === 'CAPITAL' && (
+                    <Text style={[styles.countryName, !isDarkMode && { color: '#1e293b' }]}>
+                      {language === 'fr' ? question.name : (question.name_en || question.name)}
+                    </Text>
+                  )}
+                  <Text style={styles.instruction}>
+                    {currentQuestionType === 'CAPITAL' 
+                      ? (language === 'fr' ? 'Quelle est la capitale ?' : 'What is the capital?')
+                      : (language === 'fr' ? 'Quel est ce pays ?' : 'What is this country?')}
                   </Text>
-                )}
-                <Text style={styles.instruction}>
-                  {currentQuestionType === 'CAPITAL' 
-                    ? (language === 'fr' ? 'Quelle est la capitale ?' : 'What is the capital?')
-                    : (language === 'fr' ? 'Quel est ce pays ?' : 'What is this country?')}
-                </Text>
-            </View>
+              </View>
+            ) : (
+              <View style={[styles.card, !isDarkMode && styles.cardLight, { padding: 15 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 15 }}>
+                    <Image source={{ uri: getFlagUrl(question.cca3) }} style={[styles.flag, { marginBottom: 0, width: 80, height: 55 }]} />
+                    <View style={{ flex: 1 }}>
+                        {currentQuestionType === 'CAPITAL' && (
+                          <Text style={[styles.countryName, !isDarkMode && { color: '#1e293b' }, { fontSize: 22, textAlign: 'left' }]}>
+                            {language === 'fr' ? question.name : (question.name_en || question.name)}
+                          </Text>
+                        )}
+                        <Text style={[styles.instruction, { marginTop: 2, fontSize: 12 }]}>
+                          {currentQuestionType === 'CAPITAL' 
+                            ? (language === 'fr' ? 'Quelle est la capitale ?' : 'What is the capital?')
+                            : (language === 'fr' ? 'Quel est ce pays ?' : 'What is this country?')}
+                        </Text>
+                    </View>
+                </View>
+              </View>
+            )}
+
 
             {!mode && !feedback ? (
                 <View style={styles.modeSelection}>
-                    <TouchableOpacity style={[styles.modeBtn, { borderColor: '#ef4444' }]} onPress={() => setMode('DUO')}>
+                    <TouchableOpacity style={[styles.modeBtn, !isDarkMode && styles.modeBtnLight, { borderColor: '#ef4444' }]} onPress={() => setMode('DUO')}>
                         <HelpCircle color="#ef4444" size={24} />
                         <Text style={[styles.modeBtnTitle, { color: '#ef4444' }]}>DUO</Text>
                         <Text style={styles.modeBtnPoints}>1 PT</Text>
                     </TouchableOpacity>
                     
-                    <TouchableOpacity style={[styles.modeBtn, { borderColor: '#3b82f6' }]} onPress={() => setMode('CARRE')}>
+                    <TouchableOpacity style={[styles.modeBtn, !isDarkMode && styles.modeBtnLight, { borderColor: '#3b82f6' }]} onPress={() => setMode('CARRE')}>
                         <Eye color="#3b82f6" size={24} />
                         <Text style={[styles.modeBtnTitle, { color: '#3b82f6' }]}>CARRÉ</Text>
                         <Text style={styles.modeBtnPoints}>3 PTS</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={[styles.modeBtn, { borderColor: '#10b981' }]} onPress={() => setMode('CASH')}>
+                    <TouchableOpacity style={[styles.modeBtn, !isDarkMode && styles.modeBtnLight, { borderColor: '#10b981' }]} onPress={() => setMode('CASH')}>
                         <CheckCircle color="#10b981" size={24} />
                         <Text style={[styles.modeBtnTitle, { color: '#10b981' }]}>CASH</Text>
                         <Text style={styles.modeBtnPoints}>5 PTS</Text>
@@ -496,15 +651,15 @@ export default function VersusCapitals({ isDarkMode, setGameMode, language }) {
         </View>
 
         {gameOver && (
-            <View style={styles.overlay}>
+            <View style={[styles.overlay, !isDarkMode && styles.overlayLight]}>
                 <Trophy color={matchOver ? "#fbbf24" : "#cbd5e1"} size={80} />
-                <Text style={styles.winnerTitle}>
+                <Text style={[styles.winnerTitle, !isDarkMode && { color: '#1e293b' }]}>
                     {!matchOver 
                         ? (winner === 0 ? (language === 'fr' ? 'ÉGALITÉ !' : 'TIE !') : `MANCHE GAGNÉE P${winner}`)
                         : (matchWinner === 0 ? (language === 'fr' ? 'ÉGALITÉ DU MATCH !' : 'MATCH TIE !') : `VICTOIRE DU MATCH P${matchWinner} !`)}
                 </Text>
                 
-                <Text style={[styles.finalScore, { marginBottom: 10 }]}>
+                <Text style={[styles.finalScore, !isDarkMode && { color: '#64748b' }, { marginBottom: 10 }]}>
                     {language === 'fr' ? 'Score de la manche :' : 'Set score:'} {scores[1]} - {scores[2]} {numPlayers === 3 ? `- ${scores[3]}` : ''}
                 </Text>
 
@@ -541,61 +696,95 @@ export default function VersusCapitals({ isDarkMode, setGameMode, language }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f172a' },
   containerLight: { backgroundColor: '#f8fafc' },
-  header: { padding: 15, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#1e293b' },
+  header: { 
+    paddingHorizontal: 15, 
+    paddingVertical: 10, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#1e293b', 
+    justifyContent: 'space-between', 
+    minHeight: 60 
+  },
   headerLight: { backgroundColor: '#fff', borderBottomColor: '#e2e8f0' },
   menuContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  backBtn: { position: 'absolute', top: 60, left: 20 },
+  backBtn: { position: 'absolute', top: isMobile ? 60 : 20, left: 20 },
   menuTitle: { fontSize: 32, fontWeight: '900', color: '#fff', textAlign: 'center', marginBottom: 40 },
+  
   modeSelectionGrid: { width: '100%', maxWidth: 400, gap: 15 },
-  playerPickBtn: { backgroundColor: '#3b82f6', padding: 25, borderRadius: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 15 },
+  playerPickBtn: { 
+    backgroundColor: '#3b82f6', 
+    padding: 20, 
+    borderRadius: 20, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    gap: 15,
+    width: '100%'
+  },
   playerPickText: { color: '#fff', fontSize: 24, fontWeight: '900' },
-  iconBtn: { padding: 10, borderRadius: 12 },
-  scoreBoard: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10 },
-  playerScore: { alignItems: 'center', paddingHorizontal: 5, paddingVertical: 5 },
-  playerLabel: { fontSize: 10, fontWeight: '900' },
-  scoreValue: { fontSize: 18, fontWeight: '900', color: '#fff' },
-  roundInfo: { backgroundColor: '#1e293b', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
-  roundText: { color: '#94a3b8', fontSize: 10, fontWeight: 'bold' },
-  gameArea: { flex: 1, padding: 20, alignItems: 'center' },
-  playerLabel: { fontSize: 12, fontWeight: '900' },
-  scoreValue: { fontSize: 24, fontWeight: '900', color: '#fff' },
-  roundInfo: { backgroundColor: '#1e293b', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20 },
-  roundText: { color: '#94a3b8', fontSize: 12, fontWeight: 'bold' },
+  
+  scoreBoard: { 
+    flexDirection: 'row', 
+    gap: 10, 
+    alignItems: 'center', 
+    backgroundColor: '#1e293b', 
+    paddingHorizontal: 10, 
+    paddingVertical: 5, 
+    borderRadius: 12 
+  },
+  scoreBoardLight: {
+    backgroundColor: '#e2e8f0',
+  },
+  playerScore: { alignItems: 'center', paddingHorizontal: 6, paddingVertical: 2 },
+  playerLabel: { fontSize: 8, fontWeight: 'bold', marginBottom: -2 },
+  scoreValue: { fontSize: 16, fontWeight: '900', color: '#f8fafc' },
+  roundInfo: { 
+    marginLeft: 15, 
+    borderLeftWidth: 1, 
+    borderLeftColor: '#334155', 
+    paddingLeft: 10, 
+    justifyContent: 'center' 
+  },
+  roundText: { color: '#64748b', fontSize: 12, fontWeight: 'bold' },
+  iconBtn: { padding: 8, backgroundColor: '#1e293b', borderRadius: 10 },
+  
   gameArea: { flex: 1, padding: 20, alignItems: 'center' },
   turnIndicator: { fontSize: 18, fontWeight: '900', marginBottom: 20, textTransform: 'uppercase' },
-  card: { backgroundColor: '#1e293b', padding: 30, borderRadius: 24, alignItems: 'center', marginBottom: 30, width: '100%', maxWidth: 500 },
+  card: { backgroundColor: '#1e293b', padding: 30, borderRadius: 24, alignItems: 'center', marginBottom: 30, width: '100%', maxWidth: 600 },
   cardLight: { backgroundColor: '#fff', elevation: 4, shadowOpacity: 0.1 },
   flag: { width: 120, height: 80, borderRadius: 12, marginBottom: 15 },
   countryName: { fontSize: 32, fontWeight: '900', color: '#f8fafc', textAlign: 'center' },
   instruction: { color: '#64748b', fontSize: 14, marginTop: 10 },
+  
   optionsGrid: { gap: 12, width: '100%', maxWidth: 500 },
-  optionBtn: { backgroundColor: '#1e293b', padding: 20, borderRadius: 16, alignItems: 'center', borderWidth: 2, borderColor: 'transparent' },
-  optionBtnLight: { backgroundColor: '#fff', elevation: 2 },
+  optionBtn: { backgroundColor: '#1e293b', padding: 20, borderRadius: 16, alignItems: 'center', borderWidth: 2, borderColor: '#334155' },
+  optionBtnLight: { backgroundColor: '#fff', borderColor: '#e2e8f0', elevation: 2 },
   optionText: { color: '#f8fafc', fontSize: 18, fontWeight: 'bold' },
+  
   modeSelection: { flexDirection: 'row', gap: 10, width: '100%', maxWidth: 500, justifyContent: 'center' },
   modeBtn: { flex: 1, backgroundColor: '#1e293b', padding: 15, borderRadius: 16, alignItems: 'center', borderWidth: 2 },
+  modeBtnLight: { backgroundColor: '#fff', borderColor: '#e2e8f0' },
   modeBtnTitle: { fontSize: 14, fontWeight: '900', marginTop: 8 },
   modeBtnPoints: { fontSize: 10, color: '#64748b', fontWeight: 'bold' },
+  
   cashContainer: { width: '100%', maxWidth: 500, gap: 12 },
   cashInput: { backgroundColor: '#1e293b', color: '#fff', padding: 20, borderRadius: 16, fontSize: 18, fontWeight: 'bold', textAlign: 'center', borderWidth: 2, borderColor: '#334155' },
   cashInputLight: { backgroundColor: '#fff', color: '#1e293b', borderColor: '#e2e8f0' },
   cashSubmitBtn: { backgroundColor: '#10b981', padding: 18, borderRadius: 16, alignItems: 'center' },
   cashSubmitText: { color: '#fff', fontWeight: '900', fontSize: 16 },
+  
   feedbackCard: { padding: 30, borderRadius: 24, alignItems: 'center', width: '100%', maxWidth: 500 },
   correctCard: { backgroundColor: 'rgba(16, 185, 129, 0.1)', borderWidth: 2, borderColor: '#10b981' },
   wrongCard: { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderWidth: 2, borderColor: '#ef4444' },
   feedbackEmoji: { fontSize: 40, marginBottom: 10 },
   feedbackTitle: { fontSize: 24, fontWeight: '900', color: '#fff', marginBottom: 5 },
   feedbackSub: { fontSize: 16, color: '#94a3b8', textAlign: 'center', fontWeight: 'bold' },
-  correctText: { color: '#10b981' },
-  wrongText: { color: '#ef4444' },
-  showOptionsBtn: { backgroundColor: '#3b82f6', paddingVertical: 15, paddingHorizontal: 30, borderRadius: 16, marginTop: 20 },
-  showOptionsText: { color: '#fff', fontWeight: '900', fontSize: 16 },
-  correctBtn: { borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)' },
-  wrongBtn: { borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)' },
+  
   overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.95)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  overlayLight: { backgroundColor: 'rgba(248, 250, 252, 0.98)' },
   winnerTitle: { fontSize: 40, fontWeight: '900', color: '#fff', marginVertical: 20 },
   finalScore: { fontSize: 32, color: '#94a3b8', marginBottom: 40 },
-  resetBtn: { backgroundColor: '#10b981', paddingVertical: 15, paddingHorizontal: 40, borderRadius: 16 },
+  resetBtn: { backgroundColor: '#10b981', paddingVertical: 15, paddingHorizontal: 40, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   resetBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 18 }
 });
