@@ -6,7 +6,7 @@ import type { Language, LocalizedLabel } from '../types';
  */
 const THEME_DESCRIPTIONS: Record<string, LocalizedLabel> = {
   prison_population: {
-    fr: "Nombre de détenus pour 100 000 habitants. Plus le chiffre est élevé, plus le pays est répressif ou criminalisé.",
+    fr: 'Nombre de détenus pour 100 000 habitants. Plus le chiffre est élevé, plus le pays est répressif ou criminalisé.',
     en: 'Number of prisoners per 100,000 inhabitants. Higher values indicate higher incarceration rates.',
   },
   fertility_rate: {
@@ -34,7 +34,7 @@ const THEME_DESCRIPTIONS: Record<string, LocalizedLabel> = {
     en: "Gross Domestic Product. #1 is the world's largest economic power.",
   },
   gdp_per_capita: {
-    fr: 'PIB divisé par le nombre d\'habitants. Le #1 est le pays où les habitants sont les plus riches en moyenne.',
+    fr: "PIB divisé par le nombre d'habitants. Le #1 est le pays où les habitants sont les plus riches en moyenne.",
     en: 'GDP divided by the number of inhabitants. #1 is the country where people are wealthiest on average.',
   },
   inflation: {
@@ -50,11 +50,11 @@ const THEME_DESCRIPTIONS: Record<string, LocalizedLabel> = {
     en: 'Percentage of the population who can read and write. #1 is the most literate country.',
   },
   life_expectancy: {
-    fr: 'Nombre moyen d\'années qu\'un nouveau-né peut espérer vivre. Le #1 est le pays où l\'on vit le plus longtemps.',
+    fr: "Nombre moyen d'années qu'un nouveau-né peut espérer vivre. Le #1 est le pays où l'on vit le plus longtemps.",
     en: 'Average number of years a newborn is expected to live. #1 is the country with the longest life expectancy.',
   },
   population: {
-    fr: 'Nombre total d\'habitants. Le #1 est le pays le plus peuplé au monde.',
+    fr: "Nombre total d'habitants. Le #1 est le pays le plus peuplé au monde.",
     en: 'Total number of inhabitants. #1 is the most populous country in the world.',
   },
   area: {
@@ -70,7 +70,7 @@ const THEME_DESCRIPTIONS: Record<string, LocalizedLabel> = {
     en: 'Number of suicides per 100,000 people. A high rank (#1) indicates a significant suicide rate.',
   },
   obesity_rate: {
-    fr: 'Pourcentage de la population adulte considérée comme obèse. Le #1 est le pays avec le plus fort taux d\'obésité.',
+    fr: "Pourcentage de la population adulte considérée comme obèse. Le #1 est le pays avec le plus fort taux d'obésité.",
     en: 'Percentage of the adult population considered obese. #1 is the country with the highest obesity rate.',
   },
   access_to_electricity: {
@@ -86,7 +86,7 @@ const THEME_DESCRIPTIONS: Record<string, LocalizedLabel> = {
     en: 'Number of doctors per 1000 inhabitants. #1 has the best medical coverage.',
   },
   military_expenditure: {
-    fr: 'Dépenses militaires en pourcentage du PIB. Le #1 consacre la plus grande part de ses richesses à l\'armée.',
+    fr: "Dépenses militaires en pourcentage du PIB. Le #1 consacre la plus grande part de ses richesses à l'armée.",
     en: 'Military expenditure as a percentage of GDP. #1 spends the largest share of its wealth on the military.',
   },
   forest_area: {

@@ -1,53 +1,73 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
-import { supabase } from './supabase';
-import { Trophy, Zap, LayoutGrid, Award } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { Award, LayoutGrid, Zap } from 'lucide-react-native';
 
-const Leaderboard = ({ language, isDarkMode }) => {
-  const [activeTab, setActiveTab] = useState('classic'); // 'classic' or 'streak'
+import { supabase } from '../lib/supabase';
+import type { Language } from '../types';
+
+type Tab = 'classic' | 'streak';
+
+interface LeaderboardEntry {
+  score: number;
+  user_id: string;
+  profiles?: { username?: string | null } | null;
+}
+
+interface LeaderboardProps {
+  language: Language;
+  isDarkMode: boolean;
+}
+
+const MEDAL_COLORS = ['#fbbf24', '#94a3b8', '#b45309']; // Gold, Silver, Bronze
+
+const Leaderboard = ({ language, isDarkMode }: LeaderboardProps) => {
+  const [activeTab, setActiveTab] = useState<Tab>('classic');
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState([]);
+  const [data, setData] = useState<LeaderboardEntry[]>([]);
 
   useEffect(() => {
     fetchLeaderboard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   const fetchLeaderboard = async () => {
     setLoading(true);
-    
-    // Pour le mode Classic : on veut le plus petit score (rang total minimum)
-    // Pour le mode Streak : on veut le plus grand score (streak maximum)
+
+    // Classic now stores efficiency (%), so highest is best — same as streak.
     const isClassic = activeTab === 'classic';
-    
-    // On récupère les meilleurs scores par utilisateur
-    // Pour le mode Classic : score stocke désormais l'efficacité (%), donc on veut le MAX
-    // Pour le mode Streak : on veut toujours le MAX
-    let query = supabase
+
+    const { data: scores, error } = await supabase
       .from('scores')
-      .select(`
+      .select(
+        `
         score,
         user_id,
         profiles!scores_user_id_fkey (
           username
         )
-      `)
-      .eq('game_mode', activeTab);
-
-    query = query.order('score', { ascending: false });
-
-    const { data: scores, error } = await query.limit(50);
+      `,
+      )
+      .eq('game_mode', activeTab)
+      .order('score', { ascending: false })
+      .limit(50);
 
     if (error) {
       console.error('Leaderboard fetch error:', error);
     } else {
-      // Filtrer pour ne garder que le meilleur score unique par utilisateur
-      const uniqueUsers = {};
-      const filteredData = scores.filter(item => {
-        // En mode classic, on ignore les scores aberrants (> 100) qui correspondent aux anciens scores
+      // Keep only each user's single best score.
+      const seenUsers: Record<string, boolean> = {};
+      const filteredData = (scores as unknown as LeaderboardEntry[]).filter((item) => {
+        // Ignore legacy classic scores (> 100), which were total ranks.
         if (isClassic && item.score > 100) return false;
-        
-        if (!uniqueUsers[item.user_id]) {
-          uniqueUsers[item.user_id] = true;
+        if (!seenUsers[item.user_id]) {
+          seenUsers[item.user_id] = true;
           return true;
         }
         return false;
@@ -57,20 +77,19 @@ const Leaderboard = ({ language, isDarkMode }) => {
     setLoading(false);
   };
 
-  const renderItem = ({ item, index }) => {
+  const renderItem = ({ item, index }: { item: LeaderboardEntry; index: number }) => {
     const isTop3 = index < 3;
-    const colors = ['#fbbf24', '#94a3b8', '#b45309']; // Gold, Silver, Bronze
 
     return (
       <View style={[styles.itemRow, isDarkMode && styles.itemRowDark]}>
         <View style={styles.rankContainer}>
           {isTop3 ? (
-            <Award size={24} color={colors[index]} />
+            <Award size={24} color={MEDAL_COLORS[index]} />
           ) : (
             <Text style={[styles.rankText, isDarkMode && styles.textDark]}>{index + 1}</Text>
           )}
         </View>
-        
+
         <View style={styles.userInfo}>
           <Text style={[styles.username, isDarkMode && styles.textDark]}>
             {item.profiles?.username || 'Joueur Anonyme'}
@@ -78,7 +97,12 @@ const Leaderboard = ({ language, isDarkMode }) => {
         </View>
 
         <View style={styles.scoreContainer}>
-          <Text style={[styles.scoreValue, activeTab === 'classic' ? styles.classicColor : styles.streakColor]}>
+          <Text
+            style={[
+              styles.scoreValue,
+              activeTab === 'classic' ? styles.classicColor : styles.streakColor,
+            ]}
+          >
             {activeTab === 'classic' ? `${item.score}%` : `${item.score} pts`}
           </Text>
         </View>
@@ -92,22 +116,25 @@ const Leaderboard = ({ language, isDarkMode }) => {
         {language === 'fr' ? 'Classement Mondial' : 'Global Leaderboard'}
       </Text>
 
-      {/* Tabs */}
       <View style={styles.tabs}>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => setActiveTab('classic')}
           style={[styles.tab, activeTab === 'classic' && styles.activeTabClassic]}
         >
           <LayoutGrid size={18} color={activeTab === 'classic' ? 'white' : '#64748b'} />
-          <Text style={[styles.tabText, activeTab === 'classic' && styles.activeTabText]}>CLASSIC</Text>
+          <Text style={[styles.tabText, activeTab === 'classic' && styles.activeTabText]}>
+            CLASSIC
+          </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => setActiveTab('streak')}
           style={[styles.tab, activeTab === 'streak' && styles.activeTabStreak]}
         >
           <Zap size={18} color={activeTab === 'streak' ? 'white' : '#64748b'} />
-          <Text style={[styles.tabText, activeTab === 'streak' && styles.activeTabText]}>STREAK</Text>
+          <Text style={[styles.tabText, activeTab === 'streak' && styles.activeTabText]}>
+            STREAK
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -118,7 +145,7 @@ const Leaderboard = ({ language, isDarkMode }) => {
       ) : (
         <FlatList
           data={data}
-          keyExtractor={(item, index) => index.toString()}
+          keyExtractor={(_item, index) => index.toString()}
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
@@ -134,32 +161,38 @@ const Leaderboard = ({ language, isDarkMode }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 10 },
-  title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20, color: '#1e293b' },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 20,
+    color: '#1e293b',
+  },
   tabs: { flexDirection: 'row', gap: 10, marginBottom: 20 },
-  tab: { 
-    flex: 1, 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    padding: 12, 
-    borderRadius: 12, 
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    borderRadius: 12,
     backgroundColor: '#f1f5f9',
-    gap: 8
+    gap: 8,
   },
   activeTabClassic: { backgroundColor: '#10b981' },
   activeTabStreak: { backgroundColor: '#fbbf24' },
   tabText: { fontWeight: 'bold', color: '#64748b', fontSize: 13 },
   activeTabText: { color: 'white' },
   listContent: { paddingBottom: 20 },
-  itemRow: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    padding: 15, 
-    backgroundColor: '#fff', 
-    borderRadius: 16, 
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    backgroundColor: '#fff',
+    borderRadius: 16,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#e2e8f0'
+    borderColor: '#e2e8f0',
   },
   itemRowDark: { backgroundColor: '#1e293b', borderColor: '#334155' },
   rankContainer: { width: 40, alignItems: 'center' },
@@ -172,7 +205,7 @@ const styles = StyleSheet.create({
   streakColor: { color: '#fbbf24' },
   textDark: { color: '#f8fafc' },
   loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
-  emptyText: { textAlign: 'center', color: '#64748b', marginTop: 40 }
+  emptyText: { textAlign: 'center', color: '#64748b', marginTop: 40 },
 });
 
 export default Leaderboard;
