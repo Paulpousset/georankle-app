@@ -72,6 +72,7 @@ export default function App() {
   const [selectedMatchMode, setSelectedMatchMode] = useState(null); // 'classic', 'streak', 'versus' - triggers matchmaking
   const [matchData, setMatchData] = useState(null); // holds active match data
   const [showThemeInfo, setShowThemeInfo] = useState(null); // theme object to show info for
+  const [incomingInvite, setIncomingInvite] = useState(null); // match object from friend
 
   const themeStyles = {
     container: [styles.container, !isDarkMode && styles.containerLight],
@@ -138,6 +139,76 @@ export default function App() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Listen for incoming matchmaking invites
+  useEffect(() => {
+    if (!user) return;
+    
+    const fetchInvites = async () => {
+      const { data } = await supabase
+        .from('matches')
+        .select('*')
+        .eq('player2_id', user.id)
+        .eq('status', 'waiting')
+        .eq('is_public', false);
+      if (data && data.length > 0) setIncomingInvite(data[0]);
+    };
+    fetchInvites();
+
+    const channel = supabase.channel(`invites_${user.id}`)
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'matches', 
+        filter: `player2_id=eq.${user.id}` 
+      }, (payload) => {
+        if (payload.new.status === 'waiting' && payload.new.is_public === false) {
+           setIncomingInvite(payload.new);
+        }
+      })
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'matches', 
+        filter: `player2_id=eq.${user.id}` 
+      }, (payload) => {
+        if (payload.new.status === 'cancelled' && incomingInvite && incomingInvite.id === payload.new.id) {
+           setIncomingInvite(null);
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user, incomingInvite?.id]);
+
+  const acceptInvite = async () => {
+    if (!incomingInvite) return;
+    const matchCopy = { ...incomingInvite };
+    setIncomingInvite(null);
+
+    const { data: updatedMatch, error } = await supabase
+      .from('matches')
+      .update({ status: 'in_progress' })
+      .eq('id', matchCopy.id)
+      .select()
+      .single();
+
+    if (!error && updatedMatch) {
+       setMatchData(updatedMatch); 
+       // Clear menus and go to Matchmaking proxy/game component
+       setGameMode(updatedMatch.game_mode);
+       setSelectedMatchMode(matchCopy.game_mode); // Needed to mount Matchmaking for the socket tracking, which in turn starts the game
+    } else {
+       alert(language === 'fr' ? "Impossible de rejoindre la partie" : "Could not join match");
+    }
+  };
+
+  const declineInvite = async () => {
+    if (!incomingInvite) return;
+    await supabase.from('matches').update({ status: 'cancelled' }).eq('id', incomingInvite.id);
+    setIncomingInvite(null);
+  };
+
 
   const fetchUserBestScores = async (userId) => {
     const { data: scores } = await supabase
@@ -290,7 +361,7 @@ export default function App() {
               supabase.from('scores').insert({
                 user_id: user.id,
                 game_mode: 'classic',
-                score: efficiency
+                score: gameEfficiency
               }).then(({ error }) => {
                 if (error) console.error('Error saving classic efficiency:', error);
               });
@@ -1043,6 +1114,56 @@ export default function App() {
             </View>
           </View>
         </Modal>
+
+        {/* Incoming Invite Modal */}
+        <Modal
+          visible={!!incomingInvite}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={declineInvite}
+        >
+          <View style={{ flex: 1, justifyContent: 'flex-start', alignItems: 'center', paddingTop: 60, backgroundColor: 'rgba(0,0,0,0.4)' }}>
+            <View style={{ 
+              width: '90%', 
+              maxWidth: 400, 
+              backgroundColor: isDarkMode ? '#1e293b' : '#fff', 
+              borderRadius: 16, 
+              padding: 20,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 10 },
+              shadowOpacity: 0.3,
+              shadowRadius: 20,
+              elevation: 10,
+              flexDirection: 'column',
+              alignItems: 'center'
+            }}>
+              <View style={{ backgroundColor: '#3b82f6', padding: 12, borderRadius: 25, marginBottom: 15 }}>
+                <Users color="#fff" size={24} />
+              </View>
+              <Text style={{ fontSize: 18, fontWeight: 'bold', color: isDarkMode ? '#fff' : '#1e293b', marginBottom: 10, textAlign: 'center' }}>
+                {language === 'fr' ? 'Nouveau défi !' : 'New Challenge!'}
+              </Text>
+              <Text style={{ fontSize: 14, color: isDarkMode ? '#cbd5e1' : '#475569', marginBottom: 20, textAlign: 'center' }}>
+                {language === 'fr' 
+                  ? `Vous avez été invité à jouer une partie de GeoRankle.` 
+                  : `You have been invited to play GeoRankle.`}
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 10, width: '100%' }}>
+                <TouchableOpacity onPress={declineInvite} style={{ flex: 1, padding: 15, backgroundColor: isDarkMode ? '#334155' : '#e2e8f0', borderRadius: 12, alignItems: 'center' }}>
+                  <Text style={{ color: isDarkMode ? '#f8fafc' : '#1e293b', fontWeight: 'bold' }}>
+                    {language === 'fr' ? 'Refuser' : 'Decline'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={acceptInvite} style={{ flex: 1, padding: 15, backgroundColor: '#10b981', borderRadius: 12, alignItems: 'center' }}>
+                  <Text style={{ color: '#fff', fontWeight: 'bold' }}>
+                    {language === 'fr' ? 'Accepter' : 'Accept'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
       </SafeAreaView>
     </SafeAreaProvider>
   );

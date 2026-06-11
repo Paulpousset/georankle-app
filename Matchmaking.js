@@ -201,59 +201,61 @@ export default function Matchmaking({ session, gameMode, onBack, onStartMatch, i
         </View>
 
         <View style={styles.content}>
-          <Text style={[styles.sectionTitle, isDarkMode ? {color: '#cbd5e1'} : {color: '#475569'}]}>
-            {language === 'fr' ? "Taille du Match (Best Of)" : "Match Length (Best Of)"}
-          </Text>
-          
-          <View style={styles.boSelectRow}>
-            {[1, 3, 5].map((bo) => (
-              <TouchableOpacity 
-                key={bo} 
-                style={[
-                  styles.boBtn, 
-                  isDarkMode ? styles.cardDark : styles.cardLight,
-                  bestOf === bo && (isDarkMode ? styles.boBtnActiveDark : styles.boBtnActiveLight)
-                ]}
-                onPress={() => setBestOf(bo)}
-              >
-                <Text style={[
-                  styles.boBtnText, 
-                  isDarkMode ? {color: '#cbd5e1'} : {color: '#64748B'},
-                  bestOf === bo && (isDarkMode ? {color: '#34d399'} : {color: '#10b981'})
-                ]}>BO {bo}</Text>
-              </TouchableOpacity>
-            ))}
+          <View style={styles.innerContent}>
+            <Text style={[styles.sectionTitle, isDarkMode ? {color: '#cbd5e1'} : {color: '#475569'}]}>
+              {language === 'fr' ? "Taille du Match (Best Of)" : "Match Length (Best Of)"}
+            </Text>
+            
+            <View style={styles.boSelectRow}>
+              {[1, 3, 5].map((bo) => (
+                <TouchableOpacity 
+                  key={bo} 
+                  style={[
+                    styles.boBtn, 
+                    isDarkMode ? styles.cardDark : styles.cardLight,
+                    bestOf === bo && (isDarkMode ? styles.boBtnActiveDark : styles.boBtnActiveLight)
+                  ]}
+                  onPress={() => setBestOf(bo)}
+                >
+                  <Text style={[
+                    styles.boBtnText, 
+                    isDarkMode ? {color: '#cbd5e1'} : {color: '#64748B'},
+                    bestOf === bo && (isDarkMode ? {color: '#34d399'} : {color: '#10b981'})
+                  ]}>BO {bo}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {!matchType && (
+              <View style={styles.modeSelectContainer}>
+                <TouchableOpacity style={styles.mainActionBtn} onPress={startPublicSearch}>
+                  <Ionicons name="earth" size={24} color="#fff" />
+                  <Text style={styles.mainActionText}>{language === 'fr' ? "Partie Publique" : "Public Match"}</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={[styles.mainActionBtn, { backgroundColor: '#3b82f6', marginTop: 15 }]} onPress={() => setMatchType('friend')}>
+                  <Ionicons name="people" size={24} color="#fff" />
+                  <Text style={styles.mainActionText}>{language === 'fr' ? "Défier un ami" : "Challenge a friend"}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {matchType === 'friend' && (
+              <View style={styles.friendsListContainer}>
+                <Text style={[styles.sectionTitle, isDarkMode ? {color: '#cbd5e1'} : {color: '#475569'}]}>
+                  {language === 'fr' ? "Choisissez un ami" : "Choose a friend"}
+                </Text>
+                <FlatList
+                  data={friends}
+                  keyExtractor={item => item.id}
+                  renderItem={renderFriend}
+                  ListEmptyComponent={<Text style={[styles.emptyText, isDarkMode ? {color: '#94a3b8'} : {color: '#64748B'}]}>
+                    {language === 'fr' ? "Aucun ami trouvé." : "No friends found."}
+                  </Text>}
+                />
+              </View>
+            )}
           </View>
-
-          {!matchType && (
-            <View style={styles.modeSelectContainer}>
-              <TouchableOpacity style={styles.mainActionBtn} onPress={startPublicSearch}>
-                <Ionicons name="earth" size={24} color="#fff" />
-                <Text style={styles.mainActionText}>{language === 'fr' ? "Partie Publique" : "Public Match"}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={[styles.mainActionBtn, { backgroundColor: '#3b82f6', marginTop: 15 }]} onPress={() => setMatchType('friend')}>
-                <Ionicons name="people" size={24} color="#fff" />
-                <Text style={styles.mainActionText}>{language === 'fr' ? "Défier un ami" : "Challenge a friend"}</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {matchType === 'friend' && (
-            <View style={styles.friendsListContainer}>
-              <Text style={[styles.sectionTitle, isDarkMode ? {color: '#cbd5e1'} : {color: '#475569'}]}>
-                {language === 'fr' ? "Choisissez un ami" : "Choose a friend"}
-              </Text>
-              <FlatList
-                data={friends}
-                keyExtractor={item => item.id}
-                renderItem={renderFriend}
-                ListEmptyComponent={<Text style={[styles.emptyText, isDarkMode ? {color: '#94a3b8'} : {color: '#64748B'}]}>
-                  {language === 'fr' ? "Aucun ami trouvé." : "No friends found."}
-                </Text>}
-              />
-            </View>
-          )}
         </View>
       </SafeAreaView>
     </SafeAreaProvider>
@@ -289,6 +291,7 @@ const styles = StyleSheet.create({
   titleDark: { color: '#f8fafc' },
   
   content: { padding: 20, flex: 1 },
+  innerContent: { width: '100%', maxWidth: 600, alignSelf: 'center', flex: 1 },
   sectionTitle: { fontSize: 18, fontWeight: '600', marginBottom: 15, marginTop: 10 },
   
   boSelectRow: { flexDirection: 'row', gap: 10, marginBottom: 30 },

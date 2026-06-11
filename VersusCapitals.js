@@ -49,10 +49,10 @@ export default function VersusCapitals({ isDarkMode, setIsDarkMode, setGameMode,
   const [currentQuestionType, setCurrentQuestionType] = useState('CAPITAL'); // Resolved type for current question
   const [totalRounds, setTotalRounds] = useState(5); // Default 5 turns per match
   const [matchFormat, setMatchFormat] = useState(1); // 1 = BO1, 3 = BO3, 5 = BO5 etc.
-  const [matchScores, setMatchScores] = useState({ 1: 0, 2: 0, 3: 0 }); // Global sets won
+  const [matchScores, setMatchScores] = useState({ 1: 0, 2: 0, 3: 0, 4: 0 }); // Global sets won
   
   const [currentPlayer, setCurrentPlayer] = useState(1);
-  const [scores, setScores] = useState({ 1: 0, 2: 0, 3: 0 });
+  const [scores, setScores] = useState({ 1: 0, 2: 0, 3: 0, 4: 0 });
   const [currentRound, setCurrentRound] = useState(1);
   const [question, setQuestion] = useState(null);
   const [options, setOptions] = useState([]);
@@ -232,8 +232,8 @@ export default function VersusCapitals({ isDarkMode, setIsDarkMode, setGameMode,
   };
 
   const resetMatch = () => {
-    setScores({ 1: 0, 2: 0, 3: 0 });
-    setMatchScores({ 1: 0, 2: 0, 3: 0 });
+    setScores({ 1: 0, 2: 0, 3: 0, 4: 0 });
+    setMatchScores({ 1: 0, 2: 0, 3: 0, 4: 0 });
     setCurrentRound(1);
     setCurrentPlayer(1);
     setUsedCountries(new Set());
@@ -249,7 +249,7 @@ export default function VersusCapitals({ isDarkMode, setIsDarkMode, setGameMode,
     setNumPlayers(null);
   };
 
-  const playerColor = currentPlayer === 1 ? '#3b82f6' : (currentPlayer === 2 ? '#ef4444' : '#10b981');
+  const playerColor = currentPlayer === 1 ? '#3b82f6' : (currentPlayer === 2 ? '#ef4444' : (currentPlayer === 3 ? '#10b981' : '#f59e0b'));
 
   if (!numPlayers) {
     return (
@@ -381,6 +381,11 @@ export default function VersusCapitals({ isDarkMode, setIsDarkMode, setGameMode,
                 <Users color="#fff" size={28} />
                 <Text style={styles.playerPickText}>1 VS 1 VS 1</Text>
               </TouchableOpacity>
+              
+              <TouchableOpacity style={[styles.playerPickBtn, { backgroundColor: '#f59e0b' }]} onPress={() => setNumPlayers(4)}>
+                <Users color="#fff" size={28} />
+                <Text style={styles.playerPickText}>1 VS 1 VS 1 VS 1</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </SafeAreaView>
@@ -442,12 +447,21 @@ export default function VersusCapitals({ isDarkMode, setIsDarkMode, setGameMode,
                       {matchFormat > 1 && <Text style={{ color: '#ef4444', fontSize: 10, fontWeight: 'bold' }}>⭐{matchScores[2]}</Text>}
                     </View>
                 </View>
-                {numPlayers === 3 && (
+                {numPlayers >= 3 && (
                   <View style={[styles.playerScore, currentPlayer === 3 && { borderBottomWidth: 3, borderBottomColor: '#10b981' }]}>
                       <Text style={[styles.playerLabel, { color: '#10b981' }]}>P3</Text>
                       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
                         <Text style={[styles.scoreValue, !isDarkMode && { color: '#1e293b' }]}>{scores[3]}</Text>
                         {matchFormat > 1 && <Text style={{ color: '#10b981', fontSize: 10, fontWeight: 'bold' }}>⭐{matchScores[3]}</Text>}
+                      </View>
+                  </View>
+                )}
+                {numPlayers === 4 && (
+                  <View style={[styles.playerScore, currentPlayer === 4 && { borderBottomWidth: 3, borderBottomColor: '#f59e0b' }]}>
+                      <Text style={[styles.playerLabel, { color: '#f59e0b' }]}>P4</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
+                        <Text style={[styles.scoreValue, !isDarkMode && { color: '#1e293b' }]}>{scores[4]}</Text>
+                        {matchFormat > 1 && <Text style={{ color: '#f59e0b', fontSize: 10, fontWeight: 'bold' }}>⭐{matchScores[4]}</Text>}
                       </View>
                   </View>
                 )}
@@ -513,12 +527,21 @@ export default function VersusCapitals({ isDarkMode, setIsDarkMode, setGameMode,
                       {matchFormat > 1 && <Text style={{ color: '#ef4444', fontSize: 9, fontWeight: 'bold' }}>⭐{matchScores[2]}</Text>}
                     </View>
                 </View>
-                {numPlayers === 3 && (
+                {numPlayers >= 3 && (
                   <View style={[styles.playerScore, currentPlayer === 3 && { borderBottomWidth: 3, borderBottomColor: '#10b981' }]}>
                       <Text style={[styles.playerLabel, { color: '#10b981' }]}>P3</Text>
                       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
                         <Text style={[styles.scoreValue, !isDarkMode && { color: '#1e293b' }]}>{scores[3]}</Text>
                         {matchFormat > 1 && <Text style={{ color: '#10b981', fontSize: 9, fontWeight: 'bold' }}>⭐{matchScores[3]}</Text>}
+                      </View>
+                  </View>
+                )}
+                {numPlayers === 4 && (
+                  <View style={[styles.playerScore, currentPlayer === 4 && { borderBottomWidth: 3, borderBottomColor: '#f59e0b' }]}>
+                      <Text style={[styles.playerLabel, { color: '#f59e0b' }]}>P4</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
+                        <Text style={[styles.scoreValue, !isDarkMode && { color: '#1e293b' }]}>{scores[4]}</Text>
+                        {matchFormat > 1 && <Text style={{ color: '#f59e0b', fontSize: 9, fontWeight: 'bold' }}>⭐{matchScores[4]}</Text>}
                       </View>
                   </View>
                 )}

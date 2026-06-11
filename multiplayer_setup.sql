@@ -12,18 +12,22 @@ CREATE TABLE IF NOT EXISTS public.friends (
 ALTER TABLE public.friends ENABLE ROW LEVEL SECURITY;
 
 -- Policies for friends
+DROP POLICY IF EXISTS "Users can view their friends" ON public.friends;
 CREATE POLICY "Users can view their friends" 
 ON public.friends FOR SELECT 
 USING (auth.uid() = user_id1 OR auth.uid() = user_id2);
 
+DROP POLICY IF EXISTS "Users can insert friendship requests" ON public.friends;
 CREATE POLICY "Users can insert friendship requests" 
 ON public.friends FOR INSERT 
 WITH CHECK (auth.uid() = user_id1);
 
+DROP POLICY IF EXISTS "Users can update their friendship status" ON public.friends;
 CREATE POLICY "Users can update their friendship status" 
 ON public.friends FOR UPDATE 
 USING (auth.uid() = user_id1 OR auth.uid() = user_id2);
 
+DROP POLICY IF EXISTS "Users can delete friends" ON public.friends;
 CREATE POLICY "Users can delete friends" 
 ON public.friends FOR DELETE 
 USING (auth.uid() = user_id1 OR auth.uid() = user_id2);
@@ -54,19 +58,23 @@ CREATE TABLE IF NOT EXISTS public.matches (
 ALTER TABLE public.matches ENABLE ROW LEVEL SECURITY;
 
 -- Policies for matches
+DROP POLICY IF EXISTS "Anyone can view public or their own matches" ON public.matches;
 CREATE POLICY "Anyone can view public or their own matches" 
 ON public.matches FOR SELECT 
 USING (is_public = true OR auth.uid() = player1_id OR auth.uid() = player2_id);
 
+DROP POLICY IF EXISTS "Users can create matches" ON public.matches;
 CREATE POLICY "Users can create matches" 
 ON public.matches FOR INSERT 
 WITH CHECK (auth.uid() = player1_id OR auth.uid() = player2_id);
 
-CREATE POLICY "Users can update matches they are in" 
+DROP POLICY IF EXISTS "Users can update matches they are in" ON public.matches;
+DROP POLICY IF EXISTS "Users can update matches they are in or join public ones" ON public.matches;
+CREATE POLICY "Users can update matches they are in or join public ones" 
 ON public.matches FOR UPDATE 
-USING (auth.uid() = player1_id OR auth.uid() = player2_id);
+USING (auth.uid() = player1_id OR auth.uid() = player2_id OR (is_public = true AND status = 'waiting' AND player2_id IS NULL));
 
 -- Enable Realtime for matches table!
 -- (Important: Requires superuser or running via Supabase Dashboard UI to publish table)
 -- You may need to run this on your project:
-alter publication supabase_realtime add table public.matches;
+-- alter publication supabase_realtime add table public.matches;
