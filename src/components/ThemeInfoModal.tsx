@@ -4,6 +4,8 @@ import { ArrowLeftRight, X } from 'lucide-react-native';
 import type { Language, Theme } from '../types';
 import { pickLabel, tr } from '../i18n';
 import { getThemeDescription } from '../i18n/themeDescriptions';
+import { getColors } from '../theme/colors';
+import { FONTS } from '../theme/typography';
 
 interface ThemeInfoModalProps {
   theme: Theme | null;
@@ -12,65 +14,54 @@ interface ThemeInfoModalProps {
   onClose: () => void;
 }
 
-/** Explains what a ranking theme measures and how its ranks are ordered. */
 export function ThemeInfoModal({ theme, isDarkMode, language, onClose }: ThemeInfoModalProps) {
+  const c = getColors(isDarkMode);
   return (
     <Modal visible={!!theme} animationType="fade" transparent onRequestClose={onClose}>
       <View
         style={{
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: 'rgba(0,0,0,0.8)',
-          padding: 20,
+          flex: 1, justifyContent: 'center', alignItems: 'center',
+          backgroundColor: 'rgba(0,0,0,0.8)', padding: 20,
         }}
       >
         <View
           style={{
-            width: '100%',
-            maxWidth: 350,
-            backgroundColor: isDarkMode ? '#1e293b' : '#fff',
-            borderRadius: 24,
-            padding: 25,
+            width: '100%', maxWidth: 350,
+            backgroundColor: c.card,
+            borderRadius: 24, padding: 25,
+            borderWidth: 1, borderColor: c.border,
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 10 },
-            shadowOpacity: 0.3,
-            shadowRadius: 20,
-            elevation: 10,
+            shadowOpacity: 0.3, shadowRadius: 20, elevation: 10,
           }}
         >
           <View
             style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: 20,
+              flexDirection: 'row', justifyContent: 'space-between',
+              alignItems: 'center', marginBottom: 20,
             }}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <Text style={{ fontSize: 32 }}>{theme?.emoji}</Text>
               <Text
                 style={{
-                  fontSize: 18,
-                  fontWeight: '900',
-                  color: isDarkMode ? '#fff' : '#1e293b',
-                  flexShrink: 1,
+                  fontSize: 18, fontFamily: FONTS.headingBlack,
+                  color: c.text, flexShrink: 1,
                 }}
               >
                 {theme && pickLabel(theme.label, language)}
               </Text>
             </View>
             <TouchableOpacity onPress={onClose} style={{ padding: 5 }}>
-              <X color={isDarkMode ? '#94a3b8' : '#64748b'} size={24} />
+              <X color={c.textMuted} size={24} />
             </TouchableOpacity>
           </View>
 
           <Text
             style={{
-              fontSize: 15,
-              lineHeight: 22,
-              color: isDarkMode ? '#cbd5e1' : '#475569',
-              marginBottom: 20,
+              fontSize: 15, lineHeight: 22,
+              fontFamily: FONTS.mono,
+              color: c.textMuted, marginBottom: 20,
             }}
           >
             {theme && getThemeDescription(theme.id, language)}
@@ -78,21 +69,17 @@ export function ThemeInfoModal({ theme, isDarkMode, language, onClose }: ThemeIn
 
           <View
             style={{
-              backgroundColor: isDarkMode ? '#0f172a' : '#f1f5f9',
-              padding: 15,
-              borderRadius: 15,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 10,
+              backgroundColor: c.surface,
+              padding: 15, borderRadius: 15,
+              borderWidth: 1, borderColor: c.border,
+              flexDirection: 'row', alignItems: 'center', gap: 10,
             }}
           >
-            <ArrowLeftRight size={18} color="#3b82f6" />
+            <ArrowLeftRight size={18} color={c.accent} />
             <Text
               style={{
-                fontSize: 12,
-                fontWeight: 'bold',
-                color: isDarkMode ? '#94a3b8' : '#64748b',
-                flex: 1,
+                fontSize: 12, fontFamily: FONTS.mono,
+                color: c.textMuted, flex: 1,
               }}
             >
               {tr(
@@ -106,14 +93,12 @@ export function ThemeInfoModal({ theme, isDarkMode, language, onClose }: ThemeIn
           <TouchableOpacity
             onPress={onClose}
             style={{
-              backgroundColor: '#3b82f6',
-              paddingVertical: 14,
-              borderRadius: 14,
-              alignItems: 'center',
-              marginTop: 20,
+              backgroundColor: c.accent,
+              paddingVertical: 14, borderRadius: 14,
+              alignItems: 'center', marginTop: 20,
             }}
           >
-            <Text style={{ color: '#fff', fontWeight: 'bold' }}>OK</Text>
+            <Text style={{ color: '#fff', fontFamily: FONTS.monoBold }}>OK</Text>
           </TouchableOpacity>
         </View>
       </View>

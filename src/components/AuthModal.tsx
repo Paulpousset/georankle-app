@@ -1,6 +1,8 @@
 import { Modal, Text, TouchableOpacity, View } from 'react-native';
 
 import Auth from '../screens/Auth';
+import { getColors } from '../theme/colors';
+import { FONTS } from '../theme/typography';
 import type { Language } from '../types';
 
 interface AuthModalProps {
@@ -10,33 +12,26 @@ interface AuthModalProps {
   onClose: () => void;
 }
 
-/** Full-screen overlay hosting the sign-in / sign-up form. */
 export function AuthModal({ visible, isDarkMode, language, onClose }: AuthModalProps) {
+  const c = getColors(isDarkMode);
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
       <View
         style={{
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
+          flex: 1, justifyContent: 'center', alignItems: 'center',
           backgroundColor: 'rgba(0,0,0,0.7)',
         }}
       >
         <View
           style={{
-            width: '90%',
-            maxWidth: 400,
-            backgroundColor: isDarkMode ? '#1e293b' : '#fff',
-            borderRadius: 24,
-            padding: 10,
+            width: '90%', maxWidth: 400,
+            backgroundColor: c.card,
+            borderRadius: 24, padding: 10,
+            borderWidth: 1, borderColor: c.border,
           }}
         >
           <TouchableOpacity style={{ alignSelf: 'flex-end', padding: 10 }} onPress={onClose}>
-            <Text
-              style={{ color: isDarkMode ? '#fff' : '#1e293b', fontWeight: 'bold', fontSize: 18 }}
-            >
-              X
-            </Text>
+            <Text style={{ color: c.textMuted, fontFamily: FONTS.monoBold, fontSize: 18 }}>✕</Text>
           </TouchableOpacity>
           <Auth language={language} onAuthSuccess={onClose} />
         </View>

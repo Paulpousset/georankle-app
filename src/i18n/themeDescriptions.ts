@@ -5,9 +5,33 @@ import type { Language, LocalizedLabel } from '../types';
  * Shown in the "theme info" modal.
  */
 const THEME_DESCRIPTIONS: Record<string, LocalizedLabel> = {
-  prison_population: {
-    fr: 'Nombre de détenus pour 100 000 habitants. Plus le chiffre est élevé, plus le pays est répressif ou criminalisé.',
-    en: 'Number of prisoners per 100,000 inhabitants. Higher values indicate higher incarceration rates.',
+  homicide_rate: {
+    fr: "Nombre d'homicides volontaires pour 100 000 habitants. Un rang élevé (#1) indique le pays le plus touché par la violence létale.",
+    en: 'Number of intentional homicides per 100,000 inhabitants. A high rank (#1) is the country most affected by lethal violence.',
+  },
+  population_density: {
+    fr: "Nombre d'habitants par km². Le #1 est le pays le plus densément peuplé.",
+    en: 'Number of inhabitants per km². #1 is the most densely populated country.',
+  },
+  gdp_growth: {
+    fr: 'Croissance annuelle du PIB en %. Le #1 a l’économie qui croît le plus vite.',
+    en: 'Annual GDP growth in %. #1 has the fastest-growing economy.',
+  },
+  agricultural_land: {
+    fr: 'Part du territoire dédiée à l’agriculture. Le #1 est le pays le plus agricole.',
+    en: 'Share of land used for agriculture. #1 is the most agricultural country.',
+  },
+  health_expenditure: {
+    fr: 'Dépenses de santé en pourcentage du PIB. Le #1 consacre la plus grande part de ses richesses à la santé.',
+    en: 'Health spending as a percentage of GDP. #1 spends the largest share of its wealth on health.',
+  },
+  alcohol_consumption: {
+    fr: "Litres d'alcool pur consommés par habitant et par an. Le #1 est le plus gros consommateur.",
+    en: 'Litres of pure alcohol consumed per person per year. #1 is the heaviest-drinking country.',
+  },
+  mobile_subscriptions: {
+    fr: 'Abonnements mobiles pour 100 habitants (peut dépasser 100). Le #1 est le pays le plus équipé.',
+    en: 'Mobile subscriptions per 100 inhabitants (can exceed 100). #1 is the most mobile-equipped country.',
   },
   fertility_rate: {
     fr: "Nombre moyen d'enfants par femme. Un chiffre élevé (#1) signifie une natalité forte.",

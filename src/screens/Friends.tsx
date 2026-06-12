@@ -9,9 +9,11 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { supabase } from '../lib/supabase';
+import { getColors } from '../theme/colors';
+import { FONTS } from '../theme/typography';
 import { Ionicons } from '@expo/vector-icons';
 import { Home } from 'lucide-react-native';
 import type { User } from '@supabase/supabase-js';
@@ -25,6 +27,7 @@ interface FriendsProps {
 }
 
 export default function Friends({ session, onBack, isDarkMode, language }: FriendsProps) {
+  const c = getColors(isDarkMode);
   const [friends, setFriends] = useState<any[]>([]);
   const [pendingRequests, setPendingRequests] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -165,7 +168,7 @@ export default function Friends({ session, onBack, isDarkMode, language }: Frien
     return (
       <View style={[styles.userCard, isDarkMode ? styles.cardDark : styles.cardLight]}>
         <Text
-          style={[styles.usernameText, isDarkMode ? { color: '#f8fafc' } : { color: '#1e293b' }]}
+          style={[styles.usernameText, { color: c.text }]}
         >
           {friendData.username}
         </Text>
@@ -180,7 +183,7 @@ export default function Friends({ session, onBack, isDarkMode, language }: Frien
     return (
       <View style={[styles.userCard, isDarkMode ? styles.cardDark : styles.cardLight]}>
         <Text
-          style={[styles.usernameText, isDarkMode ? { color: '#f8fafc' } : { color: '#1e293b' }]}
+          style={[styles.usernameText, { color: c.text }]}
         >
           {item.user1?.username} {language === 'fr' ? 'veut être votre ami' : 'wants to be friends'}
         </Text>
@@ -198,7 +201,7 @@ export default function Friends({ session, onBack, isDarkMode, language }: Frien
 
   const renderSearchResult = ({ item }: { item: any }) => (
     <View style={[styles.userCard, isDarkMode ? styles.cardDark : styles.cardLight]}>
-      <Text style={[styles.usernameText, isDarkMode ? { color: '#f8fafc' } : { color: '#1e293b' }]}>
+      <Text style={[styles.usernameText, { color: c.text }]}>
         {item.username}
       </Text>
       <TouchableOpacity style={styles.addBtn} onPress={() => sendFriendRequest(item.id)}>
@@ -208,10 +211,9 @@ export default function Friends({ session, onBack, isDarkMode, language }: Frien
   );
 
   return (
-    <SafeAreaProvider>
-      <SafeAreaView
-        style={[styles.container, isDarkMode ? styles.containerDark : styles.containerLight]}
-      >
+    <SafeAreaView
+      style={[styles.container, isDarkMode ? styles.containerDark : styles.containerLight]}
+    >
         <StatusBar style={isDarkMode ? 'light' : 'dark'} />
 
         <View style={[styles.header, isDarkMode ? styles.headerDark : styles.headerLight]}>
@@ -219,7 +221,7 @@ export default function Friends({ session, onBack, isDarkMode, language }: Frien
             onPress={onBack}
             style={[styles.backButton, isDarkMode ? styles.backButtonDark : styles.backButtonLight]}
           >
-            <Home color="#10b981" size={20} />
+            <Home color={c.accent} size={20} />
           </TouchableOpacity>
           <Text style={[styles.title, isDarkMode ? styles.titleDark : styles.titleLight]}>
             {language === 'fr' ? 'Amis' : 'Friends'}
@@ -231,12 +233,10 @@ export default function Friends({ session, onBack, isDarkMode, language }: Frien
           <TextInput
             style={[
               styles.searchInput,
-              isDarkMode
-                ? { backgroundColor: '#1e293b', borderColor: '#334155', color: '#f8fafc' }
-                : { backgroundColor: '#fff', borderColor: '#e2e8f0', color: '#1e293b' },
+              { backgroundColor: c.card, borderColor: c.border, color: c.text },
             ]}
             placeholder={language === 'fr' ? 'Rechercher un pseudo...' : 'Search a username...'}
-            placeholderTextColor={isDarkMode ? '#94a3b8' : '#94a3b8'}
+            placeholderTextColor={c.textFaint}
             value={searchQuery}
             onChangeText={setSearchQuery}
             onSubmitEditing={searchUsers}
@@ -247,14 +247,14 @@ export default function Friends({ session, onBack, isDarkMode, language }: Frien
           </TouchableOpacity>
         </View>
 
-        {searchLoading && <ActivityIndicator style={{ margin: 20 }} color="#10b981" />}
+        {searchLoading && <ActivityIndicator style={{ margin: 20 }} color={c.accent} />}
 
         {searchQuery.length > 0 && searchResults.length > 0 && (
           <View style={styles.section}>
             <Text
               style={[
                 styles.sectionTitle,
-                isDarkMode ? { color: '#cbd5e1' } : { color: '#475569' },
+                { color: c.textMuted },
               ]}
             >
               {language === 'fr' ? 'Résultats' : 'Results'}
@@ -268,7 +268,7 @@ export default function Friends({ session, onBack, isDarkMode, language }: Frien
         )}
 
         {loading ? (
-          <ActivityIndicator style={{ marginTop: 50 }} size="large" color="#10b981" />
+          <ActivityIndicator style={{ marginTop: 50 }} size="large" color={c.accent} />
         ) : (
           <FlatList
             data={[
@@ -295,7 +295,7 @@ export default function Friends({ session, onBack, isDarkMode, language }: Frien
                   <Text
                     style={[
                       styles.sectionTitle,
-                      isDarkMode ? { color: '#cbd5e1' } : { color: '#475569' },
+                      { color: c.textMuted },
                     ]}
                   >
                     {item.title}
@@ -310,7 +310,7 @@ export default function Friends({ session, onBack, isDarkMode, language }: Frien
                 <Text
                   style={[
                     styles.emptyText,
-                    isDarkMode ? { color: '#94a3b8' } : { color: '#64748B' },
+                    { color: c.textFaint },
                   ]}
                 >
                   {language === 'fr'
@@ -321,15 +321,14 @@ export default function Friends({ session, onBack, isDarkMode, language }: Frien
             }
           />
         )}
-      </SafeAreaView>
-    </SafeAreaProvider>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  containerLight: { backgroundColor: '#f8fafc' },
-  containerDark: { backgroundColor: '#0f172a' },
+  containerLight: { backgroundColor: '#f2e8d0' },
+  containerDark: { backgroundColor: '#0a1628' },
 
   header: {
     flexDirection: 'row',
@@ -339,20 +338,20 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderBottomWidth: 1,
   },
-  headerLight: { backgroundColor: '#f8fafc', borderBottomColor: '#e2e8f0' },
-  headerDark: { backgroundColor: '#0f172a', borderBottomColor: '#1e293b' },
+  headerLight: { backgroundColor: '#f2e8d0', borderBottomColor: '#c4a87a' },
+  headerDark: { backgroundColor: '#0a1628', borderBottomColor: '#2d4a70' },
 
   backButton: {
     padding: 8,
     borderRadius: 8,
     marginRight: 10,
   },
-  backButtonLight: { backgroundColor: 'rgba(16, 185, 129, 0.05)' },
-  backButtonDark: { backgroundColor: 'rgba(16, 185, 129, 0.1)' },
+  backButtonLight: { backgroundColor: 'rgba(192, 74, 26, 0.06)' },
+  backButtonDark: { backgroundColor: 'rgba(74, 158, 255, 0.10)' },
 
-  title: { fontSize: 22, fontWeight: 'bold' },
-  titleLight: { color: '#1e293b' },
-  titleDark: { color: '#f8fafc' },
+  title: { fontSize: 22, fontFamily: FONTS.headingBlack },
+  titleLight: { color: '#2c1810' },
+  titleDark: { color: '#d8e8f4' },
 
   searchSection: { flexDirection: 'row', padding: 20, gap: 10 },
   searchInput: {
@@ -362,9 +361,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
+    fontFamily: FONTS.mono,
   },
   searchButton: {
-    backgroundColor: '#10b981',
+    backgroundColor: '#2a6e3f',
     justifyContent: 'center',
     alignItems: 'center',
     width: 48,
@@ -373,8 +373,8 @@ const styles = StyleSheet.create({
 
   section: { paddingHorizontal: 20, marginBottom: 20 },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 16,
+    fontFamily: FONTS.monoBold,
     marginHorizontal: 20,
     marginTop: 20,
     marginBottom: 10,
@@ -389,24 +389,19 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'transparent',
   },
   cardLight: {
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 3,
+    backgroundColor: '#e8d9b8',
+    borderColor: '#c4a87a',
   },
-  cardDark: { backgroundColor: '#1e293b' },
+  cardDark: { backgroundColor: '#132040', borderColor: '#2d4a70' },
 
-  usernameText: { fontSize: 16, fontWeight: '600' },
+  usernameText: { fontSize: 16, fontFamily: FONTS.heading },
 
-  addBtn: { backgroundColor: '#10B981', padding: 8, borderRadius: 8 },
+  addBtn: { backgroundColor: '#2a6e3f', padding: 8, borderRadius: 8 },
   removeBtn: { padding: 8 },
   actionRow: { flexDirection: 'row', gap: 8 },
-  acceptBtn: { backgroundColor: '#10B981', padding: 8, borderRadius: 8 },
-  rejectBtn: { backgroundColor: '#EF4444', padding: 8, borderRadius: 8 },
-  emptyText: { textAlign: 'center', marginTop: 40, fontSize: 16 },
+  acceptBtn: { backgroundColor: '#2a6e3f', padding: 8, borderRadius: 8 },
+  rejectBtn: { backgroundColor: '#8b1a1a', padding: 8, borderRadius: 8 },
+  emptyText: { textAlign: 'center', marginTop: 40, fontSize: 16, fontFamily: FONTS.mono },
 });

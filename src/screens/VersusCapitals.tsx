@@ -1,16 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   Text,
   View,
   TouchableOpacity,
   Image,
-  Dimensions,
-  Animated,
   TextInput,
   Platform,
 } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import {
   Home,
@@ -23,11 +21,25 @@ import {
   Moon,
   Sun,
 } from 'lucide-react-native';
-import Fuse from 'fuse.js';
 
 import { getFlagUrl } from '../lib/flags';
-import type { GameMode, Language } from '../types';
+import { getColors } from '../theme/colors';
+import { FONTS } from '../theme/typography';
+import type { GameMode, Language, Match } from '../types';
+
+const PLAYER_COLORS = ['#4a9eff', '#8b1a1a', '#2a6e3f', '#c4872a'];
 import countriesStats from '../../assets/countries_stats.json';
+
+function createSeededRng(seed: number) {
+  let s = seed;
+  return function () {
+    s = (s + 0x9e3779b9) | 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 16), 0x21f0aaad);
+    t = Math.imul(t ^ (t >>> 15), 0x735a2d97);
+    return ((t ^ (t >>> 15)) >>> 0) / 4294967296;
+  };
+}
 
 const isMobile = Platform.OS === 'ios' || Platform.OS === 'android';
 
@@ -36,6 +48,11 @@ interface VersusCapitalsProps {
   setIsDarkMode: React.Dispatch<React.SetStateAction<boolean>>;
   setGameMode: (mode: GameMode) => void;
   language: Language;
+  soloMode?: boolean;
+  initialGameType?: string;
+  matchData?: Match | null;
+  onRoundComplete?: (score: number) => void;
+  onExit?: () => void;
 }
 
 interface Option {
@@ -58,17 +75,74 @@ interface Feedback {
 
 type ScoreMap = { [key: number]: number };
 
+// Normalise une chaîne : minuscules, sans accents, sans espaces/ponctuation superflus
+const normalizeAnswer = (s: string): string =>
+  s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '') // retire les accents
+    .replace(/[^a-z0-9]/g, '') // retire espaces, tirets, apostrophes…
+    .trim();
+
+// Distance de Levenshtein entre deux chaînes
+const levenshtein = (a: string, b: string): number => {
+  const m = a.length;
+  const n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  let prev = Array.from({ length: n + 1 }, (_, i) => i);
+  let curr = new Array(n + 1);
+  for (let i = 1; i <= m; i++) {
+    curr[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      curr[j] = Math.min(curr[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost);
+    }
+    [prev, curr] = [curr, prev];
+  }
+  return prev[n];
+};
+
+// Vérifie si la réponse de l'utilisateur est suffisamment proche de la bonne réponse.
+// Tolérance proportionnelle à la longueur : 1 faute jusqu'à 8 lettres, 2 au-delà.
+const isAnswerClose = (input: string, answer: string): boolean => {
+  const a = normalizeAnswer(input);
+  const b = normalizeAnswer(answer);
+  if (!a || !b) return false;
+  if (a === b) return true;
+  // La réponse doit avoir une longueur comparable (évite qu'une lettre valide tout)
+  if (Math.abs(a.length - b.length) > 2) return false;
+  const tolerance = b.length <= 8 ? 1 : 2;
+  return levenshtein(a, b) <= tolerance;
+};
+
 export default function VersusCapitals({
   isDarkMode,
   setIsDarkMode,
   setGameMode,
   language,
+  soloMode = false,
+  initialGameType,
+  matchData,
+  onRoundComplete,
+  onExit,
 }: VersusCapitalsProps) {
-  const [numPlayers, setNumPlayers] = useState<number | null>(null); // null, 2, or 3
-  const [gameType, setGameType] = useState<string>('CAPITAL'); // 'CAPITAL', 'FLAG', or 'MIX'
-  const [currentQuestionType, setCurrentQuestionType] = useState<string>('CAPITAL'); // Resolved type for current question
-  const [totalRounds, setTotalRounds] = useState<number>(5); // Default 5 turns per match
-  const [matchFormat, setMatchFormat] = useState<number>(1); // 1 = BO1, 3 = BO3, 5 = BO5 etc.
+  const insets = useSafeAreaInsets();
+  const c = getColors(isDarkMode);
+  const isOnline = !!matchData;
+  const rngRef = useRef<(() => number) | null>(null);
+
+  const [numPlayers, setNumPlayers] = useState<number | null>(
+    isOnline ? 1 : null,
+  );
+  const [gameType, setGameType] = useState<string>(
+    isOnline ? ((matchData?.game_data?.questionType as string) ?? 'MIX') : (initialGameType ?? 'CAPITAL'),
+  );
+  const [currentQuestionType, setCurrentQuestionType] = useState<string>('CAPITAL');
+  const [totalRounds, setTotalRounds] = useState<number>(
+    isOnline ? ((matchData?.game_data?.roundsPerSet as number) ?? 5) : 5,
+  );
+  const [matchFormat, setMatchFormat] = useState<number>(1);
   const [matchScores, setMatchScores] = useState<ScoreMap>({ 1: 0, 2: 0, 3: 0, 4: 0 }); // Global sets won
 
   const [currentPlayer, setCurrentPlayer] = useState<number>(1);
@@ -86,6 +160,13 @@ export default function VersusCapitals({
   const [matchWinner, setMatchWinner] = useState<number | null>(null); // Winner of global match
 
   useEffect(() => {
+    if (matchData?.game_data?.seed != null) {
+      const roundNumber = matchData.current_round ?? 1;
+      rngRef.current = createSeededRng(matchData.game_data.seed + (roundNumber - 1));
+    }
+  }, [matchData?.game_data?.seed, matchData?.current_round]);
+
+  useEffect(() => {
     if (numPlayers) {
       initRound();
     }
@@ -93,6 +174,8 @@ export default function VersusCapitals({
 
   const initRound = () => {
     if (gameOver) return;
+
+    const rng = rngRef.current ?? Math.random;
 
     let activeType = gameType;
     if (gameType === 'MIX') {
@@ -106,9 +189,8 @@ export default function VersusCapitals({
       (c: any) => !usedCountries.has(c.cca3) && c.capital !== 'N/A',
     );
 
-    // Fallback if we ran out (shouldn't happen with 10 rounds)
     const sourceList = availableCountries.length > 0 ? availableCountries : countriesStats;
-    const country = sourceList[Math.floor(Math.random() * sourceList.length)];
+    const country = sourceList[Math.floor(rng() * sourceList.length)];
 
     setUsedCountries((prev) => new Set([...prev, country.cca3]));
 
@@ -120,7 +202,7 @@ export default function VersusCapitals({
           (activeType === 'CAPITAL' ? c.capital !== country.capital : true) &&
           c.capital !== 'N/A',
       )
-      .sort(() => Math.random() - 0.5);
+      .sort(() => rng() - 0.5);
 
     const getOptionName = (c: any) => {
       if (activeType === 'CAPITAL') return c.capital;
@@ -132,12 +214,12 @@ export default function VersusCapitals({
       ...wrs
         .slice(0, 3)
         .map((w: any, idx: number) => ({ id: `wrong-${idx}`, name: getOptionName(w) })),
-    ].sort(() => Math.random() - 0.5);
+    ].sort(() => rng() - 0.5);
 
     const duoOptions = [
       { id: 'correct', name: getOptionName(country) },
       { id: 'wrong-0', name: getOptionName(wrs[0]) },
-    ].sort(() => Math.random() - 0.5);
+    ].sort(() => rng() - 0.5);
 
     setQuestion(country);
     setOptions({ carre: carreOptions, duo: duoOptions });
@@ -175,18 +257,6 @@ export default function VersusCapitals({
   const handleCashSubmit = () => {
     if (feedback || !cashInput.trim()) return;
 
-    // Configuration de Fuse.js pour du fuzzy matching
-    const fuse = new Fuse([question], {
-      keys: [
-        currentQuestionType === 'CAPITAL' ? 'capital' : language === 'fr' ? 'name' : 'name_en',
-      ],
-      threshold: 0.35,
-      ignoreLocation: true,
-      includeScore: true,
-    });
-
-    const results = fuse.search(cashInput);
-    const isCorrect = results.length > 0;
     const points = 5;
     const correctAnswer =
       currentQuestionType === 'CAPITAL'
@@ -194,6 +264,8 @@ export default function VersusCapitals({
         : language === 'fr'
           ? question.name
           : question.name_en || question.name;
+
+    const isCorrect = isAnswerClose(cashInput, correctAnswer);
 
     setFeedback({ correct: isCorrect, mode: 'CASH', answer: correctAnswer, points: points });
 
@@ -239,6 +311,11 @@ export default function VersusCapitals({
 
   useEffect(() => {
     if (gameOver && !matchOver) {
+      if (isOnline && onRoundComplete) {
+        onRoundComplete(scores[1]);
+        return;
+      }
+
       let bestScore = -1;
       let winners: number[] = [];
       for (let i = 1; i <= numPlayers!; i++) {
@@ -254,11 +331,9 @@ export default function VersusCapitals({
       setWinner(roundWinner);
 
       if (roundWinner !== 0) {
-        // Update Match Score
         const newMatchScores = { ...matchScores, [roundWinner]: matchScores[roundWinner] + 1 };
         setMatchScores(newMatchScores);
 
-        // Check if someone won the match (Best of X means first to ceil(X/2))
         const winsNeeded = Math.ceil(matchFormat / 2);
         if (newMatchScores[roundWinner] >= winsNeeded) {
           setMatchWinner(roundWinner);
@@ -293,28 +368,22 @@ export default function VersusCapitals({
 
   const quitToMenu = () => {
     resetMatch();
-    setNumPlayers(null);
+    if (isOnline && onExit) onExit();
+    else if (soloMode) setGameMode('menu');
+    else setNumPlayers(null);
   };
 
-  const playerColor =
-    currentPlayer === 1
-      ? '#3b82f6'
-      : currentPlayer === 2
-        ? '#ef4444'
-        : currentPlayer === 3
-          ? '#10b981'
-          : '#f59e0b';
+  const playerColor = PLAYER_COLORS[(currentPlayer - 1) % 4];
 
   if (!numPlayers) {
     return (
-      <SafeAreaProvider>
-        <SafeAreaView style={[styles.container, !isDarkMode && styles.containerLight]}>
+      <SafeAreaView style={[styles.container, !isDarkMode && styles.containerLight]}>
           <StatusBar style={isDarkMode ? 'light' : 'dark'} />
           <View style={styles.menuContainer}>
             <View
               style={{
                 position: 'absolute',
-                top: isMobile ? 10 : 20,
+                top: insets.top + 10,
                 left: 20,
                 zIndex: 10,
               }}
@@ -330,14 +399,14 @@ export default function VersusCapitals({
                   alignItems: 'center',
                 }}
               >
-                <Home color="#10b981" size={24} />
+                <Home color="#2a6e3f" size={24} />
               </TouchableOpacity>
             </View>
 
             <View
               style={{
                 position: 'absolute',
-                top: isMobile ? 10 : 20,
+                top: insets.top + 10,
                 right: 20,
                 zIndex: 10,
               }}
@@ -348,34 +417,40 @@ export default function VersusCapitals({
                   width: 45,
                   height: 45,
                   borderRadius: 12,
-                  backgroundColor: isDarkMode ? '#1e293b' : '#e2e8f0',
+                  backgroundColor: c.card,
                   justifyContent: 'center',
                   alignItems: 'center',
                 }}
               >
                 {isDarkMode ? (
-                  <Sun color="#fbbf24" size={24} />
+                  <Sun color="#c4872a" size={24} />
                 ) : (
-                  <Moon color="#475569" size={24} />
+                  <Moon color="#4a6a88" size={24} />
                 )}
               </TouchableOpacity>
             </View>
 
             <Trophy
-              color="#fbbf24"
+              color="#c4872a"
               size={80}
               style={{ marginBottom: 10, marginTop: isMobile ? 60 : 0 }}
             />
-            <Text style={[styles.menuTitle, !isDarkMode && { color: '#1e293b' }]}>
-              {language === 'fr' ? 'VERSUS' : 'VERSUS'}
+            <Text style={[styles.menuTitle, { color: c.text }]}>
+              {soloMode
+                ? gameType === 'CAPITAL'
+                  ? language === 'fr' ? 'CAPITALES' : 'CAPITALS'
+                  : gameType === 'FLAG'
+                    ? language === 'fr' ? 'DRAPEAUX' : 'FLAGS'
+                    : 'MIX'
+                : language === 'fr' ? 'VERSUS' : 'VERSUS'}
             </Text>
 
-            <View
+            {!soloMode && <View
               style={{
                 flexDirection: 'row',
                 gap: 10,
                 marginBottom: 30,
-                backgroundColor: isDarkMode ? '#1e293b' : '#e2e8f0',
+                backgroundColor: c.card,
                 padding: 5,
                 borderRadius: 15,
               }}
@@ -383,13 +458,13 @@ export default function VersusCapitals({
               <TouchableOpacity
                 style={[
                   { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12 },
-                  gameType === 'CAPITAL' && { backgroundColor: '#3b82f6' },
+                  gameType === 'CAPITAL' && { backgroundColor: '#4a9eff' },
                 ]}
                 onPress={() => setGameType('CAPITAL')}
               >
                 <Text
                   style={{
-                    color: gameType === 'CAPITAL' ? '#fff' : isDarkMode ? '#94a3b8' : '#64748b',
+                    color: gameType === 'CAPITAL' ? '#fff' : c.textMuted,
                     fontWeight: '900',
                   }}
                 >
@@ -399,13 +474,13 @@ export default function VersusCapitals({
               <TouchableOpacity
                 style={[
                   { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12 },
-                  gameType === 'FLAG' && { backgroundColor: '#3b82f6' },
+                  gameType === 'FLAG' && { backgroundColor: '#4a9eff' },
                 ]}
                 onPress={() => setGameType('FLAG')}
               >
                 <Text
                   style={{
-                    color: gameType === 'FLAG' ? '#fff' : isDarkMode ? '#94a3b8' : '#64748b',
+                    color: gameType === 'FLAG' ? '#fff' : c.textMuted,
                     fontWeight: '900',
                   }}
                 >
@@ -415,26 +490,25 @@ export default function VersusCapitals({
               <TouchableOpacity
                 style={[
                   { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12 },
-                  gameType === 'MIX' && { backgroundColor: '#3b82f6' },
+                  gameType === 'MIX' && { backgroundColor: '#4a9eff' },
                 ]}
                 onPress={() => setGameType('MIX')}
               >
                 <Text
                   style={{
-                    color: gameType === 'MIX' ? '#fff' : isDarkMode ? '#94a3b8' : '#64748b',
+                    color: gameType === 'MIX' ? '#fff' : c.textMuted,
                     fontWeight: '900',
                   }}
                 >
                   MIX
                 </Text>
               </TouchableOpacity>
-            </View>
+            </View>}
 
-            {/* Match Format Selection */}
-            <View style={{ marginBottom: 15, width: '100%', maxWidth: 400 }}>
+            {!soloMode && <View style={{ marginBottom: 15, width: '100%', maxWidth: 400 }}>
               <Text
                 style={{
-                  color: isDarkMode ? '#cbd5e1' : '#475569',
+                  color: c.textMuted,
                   fontWeight: 'bold',
                   marginBottom: 10,
                   marginLeft: 5,
@@ -448,7 +522,7 @@ export default function VersusCapitals({
                 style={{
                   flexDirection: 'row',
                   gap: 8,
-                  backgroundColor: isDarkMode ? '#1e293b' : '#e2e8f0',
+                  backgroundColor: c.card,
                   padding: 5,
                   borderRadius: 15,
                 }}
@@ -458,13 +532,13 @@ export default function VersusCapitals({
                     key={format}
                     style={[
                       { flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 12 },
-                      matchFormat === format && { backgroundColor: '#8b5cf6' },
+                      matchFormat === format && { backgroundColor: '#c04a1a' },
                     ]}
                     onPress={() => setMatchFormat(format)}
                   >
                     <Text
                       style={{
-                        color: matchFormat === format ? '#fff' : isDarkMode ? '#94a3b8' : '#64748b',
+                        color: matchFormat === format ? '#fff' : c.textMuted,
                         fontWeight: 'bold',
                       }}
                     >
@@ -473,13 +547,13 @@ export default function VersusCapitals({
                   </TouchableOpacity>
                 ))}
               </View>
-            </View>
+            </View>}
 
             {/* Rounds per set Selection */}
             <View style={{ marginBottom: 30, width: '100%', maxWidth: 400 }}>
               <Text
                 style={{
-                  color: isDarkMode ? '#cbd5e1' : '#475569',
+                  color: c.textMuted,
                   fontWeight: 'bold',
                   marginBottom: 10,
                   marginLeft: 5,
@@ -493,7 +567,7 @@ export default function VersusCapitals({
                 style={{
                   flexDirection: 'row',
                   gap: 8,
-                  backgroundColor: isDarkMode ? '#1e293b' : '#e2e8f0',
+                  backgroundColor: c.card,
                   padding: 5,
                   borderRadius: 15,
                 }}
@@ -503,13 +577,13 @@ export default function VersusCapitals({
                     key={rounds}
                     style={[
                       { flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 12 },
-                      totalRounds === rounds && { backgroundColor: '#10b981' },
+                      totalRounds === rounds && { backgroundColor: '#2a6e3f' },
                     ]}
                     onPress={() => setTotalRounds(rounds)}
                   >
                     <Text
                       style={{
-                        color: totalRounds === rounds ? '#fff' : isDarkMode ? '#94a3b8' : '#64748b',
+                        color: totalRounds === rounds ? '#fff' : c.textMuted,
                         fontWeight: 'bold',
                       }}
                     >
@@ -520,39 +594,47 @@ export default function VersusCapitals({
               </View>
             </View>
 
-            <View style={styles.modeSelectionGrid}>
-              <TouchableOpacity style={styles.playerPickBtn} onPress={() => setNumPlayers(2)}>
-                <Users color="#fff" size={28} />
-                <Text style={styles.playerPickText}>1 VS 1</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.playerPickBtn, { backgroundColor: '#8b5cf6' }]}
-                onPress={() => setNumPlayers(3)}
-              >
-                <Users color="#fff" size={28} />
-                <Text style={styles.playerPickText}>1 VS 1 VS 1</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.playerPickBtn, { backgroundColor: '#f59e0b' }]}
-                onPress={() => setNumPlayers(4)}
-              >
-                <Users color="#fff" size={28} />
-                <Text style={styles.playerPickText}>1 VS 1 VS 1 VS 1</Text>
-              </TouchableOpacity>
-            </View>
+            {soloMode ? (
+              <View style={styles.modeSelectionGrid}>
+                <TouchableOpacity
+                  style={[styles.playerPickBtn, { backgroundColor: '#2a6e3f' }]}
+                  onPress={() => setNumPlayers(1)}
+                >
+                  <Timer color="#fff" size={28} />
+                  <Text style={styles.playerPickText}>{language === 'fr' ? 'JOUER' : 'PLAY'}</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.modeSelectionGrid}>
+                <TouchableOpacity style={styles.playerPickBtn} onPress={() => setNumPlayers(2)}>
+                  <Users color="#fff" size={28} />
+                  <Text style={styles.playerPickText}>1 VS 1</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.playerPickBtn, { backgroundColor: '#c04a1a' }]}
+                  onPress={() => setNumPlayers(3)}
+                >
+                  <Users color="#fff" size={28} />
+                  <Text style={styles.playerPickText}>1 VS 1 VS 1</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.playerPickBtn, { backgroundColor: '#c4872a' }]}
+                  onPress={() => setNumPlayers(4)}
+                >
+                  <Users color="#fff" size={28} />
+                  <Text style={styles.playerPickText}>1 VS 1 VS 1 VS 1</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
-        </SafeAreaView>
-      </SafeAreaProvider>
+      </SafeAreaView>
     );
   }
 
   if (!question) return null;
 
   return (
-    <SafeAreaProvider>
-      <SafeAreaView style={[styles.container, !isDarkMode && styles.containerLight]}>
+    <SafeAreaView style={[styles.container, !isDarkMode && styles.containerLight]}>
         <StatusBar style={isDarkMode ? 'light' : 'dark'} />
 
         {/* Header */}
@@ -571,7 +653,7 @@ export default function VersusCapitals({
                   marginRight: 10,
                 }}
               >
-                <Home color="#10b981" size={20} />
+                <Home color="#2a6e3f" size={20} />
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setIsDarkMode(!isDarkMode)}
@@ -579,32 +661,32 @@ export default function VersusCapitals({
                   width: 40,
                   height: 40,
                   borderRadius: 10,
-                  backgroundColor: isDarkMode ? '#1e293b' : '#e2e8f0',
+                  backgroundColor: c.card,
                   justifyContent: 'center',
                   alignItems: 'center',
                   marginRight: 10,
                 }}
               >
                 {isDarkMode ? (
-                  <Sun color="#fbbf24" size={20} />
+                  <Sun color="#c4872a" size={20} />
                 ) : (
-                  <Moon color="#475569" size={20} />
+                  <Moon color="#4a6a88" size={20} />
                 )}
               </TouchableOpacity>
               <View style={[styles.scoreBoard, !isDarkMode && styles.scoreBoardLight]}>
                 <View
                   style={[
                     styles.playerScore,
-                    currentPlayer === 1 && { borderBottomWidth: 3, borderBottomColor: '#3b82f6' },
+                    currentPlayer === 1 && { borderBottomWidth: 3, borderBottomColor: '#4a9eff' },
                   ]}
                 >
-                  <Text style={[styles.playerLabel, { color: '#3b82f6' }]}>P1</Text>
+                  <Text style={[styles.playerLabel, { color: '#4a9eff' }]}>P1</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-                    <Text style={[styles.scoreValue, !isDarkMode && { color: '#1e293b' }]}>
+                    <Text style={[styles.scoreValue, { color: c.text }]}>
                       {scores[1]}
                     </Text>
                     {matchFormat > 1 && (
-                      <Text style={{ color: '#3b82f6', fontSize: 10, fontWeight: 'bold' }}>
+                      <Text style={{ color: '#4a9eff', fontSize: 10, fontWeight: 'bold' }}>
                         ⭐{matchScores[1]}
                       </Text>
                     )}
@@ -613,16 +695,16 @@ export default function VersusCapitals({
                 <View
                   style={[
                     styles.playerScore,
-                    currentPlayer === 2 && { borderBottomWidth: 3, borderBottomColor: '#ef4444' },
+                    currentPlayer === 2 && { borderBottomWidth: 3, borderBottomColor: '#8b1a1a' },
                   ]}
                 >
-                  <Text style={[styles.playerLabel, { color: '#ef4444' }]}>P2</Text>
+                  <Text style={[styles.playerLabel, { color: '#8b1a1a' }]}>P2</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-                    <Text style={[styles.scoreValue, !isDarkMode && { color: '#1e293b' }]}>
+                    <Text style={[styles.scoreValue, { color: c.text }]}>
                       {scores[2]}
                     </Text>
                     {matchFormat > 1 && (
-                      <Text style={{ color: '#ef4444', fontSize: 10, fontWeight: 'bold' }}>
+                      <Text style={{ color: '#8b1a1a', fontSize: 10, fontWeight: 'bold' }}>
                         ⭐{matchScores[2]}
                       </Text>
                     )}
@@ -632,16 +714,16 @@ export default function VersusCapitals({
                   <View
                     style={[
                       styles.playerScore,
-                      currentPlayer === 3 && { borderBottomWidth: 3, borderBottomColor: '#10b981' },
+                      currentPlayer === 3 && { borderBottomWidth: 3, borderBottomColor: '#2a6e3f' },
                     ]}
                   >
-                    <Text style={[styles.playerLabel, { color: '#10b981' }]}>P3</Text>
+                    <Text style={[styles.playerLabel, { color: '#2a6e3f' }]}>P3</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-                      <Text style={[styles.scoreValue, !isDarkMode && { color: '#1e293b' }]}>
+                      <Text style={[styles.scoreValue, { color: c.text }]}>
                         {scores[3]}
                       </Text>
                       {matchFormat > 1 && (
-                        <Text style={{ color: '#10b981', fontSize: 10, fontWeight: 'bold' }}>
+                        <Text style={{ color: '#2a6e3f', fontSize: 10, fontWeight: 'bold' }}>
                           ⭐{matchScores[3]}
                         </Text>
                       )}
@@ -652,16 +734,16 @@ export default function VersusCapitals({
                   <View
                     style={[
                       styles.playerScore,
-                      currentPlayer === 4 && { borderBottomWidth: 3, borderBottomColor: '#f59e0b' },
+                      currentPlayer === 4 && { borderBottomWidth: 3, borderBottomColor: '#c4872a' },
                     ]}
                   >
-                    <Text style={[styles.playerLabel, { color: '#f59e0b' }]}>P4</Text>
+                    <Text style={[styles.playerLabel, { color: '#c4872a' }]}>P4</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-                      <Text style={[styles.scoreValue, !isDarkMode && { color: '#1e293b' }]}>
+                      <Text style={[styles.scoreValue, { color: c.text }]}>
                         {scores[4]}
                       </Text>
                       {matchFormat > 1 && (
-                        <Text style={{ color: '#f59e0b', fontSize: 10, fontWeight: 'bold' }}>
+                        <Text style={{ color: '#c4872a', fontSize: 10, fontWeight: 'bold' }}>
                           ⭐{matchScores[4]}
                         </Text>
                       )}
@@ -675,7 +757,7 @@ export default function VersusCapitals({
                   {matchFormat > 1 && (
                     <Text
                       style={{
-                        color: '#8b5cf6',
+                        color: '#c04a1a',
                         fontSize: 8,
                         fontWeight: 'bold',
                         textAlign: 'center',
@@ -703,7 +785,7 @@ export default function VersusCapitals({
                     marginRight: 8,
                   }}
                 >
-                  <Home color="#10b981" size={18} />
+                  <Home color="#2a6e3f" size={18} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => setIsDarkMode(!isDarkMode)}
@@ -711,16 +793,16 @@ export default function VersusCapitals({
                     width: 36,
                     height: 36,
                     borderRadius: 10,
-                    backgroundColor: isDarkMode ? '#1e293b' : '#e2e8f0',
+                    backgroundColor: c.card,
                     justifyContent: 'center',
                     alignItems: 'center',
                     marginRight: 8,
                   }}
                 >
                   {isDarkMode ? (
-                    <Sun color="#fbbf24" size={16} />
+                    <Sun color="#c4872a" size={16} />
                   ) : (
-                    <Moon color="#475569" size={16} />
+                    <Moon color="#4a6a88" size={16} />
                   )}
                 </TouchableOpacity>
                 <View style={styles.roundInfo}>
@@ -730,7 +812,7 @@ export default function VersusCapitals({
                   {matchFormat > 1 && (
                     <Text
                       style={{
-                        color: '#8b5cf6',
+                        color: '#c04a1a',
                         fontSize: 7,
                         fontWeight: 'bold',
                         textAlign: 'center',
@@ -746,16 +828,16 @@ export default function VersusCapitals({
                 <View
                   style={[
                     styles.playerScore,
-                    currentPlayer === 1 && { borderBottomWidth: 3, borderBottomColor: '#3b82f6' },
+                    currentPlayer === 1 && { borderBottomWidth: 3, borderBottomColor: '#4a9eff' },
                   ]}
                 >
-                  <Text style={[styles.playerLabel, { color: '#3b82f6' }]}>P1</Text>
+                  <Text style={[styles.playerLabel, { color: '#4a9eff' }]}>P1</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
-                    <Text style={[styles.scoreValue, !isDarkMode && { color: '#1e293b' }]}>
+                    <Text style={[styles.scoreValue, { color: c.text }]}>
                       {scores[1]}
                     </Text>
                     {matchFormat > 1 && (
-                      <Text style={{ color: '#3b82f6', fontSize: 9, fontWeight: 'bold' }}>
+                      <Text style={{ color: '#4a9eff', fontSize: 9, fontWeight: 'bold' }}>
                         ⭐{matchScores[1]}
                       </Text>
                     )}
@@ -764,16 +846,16 @@ export default function VersusCapitals({
                 <View
                   style={[
                     styles.playerScore,
-                    currentPlayer === 2 && { borderBottomWidth: 3, borderBottomColor: '#ef4444' },
+                    currentPlayer === 2 && { borderBottomWidth: 3, borderBottomColor: '#8b1a1a' },
                   ]}
                 >
-                  <Text style={[styles.playerLabel, { color: '#ef4444' }]}>P2</Text>
+                  <Text style={[styles.playerLabel, { color: '#8b1a1a' }]}>P2</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
-                    <Text style={[styles.scoreValue, !isDarkMode && { color: '#1e293b' }]}>
+                    <Text style={[styles.scoreValue, { color: c.text }]}>
                       {scores[2]}
                     </Text>
                     {matchFormat > 1 && (
-                      <Text style={{ color: '#ef4444', fontSize: 9, fontWeight: 'bold' }}>
+                      <Text style={{ color: '#8b1a1a', fontSize: 9, fontWeight: 'bold' }}>
                         ⭐{matchScores[2]}
                       </Text>
                     )}
@@ -783,16 +865,16 @@ export default function VersusCapitals({
                   <View
                     style={[
                       styles.playerScore,
-                      currentPlayer === 3 && { borderBottomWidth: 3, borderBottomColor: '#10b981' },
+                      currentPlayer === 3 && { borderBottomWidth: 3, borderBottomColor: '#2a6e3f' },
                     ]}
                   >
-                    <Text style={[styles.playerLabel, { color: '#10b981' }]}>P3</Text>
+                    <Text style={[styles.playerLabel, { color: '#2a6e3f' }]}>P3</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
-                      <Text style={[styles.scoreValue, !isDarkMode && { color: '#1e293b' }]}>
+                      <Text style={[styles.scoreValue, { color: c.text }]}>
                         {scores[3]}
                       </Text>
                       {matchFormat > 1 && (
-                        <Text style={{ color: '#10b981', fontSize: 9, fontWeight: 'bold' }}>
+                        <Text style={{ color: '#2a6e3f', fontSize: 9, fontWeight: 'bold' }}>
                           ⭐{matchScores[3]}
                         </Text>
                       )}
@@ -803,16 +885,16 @@ export default function VersusCapitals({
                   <View
                     style={[
                       styles.playerScore,
-                      currentPlayer === 4 && { borderBottomWidth: 3, borderBottomColor: '#f59e0b' },
+                      currentPlayer === 4 && { borderBottomWidth: 3, borderBottomColor: '#c4872a' },
                     ]}
                   >
-                    <Text style={[styles.playerLabel, { color: '#f59e0b' }]}>P4</Text>
+                    <Text style={[styles.playerLabel, { color: '#c4872a' }]}>P4</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
-                      <Text style={[styles.scoreValue, !isDarkMode && { color: '#1e293b' }]}>
+                      <Text style={[styles.scoreValue, { color: c.text }]}>
                         {scores[4]}
                       </Text>
                       {matchFormat > 1 && (
-                        <Text style={{ color: '#f59e0b', fontSize: 9, fontWeight: 'bold' }}>
+                        <Text style={{ color: '#c4872a', fontSize: 9, fontWeight: 'bold' }}>
                           ⭐{matchScores[4]}
                         </Text>
                       )}
@@ -835,14 +917,16 @@ export default function VersusCapitals({
               },
             ]}
           >
-            {language === 'fr' ? `Tour Joueur ${currentPlayer}` : `Player ${currentPlayer}'s Turn`}
+            {numPlayers === 1
+            ? `${language === 'fr' ? 'Question' : 'Question'} ${currentRound}/${totalRounds}`
+            : language === 'fr' ? `Tour Joueur ${currentPlayer}` : `Player ${currentPlayer}'s Turn`}
           </Text>
 
           {!isMobile ? (
             <View style={[styles.card, !isDarkMode && styles.cardLight]}>
               <Image source={{ uri: getFlagUrl(question.cca3) }} style={styles.flag} />
               {currentQuestionType === 'CAPITAL' && (
-                <Text style={[styles.countryName, !isDarkMode && { color: '#1e293b' }]}>
+                <Text style={[styles.countryName, { color: c.text }]}>
                   {language === 'fr' ? question.name : question.name_en || question.name}
                 </Text>
               )}
@@ -868,7 +952,7 @@ export default function VersusCapitals({
                     <Text
                       style={[
                         styles.countryName,
-                        !isDarkMode && { color: '#1e293b' },
+                        { color: c.text },
                         { fontSize: 22, textAlign: 'left' },
                       ]}
                     >
@@ -895,12 +979,12 @@ export default function VersusCapitals({
                 style={[
                   styles.modeBtn,
                   !isDarkMode && styles.modeBtnLight,
-                  { borderColor: '#ef4444' },
+                  { borderColor: '#8b1a1a' },
                 ]}
                 onPress={() => setMode('DUO')}
               >
-                <HelpCircle color="#ef4444" size={24} />
-                <Text style={[styles.modeBtnTitle, { color: '#ef4444' }]}>DUO</Text>
+                <HelpCircle color="#8b1a1a" size={24} />
+                <Text style={[styles.modeBtnTitle, { color: '#8b1a1a' }]}>DUO</Text>
                 <Text style={styles.modeBtnPoints}>1 PT</Text>
               </TouchableOpacity>
 
@@ -908,12 +992,12 @@ export default function VersusCapitals({
                 style={[
                   styles.modeBtn,
                   !isDarkMode && styles.modeBtnLight,
-                  { borderColor: '#3b82f6' },
+                  { borderColor: '#4a9eff' },
                 ]}
                 onPress={() => setMode('CARRE')}
               >
-                <Eye color="#3b82f6" size={24} />
-                <Text style={[styles.modeBtnTitle, { color: '#3b82f6' }]}>CARRÉ</Text>
+                <Eye color="#4a9eff" size={24} />
+                <Text style={[styles.modeBtnTitle, { color: '#4a9eff' }]}>CARRÉ</Text>
                 <Text style={styles.modeBtnPoints}>3 PTS</Text>
               </TouchableOpacity>
 
@@ -921,12 +1005,12 @@ export default function VersusCapitals({
                 style={[
                   styles.modeBtn,
                   !isDarkMode && styles.modeBtnLight,
-                  { borderColor: '#10b981' },
+                  { borderColor: '#2a6e3f' },
                 ]}
                 onPress={() => setMode('CASH')}
               >
-                <CheckCircle color="#10b981" size={24} />
-                <Text style={[styles.modeBtnTitle, { color: '#10b981' }]}>CASH</Text>
+                <CheckCircle color="#2a6e3f" size={24} />
+                <Text style={[styles.modeBtnTitle, { color: '#2a6e3f' }]}>CASH</Text>
                 <Text style={styles.modeBtnPoints}>5 PTS</Text>
               </TouchableOpacity>
             </View>
@@ -941,14 +1025,14 @@ export default function VersusCapitals({
                 }}
                 onPress={() => setMode(null)}
               >
-                <Text style={{ color: '#3b82f6', fontWeight: 'bold' }}>
+                <Text style={{ color: '#4a9eff', fontWeight: 'bold' }}>
                   ← {language === 'fr' ? 'RETOUR' : 'BACK'}
                 </Text>
               </TouchableOpacity>
               <TextInput
                 style={[styles.cashInput, !isDarkMode && styles.cashInputLight]}
                 placeholder="Réponse..."
-                placeholderTextColor="#64748b"
+                placeholderTextColor="#4a6a88"
                 value={cashInput}
                 onChangeText={setCashInput}
                 autoFocus
@@ -964,7 +1048,7 @@ export default function VersusCapitals({
                 style={{ alignSelf: 'flex-start', marginBottom: 10 }}
                 onPress={() => setMode(null)}
               >
-                <Text style={{ color: '#3b82f6', fontWeight: 'bold' }}>
+                <Text style={{ color: '#4a9eff', fontWeight: 'bold' }}>
                   ← {language === 'fr' ? 'RETOUR' : 'BACK'}
                 </Text>
               </TouchableOpacity>
@@ -977,7 +1061,7 @@ export default function VersusCapitals({
                   style={[styles.optionBtn, !isDarkMode && styles.optionBtnLight]}
                   onPress={() => handleAnswer(option, mode)}
                 >
-                  <Text style={[styles.optionText, !isDarkMode && { color: '#1e293b' }]}>
+                  <Text style={[styles.optionText, { color: c.text }]}>
                     {option.name}
                   </Text>
                 </TouchableOpacity>
@@ -992,7 +1076,7 @@ export default function VersusCapitals({
                 ]}
               >
                 <Text style={styles.feedbackEmoji}>{feedback.correct ? '🏆' : '❌'}</Text>
-                <Text style={[styles.feedbackTitle, !isDarkMode && { color: '#1e293b' }]}>
+                <Text style={[styles.feedbackTitle, { color: c.text }]}>
                   {feedback.correct ? 'BIEN JOUÉ !' : 'DOMMAGE...'}
                 </Text>
                 <Text style={styles.feedbackSub}>
@@ -1010,13 +1094,13 @@ export default function VersusCapitals({
                     backgroundColor: feedback.correct
                       ? 'rgba(239, 68, 68, 0.2)'
                       : 'rgba(16, 185, 129, 0.2)',
-                    borderColor: feedback.correct ? '#ef4444' : '#10b981',
+                    borderColor: feedback.correct ? '#8b1a1a' : '#2a6e3f',
                     borderWidth: 1,
                   }}
                   onPress={togglePoints}
                 >
                   <Text
-                    style={{ color: feedback.correct ? '#ef4444' : '#10b981', fontWeight: 'bold' }}
+                    style={{ color: feedback.correct ? '#8b1a1a' : '#2a6e3f', fontWeight: 'bold' }}
                   >
                     {feedback.correct
                       ? language === 'fr'
@@ -1032,33 +1116,32 @@ export default function VersusCapitals({
           )}
         </View>
 
-        {gameOver && (
+        {gameOver && !isOnline && (
           <View style={[styles.overlay, !isDarkMode && styles.overlayLight]}>
-            <Trophy color={matchOver ? '#fbbf24' : '#cbd5e1'} size={80} />
-            <Text style={[styles.winnerTitle, !isDarkMode && { color: '#1e293b' }]}>
-              {!matchOver
-                ? winner === 0
-                  ? language === 'fr'
-                    ? 'ÉGALITÉ !'
-                    : 'TIE !'
-                  : `MANCHE GAGNÉE P${winner}`
-                : matchWinner === 0
-                  ? language === 'fr'
-                    ? 'ÉGALITÉ DU MATCH !'
-                    : 'MATCH TIE !'
-                  : `VICTOIRE DU MATCH P${matchWinner} !`}
+            <Trophy color={numPlayers === 1 ? '#2a6e3f' : matchOver ? '#c4872a' : '#cbd5e1'} size={80} />
+            <Text style={[styles.winnerTitle, { color: c.text }]}>
+              {numPlayers === 1
+                ? language === 'fr' ? 'TERMINÉ !' : 'DONE!'
+                : !matchOver
+                  ? winner === 0
+                    ? language === 'fr' ? 'ÉGALITÉ !' : 'TIE !'
+                    : `MANCHE GAGNÉE P${winner}`
+                  : matchWinner === 0
+                    ? language === 'fr' ? 'ÉGALITÉ DU MATCH !' : 'MATCH TIE !'
+                    : `VICTOIRE DU MATCH P${matchWinner} !`}
             </Text>
 
             <Text
-              style={[styles.finalScore, !isDarkMode && { color: '#64748b' }, { marginBottom: 10 }]}
+              style={[styles.finalScore, { color: c.textMuted }, { marginBottom: 10 }]}
             >
-              {language === 'fr' ? 'Score de la manche :' : 'Set score:'} {scores[1]} - {scores[2]}{' '}
-              {numPlayers === 3 ? `- ${scores[3]}` : ''}
+              {numPlayers === 1
+                ? `${language === 'fr' ? 'Score :' : 'Score:'} ${scores[1]} pts`
+                : `${language === 'fr' ? 'Score de la manche :' : 'Set score:'} ${scores[1]} - ${scores[2]}${numPlayers >= 3 ? ` - ${scores[3]}` : ''}${numPlayers === 4 ? ` - ${scores[4]}` : ''}`}
             </Text>
 
             {matchFormat > 1 && (
               <Text
-                style={[styles.finalScore, { color: '#8b5cf6', fontSize: 24, marginBottom: 40 }]}
+                style={[styles.finalScore, { color: '#c04a1a', fontSize: 24, marginBottom: 40 }]}
               >
                 {language === 'fr' ? 'Match (Étoiles) :' : 'Match (Stars):'} {matchScores[1]} ⭐ -{' '}
                 {matchScores[2]} ⭐ {numPlayers === 3 ? `- ${matchScores[3]} ⭐` : ''}
@@ -1068,7 +1151,13 @@ export default function VersusCapitals({
             <View
               style={{ gap: 15, width: '100%', maxWidth: 300, marginTop: matchFormat > 1 ? 0 : 30 }}
             >
-              {!matchOver ? (
+              {numPlayers === 1 ? (
+                <TouchableOpacity style={styles.resetBtn} onPress={() => { resetMatch(); setNumPlayers(1); }}>
+                  <Text style={styles.resetBtnText}>
+                    {language === 'fr' ? 'REJOUER' : 'PLAY AGAIN'}
+                  </Text>
+                </TouchableOpacity>
+              ) : !matchOver ? (
                 <TouchableOpacity style={styles.resetBtn} onPress={nextSet}>
                   <Text style={styles.resetBtnText}>
                     {language === 'fr' ? 'MANCHE SUIVANTE' : 'NEXT SET'}
@@ -1084,7 +1173,7 @@ export default function VersusCapitals({
               <TouchableOpacity
                 style={[
                   styles.resetBtn,
-                  { backgroundColor: 'transparent', borderWidth: 2, borderColor: '#64748b' },
+                  { backgroundColor: 'transparent', borderWidth: 2, borderColor: c.border },
                 ]}
                 onPress={quitToMenu}
               >
@@ -1095,38 +1184,37 @@ export default function VersusCapitals({
             </View>
           </View>
         )}
-      </SafeAreaView>
-    </SafeAreaProvider>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a' },
-  containerLight: { backgroundColor: '#f8fafc' },
+  container: { flex: 1, backgroundColor: '#0a1628' },
+  containerLight: { backgroundColor: '#f2e8d0' },
   header: {
     paddingHorizontal: 15,
     paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#1e293b',
+    borderBottomColor: '#2d4a70',
     justifyContent: 'space-between',
     minHeight: 60,
   },
-  headerLight: { backgroundColor: '#fff', borderBottomColor: '#e2e8f0' },
+  headerLight: { backgroundColor: '#f2e8d0', borderBottomColor: '#c4a87a' },
   menuContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
   backBtn: { position: 'absolute', top: isMobile ? 60 : 20, left: 20 },
   menuTitle: {
     fontSize: 32,
-    fontWeight: '900',
-    color: '#fff',
+    fontFamily: FONTS.headingBlack,
+    color: '#d8e8f4',
     textAlign: 'center',
     marginBottom: 40,
   },
 
   modeSelectionGrid: { width: '100%', maxWidth: 400, gap: 15 },
   playerPickBtn: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#1a4a7a',
     padding: 20,
     borderRadius: 20,
     flexDirection: 'row',
@@ -1135,60 +1223,62 @@ const styles = StyleSheet.create({
     gap: 15,
     width: '100%',
   },
-  playerPickText: { color: '#fff', fontSize: 24, fontWeight: '900' },
+  playerPickText: { color: '#d8e8f4', fontSize: 24, fontFamily: FONTS.headingBlack },
 
   scoreBoard: {
     flexDirection: 'row',
     gap: 10,
     alignItems: 'center',
-    backgroundColor: '#1e293b',
+    backgroundColor: '#132040',
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 12,
   },
   scoreBoardLight: {
-    backgroundColor: '#e2e8f0',
+    backgroundColor: '#e8d9b8',
   },
   playerScore: { alignItems: 'center', paddingHorizontal: 6, paddingVertical: 2 },
-  playerLabel: { fontSize: 8, fontWeight: 'bold', marginBottom: -2 },
-  scoreValue: { fontSize: 16, fontWeight: '900', color: '#f8fafc' },
+  playerLabel: { fontSize: 8, fontFamily: FONTS.monoBold, marginBottom: -2 },
+  scoreValue: { fontSize: 16, fontFamily: FONTS.headingBlack, color: '#d8e8f4' },
   roundInfo: {
     marginLeft: 15,
     borderLeftWidth: 1,
-    borderLeftColor: '#334155',
+    borderLeftColor: '#2d4a70',
     paddingLeft: 10,
     justifyContent: 'center',
   },
-  roundText: { color: '#64748b', fontSize: 12, fontWeight: 'bold' },
-  iconBtn: { padding: 8, backgroundColor: '#1e293b', borderRadius: 10 },
+  roundText: { color: '#4a6a88', fontSize: 12, fontFamily: FONTS.monoBold },
+  iconBtn: { padding: 8, backgroundColor: '#132040', borderRadius: 10 },
 
   gameArea: { flex: 1, padding: 20, alignItems: 'center' },
-  turnIndicator: { fontSize: 18, fontWeight: '900', marginBottom: 20, textTransform: 'uppercase' },
+  turnIndicator: { fontSize: 18, fontFamily: FONTS.headingBlack, marginBottom: 20, textTransform: 'uppercase' },
   card: {
-    backgroundColor: '#1e293b',
+    backgroundColor: '#132040',
     padding: 30,
     borderRadius: 24,
     alignItems: 'center',
     marginBottom: 30,
     width: '100%',
     maxWidth: 600,
+    borderWidth: 1,
+    borderColor: '#2d4a70',
   },
-  cardLight: { backgroundColor: '#fff', elevation: 4, shadowOpacity: 0.1 },
+  cardLight: { backgroundColor: '#e8d9b8', borderColor: '#c4a87a', elevation: 4, shadowOpacity: 0.1 },
   flag: { width: 120, height: 80, borderRadius: 12, marginBottom: 15 },
-  countryName: { fontSize: 32, fontWeight: '900', color: '#f8fafc', textAlign: 'center' },
-  instruction: { color: '#64748b', fontSize: 14, marginTop: 10 },
+  countryName: { fontSize: 32, fontFamily: FONTS.headingBlack, color: '#d8e8f4', textAlign: 'center' },
+  instruction: { color: '#4a6a88', fontSize: 14, fontFamily: FONTS.mono, marginTop: 10 },
 
   optionsGrid: { gap: 12, width: '100%', maxWidth: 500 },
   optionBtn: {
-    backgroundColor: '#1e293b',
+    backgroundColor: '#132040',
     padding: 20,
     borderRadius: 16,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#334155',
+    borderColor: '#2d4a70',
   },
-  optionBtnLight: { backgroundColor: '#fff', borderColor: '#e2e8f0', elevation: 2 },
-  optionText: { color: '#f8fafc', fontSize: 18, fontWeight: 'bold' },
+  optionBtnLight: { backgroundColor: '#e8d9b8', borderColor: '#c4a87a', elevation: 2 },
+  optionText: { color: '#d8e8f4', fontSize: 18, fontFamily: FONTS.heading },
 
   modeSelection: {
     flexDirection: 'row',
@@ -1199,36 +1289,36 @@ const styles = StyleSheet.create({
   },
   modeBtn: {
     flex: 1,
-    backgroundColor: '#1e293b',
+    backgroundColor: '#132040',
     padding: 15,
     borderRadius: 16,
     alignItems: 'center',
     borderWidth: 2,
   },
-  modeBtnLight: { backgroundColor: '#fff', borderColor: '#e2e8f0' },
-  modeBtnTitle: { fontSize: 14, fontWeight: '900', marginTop: 8 },
-  modeBtnPoints: { fontSize: 10, color: '#64748b', fontWeight: 'bold' },
+  modeBtnLight: { backgroundColor: '#e8d9b8', borderColor: '#c4a87a' },
+  modeBtnTitle: { fontSize: 14, fontFamily: FONTS.monoBold, marginTop: 8 },
+  modeBtnPoints: { fontSize: 10, color: '#4a6a88', fontFamily: FONTS.mono },
 
   cashContainer: { width: '100%', maxWidth: 500, gap: 12 },
   cashInput: {
-    backgroundColor: '#1e293b',
-    color: '#fff',
+    backgroundColor: '#132040',
+    color: '#d8e8f4',
     padding: 20,
     borderRadius: 16,
     fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: FONTS.monoBold,
     textAlign: 'center',
     borderWidth: 2,
-    borderColor: '#334155',
+    borderColor: '#2d4a70',
   },
-  cashInputLight: { backgroundColor: '#fff', color: '#1e293b', borderColor: '#e2e8f0' },
+  cashInputLight: { backgroundColor: '#e8d9b8', color: '#2c1810', borderColor: '#c4a87a' },
   cashSubmitBtn: {
-    backgroundColor: '#10b981',
+    backgroundColor: '#2a6e3f',
     padding: 18,
     borderRadius: 16,
     alignItems: 'center',
   },
-  cashSubmitText: { color: '#fff', fontWeight: '900', fontSize: 16 },
+  cashSubmitText: { color: '#fff', fontFamily: FONTS.monoBold, fontSize: 16 },
 
   feedbackCard: {
     padding: 30,
@@ -1238,14 +1328,14 @@ const styles = StyleSheet.create({
     maxWidth: 500,
   },
   correctCard: {
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    backgroundColor: 'rgba(42, 110, 63, 0.15)',
     borderWidth: 2,
-    borderColor: '#10b981',
+    borderColor: '#2a6e3f',
   },
-  wrongCard: { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderWidth: 2, borderColor: '#ef4444' },
+  wrongCard: { backgroundColor: 'rgba(139, 26, 26, 0.15)', borderWidth: 2, borderColor: '#8b1a1a' },
   feedbackEmoji: { fontSize: 40, marginBottom: 10 },
-  feedbackTitle: { fontSize: 24, fontWeight: '900', color: '#fff', marginBottom: 5 },
-  feedbackSub: { fontSize: 16, color: '#94a3b8', textAlign: 'center', fontWeight: 'bold' },
+  feedbackTitle: { fontSize: 24, fontFamily: FONTS.headingBlack, color: '#d8e8f4', marginBottom: 5 },
+  feedbackSub: { fontSize: 16, color: '#7aa0c4', textAlign: 'center', fontFamily: FONTS.mono },
 
   overlay: {
     position: 'absolute',
@@ -1253,16 +1343,16 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+    backgroundColor: 'rgba(10, 22, 40, 0.97)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
-  overlayLight: { backgroundColor: 'rgba(248, 250, 252, 0.98)' },
-  winnerTitle: { fontSize: 40, fontWeight: '900', color: '#fff', marginVertical: 20 },
-  finalScore: { fontSize: 32, color: '#94a3b8', marginBottom: 40 },
+  overlayLight: { backgroundColor: 'rgba(242, 232, 208, 0.98)' },
+  winnerTitle: { fontSize: 40, fontFamily: FONTS.headingBlack, color: '#d8e8f4', marginVertical: 20 },
+  finalScore: { fontSize: 32, fontFamily: FONTS.mono, color: '#7aa0c4', marginBottom: 40 },
   resetBtn: {
-    backgroundColor: '#10b981',
+    backgroundColor: '#c04a1a',
     paddingVertical: 15,
     paddingHorizontal: 40,
     borderRadius: 16,
@@ -1271,5 +1361,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
   },
-  resetBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
+  resetBtnText: { color: '#fff', fontFamily: FONTS.monoBold, fontSize: 18 },
 });

@@ -1,21 +1,36 @@
 {
   "expo": {
-    "name": "georankle-app",
-    "slug": "georankle-app",
+    "name": "GeoG",
+    "slug": "geog",
+    "scheme": "geog",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/adaptive-icon.png",
+          "color": "#2a6e3f"
+        }
+      ]
+    ],
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.paulpousset.geog",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
+      "package": "com.paulpousset.geog",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -23,7 +38,17 @@
       "edgeToEdgeEnabled": true
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "name": "GeoG",
+      "shortName": "GeoG",
+      "themeColor": "#ffffff",
+      "backgroundColor": "#ffffff"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "eb89ac82-5303-4bd0-94d5-6cfb80467efd"
+      }
     }
   }
 }

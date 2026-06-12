@@ -1,497 +1,772 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   StyleSheet,
   Text,
   View,
   TouchableOpacity,
   Image,
-  Platform,
-  FlatList,
+  ScrollView,
   TextInput,
+  Platform,
+  KeyboardAvoidingView,
+  useWindowDimensions,
 } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { Home, Trophy, Search, XCircle, CheckCircle, RefreshCcw } from 'lucide-react-native';
+import { Home, Search, XCircle, RefreshCcw, Wifi, Flag } from 'lucide-react-native';
 import Fuse from 'fuse.js';
+import type { User } from '@supabase/supabase-js';
 
 import gameData from '../../assets/game_data.json';
 import countriesStats from '../../assets/countries_stats.json';
 import { getFlagUrl } from '../lib/flags';
-import type { Language } from '../types';
+import { supabase } from '../lib/supabase';
+import type { Language, Match } from '../types';
+import { FONTS } from '../theme/typography';
 
-interface GuessCountryGameProps {
+interface Props {
   isDarkMode: boolean;
   language?: Language;
   onBackToMenu: () => void;
+  user?: User | null;
+  matchData?: Match | null;
+  onRoundComplete?: (score: number) => void;
 }
 
-type Clue = any;
-type Country = any;
-type Guess = { country: Country; isCorrect: boolean };
-type GameState = 'playing' | 'won' | 'lost';
+// ─── Categories ─────────────────────────────────────────────────────────────
 
-// Define difficulty for each clue type
-const CLUE_DIFFICULTY: Record<string, { level: string; type: string; icon?: string }> = {
-  flag: { level: 'easy', type: 'visual' },
-  capital: { level: 'easy', type: 'text', icon: '🏛️' },
-  region: { level: 'easy', type: 'text', icon: '🌍' },
+const CATEGORIES = [
+  { id: 'continent',  emoji: '🌍', fr: 'Continent',   en: 'Continent'  },
+  { id: 'direction',  emoji: '🧭', fr: 'Direction',   en: 'Direction'  },
+  { id: 'distance',   emoji: '📏', fr: 'Distance',    en: 'Distance'   },
+  { id: 'population', emoji: '👥', fr: 'Population',  en: 'Population' },
+  { id: 'area',       emoji: '📐', fr: 'Superficie',  en: 'Area'       },
+  { id: 'gdp',        emoji: '💰', fr: 'PIB/hab',     en: 'GDP/cap'    },
+  { id: 'coastline',  emoji: '🏖️', fr: 'Côtes',       en: 'Coastline'  },
+  { id: 'life_exp',   emoji: '❤️', fr: 'Espérance',   en: 'Life Exp.'  },
+  { id: 'borders',    emoji: '🗺️', fr: 'Frontières',  en: 'Borders'    },
+] as const;
 
-  population: { level: 'medium', type: 'theme' },
-  area: { level: 'medium', type: 'theme' },
-  forest_area: { level: 'medium', type: 'theme' },
-  urban_population: { level: 'medium', type: 'theme' },
+type CatId = (typeof CATEGORIES)[number]['id'];
+// value = the guessed country's actual stat (shown on the tile)
+// hint  = short directional clue about the mystery country ("▲ plus", "▼ moins", "✓"…)
+type CellResult = { value: string; hint?: string; color: string };
 
-  gdp: { level: 'hard', type: 'theme' },
-  gdp_per_capita: { level: 'hard', type: 'theme' },
-  access_to_electricity: { level: 'hard', type: 'theme' },
-  fertility_rate: { level: 'hard', type: 'theme' },
-  life_expectancy: { level: 'hard', type: 'theme' },
-  military_expenditure: { level: 'hard', type: 'theme' },
-  obesity_rate: { level: 'hard', type: 'theme' },
-  internet_users: { level: 'hard', type: 'theme' },
-  inflation: { level: 'hard', type: 'theme' },
+// ─── Geo helpers ─────────────────────────────────────────────────────────────
+
+function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const r = (d: number) => (d * Math.PI) / 180;
+  const dLat = r(lat2 - lat1);
+  const dLng = r(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(r(lat1)) * Math.cos(r(lat2)) * Math.sin(dLng / 2) ** 2;
+  return Math.round(R * 2 * Math.asin(Math.sqrt(a)));
+}
+
+function calcBearing(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const r = (d: number) => (d * Math.PI) / 180;
+  const dLng = r(lng2 - lng1);
+  const x = Math.sin(dLng) * Math.cos(r(lat2));
+  const y =
+    Math.cos(r(lat1)) * Math.sin(r(lat2)) -
+    Math.sin(r(lat1)) * Math.cos(r(lat2)) * Math.cos(dLng);
+  return ((Math.atan2(x, y) * 180) / Math.PI + 360) % 360;
+}
+
+const ARROWS = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'];
+function bearingToArrow(b: number): string {
+  return ARROWS[Math.round(b / 45) % 8];
+}
+
+const REGION_LABEL: Record<string, { fr: string; en: string }> = {
+  Africa:    { fr: 'Afrique',  en: 'Africa'   },
+  Europe:    { fr: 'Europe',   en: 'Europe'   },
+  Asia:      { fr: 'Asie',     en: 'Asia'     },
+  Americas:  { fr: 'Amériques',en: 'Americas' },
+  Oceania:   { fr: 'Océanie',  en: 'Oceania'  },
+  Antarctic: { fr: 'Antarct.', en: 'Antarctic'},
 };
+
+// ─── Seeded RNG ───────────────────────────────────────────────────────────────
+
+function createSeededRng(seed: number) {
+  let s = seed;
+  return function () {
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), s | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// ─── Formatters ───────────────────────────────────────────────────────────────
+
+function fmtCount(n: number, lang: Language): string {
+  if (n >= 1e9) return `${(n / 1e9).toFixed(1)}${lang === 'fr' ? ' Md' : 'B'}`;
+  if (n >= 1e6) return `${(n / 1e6).toFixed(n >= 1e7 ? 0 : 1)} M`;
+  if (n >= 1e3) return `${Math.round(n / 1e3)}k`;
+  return `${Math.round(n)}`;
+}
+
+function fmtArea(km2: number, lang: Language): string {
+  if (km2 >= 1e6) return `${(km2 / 1e6).toFixed(1)}${lang === 'fr' ? ' M' : 'M'} km²`;
+  if (km2 >= 1e3) return `${Math.round(km2 / 1e3)}k km²`;
+  return `${Math.round(km2)} km²`;
+}
+
+function fmtMoney(v: number): string {
+  if (v >= 1e3) return `$${(v / 1e3).toFixed(v >= 1e4 ? 0 : 1)}k`;
+  return `$${Math.round(v)}`;
+}
+
+function fmtDist(km: number): string {
+  if (km < 1000) return `${km} km`;
+  return `${(km / 1000).toFixed(1)}k km`;
+}
+
+// ─── Comparison helpers ───────────────────────────────────────────────────────
+
+// Compares the guessed stat to the mystery one and returns a colored cell:
+// the value shown is ALWAYS the guessed country's stat; the hint tells the
+// player whether the mystery country is higher (▲) or lower (▼).
+function compareNum(guess: number, target: number, value: string, lang: Language): CellResult {
+  if (guess === target) return { value, hint: '✓', color: '#10B981' };
+  const ratio = guess / target;
+  const color = ratio >= 0.6 && ratio <= 1.67 ? '#F59E0B' : '#EF4444';
+  const targetIsMore = guess < target;
+  const hint = targetIsMore
+    ? (lang === 'fr' ? '▲ plus' : '▲ more')
+    : (lang === 'fr' ? '▼ moins' : '▼ less');
+  return { value, hint, color };
+}
+
+const UNKNOWN: CellResult = { value: '?', color: '#64748B' };
+
+function buildComparison(
+  guessedC: any,
+  targetC: any,
+  guessedS: any,
+  targetS: any,
+  lang: Language,
+): Record<CatId, CellResult> {
+  const r = {} as Record<CatId, CellResult>;
+
+  // Continent — the guessed country's region name; green if it matches.
+  const sameRegion = guessedS?.region === targetS?.region;
+  const regionLabel = REGION_LABEL[guessedS?.region];
+  r.continent = {
+    value: (lang === 'fr' ? regionLabel?.fr : regionLabel?.en) ?? guessedS?.region ?? '?',
+    hint: sameRegion ? '✓' : (lang === 'fr' ? '✗ autre' : '✗ other'),
+    color: sameRegion ? '#10B981' : '#EF4444',
+  };
+
+  // Direction + distance toward the mystery country.
+  if (guessedS?.lat != null && targetS?.lat != null) {
+    const dist = haversine(guessedS.lat, guessedS.lng, targetS.lat, targetS.lng);
+    if (guessedC.cca3 === targetC.cca3) {
+      r.direction = { value: '🎯', color: '#10B981' };
+      r.distance  = { value: '0 km', color: '#10B981' };
+    } else {
+      const b = calcBearing(guessedS.lat, guessedS.lng, targetS.lat, targetS.lng);
+      r.direction = {
+        value: bearingToArrow(b),
+        hint: lang === 'fr' ? 'vers la cible' : 'to target',
+        color: dist < 2000 ? '#F59E0B' : '#EF4444',
+      };
+      r.distance = {
+        value: fmtDist(dist),
+        color: dist < 500 ? '#10B981' : dist < 2000 ? '#F59E0B' : '#EF4444',
+      };
+    }
+  } else {
+    r.direction = UNKNOWN;
+    r.distance  = UNKNOWN;
+  }
+
+  // Population
+  const gPop = guessedS?.population, tPop = targetS?.population;
+  r.population = gPop && tPop
+    ? compareNum(gPop, tPop, `${fmtCount(gPop, lang)}${lang === 'fr' ? ' hab.' : ''}`, lang)
+    : UNKNOWN;
+
+  // Area
+  const gArea = guessedS?.area, tArea = targetS?.area;
+  r.area = gArea && tArea ? compareNum(gArea, tArea, fmtArea(gArea, lang), lang) : UNKNOWN;
+
+  // GDP per capita (the "PIB/hab" label was wrongly using total GDP before)
+  const gGdp = guessedC?.data?.gdp_per_capita?.value, tGdp = targetC?.data?.gdp_per_capita?.value;
+  r.gdp = gGdp && tGdp ? compareNum(gGdp, tGdp, fmtMoney(gGdp), lang) : UNKNOWN;
+
+  // Coastline — coastal vs landlocked.
+  const sameCoast = guessedS?.coastline === targetS?.coastline;
+  r.coastline = {
+    value: guessedS?.coastline
+      ? (lang === 'fr' ? 'Côtier' : 'Coastal')
+      : (lang === 'fr' ? 'Enclavé' : 'Landlocked'),
+    hint: sameCoast ? '✓' : (lang === 'fr' ? '✗ autre' : '✗ other'),
+    color: sameCoast ? '#10B981' : '#EF4444',
+  };
+
+  // Life expectancy
+  const gLife = guessedC?.data?.life_expectancy?.value;
+  const tLife = targetC?.data?.life_expectancy?.value;
+  r.life_exp = gLife && tLife
+    ? compareNum(gLife, tLife, `${Math.round(gLife)}${lang === 'fr' ? ' ans' : ' yr'}`, lang)
+    : UNKNOWN;
+
+  // Borders count
+  const gB = guessedS?.borders_count, tB = targetS?.borders_count;
+  if (gB != null && tB != null) {
+    const label = `${gB}${lang === 'fr' ? ' pays' : ''}`;
+    r.borders = compareNum(gB, tB, label, lang);
+  } else {
+    r.borders = UNKNOWN;
+  }
+
+  return r;
+}
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface GuessEntry {
+  country: any;
+  comparison: Record<CatId, CellResult>;
+  isCorrect: boolean;
+}
+
+function pickRandom(): { country: any; stats: any } {
+  const countries = (gameData as any).countries as any[];
+  const country = countries[Math.floor(Math.random() * countries.length)];
+  const stats = (countriesStats as any[]).find((c) => c.cca3 === country.cca3) ?? {};
+  return { country, stats };
+}
+
+function pickSeeded(seed: number): { country: any; stats: any } {
+  const countries = (gameData as any).countries as any[];
+  const rng = createSeededRng(seed);
+  const idx = Math.floor(rng() * countries.length);
+  const country = countries[idx];
+  const stats = (countriesStats as any[]).find((c: any) => c.cca3 === country.cca3) ?? {};
+  return { country, stats };
+}
+
+function calcScore(guessCount: number): number {
+  return Math.max(0, 1000 - (guessCount - 1) * 100);
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function GuessCountryGame({
   isDarkMode,
   language = 'fr',
   onBackToMenu,
-}: GuessCountryGameProps) {
-  const [targetCountry, setTargetCountry] = useState<Country | null>(null);
-  const [clues, setClues] = useState<Clue[]>([]);
+  user,
+  matchData,
+  onRoundComplete,
+}: Props) {
+  const isOnline = !!matchData;
+  const isPlayer1 = matchData?.player1_id === user?.id;
+  const { width } = useWindowDimensions();
 
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [filteredCountries, setFilteredCountries] = useState<Country[]>([]);
-  const [guesses, setGuesses] = useState<Guess[]>([]);
-  const [gameState, setGameState] = useState<GameState>('playing'); // playing, won, lost
-  const [score, setScore] = useState<number>(0);
+  const [target, setTarget] = useState<{ country: any; stats: any }>(() => {
+    if (matchData?.game_data?.seed != null) {
+      const seed = (matchData.game_data.seed as number) + (matchData.current_round ?? 0) * 997;
+      return pickSeeded(seed);
+    }
+    return pickRandom();
+  });
 
-  const fuse = React.useMemo(
-    () =>
-      new Fuse((gameData as any).countries, {
-        keys: ['name', 'name_en'],
-        threshold: 0.3,
-      }),
+  const [guesses, setGuesses] = useState<GuessEntry[]>([]);
+  const [won, setWon] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [myScore, setMyScore] = useState(0);
+  const [opponentScore, setOpponentScore] = useState(0);
+  const [search, setSearch] = useState('');
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!matchData || !user) return;
+    const channel = supabase
+      .channel(`guess_match_${matchData.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'matches', filter: `id=eq.${matchData.id}` },
+        (payload: any) => {
+          const u = payload.new;
+          setOpponentScore(isPlayer1 ? (u.p2_current_score ?? 0) : (u.p1_current_score ?? 0));
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [matchData?.id, user?.id]);
+
+  const fuse = useMemo(
+    () => new Fuse((gameData as any).countries, { keys: ['name', 'name_en'], threshold: 0.3 }),
     [],
   );
 
-  useEffect(() => {
-    generateNewRound();
-  }, []);
-
-  const generateNewRound = () => {
-    // 1. Pick a random country
-    const randomCountryIndex = Math.floor(Math.random() * (gameData as any).countries.length);
-    const country = (gameData as any).countries[randomCountryIndex];
-    setTargetCountry(country);
-
-    // Find matching stats
-    const stats: any = (countriesStats as any).find((c: any) => c.cca3 === country.cca3) || {};
-
-    let selectedClues: Clue[] = [];
-
-    // Easy Clue (Flag, Capital, or Region)
-    const easyTypes = ['flag', 'capital', 'region'];
-    const easyType = easyTypes[Math.floor(Math.random() * easyTypes.length)];
-    if (easyType === 'flag') {
-      selectedClues.push({ difficulty: 'easy', type: 'flag', value: getFlagUrl(country.cca3) });
-    } else if (easyType === 'capital' && stats.capital) {
-      selectedClues.push({
-        difficulty: 'easy',
-        type: 'text',
-        label: language === 'fr' ? 'Capitale' : 'Capital',
-        value: stats.capital,
-        icon: '🏛️',
-      });
-    } else if (easyType === 'region' && stats.region) {
-      selectedClues.push({
-        difficulty: 'easy',
-        type: 'text',
-        label: language === 'fr' ? 'Région' : 'Region',
-        value: `${stats.region} (${stats.subregion})`,
-        icon: '🌍',
-      });
-    } else {
-      selectedClues.push({ difficulty: 'easy', type: 'flag', value: getFlagUrl(country.cca3) });
-    }
-
-    // Medium Clue
-    const mediumThemes = Object.keys(CLUE_DIFFICULTY).filter(
-      (k) => CLUE_DIFFICULTY[k].level === 'medium',
-    );
-    const availableMedium = mediumThemes.filter((t) => country.data[t]);
-    if (availableMedium.length > 0) {
-      const medTheme = availableMedium[Math.floor(Math.random() * availableMedium.length)];
-      selectedClues.push({
-        difficulty: 'medium',
-        type: 'theme',
-        id: medTheme,
-        value:
-          language === 'fr' ? country.data[medTheme].display_fr : country.data[medTheme].display_en,
-      });
-    }
-
-    // Hard Clue
-    const hardThemes = Object.keys(CLUE_DIFFICULTY).filter(
-      (k) => CLUE_DIFFICULTY[k].level === 'hard',
-    );
-    const availableHard = hardThemes.filter((t) => country.data[t]);
-    if (availableHard.length > 0) {
-      const hardTheme = availableHard[Math.floor(Math.random() * availableHard.length)];
-      selectedClues.push({
-        difficulty: 'hard',
-        type: 'theme',
-        id: hardTheme,
-        value:
-          language === 'fr'
-            ? country.data[hardTheme].display_fr
-            : country.data[hardTheme].display_en,
-      });
-    }
-
-    selectedClues = selectedClues.sort(() => Math.random() - 0.5);
-
-    setClues(selectedClues);
-    setGuesses([]);
-    setGameState('playing');
-    setSearchQuery('');
-    setFilteredCountries([]);
-  };
-
   const handleSearch = (text: string) => {
-    setSearchQuery(text);
+    setSearch(text);
     if (text.length > 1) {
-      const results = fuse.search(text);
-      setFilteredCountries(results.map((r) => r.item).slice(0, 5));
+      setSuggestions(fuse.search(text).slice(0, 6).map((r: any) => r.item));
     } else {
-      setFilteredCountries([]);
+      setSuggestions([]);
     }
   };
 
-  const handleGuess = (guessedCountry: Country) => {
-    if (gameState !== 'playing') return;
-
-    const isCorrect = guessedCountry.cca3 === targetCountry.cca3;
-    const newGuesses = [...guesses, { country: guessedCountry, isCorrect }];
-    setGuesses(newGuesses);
-    setSearchQuery('');
-    setFilteredCountries([]);
-
+  const handleGuess = (guessedCountry: any) => {
+    if (won || submitted) return;
+    if (guesses.some((g) => g.country.cca3 === guessedCountry.cca3)) {
+      setSearch('');
+      setSuggestions([]);
+      return;
+    }
+    const guessedStats = (countriesStats as any[]).find((c) => c.cca3 === guessedCountry.cca3) ?? {};
+    const comparison = buildComparison(guessedCountry, target.country, guessedStats, target.stats, language);
+    const isCorrect = guessedCountry.cca3 === target.country.cca3;
+    const newGuessCount = guesses.length + 1;
+    setGuesses((prev) => [{ country: guessedCountry, comparison, isCorrect }, ...prev]);
     if (isCorrect) {
-      setGameState('won');
-      setScore(score + 1);
-    } else if (newGuesses.length >= 3) {
-      setGameState('lost');
+      const score = calcScore(newGuessCount);
+      setMyScore(score);
+      setWon(true);
+      setSubmitted(true);
+      if (onRoundComplete) onRoundComplete(score);
     }
+    setSearch('');
+    setSuggestions([]);
   };
 
-  const getDifficultyColor = (diff: string) => {
-    if (diff === 'easy') return '#10B981';
-    if (diff === 'medium') return '#F59E0B';
-    if (diff === 'hard') return '#EF4444';
-    return '#64748B';
+  const handleGiveUp = () => {
+    if (submitted) return;
+    setSubmitted(true);
+    setMyScore(0);
+    if (onRoundComplete) onRoundComplete(0);
   };
 
-  const getDifficultyLabel = (diff: string) => {
-    if (language === 'fr') {
-      return diff === 'easy' ? 'Facile' : diff === 'medium' ? 'Moyen' : 'Difficile';
-    }
-    return diff === 'easy' ? 'Easy' : diff === 'medium' ? 'Medium' : 'Hard';
+  const reset = () => {
+    setTarget(pickRandom());
+    setGuesses([]);
+    setWon(false);
+    setSubmitted(false);
+    setMyScore(0);
+    setSearch('');
+    setSuggestions([]);
   };
+
+  // ─── Theme ─────────────────────────────────────────────────────────────────
+
+  const dark = isDarkMode;
+  const bg       = dark ? '#0a1628' : '#f2e8d0';
+  const cardBg   = dark ? '#132040' : '#e8d9b8';
+  const border   = dark ? '#2d4a70' : '#c4a87a';
+  const textPri  = dark ? '#d8e8f4' : '#2c1810';
+  const textSec  = dark ? '#7aa0c4' : '#7a5c38';
+  const inputBg  = dark ? '#132040' : '#e8d9b8';
+  const accentColor = dark ? '#4a9eff' : '#c04a1a';
+
+  const countryName = (c: any) => (language === 'fr' ? c.name : c.name_en) ?? c.name;
+
+  // 3 colonnes exactes. On retranche : scroll padding (14×2) + bordures carte (1.5×2)
+  // + tileGrid padding (8×2) + 2 gaps (8×2) + une marge de sécurité de 2px pour
+  // éviter que la 3e tuile ne passe à la ligne (sinon colonnes déséquilibrées).
+  const SCROLL_PAD = 14;
+  const TILE_GRID_PAD = 8;
+  const TILE_GAP = 8;
+  const CARD_BORDER = 1.5;
+  const available = width - SCROLL_PAD * 2 - CARD_BORDER * 2 - TILE_GRID_PAD * 2 - TILE_GAP * 2 - 2;
+  const tileW = Math.floor(available / 3);
+
+  // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <SafeAreaProvider>
-      <SafeAreaView style={[styles.container, !isDarkMode && styles.containerLight]}>
-        <StatusBar style={isDarkMode ? 'light' : 'dark'} />
+    <SafeAreaView style={[styles.root, { backgroundColor: bg }]}>
+      <StatusBar style={dark ? 'light' : 'dark'} />
 
-        {/* Header */}
-        <View style={[styles.header, !isDarkMode && styles.headerLight]}>
-          <TouchableOpacity
-            onPress={onBackToMenu}
-            style={[styles.iconButton, !isDarkMode && styles.iconButtonLight]}
-          >
-            <Home color={isDarkMode ? '#f8fafc' : '#1e293b'} size={24} />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, !isDarkMode && styles.headerTitleLight]}>
-            {language === 'fr' ? 'Devinez le Pays' : 'Guess the Country'}
-          </Text>
-          <View style={styles.scoreContainer}>
-            <Trophy color="#fbbf24" size={20} />
-            <Text style={[styles.scoreText, !isDarkMode && styles.scoreTextLight]}>{score}</Text>
+      {/* ── Header ── */}
+      <View style={[styles.header, { backgroundColor: cardBg, borderBottomColor: border }]}>
+        <TouchableOpacity
+          onPress={onBackToMenu}
+          style={[styles.iconBtn, { backgroundColor: dark ? '#1a2d50' : '#f8f2e3', borderWidth: 1, borderColor: border }]}
+        >
+          <Home color={textPri} size={22} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: textPri }]}>
+          {language === 'fr' ? 'Devine le Pays' : 'Guess the Country'}
+        </Text>
+        {isOnline ? (
+          <View style={styles.onlineScoreRow}>
+            <Wifi size={12} color="#10b981" />
+            <Text style={[styles.onlineMyScore, { color: accentColor }]}>{myScore}</Text>
+            <Text style={[styles.onlineVs, { color: textSec }]}>vs</Text>
+            <Text style={[styles.onlineOppScore, { color: textSec }]}>{opponentScore}</Text>
           </View>
-        </View>
-
-        <View style={styles.content}>
-          <Text style={[styles.instructionText, !isDarkMode && styles.instructionTextLight]}>
-            {language === 'fr'
-              ? 'Trouvez le pays en utilisant ces indices (3 essais) :'
-              : 'Find the country using these clues (3 tries):'}
-          </Text>
-
-          {/* Clues */}
-          <View style={styles.cluesContainer}>
-            {clues.map((clue, index) => (
-              <View key={index} style={[styles.clueCard, !isDarkMode && styles.clueCardLight]}>
-                <View
-                  style={[
-                    styles.difficultyBadge,
-                    { backgroundColor: getDifficultyColor(clue.difficulty) },
-                  ]}
-                >
-                  <Text style={styles.difficultyText}>{getDifficultyLabel(clue.difficulty)}</Text>
-                </View>
-
-                <View style={styles.clueContent}>
-                  {clue.type === 'flag' ? (
-                    <Image source={{ uri: clue.value }} style={styles.flagImage} />
-                  ) : clue.type === 'text' ? (
-                    <Text style={[styles.clueText, !isDarkMode && styles.clueTextLight]}>
-                      {clue.icon} {clue.label} : {clue.value}
-                    </Text>
-                  ) : (
-                    <Text style={[styles.clueText, !isDarkMode && styles.clueTextLight]}>
-                      {clue.value}
-                    </Text>
-                  )}
-                </View>
-              </View>
-            ))}
+        ) : (
+          <View style={[styles.countBadge, { backgroundColor: `${accentColor}18`, borderColor: border }]}>
+            <Text style={[styles.countText, { color: accentColor }]}>
+              {guesses.length}{' '}
+              {language === 'fr'
+                ? 'essai' + (guesses.length !== 1 ? 's' : '')
+                : guesses.length !== 1 ? 'tries' : 'try'}
+            </Text>
           </View>
+        )}
+      </View>
 
-          {/* Game Status */}
-          {gameState !== 'playing' && (
-            <View style={styles.resultContainer}>
-              <Text
-                style={[styles.resultTitle, { color: gameState === 'won' ? '#10B981' : '#EF4444' }]}
-              >
-                {gameState === 'won'
-                  ? language === 'fr'
-                    ? 'Bravo !'
-                    : 'You won!'
-                  : language === 'fr'
-                    ? 'Perdu !'
-                    : 'Game Over!'}
-              </Text>
-              <Text style={[styles.resultAnswer, !isDarkMode && styles.resultAnswerLight]}>
-                {language === 'fr' ? "C'était :" : 'It was:'}{' '}
-                {language === 'fr' ? targetCountry?.name : targetCountry?.name_en}
-              </Text>
-              <Image source={{ uri: getFlagUrl(targetCountry?.cca3) }} style={styles.resultFlag} />
-
-              <TouchableOpacity style={styles.playAgainBtn} onPress={generateNewRound}>
-                <RefreshCcw color="#fff" size={20} />
-                <Text style={styles.playAgainText}>
-                  {language === 'fr' ? 'Rejouer' : 'Play Again'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Input & Autocomplete */}
-          {gameState === 'playing' && (
-            <View style={styles.searchContainer}>
-              <View style={styles.searchBox}>
-                <Search color="#64748b" size={20} style={{ marginLeft: 15 }} />
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={[styles.scroll, { padding: SCROLL_PAD }]}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* ── Search ── */}
+          {!won && !submitted && (
+            <View style={styles.searchWrapper}>
+              <View style={[styles.searchBox, { backgroundColor: inputBg, borderColor: border }]}>
+                <Search color={textSec} size={20} style={{ marginLeft: 14 }} />
                 <TextInput
-                  style={[styles.searchInput, !isDarkMode && styles.searchInputLight]}
-                  placeholder={
-                    language === 'fr'
-                      ? `Votre essai (${3 - guesses.length} restants)...`
-                      : `Your guess (${3 - guesses.length} left)...`
-                  }
-                  placeholderTextColor="#64748b"
-                  value={searchQuery}
+                  style={[styles.searchInput, { color: textPri }]}
+                  placeholder={language === 'fr' ? 'Tapez un pays…' : 'Type a country…'}
+                  placeholderTextColor={textSec}
+                  value={search}
                   onChangeText={handleSearch}
+                  autoCorrect={false}
+                  autoCapitalize="none"
                 />
-                {searchQuery.length > 0 && (
-                  <TouchableOpacity onPress={() => handleSearch('')} style={{ padding: 15 }}>
-                    <XCircle color="#64748b" size={20} />
+                {search.length > 0 && (
+                  <TouchableOpacity onPress={() => handleSearch('')} style={{ padding: 14 }}>
+                    <XCircle color={textSec} size={20} />
                   </TouchableOpacity>
                 )}
               </View>
 
-              {filteredCountries.length > 0 && (
-                <View
-                  style={[
-                    styles.suggestionsContainer,
-                    !isDarkMode && styles.suggestionsContainerLight,
-                  ]}
-                >
-                  {filteredCountries.map((c, i) => (
+              {suggestions.length > 0 && (
+                <View style={[styles.suggestions, { backgroundColor: inputBg, borderColor: border }]}>
+                  {suggestions.map((c, i) => (
                     <TouchableOpacity
-                      key={i}
+                      key={c.cca3}
                       style={[
-                        styles.suggestionItem,
-                        !isDarkMode && styles.suggestionItemLight,
-                        i !== filteredCountries.length - 1 && styles.suggestionBorder,
+                        styles.suggItem,
+                        i < suggestions.length - 1 && { borderBottomWidth: 1, borderBottomColor: border },
                       ]}
                       onPress={() => handleGuess(c)}
                     >
-                      <Image source={{ uri: getFlagUrl(c.cca3) }} style={styles.suggestionFlag} />
-                      <Text
-                        style={[styles.suggestionText, !isDarkMode && styles.suggestionTextLight]}
-                      >
-                        {language === 'fr' ? c.name : c.name_en}
-                      </Text>
+                      <Image source={{ uri: getFlagUrl(c.cca3) }} style={styles.suggFlag} />
+                      <Text style={[styles.suggName, { color: textPri }]}>{countryName(c)}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
               )}
+
+              {isOnline && guesses.length > 0 && (
+                <TouchableOpacity
+                  style={[styles.giveUpBtn, { borderColor: border }]}
+                  onPress={handleGiveUp}
+                >
+                  <Flag size={14} color="#ef4444" />
+                  <Text style={styles.giveUpText}>
+                    {language === 'fr' ? 'Abandonner (0 pt)' : 'Give up (0 pt)'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
 
-          {/* Previous Guesses */}
-          <View style={styles.guessesContainer}>
-            {guesses.map((g, i) => (
+          {/* ── Waiting / give-up card ── */}
+          {submitted && !won && (
+            <View style={[styles.winCard, { backgroundColor: cardBg, borderColor: '#8b1a1a' }]}>
+              <Text style={styles.winEmoji}>😔</Text>
+              <Text style={[styles.winTitle, { color: textPri }]}>
+                {language === 'fr' ? 'Abandonné' : 'Given up'}
+              </Text>
+              <Image source={{ uri: getFlagUrl(target.country.cca3) }} style={styles.winFlag} />
+              <Text style={[styles.winCountry, { color: textPri }]}>{countryName(target.country)}</Text>
+              <Text style={[styles.winSub, { color: textSec }]}>
+                {language === 'fr' ? "En attente de l'adversaire…" : 'Waiting for opponent…'}
+              </Text>
+            </View>
+          )}
+
+          {/* ── Win card ── */}
+          {won && (
+            <View style={[styles.winCard, { backgroundColor: cardBg, borderColor: '#10B981' }]}>
+              <Text style={styles.winEmoji}>🎉</Text>
+              <Text style={[styles.winTitle, { color: textPri }]}>
+                {language === 'fr' ? 'Bravo !' : 'Well done!'}
+              </Text>
+              <Image source={{ uri: getFlagUrl(target.country.cca3) }} style={styles.winFlag} />
+              <Text style={[styles.winCountry, { color: textPri }]}>{countryName(target.country)}</Text>
+              <Text style={[styles.winSub, { color: textSec }]}>
+                {guesses.length}{' '}
+                {language === 'fr'
+                  ? guesses.length === 1 ? 'essai' : 'essais'
+                  : guesses.length === 1 ? 'try' : 'tries'}
+                {isOnline && (
+                  <Text style={{ color: accentColor, fontWeight: '700' }}>
+                    {' '}· {myScore} pts
+                  </Text>
+                )}
+              </Text>
+              {isOnline ? (
+                <Text style={[styles.winSub, { color: textSec }]}>
+                  {language === 'fr' ? "En attente de l'adversaire…" : 'Waiting for opponent…'}
+                </Text>
+              ) : (
+                <TouchableOpacity style={styles.replayBtn} onPress={reset}>
+                  <RefreshCcw color="#fff" size={18} />
+                  <Text style={styles.replayText}>{language === 'fr' ? 'Rejouer' : 'Play Again'}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
+          {/* ── Intro hint ── */}
+          {guesses.length === 0 && !won && !submitted && (
+            <Text style={[styles.hint, { color: textSec }]}>
+              {language === 'fr'
+                ? isOnline
+                  ? 'Même pays pour les deux joueurs — moins d\'essais = plus de points (max 1000).'
+                  : 'Tentatives illimitées — chaque réponse compare vos stats avec celles du pays mystère.'
+                : isOnline
+                  ? 'Same country for both players — fewer guesses = more points (max 1000).'
+                  : 'Unlimited tries — each guess compares its stats to the mystery country.'}
+            </Text>
+          )}
+
+          {/* ── Guess cards ── */}
+          {guesses.map((g, i) => {
+            const guessNum = guesses.length - i;
+            return (
               <View
                 key={i}
                 style={[
                   styles.guessCard,
-                  !isDarkMode && styles.guessCardLight,
-                  { borderColor: g.isCorrect ? '#10B981' : '#EF4444' },
+                  {
+                    backgroundColor: cardBg,
+                    borderColor: g.isCorrect ? '#10B981' : border,
+                    marginBottom: 12,
+                  },
                 ]}
               >
-                {g.isCorrect ? (
-                  <CheckCircle color="#10B981" size={24} />
-                ) : (
-                  <XCircle color="#EF4444" size={24} />
-                )}
-                <Text style={[styles.guessText, !isDarkMode && styles.guessTextLight]}>
-                  {language === 'fr' ? g.country.name : g.country.name_en}
-                </Text>
+                {/* Country header */}
+                <View style={[styles.guessCardHeader, { borderBottomColor: border }]}>
+                  <View style={[styles.guessBadge, { backgroundColor: `${accentColor}25` }]}>
+                    <Text style={[styles.guessBadgeText, { color: accentColor }]}>#{guessNum}</Text>
+                  </View>
+                  <Image source={{ uri: getFlagUrl(g.country.cca3) }} style={styles.guessFlag} />
+                  <Text style={[styles.guessName, { color: textPri }]} numberOfLines={1}>
+                    {countryName(g.country)}
+                  </Text>
+                  {g.isCorrect && (
+                    <View style={styles.correctBadge}>
+                      <Text style={styles.correctBadgeText}>✓</Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* 3×3 category grid */}
+                <View style={styles.tileGrid}>
+                  {CATEGORIES.map((cat) => {
+                    const cell = g.comparison[cat.id];
+                    return (
+                      <View
+                        key={cat.id}
+                        style={[
+                          styles.tile,
+                          {
+                            width: tileW,
+                            backgroundColor: cell?.color ?? '#64748B',
+                          },
+                        ]}
+                      >
+                        <Text style={styles.tileEmoji}>{cat.emoji}</Text>
+                        <Text style={styles.tileLabel} numberOfLines={1}>
+                          {language === 'fr' ? cat.fr : cat.en}
+                        </Text>
+                        <Text style={styles.tileValue} numberOfLines={1} adjustsFontSizeToFit>
+                          {cell?.value ?? '?'}
+                        </Text>
+                        {cell?.hint && (
+                          <Text style={styles.tileHint} numberOfLines={1}>
+                            {cell.hint}
+                          </Text>
+                        )}
+                      </View>
+                    );
+                  })}
+                </View>
               </View>
-            ))}
-          </View>
-        </View>
-      </SafeAreaView>
-    </SafeAreaProvider>
+            );
+          })}
+
+          <View style={{ height: 24 }} />
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a' },
-  containerLight: { backgroundColor: '#f8fafc' },
+  root: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 20,
-    backgroundColor: '#1e293b',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#334155',
   },
-  headerLight: { backgroundColor: '#fff', borderBottomColor: '#e2e8f0' },
-  iconButton: { padding: 10, backgroundColor: '#334155', borderRadius: 12 },
-  iconButtonLight: { backgroundColor: '#f1f5f9' },
-  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#f8fafc' },
-  headerTitleLight: { color: '#1e293b' },
-  scoreContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(251, 191, 36, 0.1)',
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 20,
-  },
-  scoreText: { color: '#fbbf24', fontWeight: 'bold', fontSize: 18 },
-  scoreTextLight: { color: '#d97706' },
-  content: { flex: 1, padding: 20 },
-  instructionText: { color: '#94a3b8', fontSize: 16, marginBottom: 20, textAlign: 'center' },
-  instructionTextLight: { color: '#475569' },
-  cluesContainer: { gap: 15, marginBottom: 30 },
-  clueCard: {
-    backgroundColor: '#1e293b',
-    borderRadius: 16,
-    padding: 20,
-    position: 'relative',
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#334155',
-    alignItems: 'center',
-    minHeight: 90,
-    justifyContent: 'center',
-  },
-  clueCardLight: { backgroundColor: '#fff', borderColor: '#e2e8f0' },
-  difficultyBadge: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
+  iconBtn: { padding: 10, borderRadius: 12 },
+  headerTitle: { fontSize: 18, fontFamily: FONTS.headingBlack },
+  countBadge: {
+    paddingVertical: 6,
     paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderBottomRightRadius: 12,
+    borderRadius: 10,
+    borderWidth: 1,
   },
-  difficultyText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
-  clueContent: { marginTop: 10, width: '100%', alignItems: 'center' },
-  flagImage: { width: 80, height: 50, borderRadius: 4, resizeMode: 'cover' },
-  clueText: { fontSize: 16, fontWeight: '600', color: '#f8fafc', textAlign: 'center' },
-  clueTextLight: { color: '#1e293b' },
-  searchContainer: { zIndex: 10 },
+  countText: { fontFamily: FONTS.monoBold, fontSize: 12, letterSpacing: 0.5 },
+
+  onlineScoreRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  onlineMyScore: { fontFamily: FONTS.monoBold, fontSize: 16 },
+  onlineVs: { fontFamily: FONTS.mono, fontSize: 11 },
+  onlineOppScore: { fontFamily: FONTS.mono, fontSize: 16 },
+
+  scroll: { flexGrow: 1 },
+
+  searchWrapper: { marginBottom: 16, zIndex: 10 },
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1e293b',
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#334155',
+    borderWidth: 1.5,
   },
-  searchInput: { flex: 1, padding: 15, color: '#f8fafc', fontSize: 16 },
-  searchInputLight: { color: '#1e293b' },
-  suggestionsContainer: {
-    position: 'absolute',
-    top: 60,
-    left: 0,
-    right: 0,
-    backgroundColor: '#1e293b',
-    borderRadius: 16,
+  searchInput: { flex: 1, padding: 16, fontSize: 17 },
+  suggestions: {
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#334155',
-    elevation: 5,
+    marginTop: 6,
+    overflow: 'hidden',
+    elevation: 6,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
   },
-  suggestionsContainerLight: { backgroundColor: '#fff', borderColor: '#e2e8f0' },
-  suggestionItem: { flexDirection: 'row', alignItems: 'center', padding: 15, gap: 15 },
-  suggestionBorder: { borderBottomWidth: 1, borderBottomColor: '#334155' },
-  suggestionItemLight: { borderBottomColor: '#e2e8f0' },
-  suggestionFlag: { width: 30, height: 20, borderRadius: 2 },
-  suggestionText: { color: '#f8fafc', fontSize: 16, fontWeight: '500' },
-  suggestionTextLight: { color: '#1e293b' },
-  guessesContainer: { marginTop: 20, gap: 10 },
-  guessCard: {
+  suggItem: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
+  suggFlag: { width: 36, height: 24, borderRadius: 3 },
+  suggName: { fontFamily: FONTS.heading, fontSize: 15 },
+
+  giveUpBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1e293b',
-    padding: 15,
-    borderRadius: 12,
-    gap: 15,
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 10,
+    paddingVertical: 10,
+    borderRadius: 10,
     borderWidth: 1,
   },
-  guessCardLight: { backgroundColor: '#fff' },
-  guessText: { color: '#f8fafc', fontSize: 16, fontWeight: 'bold' },
-  guessTextLight: { color: '#1e293b' },
-  resultContainer: {
+  giveUpText: { color: '#8b1a1a', fontFamily: FONTS.mono, fontSize: 13 },
+
+  winCard: {
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#1e293b',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  resultTitle: { fontSize: 28, fontWeight: 'bold', marginBottom: 10 },
-  resultAnswer: { fontSize: 18, color: '#94a3b8', marginBottom: 15 },
-  resultAnswerLight: { color: '#475569' },
-  resultFlag: { width: 120, height: 80, borderRadius: 8, marginBottom: 20 },
-  playAgainBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#3b82f6',
-    paddingVertical: 12,
-    paddingHorizontal: 25,
-    borderRadius: 12,
+    padding: 28,
+    borderRadius: 20,
+    borderWidth: 2,
+    marginBottom: 20,
     gap: 10,
   },
-  playAgainText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  winEmoji: { fontSize: 44 },
+  winTitle: { fontSize: 26, fontFamily: FONTS.headingBlack },
+  winFlag: { width: 130, height: 87, borderRadius: 8, marginVertical: 6 },
+  winCountry: { fontSize: 20, fontFamily: FONTS.heading },
+  winSub: { fontFamily: FONTS.mono, fontSize: 13 },
+  replayBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#c04a1a',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#a03a10',
+    marginTop: 8,
+  },
+  replayText: { color: '#fff', fontFamily: FONTS.monoBold, fontSize: 14, letterSpacing: 1 },
+
+  hint: { textAlign: 'center', fontFamily: FONTS.mono, fontSize: 12, marginBottom: 16, lineHeight: 20 },
+
+  // ── Guess card ──
+  guessCard: {
+    borderRadius: 16,
+    borderWidth: 1.5,
+    overflow: 'hidden',
+  },
+  guessCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    gap: 10,
+    borderBottomWidth: 1,
+  },
+  guessBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  guessBadgeText: { fontFamily: FONTS.monoBold, fontSize: 12 },
+  guessFlag: { width: 40, height: 27, borderRadius: 4 },
+  guessName: { flex: 1, fontFamily: FONTS.heading, fontSize: 15 },
+  correctBadge: {
+    backgroundColor: '#10B981',
+    borderRadius: 20,
+    width: 26,
+    height: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  correctBadgeText: { color: '#fff', fontFamily: FONTS.monoBold, fontSize: 14 },
+
+  // ── 3×3 tile grid ──
+  tileGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    padding: 8,
+  },
+  tile: {
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    minHeight: 92,
+  },
+  tileEmoji: { fontSize: 20 },
+  tileLabel: {
+    color: 'rgba(255,255,255,0.8)',
+    fontFamily: FONTS.mono,
+    fontSize: 9,
+    textAlign: 'center',
+    marginBottom: 1,
+  },
+  tileValue: {
+    color: '#ffffff',
+    fontFamily: FONTS.monoBold,
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  tileHint: {
+    color: 'rgba(255,255,255,0.95)',
+    fontFamily: FONTS.monoBold,
+    fontSize: 11,
+    textAlign: 'center',
+  },
 });

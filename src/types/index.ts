@@ -57,9 +57,9 @@ export interface Selection {
 /** Map of theme id -> selection. */
 export type SelectionMap = Record<string, Selection>;
 
-export type GameMode = 'menu' | 'classic' | 'streak' | 'versus' | 'guess';
-export type MatchMode = 'classic' | 'streak' | 'versus';
-export type MatchStatus = 'waiting' | 'in_progress' | 'cancelled' | 'finished';
+export type GameMode = 'menu' | 'classic' | 'streak' | 'versus' | 'guess' | 'globe' | 'quiz-capital' | 'quiz-flag' | 'quiz-mix' | 'local-builder';
+export type MatchMode = 'classic' | 'streak' | 'versus' | 'globe' | 'guess';
+export type MatchStatus = 'waiting' | 'in_progress' | 'completed' | 'cancelled';
 
 /** A multiplayer match row from the `matches` table. */
 export interface Match {
@@ -69,5 +69,80 @@ export interface Match {
   game_mode: MatchMode;
   status: MatchStatus;
   is_public: boolean;
+  is_ranked: boolean;
+  best_of: number;
+  p1_rounds_won: number;
+  p2_rounds_won: number;
+  p1_current_score: number;
+  p2_current_score: number;
+  current_round: number;
+  p1_finished_round: boolean;
+  p2_finished_round: boolean;
+  game_data: {
+    seed: number;
+    is_ranked?: boolean;
+    ranked_modes?: MatchMode[];
+    [key: string]: unknown;
+  } | null;
   [key: string]: unknown;
+}
+
+/** A player's ranked rating row from `player_ratings`. */
+export interface PlayerRating {
+  user_id: string;
+  elo: number;
+  wins: number;
+  losses: number;
+}
+
+// ── Avatar customization ─────────────────────────────────────────────────────
+
+/**
+ * Customization slots. The character itself is a professional 3D hero model
+ * (KayKit, CC0) unlocked in the shop; weapon/offhand are gear attached to the
+ * hero's hand slots; background is the 3D environment; frame is a 2D ring
+ * shown around list thumbnails.
+ */
+export type CosmeticCategory = 'background' | 'hero' | 'weapon' | 'offhand' | 'frame';
+
+/** A purchasable/equippable cosmetic, defined in src/data/cosmetics.ts. */
+export interface CosmeticPart {
+  id: string;
+  category: CosmeticCategory;
+  price: number;
+  isDefault: boolean;
+  nameFr: string;
+  nameEn: string;
+  /** Whether this part exposes a tint color the user can pick (backgrounds). */
+  tintable: boolean;
+  /** Default tint applied when none is chosen (for tintable parts). */
+  defaultTint?: string;
+  /** GLB/GLTF model URL (heroes and gear). */
+  modelUrl?: string;
+  /** Skeleton node the gear attaches to (handslotr / handslotl). */
+  attachBone?: string;
+  /** 2D portrait/thumbnail image URL (heroes). */
+  thumbUrl?: string;
+  /** Representative colour for simple swatch tiles (backgrounds, frames). */
+  swatch?: string;
+}
+
+/** One equipped layer: which part id and its chosen tint (null = part default). */
+export interface AvatarLayer {
+  id: string;
+  tint: string | null;
+}
+
+/** The equipped avatar configuration stored in profiles.avatar_config (JSONB). */
+export interface AvatarConfig {
+  v: number;
+  /** When false, fall back to photo/initials instead of the 3D hero. */
+  useCustom: boolean;
+  layers: Record<CosmeticCategory, AvatarLayer>;
+}
+
+/** A coin balance row from `coin_wallets`. */
+export interface CoinWallet {
+  user_id: string;
+  balance: number;
 }

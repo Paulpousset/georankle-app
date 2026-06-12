@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -9,7 +9,7 @@ import {
   Dimensions,
   Platform,
 } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Trophy, RefreshCcw, Moon, Sun, Heart, TrendingUp, Home } from 'lucide-react-native';
 import type { User } from '@supabase/supabase-js';
@@ -17,7 +17,9 @@ import type { User } from '@supabase/supabase-js';
 import { gameData } from '../data/gameData';
 import { supabase } from '../lib/supabase';
 import { getFlagUrl } from '../lib/flags';
-import type { GameMode, Language } from '../types';
+import type { GameMode, Language, Match } from '../types';
+import { getColors } from '../theme/colors';
+import { FONTS } from '../theme/typography';
 
 const isMobile = Platform.OS === 'ios' || Platform.OS === 'android';
 
@@ -29,6 +31,26 @@ interface ThemeOption {
   [key: string]: any;
 }
 
+function seededShuffle<T>(arr: T[], rand: () => number): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// Deterministic RNG (mulberry32) — same seed → same sequence on both clients
+function createSeededRng(seed: number) {
+  let s = seed;
+  return function () {
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), s | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 interface StreakGameProps {
   isDarkMode: boolean;
   setIsDarkMode: React.Dispatch<React.SetStateAction<boolean>>;
@@ -36,6 +58,8 @@ interface StreakGameProps {
   language?: Language;
   setLanguage: React.Dispatch<React.SetStateAction<Language>>;
   user: User | null;
+  matchData?: Match | null;
+  onRoundComplete?: (score: number) => void;
 }
 
 export default function StreakGame({
@@ -45,7 +69,10 @@ export default function StreakGame({
   language = 'fr',
   setLanguage,
   user,
+  matchData,
+  onRoundComplete,
 }: StreakGameProps) {
+  const c = getColors(isDarkMode);
   const [currentCountry, setCurrentCountry] = useState<any>(null);
   const [options, setOptions] = useState<ThemeOption[]>([]);
   const [bestStreak, setBestStreak] = useState<number>(0);
@@ -53,11 +80,16 @@ export default function StreakGame({
   const [gameOver, setGameOver] = useState<boolean>(false);
   const [lastAnswerCorrect, setLastAnswerCorrect] = useState<boolean | null>(null);
   const [revealedRanks, setRevealedRanks] = useState<Record<string, number>>({});
+  const rngRef = useRef<(() => number) | null>(null);
 
   useEffect(() => {
+    if (matchData?.game_data?.seed) {
+      const roundNumber = matchData.current_round ?? 1;
+      rngRef.current = createSeededRng(matchData.game_data.seed + (roundNumber - 1));
+    }
     initRound();
     if (user) fetchUserBestStreak(user.id);
-  }, [user]);
+  }, []);
 
   const fetchUserBestStreak = async (userId: string) => {
     const { data: scores } = await supabase
@@ -73,15 +105,14 @@ export default function StreakGame({
   };
 
   const initRound = () => {
-    // Pick a random country
+    const rand = rngRef.current ?? Math.random;
     const countries = gameData.countries.filter(
       (c: any) => c.ranks && Object.keys(c.ranks).length >= 4,
     );
-    const country = countries[Math.floor(Math.random() * countries.length)];
+    const country = countries[Math.floor(rand() * countries.length)];
 
-    // Pick 4 random themes available for this country
     const availableThemeIds = Object.keys(country.ranks);
-    const shuffledThemeIds = availableThemeIds.sort(() => Math.random() - 0.5);
+    const shuffledThemeIds = seededShuffle(availableThemeIds, rand);
     const selectedThemeIds = shuffledThemeIds.slice(0, 4);
 
     const roundOptions = selectedThemeIds.map((id: string) => ({
@@ -121,18 +152,23 @@ export default function StreakGame({
       setGameOver(true);
       if (score > bestStreak) setBestStreak(score);
 
-      // Save score to Supabase if logged in
       if (user) {
         supabase
           .from('scores')
-          .insert({
-            user_id: user.id,
-            game_mode: 'streak',
-            score: score,
-          })
+          .insert({ user_id: user.id, game_mode: 'streak', score })
           .then(({ error }) => {
             if (error) console.log('Error saving streak score:', error);
           });
+        // Solo coins (server-side daily cap, score-independent). Skip in matches.
+        if (!matchData) {
+          supabase.rpc('award_solo_coins', { p_game_mode: 'streak' }).then(({ error }) => {
+            if (error) console.log('award_solo_coins error:', error);
+          });
+        }
+      }
+
+      if (matchData && onRoundComplete) {
+        onRoundComplete(score);
       }
     }
   };
@@ -161,8 +197,7 @@ export default function StreakGame({
   };
 
   return (
-    <SafeAreaProvider>
-      <SafeAreaView style={themeStyles.container}>
+    <SafeAreaView style={themeStyles.container}>
         <StatusBar style={isDarkMode ? 'light' : 'dark'} />
 
         <View style={themeStyles.header}>
@@ -170,12 +205,9 @@ export default function StreakGame({
             <>
               <TouchableOpacity
                 onPress={() => setGameMode('menu')}
-                style={[
-                  themeStyles.iconBtn,
-                  { marginRight: 10, backgroundColor: 'rgba(16, 185, 129, 0.1)' },
-                ]}
+                style={[themeStyles.iconBtn, { marginRight: 10 }]}
               >
-                <Home color="#10b981" size={20} />
+                <Home color={c.accent} size={20} />
               </TouchableOpacity>
               <View style={{ flex: 1 }}>
                 <Text style={themeStyles.title}>GeoStreak</Text>
@@ -187,7 +219,7 @@ export default function StreakGame({
                 </View>
                 <View style={styles.statBox}>
                   <Text style={styles.statLabel}>BEST</Text>
-                  <Text style={[styles.statValue, { color: '#fbbf24' }]}>{bestStreak}</Text>
+                  <Text style={[styles.statValue, { color: c.accent }]}>{bestStreak}</Text>
                 </View>
               </View>
               <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
@@ -195,13 +227,7 @@ export default function StreakGame({
                   onPress={() => setLanguage(language === 'fr' ? 'en' : 'fr')}
                   style={[themeStyles.iconBtn, { minWidth: 40, alignItems: 'center' }]}
                 >
-                  <Text
-                    style={{
-                      color: isDarkMode ? '#fff' : '#1e293b',
-                      fontWeight: 'bold',
-                      fontSize: 12,
-                    }}
-                  >
+                  <Text style={{ fontFamily: FONTS.monoBold, color: c.text, fontSize: 11 }}>
                     {language.toUpperCase()}
                   </Text>
                 </TouchableOpacity>
@@ -210,9 +236,9 @@ export default function StreakGame({
                   style={themeStyles.iconBtn}
                 >
                   {isDarkMode ? (
-                    <Sun color="#fbbf24" size={20} />
+                    <Sun color={c.accent} size={20} />
                   ) : (
-                    <Moon color="#64748b" size={20} />
+                    <Moon color={c.textMuted} size={20} />
                   )}
                 </TouchableOpacity>
               </View>
@@ -222,12 +248,9 @@ export default function StreakGame({
               <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                 <TouchableOpacity
                   onPress={() => setGameMode('menu')}
-                  style={[
-                    themeStyles.iconBtn,
-                    { marginRight: 8, backgroundColor: 'rgba(16, 185, 129, 0.1)' },
-                  ]}
+                  style={[themeStyles.iconBtn, { marginRight: 8 }]}
                 >
-                  <Home color="#10b981" size={18} />
+                  <Home color={c.accent} size={18} />
                 </TouchableOpacity>
                 <Text style={themeStyles.title}>GeoStreak</Text>
               </View>
@@ -240,7 +263,7 @@ export default function StreakGame({
                   </View>
                   <View
                     style={{
-                      backgroundColor: isDarkMode ? '#334155' : '#e2e8f0',
+                      backgroundColor: c.border,
                       width: 1,
                       height: 20,
                       marginHorizontal: 4,
@@ -248,7 +271,7 @@ export default function StreakGame({
                   />
                   <View style={styles.statBox}>
                     <Text style={styles.statLabel}>BEST</Text>
-                    <Text style={[styles.statValue, { color: '#fbbf24' }]}>{bestStreak}</Text>
+                    <Text style={[styles.statValue, { color: c.accent }]}>{bestStreak}</Text>
                   </View>
                 </View>
 
@@ -256,13 +279,7 @@ export default function StreakGame({
                   onPress={() => setLanguage(language === 'fr' ? 'en' : 'fr')}
                   style={[themeStyles.iconBtn, { minWidth: 40, alignItems: 'center' }]}
                 >
-                  <Text
-                    style={{
-                      color: isDarkMode ? '#fff' : '#1e293b',
-                      fontWeight: 'bold',
-                      fontSize: 12,
-                    }}
-                  >
+                  <Text style={{ fontFamily: FONTS.monoBold, color: c.text, fontSize: 11 }}>
                     {language.toUpperCase()}
                   </Text>
                 </TouchableOpacity>
@@ -271,9 +288,9 @@ export default function StreakGame({
                   style={themeStyles.iconBtn}
                 >
                   {isDarkMode ? (
-                    <Sun color="#fbbf24" size={18} />
+                    <Sun color={c.accent} size={18} />
                   ) : (
-                    <Moon color="#64748b" size={18} />
+                    <Moon color={c.textMuted} size={18} />
                   )}
                 </TouchableOpacity>
               </View>
@@ -286,21 +303,21 @@ export default function StreakGame({
             <>
               <View
                 style={{
-                  backgroundColor: '#10b98120',
+                  backgroundColor: isDarkMode ? 'rgba(74,158,255,0.08)' : 'rgba(192,74,26,0.08)',
                   padding: 12,
                   borderRadius: 12,
                   marginBottom: 20,
                   borderLeftWidth: 4,
-                  borderLeftColor: '#10b981',
+                  borderLeftColor: c.accent,
                   width: '100%',
                   maxWidth: 700,
                 }}
               >
                 <Text
                   style={{
-                    color: isDarkMode ? '#f8fafc' : '#065f46',
-                    fontSize: 17,
-                    fontWeight: '600',
+                    color: c.text,
+                    fontFamily: FONTS.mono,
+                    fontSize: 13,
                     textAlign: 'center',
                   }}
                 >
@@ -311,7 +328,7 @@ export default function StreakGame({
               </View>
               <View style={themeStyles.card}>
                 <Image source={{ uri: getFlagUrl(currentCountry.cca3) }} style={styles.flag} />
-                <Text style={[styles.countryName, !isDarkMode && { color: '#1e293b' }]}>
+                <Text style={[styles.countryName, !isDarkMode && { color: c.text }]}>
                   {language === 'fr'
                     ? currentCountry.name
                     : currentCountry.name_en || currentCountry.name}
@@ -327,19 +344,19 @@ export default function StreakGame({
             <>
               <View
                 style={{
-                  backgroundColor: '#10b98120',
+                  backgroundColor: isDarkMode ? 'rgba(74,158,255,0.08)' : 'rgba(192,74,26,0.08)',
                   padding: 8,
                   borderRadius: 10,
                   marginBottom: 12,
                   borderLeftWidth: 4,
-                  borderLeftColor: '#10b981',
+                  borderLeftColor: c.accent,
                   width: '100%',
                   maxWidth: 700,
                 }}
               >
                 <Text
                   style={{
-                    color: isDarkMode ? '#f8fafc' : '#065f46',
+                    color: c.text,
                     fontSize: 13,
                     fontWeight: '600',
                     textAlign: 'center',
@@ -360,7 +377,7 @@ export default function StreakGame({
                     <Text
                       style={[
                         styles.countryName,
-                        !isDarkMode && { color: '#1e293b' },
+                        !isDarkMode && { color: c.text },
                         { fontSize: 24, textAlign: 'left' },
                       ]}
                     >
@@ -389,7 +406,7 @@ export default function StreakGame({
               >
                 <Text style={styles.emoji}>{theme.emoji}</Text>
                 <Text
-                  style={[styles.themeLabel, !isDarkMode && { color: '#1e293b' }]}
+                  style={[styles.themeLabel, !isDarkMode && { color: c.text }]}
                   numberOfLines={2}
                 >
                   {language === 'fr' ? theme.label.fr : theme.label.en || theme.label.fr}
@@ -401,11 +418,11 @@ export default function StreakGame({
             ))}
           </View>
 
-          {gameOver && (
+          {gameOver && !matchData && (
             <View style={styles.gameOverOverlay}>
               <Text style={styles.gameOverTitle}>{language === 'fr' ? 'PERDU !' : 'LOST!'}</Text>
               <Text style={styles.gameOverScore}>
-                {language === 'fr' ? 'Score final : ' : 'Final score: '}
+                {language === 'fr' ? 'Votre score : ' : 'Your score: '}
                 {score}
               </Text>
               <TouchableOpacity style={styles.resetBtn} onPress={resetGame}>
@@ -417,40 +434,41 @@ export default function StreakGame({
             </View>
           )}
         </View>
-      </SafeAreaView>
-    </SafeAreaProvider>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a', userSelect: 'none' },
-  containerLight: { backgroundColor: '#f8fafc' },
+  container: { flex: 1, backgroundColor: '#0a1628', userSelect: 'none' as any },
+  containerLight: { backgroundColor: '#f2e8d0' },
   header: {
     paddingHorizontal: 15,
     paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#1e293b',
+    borderBottomColor: '#2d4a70',
     minHeight: 60,
   },
-  headerLight: { backgroundColor: '#fff', borderBottomColor: '#e2e8f0' },
-  title: { fontSize: 18, fontWeight: '900', color: '#f8fafc' },
-  titleLight: { color: '#1e293b' },
+  headerLight: { backgroundColor: '#e8d9b8', borderBottomColor: '#c4a87a' },
+  title: { fontSize: 18, fontFamily: FONTS.headingBlack, color: '#d8e8f4' },
+  titleLight: { color: '#2c1810' },
   statsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1e293b',
+    backgroundColor: '#1a2d50',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 10,
     marginRight: 5,
+    borderWidth: 1,
+    borderColor: '#2d4a70',
   },
   statBox: { alignItems: 'center', paddingHorizontal: 4 },
-  statLabel: { fontSize: 7, color: '#64748b', fontWeight: 'bold' },
-  statValue: { fontSize: 16, color: '#10b981', fontWeight: '900' },
-  iconBtn: { padding: 6, backgroundColor: '#1e293b', borderRadius: 10 },
-  iconBtnLight: { backgroundColor: '#f1f5f9', borderWidth: 1, borderColor: '#e2e8f0' },
+  statLabel: { fontSize: 7, fontFamily: FONTS.mono, color: '#4a6a88', letterSpacing: 0.5 },
+  statValue: { fontSize: 16, fontFamily: FONTS.monoBold, color: '#4a9eff' },
+  iconBtn: { padding: 6, backgroundColor: '#1a2d50', borderRadius: 10, borderWidth: 1, borderColor: '#2d4a70' },
+  iconBtnLight: { backgroundColor: '#f8f2e3', borderColor: '#c4a87a' },
   gameArea: {
     flex: 1,
     padding: 16,
@@ -459,66 +477,57 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   card: {
-    backgroundColor: '#1e293b',
+    backgroundColor: '#132040',
     padding: 25,
-    borderRadius: 24,
+    borderRadius: 16,
     alignItems: 'center',
     marginBottom: 15,
-    borderWidth: 1,
-    borderColor: '#334155',
+    borderWidth: 2,
+    borderColor: '#2d4a70',
     width: '100%',
     maxWidth: 700,
   },
-  cardLight: {
-    backgroundColor: '#fff',
-    borderColor: '#e2e8f0',
-    boxShadow: '0px 2px 10px rgba(0, 0, 0, 0.05)',
-  },
-  flag: { width: 120, height: 80, borderRadius: 12, marginBottom: 15 },
-  countryName: { fontSize: 32, fontWeight: '900', color: '#f8fafc', textAlign: 'center' },
-  instruction: { color: '#64748b', fontSize: 14, marginTop: 10 },
+  cardLight: { backgroundColor: '#e8d9b8', borderColor: '#c4a87a' },
+  flag: { width: 120, height: 80, borderRadius: 10, marginBottom: 15 },
+  countryName: { fontSize: 32, fontFamily: FONTS.headingBlack, color: '#d8e8f4', textAlign: 'center' },
+  instruction: { fontFamily: FONTS.mono, color: '#4a6a88', fontSize: 12, marginTop: 10 },
   optionsGrid: { gap: 10, width: '100%', maxWidth: 700 },
   themeBtn: {
-    backgroundColor: '#1e293b',
-    padding: 18,
-    borderRadius: 16,
+    backgroundColor: '#132040',
+    padding: 16,
+    borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#334155',
+    borderWidth: 1.5,
+    borderColor: '#2d4a70',
   },
-  themeBtnLight: {
-    backgroundColor: '#fff',
-    borderColor: '#e2e8f0',
-    boxShadow: '0px 2px 5px rgba(0, 0, 0, 0.05)',
-  },
-  correctBtn: { borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)' },
-  wrongBtn: { borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)' },
-  emoji: { fontSize: 24, marginRight: 15 },
-  themeLabel: { color: '#f8fafc', fontSize: 16, fontWeight: '600', flex: 1 },
-  rankText: { fontSize: 20, fontWeight: '900', color: '#38bdf8' },
+  themeBtnLight: { backgroundColor: '#f8f2e3', borderColor: '#c4a87a' },
+  correctBtn: { borderColor: '#2a6e3f', backgroundColor: 'rgba(42,110,63,0.15)' },
+  wrongBtn: { borderColor: '#8b1a1a', backgroundColor: 'rgba(139,26,26,0.15)' },
+  emoji: { fontSize: 22, marginRight: 14 },
+  themeLabel: { fontFamily: FONTS.heading, color: '#d8e8f4', fontSize: 15, flex: 1 },
+  rankText: { fontSize: 18, fontFamily: FONTS.monoBold, color: '#4a9eff' },
   gameOverOverlay: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(10,22,40,0.96)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 24,
+    borderRadius: 16,
     padding: 20,
   },
-  gameOverTitle: { fontSize: 48, fontWeight: '900', color: '#ef4444', marginBottom: 10 },
-  gameOverScore: { fontSize: 24, color: '#f8fafc', marginBottom: 30 },
+  gameOverTitle: { fontSize: 44, fontFamily: FONTS.headingBlack, color: '#8b1a1a', marginBottom: 10 },
+  gameOverScore: { fontSize: 22, fontFamily: FONTS.mono, color: '#d8e8f4', marginBottom: 30 },
   resetBtn: {
-    backgroundColor: '#10b981',
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 16,
+    backgroundColor: '#c04a1a',
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#a03a10',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  resetBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  resetBtnText: { color: '#fff', fontFamily: FONTS.monoBold, fontSize: 14, letterSpacing: 1 },
 });

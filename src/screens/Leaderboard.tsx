@@ -10,6 +10,8 @@ import {
 import { Award, LayoutGrid, Zap } from 'lucide-react-native';
 
 import { supabase } from '../lib/supabase';
+import { getColors } from '../theme/colors';
+import { FONTS } from '../theme/typography';
 import type { Language } from '../types';
 
 type Tab = 'classic' | 'streak';
@@ -25,9 +27,10 @@ interface LeaderboardProps {
   isDarkMode: boolean;
 }
 
-const MEDAL_COLORS = ['#fbbf24', '#94a3b8', '#b45309']; // Gold, Silver, Bronze
+const MEDAL_COLORS = ['#c4872a', '#7aa0c4', '#a08060']; // Gold → sand, Silver → nightMuted, Bronze → brownLight
 
 const Leaderboard = ({ language, isDarkMode }: LeaderboardProps) => {
+  const c = getColors(isDarkMode);
   const [activeTab, setActiveTab] = useState<Tab>('classic');
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<LeaderboardEntry[]>([]);
@@ -39,9 +42,6 @@ const Leaderboard = ({ language, isDarkMode }: LeaderboardProps) => {
 
   const fetchLeaderboard = async () => {
     setLoading(true);
-
-    // Classic now stores efficiency (%), so highest is best — same as streak.
-    const isClassic = activeTab === 'classic';
 
     const { data: scores, error } = await supabase
       .from('scores')
@@ -61,10 +61,9 @@ const Leaderboard = ({ language, isDarkMode }: LeaderboardProps) => {
     if (error) {
       console.error('Leaderboard fetch error:', error);
     } else {
-      // Keep only each user's single best score.
       const seenUsers: Record<string, boolean> = {};
+      const isClassic = activeTab === 'classic';
       const filteredData = (scores as unknown as LeaderboardEntry[]).filter((item) => {
-        // Ignore legacy classic scores (> 100), which were total ranks.
         if (isClassic && item.score > 100) return false;
         if (!seenUsers[item.user_id]) {
           seenUsers[item.user_id] = true;
@@ -81,17 +80,22 @@ const Leaderboard = ({ language, isDarkMode }: LeaderboardProps) => {
     const isTop3 = index < 3;
 
     return (
-      <View style={[styles.itemRow, isDarkMode && styles.itemRowDark]}>
+      <View
+        style={[
+          styles.itemRow,
+          { backgroundColor: c.card, borderColor: c.border },
+        ]}
+      >
         <View style={styles.rankContainer}>
           {isTop3 ? (
             <Award size={24} color={MEDAL_COLORS[index]} />
           ) : (
-            <Text style={[styles.rankText, isDarkMode && styles.textDark]}>{index + 1}</Text>
+            <Text style={[styles.rankText, { color: c.textMuted }]}>{index + 1}</Text>
           )}
         </View>
 
         <View style={styles.userInfo}>
-          <Text style={[styles.username, isDarkMode && styles.textDark]}>
+          <Text style={[styles.username, { color: c.text }]}>
             {item.profiles?.username || 'Joueur Anonyme'}
           </Text>
         </View>
@@ -100,7 +104,7 @@ const Leaderboard = ({ language, isDarkMode }: LeaderboardProps) => {
           <Text
             style={[
               styles.scoreValue,
-              activeTab === 'classic' ? styles.classicColor : styles.streakColor,
+              { color: activeTab === 'classic' ? '#2a6e3f' : '#c4872a' },
             ]}
           >
             {activeTab === 'classic' ? `${item.score}%` : `${item.score} pts`}
@@ -111,28 +115,28 @@ const Leaderboard = ({ language, isDarkMode }: LeaderboardProps) => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={[styles.title, isDarkMode && styles.textDark]}>
+    <View style={[styles.container, { backgroundColor: c.background }]}>
+      <Text style={[styles.title, { color: c.text }]}>
         {language === 'fr' ? 'Classement Mondial' : 'Global Leaderboard'}
       </Text>
 
-      <View style={styles.tabs}>
+      <View style={[styles.tabs, { backgroundColor: c.card, borderColor: c.border }]}>
         <TouchableOpacity
           onPress={() => setActiveTab('classic')}
-          style={[styles.tab, activeTab === 'classic' && styles.activeTabClassic]}
+          style={[styles.tab, activeTab === 'classic' && { backgroundColor: '#2a6e3f' }]}
         >
-          <LayoutGrid size={18} color={activeTab === 'classic' ? 'white' : '#64748b'} />
-          <Text style={[styles.tabText, activeTab === 'classic' && styles.activeTabText]}>
+          <LayoutGrid size={18} color={activeTab === 'classic' ? 'white' : c.textMuted} />
+          <Text style={[styles.tabText, { color: activeTab === 'classic' ? 'white' : c.textMuted }]}>
             CLASSIC
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={() => setActiveTab('streak')}
-          style={[styles.tab, activeTab === 'streak' && styles.activeTabStreak]}
+          style={[styles.tab, activeTab === 'streak' && { backgroundColor: '#c4872a' }]}
         >
-          <Zap size={18} color={activeTab === 'streak' ? 'white' : '#64748b'} />
-          <Text style={[styles.tabText, activeTab === 'streak' && styles.activeTabText]}>
+          <Zap size={18} color={activeTab === 'streak' ? 'white' : c.textMuted} />
+          <Text style={[styles.tabText, { color: activeTab === 'streak' ? 'white' : c.textMuted }]}>
             STREAK
           </Text>
         </TouchableOpacity>
@@ -140,7 +144,7 @@ const Leaderboard = ({ language, isDarkMode }: LeaderboardProps) => {
 
       {loading ? (
         <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color="#2563eb" />
+          <ActivityIndicator size="large" color={c.accent} />
         </View>
       ) : (
         <FlatList
@@ -149,7 +153,7 @@ const Leaderboard = ({ language, isDarkMode }: LeaderboardProps) => {
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
-            <Text style={styles.emptyText}>
+            <Text style={[styles.emptyText, { color: c.textMuted }]}>
               {language === 'fr' ? 'Aucun score enregistré' : 'No scores recorded yet'}
             </Text>
           }
@@ -163,49 +167,45 @@ const styles = StyleSheet.create({
   container: { flex: 1, padding: 10 },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontFamily: FONTS.headingBlack,
     textAlign: 'center',
     marginBottom: 20,
-    color: '#1e293b',
   },
-  tabs: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+  tabs: {
+    flexDirection: 'row',
+    gap: 4,
+    marginBottom: 20,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 4,
+  },
   tab: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: '#f1f5f9',
+    padding: 10,
+    borderRadius: 10,
     gap: 8,
   },
-  activeTabClassic: { backgroundColor: '#10b981' },
-  activeTabStreak: { backgroundColor: '#fbbf24' },
-  tabText: { fontWeight: 'bold', color: '#64748b', fontSize: 13 },
-  activeTabText: { color: 'white' },
+  tabText: { fontFamily: FONTS.monoBold, fontSize: 12 },
   listContent: { paddingBottom: 20 },
   itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 15,
-    backgroundColor: '#fff',
-    borderRadius: 16,
+    borderRadius: 14,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
   },
-  itemRowDark: { backgroundColor: '#1e293b', borderColor: '#334155' },
   rankContainer: { width: 40, alignItems: 'center' },
-  rankText: { fontWeight: 'bold', color: '#64748b' },
+  rankText: { fontFamily: FONTS.monoBold },
   userInfo: { flex: 1, paddingLeft: 10 },
-  username: { fontWeight: 'bold', color: '#1e293b' },
+  username: { fontFamily: FONTS.heading },
   scoreContainer: { alignItems: 'flex-end' },
-  scoreValue: { fontWeight: '900', fontSize: 16 },
-  classicColor: { color: '#10b981' },
-  streakColor: { color: '#fbbf24' },
-  textDark: { color: '#f8fafc' },
+  scoreValue: { fontFamily: FONTS.headingBlack, fontSize: 16 },
   loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
-  emptyText: { textAlign: 'center', color: '#64748b', marginTop: 40 },
+  emptyText: { textAlign: 'center', marginTop: 40, fontFamily: FONTS.mono },
 });
 
 export default Leaderboard;

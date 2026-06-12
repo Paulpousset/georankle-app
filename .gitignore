@@ -34,9 +34,19 @@ yarn-error.*
 .env
 .env*.local
 
+# store submission secrets
+google-service-account.json
+
+# build artifacts
+*.ipa
+*.aab
+*.apk
+
 # typescript
 *.tsbuildinfo
 
 # generated native folders
 /ios
 /android
+.vercel
+.env*

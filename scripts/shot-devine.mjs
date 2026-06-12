@@ -1,0 +1,24 @@
+import pw from '/Users/paulpousset/.npm/_npx/e41f203b7505f1fb/node_modules/playwright/index.js';
+const { chromium } = pw;
+const URL = 'http://localhost:5577';
+const OUT = '/Users/paulpousset/rankle/georankle-app/store-screenshots';
+const browser = await chromium.launch({ channel: 'chrome' });
+const ctx = await browser.newContext({ viewport: { width: 430, height: 932 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
+const page = await ctx.newPage();
+await page.goto(URL, { waitUntil: 'networkidle', timeout: 60000 });
+await page.waitForTimeout(3000);
+await page.getByText('Solo', { exact: true }).first().click();
+await page.waitForTimeout(1500);
+await page.getByText('Devinez le Pays', { exact: true }).first().click();
+await page.waitForTimeout(2500);
+const input = page.locator('input').first();
+await input.waitFor({ state: 'visible', timeout: 9000 });
+await input.click();
+await input.type('France', { delay: 60 });
+await page.waitForTimeout(1500);
+// click the autocomplete suggestion row (2nd "France" occurrence = the dropdown item)
+await page.getByText('France', { exact: true }).first().click();
+await page.waitForTimeout(2800);
+await page.screenshot({ path: `${OUT}/06-devine.png` });
+console.log('• shot 06-devine');
+await browser.close();

@@ -11,6 +11,7 @@ import {
 import { LayoutGrid, LogIn, Lock, Mail, User, UserPlus, Zap } from 'lucide-react-native';
 
 import { supabase } from '../lib/supabase';
+import { FONTS } from '../theme/typography';
 import type { Language } from '../types';
 
 type Mode = 'login' | 'signup' | 'profile';
@@ -192,13 +193,15 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
                   width: 80,
                   height: 80,
                   borderRadius: 40,
-                  backgroundColor: '#2563eb',
+                  backgroundColor: '#1a4a7a',
                   alignItems: 'center',
                   justifyContent: 'center',
                   marginBottom: 15,
+                  borderWidth: 2,
+                  borderColor: '#c4a87a',
                 }}
               >
-                <User color="white" size={40} />
+                <User color="#d8e8f4" size={40} />
               </View>
 
               <View style={[styles.inputContainer, { marginBottom: 10, width: '100%' }]}>
@@ -207,21 +210,22 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
                   value={username}
                   onChangeText={setUsername}
                   style={styles.input}
+                  placeholderTextColor="#a08060"
                 />
                 <TouchableOpacity onPress={updateUsername} disabled={loading}>
-                  <Text style={{ color: '#2563eb', fontWeight: 'bold', paddingRight: 10 }}>
+                  <Text style={{ color: '#c04a1a', fontFamily: FONTS.monoBold, paddingRight: 10 }}>
                     {language === 'fr' ? 'OK' : 'SET'}
                   </Text>
                 </TouchableOpacity>
               </View>
-              <Text style={{ fontSize: 12, color: '#64748b' }}>{email}</Text>
+              <Text style={{ fontSize: 12, fontFamily: FONTS.mono, color: '#7a5c38' }}>{email}</Text>
             </View>
 
             <Text
               style={{
                 fontSize: 14,
-                fontWeight: 'bold',
-                color: '#1e293b',
+                fontFamily: FONTS.monoBold,
+                color: '#2c1810',
                 marginBottom: 10,
                 textAlign: 'center',
               }}
@@ -230,44 +234,24 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
             </Text>
 
             <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
-              <View
-                style={{
-                  flex: 1,
-                  backgroundColor: '#f8fafc',
-                  padding: 12,
-                  borderRadius: 12,
-                  alignItems: 'center',
-                  borderWidth: 1,
-                  borderColor: '#e2e8f0',
-                }}
-              >
-                <LayoutGrid size={20} color="#10b981" />
-                <Text style={{ fontSize: 10, color: '#64748b', marginTop: 4 }}>CLASSIC</Text>
-                <Text style={{ fontSize: 18, fontWeight: '900', color: '#10b981' }}>
+              <View style={styles.statCard}>
+                <LayoutGrid size={20} color="#2a6e3f" />
+                <Text style={styles.statLabel}>CLASSIC</Text>
+                <Text style={[styles.statValue, { color: '#2a6e3f' }]}>
                   {bestClassic || '—'}
                 </Text>
               </View>
-              <View
-                style={{
-                  flex: 1,
-                  backgroundColor: '#f8fafc',
-                  padding: 12,
-                  borderRadius: 12,
-                  alignItems: 'center',
-                  borderWidth: 1,
-                  borderColor: '#e2e8f0',
-                }}
-              >
-                <Zap size={20} color="#fbbf24" />
-                <Text style={{ fontSize: 10, color: '#64748b', marginTop: 4 }}>STREAK</Text>
-                <Text style={{ fontSize: 18, fontWeight: '900', color: '#fbbf24' }}>
+              <View style={styles.statCard}>
+                <Zap size={20} color="#c4872a" />
+                <Text style={styles.statLabel}>STREAK</Text>
+                <Text style={[styles.statValue, { color: '#c4872a' }]}>
                   {bestStreak || '—'}
                 </Text>
               </View>
             </View>
 
             <TouchableOpacity
-              style={[styles.button, { backgroundColor: '#ef4444' }]}
+              style={[styles.button, { backgroundColor: '#8b1a1a' }]}
               onPress={async () => {
                 await supabase.auth.signOut();
                 setMode('login');
@@ -284,19 +268,19 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
             <Text style={styles.title}>{mode === 'login' ? t.login : t.signup}</Text>
 
             <View style={styles.inputContainer}>
-              <Mail size={20} color="#666" style={styles.icon} />
+              <Mail size={20} color="#7a5c38" style={styles.icon} />
               <TextInput
                 onChangeText={setEmail}
                 value={email}
                 placeholder="email@address.com"
                 autoCapitalize="none"
                 style={styles.input}
-                placeholderTextColor="#999"
+                placeholderTextColor="#a08060"
               />
             </View>
 
             <View style={styles.inputContainer}>
-              <Lock size={20} color="#666" style={styles.icon} />
+              <Lock size={20} color="#7a5c38" style={styles.icon} />
               <TextInput
                 onChangeText={setPassword}
                 value={password}
@@ -304,13 +288,13 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
                 placeholder={t.password}
                 autoCapitalize="none"
                 style={styles.input}
-                placeholderTextColor="#999"
+                placeholderTextColor="#a08060"
               />
             </View>
 
             {mode === 'signup' && (
               <View style={styles.inputContainer}>
-                <Lock size={20} color="#666" style={styles.icon} />
+                <Lock size={20} color="#7a5c38" style={styles.icon} />
                 <TextInput
                   onChangeText={setConfirmPassword}
                   value={confirmPassword}
@@ -318,7 +302,7 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
                   placeholder={t.confirmPassword}
                   autoCapitalize="none"
                   style={styles.input}
-                  placeholderTextColor="#999"
+                  placeholderTextColor="#a08060"
                 />
               </View>
             )}
@@ -357,34 +341,38 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
 const styles = StyleSheet.create({
   container: { padding: 20, width: '100%', maxWidth: 400, alignSelf: 'center' },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: '#e8d9b8',
     padding: 24,
     borderRadius: 16,
-    shadowColor: '#000',
+    borderWidth: 2,
+    borderColor: '#c4a87a',
+    shadowColor: '#2c1810',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 10,
     elevation: 5,
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontFamily: FONTS.headingBlack,
     marginBottom: 24,
     textAlign: 'center',
-    color: '#1a1a1a',
+    color: '#2c1810',
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f2e8d0',
     borderRadius: 12,
     marginBottom: 16,
     paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#c4a87a',
   },
   icon: { marginRight: 10 },
-  input: { flex: 1, height: 50, color: '#333', fontSize: 16 },
+  input: { flex: 1, height: 50, color: '#2c1810', fontSize: 16, fontFamily: FONTS.mono },
   button: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#c04a1a',
     height: 50,
     borderRadius: 12,
     flexDirection: 'row',
@@ -393,8 +381,19 @@ const styles = StyleSheet.create({
     marginTop: 8,
     gap: 10,
   },
-  buttonText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
-  switchText: { marginTop: 20, color: '#2563eb', textAlign: 'center', fontSize: 14 },
+  buttonText: { color: 'white', fontSize: 16, fontFamily: FONTS.monoBold },
+  switchText: { marginTop: 20, color: '#c04a1a', textAlign: 'center', fontSize: 14, fontFamily: FONTS.mono },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#f2e8d0',
+    padding: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#c4a87a',
+  },
+  statLabel: { fontSize: 10, fontFamily: FONTS.mono, color: '#7a5c38', marginTop: 4 },
+  statValue: { fontSize: 18, fontFamily: FONTS.headingBlack },
 });
 
 export default Auth;

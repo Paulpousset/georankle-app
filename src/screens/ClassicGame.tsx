@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Image,
   Platform,
@@ -7,21 +7,43 @@ import {
   View,
   type GestureResponderEvent,
 } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Home, Info, Moon, RefreshCcw, Sun, Trophy } from 'lucide-react-native';
 import type { User } from '@supabase/supabase-js';
 
-import type { Language, Selection, SelectionMap, Theme } from '../types';
+import type { Language, Match, Selection, SelectionMap, Theme } from '../types';
 import { gameData } from '../data/gameData';
 import { supabase } from '../lib/supabase';
 import { getFlagUrl } from '../lib/flags';
 import { getEfficiencyColor, getRankColor } from '../lib/ranks';
 import { pickLabel, tr } from '../i18n';
 import { commonStyles as styles } from '../theme/commonStyles';
+import { getColors } from '../theme/colors';
+import { FONTS } from '../theme/typography';
 import { ThemeInfoModal } from '../components/ThemeInfoModal';
 
 const isMobile = Platform.OS === 'ios' || Platform.OS === 'android';
+
+// Deterministic RNG (mulberry32) — same seed → same sequence on both clients
+function createSeededRng(seed: number) {
+  let s = seed;
+  return function () {
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), s | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function seededShuffle<T>(arr: T[], rand: () => number): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 const SESSION_SIZE = 8;
 /** Default rank used when a country has no value for a theme. */
@@ -31,6 +53,8 @@ interface ClassicGameProps {
   isDarkMode: boolean;
   language: Language;
   user: User | null;
+  matchData?: Match | null;
+  onRoundComplete?: (score: number) => void;
   onExit: () => void;
   onToggleTheme: () => void;
   onToggleLanguage: () => void;
@@ -44,10 +68,13 @@ export function ClassicGame({
   isDarkMode,
   language,
   user,
+  matchData,
+  onRoundComplete,
   onExit,
   onToggleTheme,
   onToggleLanguage,
 }: ClassicGameProps) {
+  const c = getColors(isDarkMode);
   const [sessionThemes, setSessionThemes] = useState<Theme[]>([]);
   const [rounds, setRounds] = useState<typeof gameData.countries>([]);
   const [currentRoundIndex, setCurrentRoundIndex] = useState(0);
@@ -59,7 +86,13 @@ export function ClassicGame({
   const [optimalSelections, setOptimalSelections] = useState<SelectionMap>({});
   const [showThemeInfo, setShowThemeInfo] = useState<Theme | null>(null);
 
+  const rngRef = useRef<(() => number) | null>(null);
+
   useEffect(() => {
+    if (matchData?.game_data?.seed) {
+      const roundNumber = matchData.current_round ?? 1;
+      rngRef.current = createSeededRng(matchData.game_data.seed + (roundNumber - 1));
+    }
     initGame();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -135,36 +168,44 @@ export function ClassicGame({
   };
 
   const initGame = () => {
-    // 1. Pick 8 themes that are present in a meaningful number of countries.
-    const allThemeIds = Object.keys(gameData.themes).filter((themeId) => {
-      const coverage = gameData.countries.filter(
-        (c) => c.ranks && c.ranks[themeId] !== undefined,
-      ).length;
-      return coverage > 10;
-    });
-    const shuffledThemes = [...allThemeIds].sort(() => Math.random() - 0.5);
-    const selectedThemes: Theme[] = shuffledThemes
-      .slice(0, SESSION_SIZE)
-      .map((id) => ({ id, ...gameData.themes[id] }));
+    const roundNumber = matchData?.current_round ?? 1;
+    const sessions = matchData?.game_data?.sessions as Record<number, { themeIds: string[]; countryCca3s: string[] }> | undefined;
+    const prebuilt = sessions?.[roundNumber];
 
-    // 2. Pick 8 countries that have data for every selected theme.
-    let countries = gameData.countries.filter((c) =>
-      selectedThemes.every(
-        (theme) =>
-          c.ranks && c.ranks[theme.id] !== undefined && c.data && c.data[theme.id] !== undefined,
-      ),
-    );
+    let selectedThemes: Theme[];
+    let selectedCountries: typeof gameData.countries;
 
-    // Fallback: if too few countries cover all 8 themes, prefer the ones with
-    // the most data available.
-    if (countries.length < SESSION_SIZE) {
-      console.warn('Not enough countries with all 8 themes, falling back...');
-      countries = [...gameData.countries].sort(
-        (a, b) => Object.keys(b.ranks).length - Object.keys(a.ranks).length,
+    if (prebuilt) {
+      // Online mode: use pre-computed session stored in game_data — guaranteed identical for both players.
+      selectedThemes = prebuilt.themeIds.map((id: string) => ({ id, ...gameData.themes[id] }));
+      selectedCountries = prebuilt.countryCca3s
+        .map((cca3: string) => gameData.countries.find((c) => c.cca3 === cca3))
+        .filter(Boolean) as typeof gameData.countries;
+    } else {
+      // Solo mode: randomise locally.
+      const allThemeIds = Object.keys(gameData.themes).filter((themeId) => {
+        const coverage = gameData.countries.filter(
+          (c) => c.ranks && c.ranks[themeId] !== undefined,
+        ).length;
+        return coverage > 10;
+      });
+      const rand = rngRef.current ?? Math.random;
+      selectedThemes = seededShuffle(allThemeIds, rand)
+        .slice(0, SESSION_SIZE)
+        .map((id) => ({ id, ...gameData.themes[id] }));
+      let countries = gameData.countries.filter((c) =>
+        selectedThemes.every(
+          (theme) =>
+            c.ranks && c.ranks[theme.id] !== undefined && c.data && c.data[theme.id] !== undefined,
+        ),
       );
+      if (countries.length < SESSION_SIZE) {
+        countries = [...gameData.countries].sort(
+          (a, b) => Object.keys(b.ranks).length - Object.keys(a.ranks).length,
+        );
+      }
+      selectedCountries = seededShuffle(countries, rand).slice(0, SESSION_SIZE);
     }
-
-    const selectedCountries = [...countries].sort(() => Math.random() - 0.5).slice(0, SESSION_SIZE);
 
     setSessionThemes(selectedThemes);
     setRounds(selectedCountries);
@@ -216,6 +257,16 @@ export function ClassicGame({
             .then(({ error }) => {
               if (error) console.error('Error saving classic efficiency:', error);
             });
+          // Solo coins (server-side daily cap, score-independent). Skip in matches.
+          if (!matchData) {
+            supabase.rpc('award_solo_coins', { p_game_mode: 'classic' }).then(({ error }) => {
+              if (error) console.log('award_solo_coins error:', error);
+            });
+          }
+        }
+
+        if (matchData && onRoundComplete) {
+          onRoundComplete(gameEfficiency);
         }
       }, 500);
     }
@@ -271,8 +322,7 @@ export function ClassicGame({
   const efficiency = gameOver ? Math.round((optimalTotalValue / Math.max(totalScore, 1)) * 100) : 0;
 
   return (
-    <SafeAreaProvider>
-      <SafeAreaView style={themeStyles.container}>
+    <SafeAreaView style={themeStyles.container}>
         <StatusBar style={isDarkMode ? 'light' : 'dark'} />
 
         <View style={themeStyles.header}>
@@ -283,19 +333,13 @@ export function ClassicGame({
                 style={[
                   styles.refreshBtn,
                   !isDarkMode && styles.refreshBtnLight,
-                  {
-                    padding: 8,
-                    marginRight: 10,
-                    backgroundColor: isDarkMode
-                      ? 'rgba(16, 185, 129, 0.1)'
-                      : 'rgba(16, 185, 129, 0.05)',
-                  },
+                  { padding: 8, marginRight: 10 },
                 ]}
               >
-                <Home color="#10b981" size={20} />
+                <Home color={c.accent} size={20} />
               </TouchableOpacity>
               <View style={{ flex: 1 }}>
-                <Text style={themeStyles.title}>GeoRankle</Text>
+                <Text style={[themeStyles.title, { fontFamily: FONTS.headingBlack }]}>GeoG</Text>
               </View>
 
               <View style={{ flex: 1.5, alignItems: 'center' }}>
@@ -323,7 +367,7 @@ export function ClassicGame({
                     style={{
                       width: 1,
                       height: '60%',
-                      backgroundColor: isDarkMode ? '#334155' : '#e2e8f0',
+                      backgroundColor: c.border,
                       alignSelf: 'center',
                     }}
                   />
@@ -365,7 +409,7 @@ export function ClassicGame({
                   <View
                     style={[
                       styles.statDivider,
-                      { backgroundColor: isDarkMode ? '#334155' : '#e2e8f0' },
+                      { backgroundColor: c.border },
                     ]}
                   />
                   <View style={themeStyles.statBox}>
@@ -373,7 +417,7 @@ export function ClassicGame({
                     <Text
                       style={[
                         themeStyles.statValue,
-                        { color: isDarkMode ? '#fbbf24' : '#d97706', fontSize: 18 },
+                        { color: c.accent, fontSize: 18 },
                       ]}
                     >
                       {bestScore === null || bestScore > 100 ? '--' : `${bestScore}%`}
@@ -390,9 +434,9 @@ export function ClassicGame({
                     ]}
                   >
                     {isDarkMode ? (
-                      <Sun color="#fbbf24" size={16} />
+                      <Sun color={c.accent} size={16} />
                     ) : (
-                      <Moon color="#64748b" size={16} />
+                      <Moon color={c.textMuted} size={16} />
                     )}
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -410,9 +454,9 @@ export function ClassicGame({
                   >
                     <Text
                       style={{
-                        color: isDarkMode ? '#fff' : '#1e293b',
-                        fontWeight: 'bold',
-                        fontSize: 13,
+                        fontFamily: FONTS.monoBold,
+                        color: c.text,
+                        fontSize: 12,
                       }}
                     >
                       {language.toUpperCase()}
@@ -429,18 +473,12 @@ export function ClassicGame({
                   style={[
                     styles.refreshBtn,
                     !isDarkMode && styles.refreshBtnLight,
-                    {
-                      padding: 6,
-                      marginRight: 8,
-                      backgroundColor: isDarkMode
-                        ? 'rgba(16, 185, 129, 0.1)'
-                        : 'rgba(16, 185, 129, 0.05)',
-                    },
+                    { padding: 6, marginRight: 8 },
                   ]}
                 >
-                  <Home color="#10b981" size={18} />
+                  <Home color={c.accent} size={18} />
                 </TouchableOpacity>
-                <Text style={themeStyles.title}>GeoRankle</Text>
+                <Text style={[themeStyles.title, { fontFamily: FONTS.headingBlack }]}>GeoG</Text>
               </View>
 
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -457,7 +495,7 @@ export function ClassicGame({
                   <View
                     style={[
                       styles.statDivider,
-                      { backgroundColor: isDarkMode ? '#334155' : '#e2e8f0' },
+                      { backgroundColor: c.border },
                     ]}
                   />
                   <View style={themeStyles.statBox}>
@@ -474,6 +512,23 @@ export function ClassicGame({
                       {totalScore}
                     </Text>
                   </View>
+                  <View
+                    style={[
+                      styles.statDivider,
+                      { backgroundColor: c.border },
+                    ]}
+                  />
+                  <View style={themeStyles.statBox}>
+                    <Text style={themeStyles.statLabel}>{tr(language, 'EFF.', 'EFF.')}</Text>
+                    <Text
+                      style={[
+                        themeStyles.statValue,
+                        { color: getEfficiencyColor(currentEfficiency), fontSize: 16 },
+                      ]}
+                    >
+                      {currentEfficiency}%
+                    </Text>
+                  </View>
                 </View>
 
                 <TouchableOpacity
@@ -481,9 +536,9 @@ export function ClassicGame({
                   style={[styles.refreshBtn, !isDarkMode && styles.refreshBtnLight, { padding: 6 }]}
                 >
                   {isDarkMode ? (
-                    <Sun color="#fbbf24" size={16} />
+                    <Sun color={c.accent} size={16} />
                   ) : (
-                    <Moon color="#64748b" size={16} />
+                    <Moon color={c.textMuted} size={16} />
                   )}
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -501,9 +556,9 @@ export function ClassicGame({
                 >
                   <Text
                     style={{
-                      color: isDarkMode ? '#fff' : '#1e293b',
-                      fontWeight: 'bold',
-                      fontSize: 12,
+                      fontFamily: FONTS.monoBold,
+                      color: c.text,
+                      fontSize: 11,
                     }}
                   >
                     {language.toUpperCase()}
@@ -586,7 +641,7 @@ export function ClassicGame({
                       <Text
                         style={[
                           themeStyles.instruction,
-                          { fontSize: 13, color: isDarkMode ? '#94a3b8' : '#64748b' },
+                          { fontSize: 12, color: c.textMuted },
                         ]}
                       >
                         {tr(language, 'Assignez un thème', 'Assign a category')}
@@ -624,9 +679,7 @@ export function ClassicGame({
                           borderLeftWidth: 5,
                           borderLeftColor: isUsed
                             ? getRankColor(selection.rank)
-                            : isDarkMode
-                              ? '#334155'
-                              : '#cbd5e1',
+                            : c.border,
                         },
                       ]}
                       onPress={() => selectTheme(theme.id)}
@@ -651,15 +704,7 @@ export function ClassicGame({
                       >
                         <Info
                           size={16}
-                          color={
-                            isUsed
-                              ? isDarkMode
-                                ? '#475569'
-                                : '#94a3b8'
-                              : isDarkMode
-                                ? '#94a3b8'
-                                : '#64748b'
-                          }
+                          color={isUsed ? c.textFaint : c.textMuted}
                         />
                       </TouchableOpacity>
 
@@ -701,7 +746,7 @@ export function ClassicGame({
                 ]}
               >
                 <View style={{ alignItems: 'center' }}>
-                  <Trophy color="#fbbf24" size={48} />
+                  <Trophy color={c.accent} size={48} />
                   <Text
                     style={[themeStyles.winTitle, { fontSize: 32, marginTop: 10, marginBottom: 5 }]}
                   >
@@ -721,9 +766,9 @@ export function ClassicGame({
                       >
                         {totalScore}
                       </Text>
-                      <Text style={{ fontSize: 12, color: '#64748b' }}>
+                      <Text style={{ fontFamily: FONTS.mono, fontSize: 10, color: c.textMuted }}>
                         {tr(language, 'Optimal : ', 'Optimal: ')}
-                        <Text style={{ fontWeight: 'bold' }}>{optimalTotalValue}</Text>
+                        <Text style={{ fontFamily: FONTS.monoBold }}>{optimalTotalValue}</Text>
                       </Text>
                     </View>
 
@@ -731,7 +776,7 @@ export function ClassicGame({
                       style={{
                         width: 1,
                         height: '80%',
-                        backgroundColor: isDarkMode ? '#334155' : '#e2e8f0',
+                        backgroundColor: c.border,
                         alignSelf: 'center',
                       }}
                     />
@@ -748,7 +793,7 @@ export function ClassicGame({
                       >
                         {efficiency}%
                       </Text>
-                      <Text style={{ fontSize: 12, color: '#64748b' }}>
+                      <Text style={{ fontFamily: FONTS.mono, fontSize: 10, color: c.textMuted }}>
                         {tr(language, 'Indice de perf', 'Perf index')}
                       </Text>
                     </View>
@@ -784,8 +829,8 @@ export function ClassicGame({
                             themeStyles.summaryRow,
                             {
                               padding: 8,
-                              borderRadius: 12,
-                              backgroundColor: isDarkMode ? 'rgba(30, 41, 59, 0.5)' : '#f1f5f9',
+                              borderRadius: 10,
+                              backgroundColor: c.surface,
                             },
                           ]}
                         >
@@ -813,7 +858,7 @@ export function ClassicGame({
                               alignItems: 'center',
                               gap: 8,
                               borderRightWidth: 1,
-                              borderRightColor: isDarkMode ? '#334155' : '#e2e8f0',
+                              borderRightColor: c.border,
                               paddingRight: 8,
                             }}
                           >
@@ -824,9 +869,9 @@ export function ClassicGame({
                             <View style={{ flex: 1 }}>
                               <Text
                                 style={{
+                                  fontFamily: FONTS.heading,
                                   fontSize: 11,
-                                  color: isDarkMode ? '#f8fafc' : '#1e293b',
-                                  fontWeight: '700',
+                                  color: c.text,
                                 }}
                                 numberOfLines={1}
                               >
@@ -860,16 +905,16 @@ export function ClassicGame({
                             />
                             <View style={{ flex: 1 }}>
                               <Text
-                                style={{ fontSize: 11, color: '#64748b', fontWeight: '500' }}
+                                style={{ fontFamily: FONTS.mono, fontSize: 10, color: c.textMuted }}
                                 numberOfLines={1}
                               >
                                 {optimalCountryName}
                               </Text>
                               <Text
                                 style={{
+                                  fontFamily: FONTS.monoBold,
                                   fontSize: 14,
-                                  fontWeight: '900',
-                                  color: '#64748b',
+                                  color: c.textMuted,
                                   lineHeight: 16,
                                 }}
                               >
@@ -897,7 +942,7 @@ export function ClassicGame({
                     style={[
                       styles.playAgainBtn,
                       {
-                        backgroundColor: isDarkMode ? '#334155' : '#94a3b8',
+                        backgroundColor: c.border,
                         flex: 1,
                         paddingVertical: 14,
                       },
@@ -919,7 +964,6 @@ export function ClassicGame({
           language={language}
           onClose={() => setShowThemeInfo(null)}
         />
-      </SafeAreaView>
-    </SafeAreaProvider>
+    </SafeAreaView>
   );
 }
