@@ -1,0 +1,627 @@
+import { useCallback, useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Linking,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
+import * as ImagePicker from 'expo-image-picker';
+import { Camera, Check, Coins, Eye, EyeOff, Home, LayoutGrid, LogOut, Palette, ShoppingBag, Trash2, Zap } from 'lucide-react-native';
+
+import { supabase } from '../lib/supabase';
+import { getColors } from '../theme/colors';
+import { FONTS } from '../theme/typography';
+import { getRankFromElo, modeLabel } from '../lib/ranked';
+import { RankGlobe } from '../components/RankGlobe';
+import { Avatar } from '../components/Avatar';
+import { Avatar3D } from '../components/Avatar3D';
+import { deriveDefaultConfigFromSeed } from '../data/cosmetics';
+import { tr } from '../i18n';
+import type { AvatarConfig, Language, MatchMode } from '../types';
+
+interface ProfileProps {
+  session: { user: { id: string; email?: string | null } | null };
+  isDarkMode: boolean;
+  language: Language;
+  onBack: () => void;
+  onLoggedOut: () => void;
+  onEditAvatar: () => void;
+  onOpenShop: () => void;
+}
+
+const MODES: MatchMode[] = ['classic', 'streak', 'versus', 'globe', 'guess'];
+
+type ModeStat = { wins: number; total: number };
+
+/** Decode a base64 string into a byte array (no external dependency, web + native). */
+function base64ToBytes(base64: string): Uint8Array {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  const lookup = new Uint8Array(256);
+  for (let i = 0; i < chars.length; i++) lookup[chars.charCodeAt(i)] = i;
+
+  const clean = base64.replace(/[^A-Za-z0-9+/]/g, '');
+  const len = clean.length;
+  const bytes = new Uint8Array((len * 3) / 4 - (clean.endsWith('==') ? 2 : clean.endsWith('=') ? 1 : 0));
+
+  let p = 0;
+  for (let i = 0; i < len; i += 4) {
+    const e1 = lookup[clean.charCodeAt(i)];
+    const e2 = lookup[clean.charCodeAt(i + 1)];
+    const e3 = lookup[clean.charCodeAt(i + 2)];
+    const e4 = lookup[clean.charCodeAt(i + 3)];
+    bytes[p++] = (e1 << 2) | (e2 >> 4);
+    if (p < bytes.length) bytes[p++] = ((e2 & 15) << 4) | (e3 >> 2);
+    if (p < bytes.length) bytes[p++] = ((e3 & 3) << 6) | e4;
+  }
+  return bytes;
+}
+
+export default function Profile({ session, isDarkMode, language, onBack, onLoggedOut, onEditAvatar, onOpenShop }: ProfileProps) {
+  const userId = session.user?.id ?? '';
+  const email = session.user?.email ?? '';
+  const c = getColors(isDarkMode);
+
+  const [username, setUsername] = useState('');
+  const [savedUsername, setSavedUsername] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarConfig, setAvatarConfig] = useState<AvatarConfig | null>(null);
+  const [coins, setCoins] = useState(0);
+  const [showRank, setShowRank] = useState(true);
+  const [elo, setElo] = useState(1000);
+  const [wins, setWins] = useState(0);
+  const [losses, setLosses] = useState(0);
+  const [modeStats, setModeStats] = useState<Record<string, ModeStat>>({});
+  const [bestClassic, setBestClassic] = useState<number | null>(null);
+  const [bestStreak, setBestStreak] = useState<number | null>(null);
+
+  const [loading, setLoading] = useState(true);
+  const [savingName, setSavingName] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const rank = getRankFromElo(elo);
+
+  const fetchAll = useCallback(async () => {
+    if (!userId) return;
+    setLoading(true);
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('username, avatar_url, show_rank, avatar_config')
+      .eq('id', userId)
+      .single();
+    if (profile) {
+      setUsername(profile.username ?? '');
+      setSavedUsername(profile.username ?? '');
+      setAvatarUrl(profile.avatar_url ?? null);
+      setAvatarConfig((profile.avatar_config as AvatarConfig) ?? null);
+      setShowRank(profile.show_rank ?? true);
+    }
+
+    const { data: wallet } = await supabase
+      .from('coin_wallets')
+      .select('balance')
+      .eq('user_id', userId)
+      .maybeSingle();
+    setCoins(wallet?.balance ?? 0);
+
+    const { data: rating } = await supabase
+      .from('player_ratings')
+      .select('elo, wins, losses')
+      .eq('user_id', userId)
+      .single();
+    if (rating) {
+      setElo(rating.elo ?? 1000);
+      setWins(rating.wins ?? 0);
+      setLosses(rating.losses ?? 0);
+    }
+
+    // Per-mode win rate from completed matches.
+    const { data: matches } = await supabase
+      .from('matches')
+      .select('game_mode, player1_id, player2_id, p1_rounds_won, p2_rounds_won')
+      .or(`player1_id.eq.${userId},player2_id.eq.${userId}`)
+      .eq('status', 'completed');
+
+    const stats: Record<string, ModeStat> = {};
+    for (const m of matches ?? []) {
+      const mode = m.game_mode as string;
+      if (!stats[mode]) stats[mode] = { wins: 0, total: 0 };
+      stats[mode].total += 1;
+      const iAmP1 = m.player1_id === userId;
+      const myRounds = iAmP1 ? (m.p1_rounds_won ?? 0) : (m.p2_rounds_won ?? 0);
+      const oppRounds = iAmP1 ? (m.p2_rounds_won ?? 0) : (m.p1_rounds_won ?? 0);
+      if (myRounds > oppRounds) stats[mode].wins += 1;
+    }
+    setModeStats(stats);
+
+    // Solo records.
+    const { data: scores } = await supabase
+      .from('scores')
+      .select('game_mode, score')
+      .eq('user_id', userId);
+    if (scores) {
+      const classic = scores.filter((s) => s.game_mode === 'classic').map((s) => s.score);
+      const streak = scores.filter((s) => s.game_mode === 'streak').map((s) => s.score);
+      if (classic.length) setBestClassic(Math.min(...classic));
+      if (streak.length) setBestStreak(Math.max(...streak));
+    }
+
+    setLoading(false);
+  }, [userId]);
+
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
+
+  const saveUsername = async () => {
+    const trimmed = username.trim();
+    if (!trimmed || trimmed === savedUsername) return;
+    setSavingName(true);
+    const { error } = await supabase
+      .from('profiles')
+      .upsert({ id: userId, username: trimmed, updated_at: new Date() });
+    setSavingName(false);
+    if (error) {
+      Alert.alert(tr(language, 'Erreur', 'Error'), error.message);
+    } else {
+      setSavedUsername(trimmed);
+    }
+  };
+
+  const toggleShowRank = async (value: boolean) => {
+    setShowRank(value);
+    const { error } = await supabase
+      .from('profiles')
+      .upsert({ id: userId, show_rank: value, updated_at: new Date() });
+    if (error) {
+      setShowRank(!value);
+      Alert.alert(tr(language, 'Erreur', 'Error'), error.message);
+    }
+  };
+
+  const pickAndUploadAvatar = async () => {
+    if (Platform.OS !== 'web') {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert(
+          tr(language, 'Permission requise', 'Permission needed'),
+          tr(language, 'Autorisez l\'accès aux photos pour changer votre avatar.', 'Allow photo access to change your avatar.'),
+        );
+        return;
+      }
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.6,
+      base64: true,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+
+    const asset = result.assets[0];
+    if (!asset.base64) {
+      Alert.alert(tr(language, 'Erreur', 'Error'), tr(language, 'Image illisible.', 'Could not read image.'));
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const ext = (asset.uri.split('.').pop() ?? 'jpg').split('?')[0].toLowerCase();
+      const contentType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+      const path = `${userId}/avatar.${ext === 'png' || ext === 'webp' ? ext : 'jpg'}`;
+      const bytes = base64ToBytes(asset.base64);
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(path, bytes, { contentType, upsert: true });
+      if (uploadError) throw uploadError;
+
+      const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
+      // Cache-buster so the new image shows immediately (fixed path is overwritten on each upload).
+      const publicUrl = `${pub.publicUrl}?v=${Date.now()}`;
+
+      const { error: saveError } = await supabase
+        .from('profiles')
+        .upsert({ id: userId, avatar_url: publicUrl, updated_at: new Date() });
+      if (saveError) throw saveError;
+
+      setAvatarUrl(publicUrl);
+    } catch (e: unknown) {
+      Alert.alert(tr(language, 'Erreur', 'Error'), e instanceof Error ? e.message : String(e));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
+    onLoggedOut();
+  };
+
+  const [deleting, setDeleting] = useState(false);
+
+  const performDelete = async () => {
+    setDeleting(true);
+    const { error } = await supabase.rpc('delete_user_account');
+    if (error) {
+      setDeleting(false);
+      Alert.alert(
+        tr(language, 'Erreur', 'Error'),
+        tr(
+          language,
+          "La suppression a échoué. Réessayez plus tard.",
+          'Deletion failed. Please try again later.',
+        ),
+      );
+      return;
+    }
+    await supabase.auth.signOut();
+    onLoggedOut();
+  };
+
+  const confirmDeleteAccount = () => {
+    const title = tr(language, 'Supprimer le compte', 'Delete account');
+    const message = tr(
+      language,
+      'Cette action est définitive. Votre compte, votre rang et toutes vos données seront supprimés. Continuer ?',
+      'This is permanent. Your account, rank and all your data will be erased. Continue?',
+    );
+    if (Platform.OS === 'web') {
+      // Alert on web has no buttons callback; fall back to confirm().
+      if (typeof confirm === 'function' && confirm(`${title}\n\n${message}`)) {
+        performDelete();
+      }
+      return;
+    }
+    Alert.alert(title, message, [
+      { text: tr(language, 'Annuler', 'Cancel'), style: 'cancel' },
+      { text: tr(language, 'Supprimer', 'Delete'), style: 'destructive', onPress: performDelete },
+    ]);
+  };
+
+  const openPrivacyPolicy = () => {
+    Linking.openURL('https://geogames-mu.vercel.app/privacy.html');
+  };
+
+  const winRate = wins + losses > 0 ? Math.round((wins / (wins + losses)) * 100) : 0;
+
+  // Show the 3D character unless the user opted for a photo (useCustom === false).
+  // Null config (legacy users) → a deterministic default derived from the name.
+  const avatar3DConfig =
+    avatarConfig?.useCustom
+      ? avatarConfig
+      : avatarConfig == null
+        ? deriveDefaultConfigFromSeed(savedUsername || userId)
+        : null;
+
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: c.background }]}>
+      <StatusBar style={isDarkMode ? 'light' : 'dark'} />
+
+      {/* Header */}
+      <View style={[styles.header, { borderBottomColor: c.border }]}>
+        <TouchableOpacity onPress={onBack} style={[styles.iconBtn, { backgroundColor: c.card, borderColor: c.border }]}>
+          <Home color={c.text} size={20} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: c.text }]}>
+          {tr(language, 'Mon Profil', 'My Profile')}
+        </Text>
+        <TouchableOpacity onPress={logout} style={[styles.iconBtn, { backgroundColor: c.card, borderColor: c.border }]}>
+          <LogOut color="#8b1a1a" size={20} />
+        </TouchableOpacity>
+      </View>
+
+      {loading ? (
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator size="large" color={c.accent} />
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Avatar + identity */}
+          <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border, alignItems: 'center' }]}>
+            <View style={styles.avatarWrap}>
+              {avatar3DConfig ? (
+                <View style={{ width: 150, height: 185, borderRadius: 18, overflow: 'hidden', borderWidth: 2, borderColor: rank.color }}>
+                  <Avatar3D config={avatar3DConfig} size={150} style={{ width: 150, height: 185 }} interactive />
+                </View>
+              ) : (
+                <Avatar
+                  config={avatarConfig}
+                  photoUrl={avatarUrl}
+                  username={savedUsername}
+                  size={104}
+                  ringColor={rank.color}
+                  ringWidth={3}
+                />
+              )}
+            </View>
+
+            {/* Avatar actions */}
+            <View style={styles.avatarActions}>
+              <TouchableOpacity onPress={pickAndUploadAvatar} disabled={uploading} style={[styles.avatarActionBtn, { backgroundColor: c.background, borderColor: c.border }]}>
+                {uploading ? <ActivityIndicator size="small" color={c.accent} /> : <Camera color={c.textMuted} size={15} />}
+                <Text style={[styles.avatarActionText, { color: c.textMuted }]}>{tr(language, 'Photo', 'Photo')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={onEditAvatar} style={[styles.avatarActionBtn, { backgroundColor: c.background, borderColor: c.border }]}>
+                <Palette color={c.accent} size={15} />
+                <Text style={[styles.avatarActionText, { color: c.accent }]}>{tr(language, 'Personnaliser', 'Customize')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={onOpenShop} style={[styles.avatarActionBtn, { backgroundColor: c.background, borderColor: c.border }]}>
+                <Coins color="#ffd700" size={15} />
+                <Text style={[styles.avatarActionText, { color: c.text }]}>{coins}</Text>
+                <ShoppingBag color={c.textMuted} size={15} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.emailText, { color: c.textFaint }]}>{email}</Text>
+
+            {/* Username editor */}
+            <View style={[styles.nameRow, { backgroundColor: c.background, borderColor: c.border }]}>
+              <TextInput
+                value={username}
+                onChangeText={setUsername}
+                placeholder={tr(language, 'Pseudo', 'Username')}
+                placeholderTextColor={c.textFaint}
+                style={[styles.nameInput, { color: c.text }]}
+                autoCapitalize="none"
+                maxLength={20}
+              />
+              <TouchableOpacity
+                onPress={saveUsername}
+                disabled={savingName || !username.trim() || username.trim() === savedUsername}
+                style={[
+                  styles.nameSaveBtn,
+                  {
+                    backgroundColor:
+                      !username.trim() || username.trim() === savedUsername ? c.border : c.accent,
+                  },
+                ]}
+              >
+                {savingName ? <ActivityIndicator size="small" color="#fff" /> : <Check color="#fff" size={18} />}
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Ranked rank with show/hide toggle */}
+          <View style={[styles.card, { backgroundColor: c.card, borderColor: rank.color }]}>
+            <View style={styles.sectionHeadRow}>
+              <Text style={[styles.sectionTitle, { color: c.textMuted }]}>
+                {tr(language, 'RANG CLASSÉ', 'RANKED RANK')}
+              </Text>
+              <View style={styles.toggleWrap}>
+                {showRank ? <Eye color={c.textMuted} size={15} /> : <EyeOff color={c.textFaint} size={15} />}
+                <Text style={[styles.toggleLabel, { color: c.textFaint }]}>
+                  {showRank ? tr(language, 'Visible', 'Shown') : tr(language, 'Masqué', 'Hidden')}
+                </Text>
+                <Switch
+                  value={showRank}
+                  onValueChange={toggleShowRank}
+                  trackColor={{ false: c.border, true: rank.color }}
+                  thumbColor="#fff"
+                />
+              </View>
+            </View>
+
+            <View style={styles.rankRow}>
+              <RankGlobe rank={rank} size={72} showName={false} language={language} spin />
+              <View style={{ flex: 1, marginLeft: 14 }}>
+                <Text style={[styles.rankName, { color: rank.color }]}>
+                  {language === 'fr' ? rank.nameFr : rank.name}
+                </Text>
+                <Text style={[styles.eloText, { color: c.text }]}>
+                  {elo} <Text style={{ color: c.textFaint, fontSize: 12 }}>ELO</Text>
+                </Text>
+                <View style={styles.wlRow}>
+                  <Text style={[styles.wlStat, { color: '#2a6e3f' }]}>{wins}V</Text>
+                  <Text style={{ color: c.textFaint }}> · </Text>
+                  <Text style={[styles.wlStat, { color: '#8b1a1a' }]}>{losses}D</Text>
+                  <Text style={{ color: c.textFaint }}> · </Text>
+                  <Text style={[styles.wlStat, { color: c.textMuted }]}>
+                    {winRate}% {tr(language, 'victoires', 'win rate')}
+                  </Text>
+                </View>
+              </View>
+            </View>
+            <Text style={[styles.hint, { color: c.textFaint }]}>
+              {showRank
+                ? tr(language, 'Votre rang est visible par les autres joueurs.', 'Your rank is visible to other players.')
+                : tr(language, 'Votre rang est caché des autres joueurs.', 'Your rank is hidden from other players.')}
+            </Text>
+          </View>
+
+          {/* Win rate per mode */}
+          <Text style={[styles.outerSectionTitle, { color: c.textMuted }]}>
+            {tr(language, '% DE VICTOIRE PAR MODE', 'WIN RATE BY MODE')}
+          </Text>
+          <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border, gap: 10 }]}>
+            {MODES.map((mode) => {
+              const s = modeStats[mode] ?? { wins: 0, total: 0 };
+              const rate = s.total > 0 ? Math.round((s.wins / s.total) * 100) : 0;
+              return (
+                <View key={mode}>
+                  <View style={styles.modeLabelRow}>
+                    <Text style={[styles.modeName, { color: c.text }]}>{modeLabel(mode, language)}</Text>
+                    <Text style={[styles.modeRate, { color: s.total > 0 ? rank.color : c.textFaint }]}>
+                      {s.total > 0 ? `${rate}%` : '—'}
+                    </Text>
+                  </View>
+                  <View style={[styles.barTrack, { backgroundColor: c.background }]}>
+                    <View style={[styles.barFill, { width: `${rate}%`, backgroundColor: rank.color }]} />
+                  </View>
+                  <Text style={[styles.modeSub, { color: c.textFaint }]}>
+                    {s.total > 0
+                      ? `${s.wins}V / ${s.total - s.wins}D · ${s.total} ${tr(language, 'parties', 'matches')}`
+                      : tr(language, 'Aucune partie', 'No matches yet')}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+
+          {/* Solo records */}
+          <Text style={[styles.outerSectionTitle, { color: c.textMuted }]}>
+            {tr(language, 'RECORDS SOLO', 'SOLO RECORDS')}
+          </Text>
+          <View style={styles.recordsRow}>
+            <View style={[styles.recordCard, { backgroundColor: c.card, borderColor: c.border }]}>
+              <LayoutGrid size={20} color="#2a6e3f" />
+              <Text style={[styles.recordLabel, { color: c.textFaint }]}>CLASSIC</Text>
+              <Text style={[styles.recordValue, { color: '#2a6e3f' }]}>{bestClassic ?? '—'}</Text>
+            </View>
+            <View style={[styles.recordCard, { backgroundColor: c.card, borderColor: c.border }]}>
+              <Zap size={20} color="#c4872a" />
+              <Text style={[styles.recordLabel, { color: c.textFaint }]}>STREAK</Text>
+              <Text style={[styles.recordValue, { color: '#c4872a' }]}>{bestStreak ?? '—'}</Text>
+            </View>
+          </View>
+
+          <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
+            <LogOut color="#fff" size={18} />
+            <Text style={styles.logoutText}>{tr(language, 'Déconnexion', 'Logout')}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.linkBtn} onPress={openPrivacyPolicy}>
+            <Text style={[styles.linkText, { color: c.textMuted }]}>
+              {tr(language, 'Politique de confidentialité', 'Privacy Policy')}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Danger zone — required by App Store Guideline 5.1.1(v) */}
+          <TouchableOpacity
+            style={[styles.deleteBtn, { borderColor: '#8b1a1a' }]}
+            onPress={confirmDeleteAccount}
+            disabled={deleting}
+          >
+            {deleting ? (
+              <ActivityIndicator size="small" color="#8b1a1a" />
+            ) : (
+              <>
+                <Trash2 color="#8b1a1a" size={18} />
+                <Text style={styles.deleteText}>
+                  {tr(language, 'Supprimer mon compte', 'Delete my account')}
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </ScrollView>
+      )}
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+  },
+  iconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: { fontSize: 18, fontFamily: FONTS.headingBlack },
+  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  content: { padding: 16, paddingBottom: 48, gap: 16 },
+  card: { borderRadius: 18, borderWidth: 1, padding: 18 },
+  avatarWrap: { marginBottom: 12 },
+  avatar: { width: 104, height: 104, borderRadius: 52, borderWidth: 3 },
+  avatarPlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  avatarActions: { flexDirection: 'row', gap: 8, marginBottom: 14 },
+  avatarActionBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 12, height: 34, borderRadius: 10, borderWidth: 1,
+  },
+  avatarActionText: { fontSize: 12, fontFamily: FONTS.monoBold },
+  cameraBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emailText: { fontSize: 12, fontFamily: FONTS.mono, marginBottom: 12 },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingLeft: 14,
+    paddingRight: 6,
+  },
+  nameInput: { flex: 1, height: 48, fontSize: 16, fontFamily: FONTS.mono },
+  nameSaveBtn: { width: 40, height: 36, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  sectionHeadRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  sectionTitle: { fontSize: 11, fontFamily: FONTS.monoBold, letterSpacing: 1 },
+  outerSectionTitle: { fontSize: 11, fontFamily: FONTS.monoBold, letterSpacing: 1, marginBottom: -6, marginLeft: 4 },
+  toggleWrap: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  toggleLabel: { fontSize: 11, fontFamily: FONTS.mono },
+  rankRow: { flexDirection: 'row', alignItems: 'center' },
+  rankName: { fontSize: 20, fontFamily: FONTS.headingBlack },
+  eloText: { fontSize: 24, fontFamily: FONTS.headingBlack, marginTop: 2 },
+  wlRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
+  wlStat: { fontSize: 13, fontFamily: FONTS.monoBold },
+  hint: { fontSize: 11, fontFamily: FONTS.mono, marginTop: 14, textAlign: 'center' },
+  modeLabelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 },
+  modeName: { fontSize: 14, fontFamily: FONTS.monoBold },
+  modeRate: { fontSize: 15, fontFamily: FONTS.headingBlack },
+  barTrack: { height: 8, borderRadius: 4, overflow: 'hidden' },
+  barFill: { height: 8, borderRadius: 4 },
+  modeSub: { fontSize: 10, fontFamily: FONTS.mono, marginTop: 4 },
+  recordsRow: { flexDirection: 'row', gap: 12 },
+  recordCard: { flex: 1, borderRadius: 16, borderWidth: 1, padding: 16, alignItems: 'center', gap: 6 },
+  recordLabel: { fontSize: 10, fontFamily: FONTS.mono, letterSpacing: 1 },
+  recordValue: { fontSize: 24, fontFamily: FONTS.headingBlack },
+  logoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#8b1a1a',
+    height: 52,
+    borderRadius: 14,
+    marginTop: 4,
+  },
+  logoutText: { color: '#fff', fontSize: 15, fontFamily: FONTS.monoBold },
+  linkBtn: { alignItems: 'center', paddingVertical: 8 },
+  linkText: { fontSize: 13, fontFamily: FONTS.mono, textDecorationLine: 'underline' },
+  deleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    height: 48,
+    borderRadius: 14,
+  },
+  deleteText: { color: '#8b1a1a', fontSize: 14, fontFamily: FONTS.monoBold },
+});
