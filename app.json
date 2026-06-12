@@ -27,6 +27,9 @@
       "bundleIdentifier": "com.paulpousset.geog",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
+      },
+      "entitlements": {
+        "aps-environment": "production"
       }
     },
     "android": {
