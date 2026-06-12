@@ -1,31 +1,42 @@
 /**
- * Central color palette and semantic theme tokens.
- *
- * `getColors(isDarkMode)` returns the resolved tokens for the active theme so
- * screens never hard-code `isDarkMode ? '#xxx' : '#yyy'` pairs inline.
+ * Cartographic Atlas color system.
+ * Light mode = aged parchment / vintage atlas.
+ * Dark mode = nautical chart / night map.
  */
 
-/** Raw brand/accent colors, theme-independent. */
 export const PALETTE = {
-  green: '#10b981',
-  blue: '#3b82f6',
-  sky: '#38bdf8',
-  amber: '#f59e0b',
-  amberLight: '#fbbf24',
-  amberDark: '#d97706',
-  red: '#ef4444',
-  pink: '#ec4899',
-  purple: '#8b5cf6',
+  // Cartographic accents
+  vermilion: '#c04a1a',
+  forestGreen: '#2a6e3f',
+  oceanBlue: '#1a4a7a',
+  sand: '#c4872a',
+  dangerRed: '#8b1a1a',
+  chartBlue: '#4a9eff',
+  // Parchment tones
+  parchment: '#f2e8d0',
+  parchmentDark: '#e8d9b8',
+  sepia: '#2c1810',
+  tan: '#c4a87a',
+  brown: '#7a5c38',
+  brownLight: '#a08060',
+  // Night map tones
+  nightDeep: '#0a1628',
+  nightNavy: '#132040',
+  nightSurface: '#1a2d50',
+  nightBorder: '#2d4a70',
+  nightText: '#d8e8f4',
+  nightMuted: '#7aa0c4',
+  nightFaint: '#4a6a88',
+  // Legacy (kept for rank backward compat)
   white: '#ffffff',
   black: '#000000',
 } as const;
 
-/** Rank/efficiency accent colors. */
 export const RANK_COLORS = {
-  excellent: PALETTE.green,
-  good: PALETTE.blue,
-  average: PALETTE.amber,
-  poor: PALETTE.red,
+  excellent: PALETTE.forestGreen,
+  good: PALETTE.oceanBlue,
+  average: PALETTE.sand,
+  poor: PALETTE.dangerRed,
 } as const;
 
 export interface ThemeColors {
@@ -40,25 +51,25 @@ export interface ThemeColors {
 }
 
 const DARK: ThemeColors = {
-  background: '#0f172a',
-  card: '#1e293b',
-  surface: '#0f172a',
-  border: '#334155',
-  text: '#f8fafc',
-  textMuted: '#94a3b8',
-  textFaint: '#64748b',
-  accent: PALETTE.green,
+  background: PALETTE.nightDeep,
+  card: PALETTE.nightNavy,
+  surface: PALETTE.nightSurface,
+  border: PALETTE.nightBorder,
+  text: PALETTE.nightText,
+  textMuted: PALETTE.nightMuted,
+  textFaint: PALETTE.nightFaint,
+  accent: PALETTE.chartBlue,
 };
 
 const LIGHT: ThemeColors = {
-  background: '#f8fafc',
-  card: '#ffffff',
-  surface: '#f1f5f9',
-  border: '#e2e8f0',
-  text: '#1e293b',
-  textMuted: '#64748b',
-  textFaint: '#94a3b8',
-  accent: PALETTE.green,
+  background: PALETTE.parchment,
+  card: PALETTE.parchmentDark,
+  surface: '#f8f2e3',
+  border: PALETTE.tan,
+  text: PALETTE.sepia,
+  textMuted: PALETTE.brown,
+  textFaint: PALETTE.brownLight,
+  accent: PALETTE.vermilion,
 };
 
 export function getColors(isDarkMode: boolean): ThemeColors {
