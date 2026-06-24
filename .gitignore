@@ -45,6 +45,12 @@ google-service-account.json
 # typescript
 *.tsbuildinfo
 
+# test coverage
+coverage/
+
+# editor swap files
+*.swp
+
 # generated native folders
 /ios
 /android

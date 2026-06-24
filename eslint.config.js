@@ -11,8 +11,10 @@ module.exports = [
       'dist/**',
       '.expo/**',
       'assets/**',
+      'coverage/**',
       'babel.config.js',
       'eslint.config.js',
+      'jest.config.js',
     ],
   },
   js.configs.recommended,
@@ -57,6 +59,44 @@ module.exports = [
       'react-hooks/immutability': 'warn',
       'react-hooks/set-state-in-effect': 'warn',
       'react-hooks/exhaustive-deps': 'warn',
+      // Math.random() in async event handlers and presentational components
+      // declared in render are the same family of working patterns; warn-only.
+      'react-hooks/purity': 'warn',
+      'react-hooks/static-components': 'warn',
+    },
+  },
+  {
+    // App entrypoint uses require() for a lazy, catchable App import; scripts
+    // are Node tooling. Give them Node globals instead of the RN/browser set.
+    files: ['index.js', 'scripts/**'],
+    languageOptions: {
+      globals: {
+        require: 'readonly',
+        module: 'writable',
+        process: 'readonly',
+        console: 'readonly',
+        __dirname: 'readonly',
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+  {
+    // Jest test files.
+    files: ['**/__tests__/**/*.{ts,tsx}'],
+    languageOptions: {
+      globals: {
+        describe: 'readonly',
+        it: 'readonly',
+        test: 'readonly',
+        expect: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+        jest: 'readonly',
+      },
     },
   },
   {
