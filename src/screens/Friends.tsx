@@ -12,12 +12,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { supabase } from '../lib/supabase';
+import { track } from '../lib/analytics';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { Ionicons } from '@expo/vector-icons';
-import { Home } from 'lucide-react-native';
+import { ArrowLeft } from 'lucide-react-native';
 import type { User } from '@supabase/supabase-js';
 import type { Language } from '../types';
+import { tr } from '../i18n';
 
 interface FriendsProps {
   session: { user: User | null };
@@ -52,7 +54,10 @@ export default function Friends({ session, onBack, isDarkMode, language }: Frien
       .or(`user_id1.eq.${userId},user_id2.eq.${userId}`)
       .eq('status', 'accepted');
 
-    if (friendsError) console.error('Error loading friends:', friendsError);
+    if (friendsError) {
+      console.error('Error loading friends:', friendsError);
+      Alert.alert(tr(language, 'Erreur', 'Error'), tr(language, 'Impossible de charger vos amis.', 'Could not load your friends.'));
+    }
 
     // Load pending requests where current user is the receiver
     const { data: pendingData, error: pendingError } = await supabase
@@ -84,8 +89,9 @@ export default function Friends({ session, onBack, isDarkMode, language }: Frien
 
     if (error) {
       console.error('Search error:', error);
-      Alert.alert('Erreur', 'Impossible de chercher des utilisateurs');
+      Alert.alert(tr(language, 'Erreur', 'Error'), tr(language, 'Impossible de chercher des utilisateurs.', 'Could not search users.'));
     } else {
+      track('user_searched', { query_length: searchQuery.trim().length });
       setSearchResults(data || []);
     }
     setSearchLoading(false);
@@ -104,7 +110,7 @@ export default function Friends({ session, onBack, isDarkMode, language }: Frien
       .single();
 
     if (existing) {
-      Alert.alert('Info', 'Une relation ou demande existe déjà avec cet utilisateur.');
+      Alert.alert(tr(language, 'Info', 'Info'), tr(language, 'Une relation ou demande existe déjà avec cet utilisateur.', 'A relationship or request already exists with this user.'));
       return;
     }
 
@@ -114,9 +120,10 @@ export default function Friends({ session, onBack, isDarkMode, language }: Frien
 
     if (error) {
       console.error('Send request error:', error);
-      Alert.alert('Erreur', "Impossible d'envoyer la demande");
+      Alert.alert(tr(language, 'Erreur', 'Error'), tr(language, "Impossible d'envoyer la demande.", 'Could not send the request.'));
     } else {
-      Alert.alert('Succès', "Demande d'ami envoyée !");
+      track('friend_request_sent', { target_user_id: targetUserId });
+      Alert.alert(tr(language, 'Succès', 'Success'), tr(language, "Demande d'ami envoyée !", 'Friend request sent!'));
       setSearchQuery('');
       setSearchResults([]);
     }
@@ -130,7 +137,9 @@ export default function Friends({ session, onBack, isDarkMode, language }: Frien
 
     if (error) {
       console.error('Accept error:', error);
+      Alert.alert(tr(language, 'Erreur', 'Error'), tr(language, "Impossible d'accepter la demande.", 'Could not accept the request.'));
     } else {
+      track('friend_request_accepted');
       loadFriendsAndRequests();
     }
   };
@@ -140,20 +149,24 @@ export default function Friends({ session, onBack, isDarkMode, language }: Frien
 
     if (error) {
       console.error('Reject error:', error);
+      Alert.alert(tr(language, 'Erreur', 'Error'), tr(language, "Impossible de refuser la demande.", 'Could not reject the request.'));
     } else {
       loadFriendsAndRequests();
     }
   };
 
   const removeFriend = async (requestId: string) => {
-    Alert.alert('Supprimer', 'Voulez-vous vraiment supprimer cet ami ?', [
-      { text: 'Annuler', style: 'cancel' },
+    Alert.alert(tr(language, 'Supprimer', 'Remove'), tr(language, 'Voulez-vous vraiment supprimer cet ami ?', 'Do you really want to remove this friend?'), [
+      { text: tr(language, 'Annuler', 'Cancel'), style: 'cancel' },
       {
-        text: 'Supprimer',
+        text: tr(language, 'Supprimer', 'Remove'),
         style: 'destructive',
         onPress: async () => {
           const { error } = await supabase.from('friends').delete().eq('id', requestId);
-          if (!error) loadFriendsAndRequests();
+          if (!error) {
+            track('friend_removed');
+            loadFriendsAndRequests();
+          }
         },
       },
     ]);
@@ -172,7 +185,12 @@ export default function Friends({ session, onBack, isDarkMode, language }: Frien
         >
           {friendData.username}
         </Text>
-        <TouchableOpacity style={styles.removeBtn} onPress={() => removeFriend(item.id)}>
+        <TouchableOpacity
+          style={styles.removeBtn}
+          onPress={() => removeFriend(item.id)}
+          accessibilityRole="button"
+          accessibilityLabel={tr(language, 'Supprimer cet ami', 'Remove this friend')}
+        >
           <Ionicons name="person-remove" size={20} color="#EF4444" />
         </TouchableOpacity>
       </View>
@@ -188,10 +206,20 @@ export default function Friends({ session, onBack, isDarkMode, language }: Frien
           {item.user1?.username} {language === 'fr' ? 'veut être votre ami' : 'wants to be friends'}
         </Text>
         <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.acceptBtn} onPress={() => acceptRequest(item.id)}>
+          <TouchableOpacity
+            style={styles.acceptBtn}
+            onPress={() => acceptRequest(item.id)}
+            accessibilityRole="button"
+            accessibilityLabel={tr(language, 'Accepter la demande', 'Accept request')}
+          >
             <Ionicons name="checkmark" size={20} color="#fff" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.rejectBtn} onPress={() => rejectRequest(item.id)}>
+          <TouchableOpacity
+            style={styles.rejectBtn}
+            onPress={() => rejectRequest(item.id)}
+            accessibilityRole="button"
+            accessibilityLabel={tr(language, 'Refuser la demande', 'Reject request')}
+          >
             <Ionicons name="close" size={20} color="#fff" />
           </TouchableOpacity>
         </View>
@@ -204,7 +232,12 @@ export default function Friends({ session, onBack, isDarkMode, language }: Frien
       <Text style={[styles.usernameText, { color: c.text }]}>
         {item.username}
       </Text>
-      <TouchableOpacity style={styles.addBtn} onPress={() => sendFriendRequest(item.id)}>
+      <TouchableOpacity
+        style={styles.addBtn}
+        onPress={() => sendFriendRequest(item.id)}
+        accessibilityRole="button"
+        accessibilityLabel={tr(language, 'Ajouter en ami', 'Add friend')}
+      >
         <Ionicons name="person-add" size={20} color="#fff" />
       </TouchableOpacity>
     </View>
@@ -220,8 +253,10 @@ export default function Friends({ session, onBack, isDarkMode, language }: Frien
           <TouchableOpacity
             onPress={onBack}
             style={[styles.backButton, isDarkMode ? styles.backButtonDark : styles.backButtonLight]}
+            accessibilityRole="button"
+            accessibilityLabel={tr(language, 'Retour au menu', 'Back to menu')}
           >
-            <Home color={c.accent} size={20} />
+            <ArrowLeft color={c.accent} size={20} />
           </TouchableOpacity>
           <Text style={[styles.title, isDarkMode ? styles.titleDark : styles.titleLight]}>
             {language === 'fr' ? 'Amis' : 'Friends'}

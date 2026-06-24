@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
+  Alert,
   View,
   Text,
   StyleSheet,
@@ -9,9 +10,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { Home, Swords, Shield } from 'lucide-react-native';
+import { ArrowLeft, Swords, Shield } from 'lucide-react-native';
 import type { User } from '@supabase/supabase-js';
 
+import { track } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
 import { FONTS } from '../theme/typography';
 import { getColors } from '../theme/colors';
@@ -155,7 +157,7 @@ export default function RankedMatchmaking({
     return () => { supabase.removeChannel(channel); };
   }, [matchState?.id]);
 
-  const cancelSearch = async () => {
+  const doCancelSearch = async () => {
     if (matchState) {
       await supabase
         .from('matches')
@@ -166,8 +168,20 @@ export default function RankedMatchmaking({
     setSearching(false);
   };
 
+  const cancelSearch = () => {
+    Alert.alert(
+      tr(language, 'Annuler la recherche ?', 'Cancel search?'),
+      tr(language, 'Tu quitteras la file d’attente classée.', 'You will leave the ranked queue.'),
+      [
+        { text: tr(language, 'Continuer', 'Keep searching'), style: 'cancel' },
+        { text: tr(language, 'Annuler', 'Cancel'), style: 'destructive', onPress: doCancelSearch },
+      ],
+    );
+  };
+
   const findOrCreateMatch = async () => {
     setSearching(true);
+    track('matchmaking_started', { mode: 'ranked' });
 
     // Try to join an existing ranked match
     const { data: openMatches } = await supabase
@@ -231,7 +245,12 @@ export default function RankedMatchmaking({
     if (!createError && newMatch) {
       setMatchState(newMatch);
     } else {
+      console.error('Ranked matchmaking error:', createError);
       setSearching(false);
+      Alert.alert(
+        tr(language, 'Erreur', 'Error'),
+        tr(language, 'Impossible de lancer la recherche. Réessaie.', 'Could not start matchmaking. Try again.'),
+      );
     }
   };
 
@@ -252,7 +271,7 @@ export default function RankedMatchmaking({
           onPress={searching ? cancelSearch : onBack}
           style={[styles.backBtn, { backgroundColor: isDarkMode ? 'rgba(16,185,129,0.1)' : 'rgba(16,185,129,0.05)' }]}
         >
-          <Home color="#2a6e3f" size={20} />
+          <ArrowLeft color="#2a6e3f" size={20} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: textPrimary }]}>
           {tr(language, 'Mode Classé', 'Ranked Mode')}
@@ -350,9 +369,11 @@ export default function RankedMatchmaking({
           </View>
         ) : (
           <TouchableOpacity
-            style={[styles.searchBtn, { backgroundColor: rank.color }]}
+            style={[styles.searchBtn, { backgroundColor: rank.color, opacity: searching ? 0.6 : 1 }]}
             onPress={findOrCreateMatch}
             disabled={searching}
+            accessibilityRole="button"
+            accessibilityLabel={tr(language, 'Trouver une partie classée', 'Find a ranked match')}
           >
             <Swords size={22} color="#fff" />
             <Text style={styles.searchBtnText}>

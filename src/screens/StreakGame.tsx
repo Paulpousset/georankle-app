@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import {
+  Alert,
   StyleSheet,
   Text,
   View,
@@ -15,8 +16,10 @@ import { Trophy, RefreshCcw, Moon, Sun, Heart, TrendingUp, Home } from 'lucide-r
 import type { User } from '@supabase/supabase-js';
 
 import { gameData } from '../data/gameData';
+import { createSeededRng, seededShuffle } from '../lib/rng';
+import { track } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
-import { getFlagUrl } from '../lib/flags';
+import { getFlagUrl, prefetchFlags } from '../lib/flags';
 import type { GameMode, Language, Match } from '../types';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
@@ -29,26 +32,6 @@ interface ThemeOption {
   label: { fr: string; en?: string };
   rank: number;
   [key: string]: any;
-}
-
-function seededShuffle<T>(arr: T[], rand: () => number): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(rand() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-// Deterministic RNG (mulberry32) — same seed → same sequence on both clients
-function createSeededRng(seed: number) {
-  let s = seed;
-  return function () {
-    s = (s + 0x6d2b79f5) | 0;
-    let t = Math.imul(s ^ (s >>> 15), s | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
 }
 
 interface StreakGameProps {
@@ -89,6 +72,7 @@ export default function StreakGame({
     }
     initRound();
     if (user) fetchUserBestStreak(user.id);
+    if (!matchData) track('game_started', { mode: 'streak' });
   }, []);
 
   const fetchUserBestStreak = async (userId: string) => {
@@ -122,6 +106,7 @@ export default function StreakGame({
     }));
 
     setCurrentCountry(country);
+    prefetchFlags([country.cca3]);
     setOptions(roundOptions);
     setLastAnswerCorrect(null);
     setRevealedRanks({});
@@ -152,12 +137,20 @@ export default function StreakGame({
       setGameOver(true);
       if (score > bestStreak) setBestStreak(score);
 
+      if (!matchData) track('game_completed', { mode: 'streak', score });
+
       if (user) {
         supabase
           .from('scores')
           .insert({ user_id: user.id, game_mode: 'streak', score })
           .then(({ error }) => {
-            if (error) console.log('Error saving streak score:', error);
+            if (error) {
+              console.log('Error saving streak score:', error);
+              Alert.alert(
+                language === 'fr' ? 'Erreur' : 'Error',
+                language === 'fr' ? "Impossible d'enregistrer ton score." : 'Could not save your score.',
+              );
+            }
           });
         // Solo coins (server-side daily cap, score-independent). Skip in matches.
         if (!matchData) {

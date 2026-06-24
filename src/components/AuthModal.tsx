@@ -30,7 +30,13 @@ export function AuthModal({ visible, isDarkMode, language, onClose }: AuthModalP
             borderWidth: 1, borderColor: c.border,
           }}
         >
-          <TouchableOpacity style={{ alignSelf: 'flex-end', padding: 10 }} onPress={onClose}>
+          <TouchableOpacity
+            style={{ alignSelf: 'flex-end', padding: 12 }}
+            onPress={onClose}
+            accessibilityRole="button"
+            accessibilityLabel={language === 'fr' ? 'Fermer' : 'Close'}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
             <Text style={{ color: c.textMuted, fontFamily: FONTS.monoBold, fontSize: 18 }}>✕</Text>
           </TouchableOpacity>
           <Auth language={language} onAuthSuccess={onClose} />

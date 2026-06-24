@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { LayoutGrid, LogIn, Lock, Mail, User, UserPlus, Zap } from 'lucide-react-native';
 
+import { track } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
 import { FONTS } from '../theme/typography';
 import type { Language } from '../types';
@@ -171,9 +172,11 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
       Alert.alert(t.error, error.message);
     } else if (data?.session) {
       // Email confirmation disabled: the session exists, log in directly.
+      track('signed_up');
       onAuthSuccess();
     } else {
       // Email confirmation enabled: prompt the user to check their inbox.
+      track('signed_up');
       Alert.alert(language === 'fr' ? 'Compte créé !' : 'Account created!', t.checkEmail);
       setMode('login');
     }

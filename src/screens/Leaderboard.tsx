@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -10,6 +10,7 @@ import {
 import { Award, LayoutGrid, Zap } from 'lucide-react-native';
 
 import { supabase } from '../lib/supabase';
+import { useCachedData } from '../lib/cache';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import type { Language } from '../types';
@@ -32,17 +33,8 @@ const MEDAL_COLORS = ['#c4872a', '#7aa0c4', '#a08060']; // Gold → sand, Silver
 const Leaderboard = ({ language, isDarkMode }: LeaderboardProps) => {
   const c = getColors(isDarkMode);
   const [activeTab, setActiveTab] = useState<Tab>('classic');
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<LeaderboardEntry[]>([]);
 
-  useEffect(() => {
-    fetchLeaderboard();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
-
-  const fetchLeaderboard = async () => {
-    setLoading(true);
-
+  const fetchLeaderboard = useCallback(async (): Promise<LeaderboardEntry[]> => {
     const { data: scores, error } = await supabase
       .from('scores')
       .select(
@@ -60,23 +52,30 @@ const Leaderboard = ({ language, isDarkMode }: LeaderboardProps) => {
 
     if (error) {
       console.error('Leaderboard fetch error:', error);
-    } else {
-      const seenUsers: Record<string, boolean> = {};
-      const isClassic = activeTab === 'classic';
-      const filteredData = (scores as unknown as LeaderboardEntry[]).filter((item) => {
-        if (isClassic && item.score > 100) return false;
-        if (!seenUsers[item.user_id]) {
-          seenUsers[item.user_id] = true;
-          return true;
-        }
-        return false;
-      });
-      setData(filteredData);
+      throw error;
     }
-    setLoading(false);
-  };
 
-  const renderItem = ({ item, index }: { item: LeaderboardEntry; index: number }) => {
+    const seenUsers: Record<string, boolean> = {};
+    const isClassic = activeTab === 'classic';
+    return (scores as unknown as LeaderboardEntry[]).filter((item) => {
+      if (isClassic && item.score > 100) return false;
+      if (!seenUsers[item.user_id]) {
+        seenUsers[item.user_id] = true;
+        return true;
+      }
+      return false;
+    });
+  }, [activeTab]);
+
+  const {
+    data: cachedData,
+    loading,
+    error,
+    refetch,
+  } = useCachedData<LeaderboardEntry[]>(`leaderboard:${activeTab}`, fetchLeaderboard);
+  const data = cachedData ?? [];
+
+  const renderItem = useCallback(({ item, index }: { item: LeaderboardEntry; index: number }) => {
     const isTop3 = index < 3;
 
     return (
@@ -96,7 +95,7 @@ const Leaderboard = ({ language, isDarkMode }: LeaderboardProps) => {
 
         <View style={styles.userInfo}>
           <Text style={[styles.username, { color: c.text }]}>
-            {item.profiles?.username || 'Joueur Anonyme'}
+            {item.profiles?.username || (language === 'fr' ? 'Joueur Anonyme' : 'Anonymous Player')}
           </Text>
         </View>
 
@@ -112,7 +111,7 @@ const Leaderboard = ({ language, isDarkMode }: LeaderboardProps) => {
         </View>
       </View>
     );
-  };
+  }, [c, language, activeTab]);
 
   return (
     <View style={[styles.container, { backgroundColor: c.background }]}>
@@ -145,6 +144,23 @@ const Leaderboard = ({ language, isDarkMode }: LeaderboardProps) => {
       {loading ? (
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color={c.accent} />
+        </View>
+      ) : error ? (
+        <View style={styles.loaderContainer}>
+          <Text style={[styles.emptyText, { color: c.textMuted, marginTop: 0 }]}>
+            {language === 'fr'
+              ? 'Impossible de charger le classement.'
+              : 'Could not load the leaderboard.'}
+          </Text>
+          <TouchableOpacity
+            onPress={refetch}
+            style={[styles.retryBtn, { borderColor: c.border, backgroundColor: c.card }]}
+            accessibilityRole="button"
+          >
+            <Text style={[styles.tabText, { color: c.accent }]}>
+              {language === 'fr' ? 'Réessayer' : 'Retry'}
+            </Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <FlatList
@@ -206,6 +222,13 @@ const styles = StyleSheet.create({
   scoreValue: { fontFamily: FONTS.headingBlack, fontSize: 16 },
   loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
   emptyText: { textAlign: 'center', marginTop: 40, fontFamily: FONTS.mono },
+  retryBtn: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
 });
 
 export default Leaderboard;

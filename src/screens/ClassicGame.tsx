@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   Image,
   Platform,
   Text,
@@ -14,8 +15,11 @@ import type { User } from '@supabase/supabase-js';
 
 import type { Language, Match, Selection, SelectionMap, Theme } from '../types';
 import { gameData } from '../data/gameData';
+import { createSeededRng, seededShuffle } from '../lib/rng';
+import { MISSING_RANK, SESSION_SIZE, solveOptimal } from '../lib/gameLogic';
+import { track } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
-import { getFlagUrl } from '../lib/flags';
+import { getFlagUrl, prefetchFlags } from '../lib/flags';
 import { getEfficiencyColor, getRankColor } from '../lib/ranks';
 import { pickLabel, tr } from '../i18n';
 import { commonStyles as styles } from '../theme/commonStyles';
@@ -24,30 +28,6 @@ import { FONTS } from '../theme/typography';
 import { ThemeInfoModal } from '../components/ThemeInfoModal';
 
 const isMobile = Platform.OS === 'ios' || Platform.OS === 'android';
-
-// Deterministic RNG (mulberry32) — same seed → same sequence on both clients
-function createSeededRng(seed: number) {
-  let s = seed;
-  return function () {
-    s = (s + 0x6d2b79f5) | 0;
-    let t = Math.imul(s ^ (s >>> 15), s | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function seededShuffle<T>(arr: T[], rand: () => number): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(rand() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-const SESSION_SIZE = 8;
-/** Default rank used when a country has no value for a theme. */
-const MISSING_RANK = 200;
 
 interface ClassicGameProps {
   isDarkMode: boolean;
@@ -94,6 +74,7 @@ export function ClassicGame({
       rngRef.current = createSeededRng(matchData.game_data.seed + (roundNumber - 1));
     }
     initGame();
+    if (!matchData) track('game_started', { mode: 'classic' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -114,57 +95,6 @@ export function ClassicGame({
       const validScores = scores.map((s) => s.score).filter((s: number) => s <= 100);
       setBestScore(validScores.length > 0 ? Math.max(...validScores) : null);
     }
-  };
-
-  /**
-   * Brute-force search (with branch-and-bound pruning) for the country→theme
-   * assignment that minimizes the total rank.
-   */
-  const solveOptimal = (currentThemes: Theme[], currentRounds: typeof gameData.countries) => {
-    if (currentThemes.length < SESSION_SIZE || currentRounds.length < SESSION_SIZE) return {};
-
-    let bestMapping: SelectionMap = {};
-    let minTotal = Infinity;
-
-    const themeIds = currentThemes.map((t) => t.id);
-    const matrix = currentRounds.map((country) =>
-      themeIds.map((themeId) => country.ranks[themeId] || MISSING_RANK),
-    );
-
-    const solve = (
-      countryIdx: number,
-      usedThemes: number,
-      currentSum: number,
-      currentMapping: SelectionMap,
-    ) => {
-      if (countryIdx === SESSION_SIZE) {
-        if (currentSum < minTotal) {
-          minTotal = currentSum;
-          bestMapping = { ...currentMapping };
-        }
-        return;
-      }
-
-      for (let themeIdx = 0; themeIdx < SESSION_SIZE; themeIdx++) {
-        if (usedThemes & (1 << themeIdx)) continue;
-        const rank = matrix[countryIdx][themeIdx];
-        if (currentSum + rank >= minTotal) continue;
-
-        const country = currentRounds[countryIdx];
-        const nextMapping: SelectionMap = {
-          ...currentMapping,
-          [themeIds[themeIdx]]: {
-            countryName: language === 'fr' ? country.name : country.name_en || country.name,
-            rank,
-            cca3: country.cca3,
-          },
-        };
-        solve(countryIdx + 1, usedThemes | (1 << themeIdx), currentSum + rank, nextMapping);
-      }
-    };
-
-    solve(0, 0, 0, {});
-    return bestMapping;
   };
 
   const initGame = () => {
@@ -209,12 +139,14 @@ export function ClassicGame({
 
     setSessionThemes(selectedThemes);
     setRounds(selectedCountries);
+    // Warm the flag cache for the whole session so flags don't pop in mid-round.
+    prefetchFlags(selectedCountries.map((co) => co.cca3));
     setCurrentRoundIndex(0);
     setTotalScore(0);
     setGameOver(false);
     setUsedThemeIds([]);
     setSelections({});
-    setOptimalSelections(solveOptimal(selectedThemes, selectedCountries));
+    setOptimalSelections(solveOptimal(selectedThemes, selectedCountries, language));
   };
 
   const selectTheme = (themeId: string) => {
@@ -250,12 +182,17 @@ export function ClassicGame({
 
         setBestScore((prev) => (prev === null || gameEfficiency > prev ? gameEfficiency : prev));
 
+        if (!matchData) track('game_completed', { mode: 'classic', score: gameEfficiency });
+
         if (user) {
           supabase
             .from('scores')
             .insert({ user_id: user.id, game_mode: 'classic', score: gameEfficiency })
             .then(({ error }) => {
-              if (error) console.error('Error saving classic efficiency:', error);
+              if (error) {
+                console.error('Error saving classic efficiency:', error);
+                Alert.alert(tr(language, 'Erreur', 'Error'), tr(language, "Impossible d'enregistrer ton score.", 'Could not save your score.'));
+              }
             });
           // Solo coins (server-side daily cap, score-independent). Skip in matches.
           if (!matchData) {
@@ -301,7 +238,7 @@ export function ClassicGame({
   if (rounds.length === 0 || sessionThemes.length === 0) {
     return (
       <View style={[styles.container, !isDarkMode && styles.containerLight]}>
-        <Text style={{ color: isDarkMode ? 'white' : 'black' }}>Chargement...</Text>
+        <Text style={{ color: isDarkMode ? 'white' : 'black' }}>{tr(language, 'Chargement…', 'Loading…')}</Text>
       </View>
     );
   }

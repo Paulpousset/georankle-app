@@ -20,7 +20,16 @@ import type { User } from '@supabase/supabase-js';
 import gameData from '../../assets/game_data.json';
 import countriesStats from '../../assets/countries_stats.json';
 import { getFlagUrl } from '../lib/flags';
+import { track } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
+import { createSeededRng } from '../lib/rng';
+import {
+  CATEGORIES,
+  buildComparison,
+  calcScore,
+  type CatId,
+  type CellResult,
+} from '../lib/gameLogic';
 import type { Language, Match } from '../types';
 import { FONTS } from '../theme/typography';
 
@@ -31,201 +40,6 @@ interface Props {
   user?: User | null;
   matchData?: Match | null;
   onRoundComplete?: (score: number) => void;
-}
-
-// ─── Categories ─────────────────────────────────────────────────────────────
-
-const CATEGORIES = [
-  { id: 'continent',  emoji: '🌍', fr: 'Continent',   en: 'Continent'  },
-  { id: 'direction',  emoji: '🧭', fr: 'Direction',   en: 'Direction'  },
-  { id: 'distance',   emoji: '📏', fr: 'Distance',    en: 'Distance'   },
-  { id: 'population', emoji: '👥', fr: 'Population',  en: 'Population' },
-  { id: 'area',       emoji: '📐', fr: 'Superficie',  en: 'Area'       },
-  { id: 'gdp',        emoji: '💰', fr: 'PIB/hab',     en: 'GDP/cap'    },
-  { id: 'coastline',  emoji: '🏖️', fr: 'Côtes',       en: 'Coastline'  },
-  { id: 'life_exp',   emoji: '❤️', fr: 'Espérance',   en: 'Life Exp.'  },
-  { id: 'borders',    emoji: '🗺️', fr: 'Frontières',  en: 'Borders'    },
-] as const;
-
-type CatId = (typeof CATEGORIES)[number]['id'];
-// value = the guessed country's actual stat (shown on the tile)
-// hint  = short directional clue about the mystery country ("▲ plus", "▼ moins", "✓"…)
-type CellResult = { value: string; hint?: string; color: string };
-
-// ─── Geo helpers ─────────────────────────────────────────────────────────────
-
-function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371;
-  const r = (d: number) => (d * Math.PI) / 180;
-  const dLat = r(lat2 - lat1);
-  const dLng = r(lng2 - lng1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(r(lat1)) * Math.cos(r(lat2)) * Math.sin(dLng / 2) ** 2;
-  return Math.round(R * 2 * Math.asin(Math.sqrt(a)));
-}
-
-function calcBearing(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const r = (d: number) => (d * Math.PI) / 180;
-  const dLng = r(lng2 - lng1);
-  const x = Math.sin(dLng) * Math.cos(r(lat2));
-  const y =
-    Math.cos(r(lat1)) * Math.sin(r(lat2)) -
-    Math.sin(r(lat1)) * Math.cos(r(lat2)) * Math.cos(dLng);
-  return ((Math.atan2(x, y) * 180) / Math.PI + 360) % 360;
-}
-
-const ARROWS = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'];
-function bearingToArrow(b: number): string {
-  return ARROWS[Math.round(b / 45) % 8];
-}
-
-const REGION_LABEL: Record<string, { fr: string; en: string }> = {
-  Africa:    { fr: 'Afrique',  en: 'Africa'   },
-  Europe:    { fr: 'Europe',   en: 'Europe'   },
-  Asia:      { fr: 'Asie',     en: 'Asia'     },
-  Americas:  { fr: 'Amériques',en: 'Americas' },
-  Oceania:   { fr: 'Océanie',  en: 'Oceania'  },
-  Antarctic: { fr: 'Antarct.', en: 'Antarctic'},
-};
-
-// ─── Seeded RNG ───────────────────────────────────────────────────────────────
-
-function createSeededRng(seed: number) {
-  let s = seed;
-  return function () {
-    s = (s + 0x6d2b79f5) | 0;
-    let t = Math.imul(s ^ (s >>> 15), s | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-// ─── Formatters ───────────────────────────────────────────────────────────────
-
-function fmtCount(n: number, lang: Language): string {
-  if (n >= 1e9) return `${(n / 1e9).toFixed(1)}${lang === 'fr' ? ' Md' : 'B'}`;
-  if (n >= 1e6) return `${(n / 1e6).toFixed(n >= 1e7 ? 0 : 1)} M`;
-  if (n >= 1e3) return `${Math.round(n / 1e3)}k`;
-  return `${Math.round(n)}`;
-}
-
-function fmtArea(km2: number, lang: Language): string {
-  if (km2 >= 1e6) return `${(km2 / 1e6).toFixed(1)}${lang === 'fr' ? ' M' : 'M'} km²`;
-  if (km2 >= 1e3) return `${Math.round(km2 / 1e3)}k km²`;
-  return `${Math.round(km2)} km²`;
-}
-
-function fmtMoney(v: number): string {
-  if (v >= 1e3) return `$${(v / 1e3).toFixed(v >= 1e4 ? 0 : 1)}k`;
-  return `$${Math.round(v)}`;
-}
-
-function fmtDist(km: number): string {
-  if (km < 1000) return `${km} km`;
-  return `${(km / 1000).toFixed(1)}k km`;
-}
-
-// ─── Comparison helpers ───────────────────────────────────────────────────────
-
-// Compares the guessed stat to the mystery one and returns a colored cell:
-// the value shown is ALWAYS the guessed country's stat; the hint tells the
-// player whether the mystery country is higher (▲) or lower (▼).
-function compareNum(guess: number, target: number, value: string, lang: Language): CellResult {
-  if (guess === target) return { value, hint: '✓', color: '#10B981' };
-  const ratio = guess / target;
-  const color = ratio >= 0.6 && ratio <= 1.67 ? '#F59E0B' : '#EF4444';
-  const targetIsMore = guess < target;
-  const hint = targetIsMore
-    ? (lang === 'fr' ? '▲ plus' : '▲ more')
-    : (lang === 'fr' ? '▼ moins' : '▼ less');
-  return { value, hint, color };
-}
-
-const UNKNOWN: CellResult = { value: '?', color: '#64748B' };
-
-function buildComparison(
-  guessedC: any,
-  targetC: any,
-  guessedS: any,
-  targetS: any,
-  lang: Language,
-): Record<CatId, CellResult> {
-  const r = {} as Record<CatId, CellResult>;
-
-  // Continent — the guessed country's region name; green if it matches.
-  const sameRegion = guessedS?.region === targetS?.region;
-  const regionLabel = REGION_LABEL[guessedS?.region];
-  r.continent = {
-    value: (lang === 'fr' ? regionLabel?.fr : regionLabel?.en) ?? guessedS?.region ?? '?',
-    hint: sameRegion ? '✓' : (lang === 'fr' ? '✗ autre' : '✗ other'),
-    color: sameRegion ? '#10B981' : '#EF4444',
-  };
-
-  // Direction + distance toward the mystery country.
-  if (guessedS?.lat != null && targetS?.lat != null) {
-    const dist = haversine(guessedS.lat, guessedS.lng, targetS.lat, targetS.lng);
-    if (guessedC.cca3 === targetC.cca3) {
-      r.direction = { value: '🎯', color: '#10B981' };
-      r.distance  = { value: '0 km', color: '#10B981' };
-    } else {
-      const b = calcBearing(guessedS.lat, guessedS.lng, targetS.lat, targetS.lng);
-      r.direction = {
-        value: bearingToArrow(b),
-        hint: lang === 'fr' ? 'vers la cible' : 'to target',
-        color: dist < 2000 ? '#F59E0B' : '#EF4444',
-      };
-      r.distance = {
-        value: fmtDist(dist),
-        color: dist < 500 ? '#10B981' : dist < 2000 ? '#F59E0B' : '#EF4444',
-      };
-    }
-  } else {
-    r.direction = UNKNOWN;
-    r.distance  = UNKNOWN;
-  }
-
-  // Population
-  const gPop = guessedS?.population, tPop = targetS?.population;
-  r.population = gPop && tPop
-    ? compareNum(gPop, tPop, `${fmtCount(gPop, lang)}${lang === 'fr' ? ' hab.' : ''}`, lang)
-    : UNKNOWN;
-
-  // Area
-  const gArea = guessedS?.area, tArea = targetS?.area;
-  r.area = gArea && tArea ? compareNum(gArea, tArea, fmtArea(gArea, lang), lang) : UNKNOWN;
-
-  // GDP per capita (the "PIB/hab" label was wrongly using total GDP before)
-  const gGdp = guessedC?.data?.gdp_per_capita?.value, tGdp = targetC?.data?.gdp_per_capita?.value;
-  r.gdp = gGdp && tGdp ? compareNum(gGdp, tGdp, fmtMoney(gGdp), lang) : UNKNOWN;
-
-  // Coastline — coastal vs landlocked.
-  const sameCoast = guessedS?.coastline === targetS?.coastline;
-  r.coastline = {
-    value: guessedS?.coastline
-      ? (lang === 'fr' ? 'Côtier' : 'Coastal')
-      : (lang === 'fr' ? 'Enclavé' : 'Landlocked'),
-    hint: sameCoast ? '✓' : (lang === 'fr' ? '✗ autre' : '✗ other'),
-    color: sameCoast ? '#10B981' : '#EF4444',
-  };
-
-  // Life expectancy
-  const gLife = guessedC?.data?.life_expectancy?.value;
-  const tLife = targetC?.data?.life_expectancy?.value;
-  r.life_exp = gLife && tLife
-    ? compareNum(gLife, tLife, `${Math.round(gLife)}${lang === 'fr' ? ' ans' : ' yr'}`, lang)
-    : UNKNOWN;
-
-  // Borders count
-  const gB = guessedS?.borders_count, tB = targetS?.borders_count;
-  if (gB != null && tB != null) {
-    const label = `${gB}${lang === 'fr' ? ' pays' : ''}`;
-    r.borders = compareNum(gB, tB, label, lang);
-  } else {
-    r.borders = UNKNOWN;
-  }
-
-  return r;
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -250,10 +64,6 @@ function pickSeeded(seed: number): { country: any; stats: any } {
   const country = countries[idx];
   const stats = (countriesStats as any[]).find((c: any) => c.cca3 === country.cca3) ?? {};
   return { country, stats };
-}
-
-function calcScore(guessCount: number): number {
-  return Math.max(0, 1000 - (guessCount - 1) * 100);
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -285,6 +95,11 @@ export default function GuessCountryGame({
   const [opponentScore, setOpponentScore] = useState(0);
   const [search, setSearch] = useState('');
   const [suggestions, setSuggestions] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!matchData) track('game_started', { mode: 'guess' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!matchData || !user) return;
@@ -333,6 +148,7 @@ export default function GuessCountryGame({
       setMyScore(score);
       setWon(true);
       setSubmitted(true);
+      if (!matchData) track('game_completed', { mode: 'guess', score });
       if (onRoundComplete) onRoundComplete(score);
     }
     setSearch('');

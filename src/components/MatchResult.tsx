@@ -1,12 +1,15 @@
+import { useEffect } from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import * as Haptics from 'expo-haptics';
 import { Coins, Home, Trophy } from 'lucide-react-native';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import type { Language } from '../types';
 import type { RoundSummaryData } from './RoundSummary';
 import { getRankFromElo } from '../lib/ranked';
+import { computeMatchOutcome, formatMatchScore } from '../lib/match';
 import { RankGlobe } from './RankGlobe';
 
 interface RankResult {
@@ -44,9 +47,7 @@ export function MatchResult({
 }: MatchResultProps) {
   const c = getColors(isDarkMode);
 
-  const neededToWin = Math.ceil(bestOf / 2);
-  const iWon = myRoundsWon >= neededToWin;
-  const isDraw = myRoundsWon === opponentRoundsWon;
+  const { iWon, isDraw } = computeMatchOutcome(bestOf, myRoundsWon, opponentRoundsWon);
 
   const resultColor = isDraw ? '#c4872a' : iWon ? '#2a6e3f' : '#8b1a1a';
   const resultText = isDraw
@@ -55,7 +56,18 @@ export function MatchResult({
       ? language === 'fr' ? 'VICTOIRE !' : 'VICTORY!'
       : language === 'fr' ? 'DÉFAITE' : 'DEFEAT';
 
-  const scoreLabel = (s: number) => (gameMode === 'streak' ? `${s}` : `${s}%`);
+  const scoreLabel = (s: number) => formatMatchScore(gameMode, s);
+
+  // Tactile feedback matching the outcome when the result screen appears.
+  useEffect(() => {
+    Haptics.notificationAsync(
+      isDraw
+        ? Haptics.NotificationFeedbackType.Warning
+        : iWon
+          ? Haptics.NotificationFeedbackType.Success
+          : Haptics.NotificationFeedbackType.Error,
+    ).catch(() => {});
+  }, [isDraw, iWon]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.background }}>

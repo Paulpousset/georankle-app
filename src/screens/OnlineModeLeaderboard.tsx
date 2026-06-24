@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Text, View } from 'react-native';
+import { useCallback } from 'react';
+import { ActivityIndicator, FlatList, Text, TouchableOpacity, View } from 'react-native';
 import { Award } from 'lucide-react-native';
 
 import { supabase } from '../lib/supabase';
+import { useCachedData } from '../lib/cache';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import type { Language, MatchMode } from '../types';
@@ -26,27 +27,21 @@ const MEDAL_COLORS = ['#c4872a', '#7aa0c4', '#a08060'];
 
 export function OnlineModeLeaderboard({ mode, language, isDarkMode, accent }: Props) {
   const c = getColors(isDarkMode);
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<WinEntry[]>([]);
 
-  useEffect(() => {
-    fetch();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode]);
-
-  const fetch = async () => {
-    setLoading(true);
-
+  const fetchLeaderboard = useCallback(async (): Promise<WinEntry[]> => {
     const { data: matches, error } = await supabase
       .from('matches')
       .select('player1_id, player2_id, p1_rounds_won, p2_rounds_won')
       .eq('game_mode', mode)
       .eq('status', 'completed');
 
-    if (error || !matches || matches.length === 0) {
-      setData([]);
-      setLoading(false);
-      return;
+    if (error) {
+      console.error('Online leaderboard fetch error:', error);
+      throw error;
+    }
+
+    if (!matches || matches.length === 0) {
+      return [];
     }
 
     const stats: Record<string, { wins: number; total: number }> = {};
@@ -77,10 +72,10 @@ export function OnlineModeLeaderboard({ mode, language, isDarkMode, accent }: Pr
 
     const usernameMap: Record<string, string> = {};
     for (const p of profiles ?? []) {
-      usernameMap[p.user_id] = p.username ?? 'Anonyme';
+      usernameMap[p.user_id] = p.username ?? (language === 'fr' ? 'Anonyme' : 'Anonymous');
     }
 
-    const result: WinEntry[] = Object.entries(stats)
+    return Object.entries(stats)
       .filter(([, s]) => s.total >= 1)
       .map(([user_id, s]) => ({
         user_id,
@@ -91,10 +86,53 @@ export function OnlineModeLeaderboard({ mode, language, isDarkMode, accent }: Pr
       }))
       .sort((a, b) => b.winRate - a.winRate || b.wins - a.wins)
       .slice(0, 50);
+  }, [mode, language]);
 
-    setData(result);
-    setLoading(false);
-  };
+  const {
+    data: cachedData,
+    loading,
+    error,
+    refetch,
+  } = useCachedData<WinEntry[]>(`online-leaderboard:${mode}`, fetchLeaderboard);
+  const data = cachedData ?? [];
+
+  const renderItem = useCallback(
+    ({ item, index }: { item: WinEntry; index: number }) => {
+      const isTop3 = index < 3;
+      return (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            padding: 15,
+            borderRadius: 14,
+            marginBottom: 8,
+            borderWidth: 1,
+            backgroundColor: c.card,
+            borderColor: c.border,
+          }}
+        >
+          <View style={{ width: 40, alignItems: 'center' }}>
+            {isTop3 ? (
+              <Award size={24} color={MEDAL_COLORS[index]} />
+            ) : (
+              <Text style={{ fontFamily: FONTS.monoBold, color: c.textMuted }}>{index + 1}</Text>
+            )}
+          </View>
+          <View style={{ flex: 1, paddingLeft: 10 }}>
+            <Text style={{ fontFamily: FONTS.heading, color: c.text }}>{item.username}</Text>
+            <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 10 }}>
+              {item.wins}V / {item.total - item.wins}D
+            </Text>
+          </View>
+          <Text style={{ fontFamily: FONTS.headingBlack, fontSize: 16, color: accent }}>
+            {item.winRate}%
+          </Text>
+        </View>
+      );
+    },
+    [c, accent],
+  );
 
   if (loading) {
     return (
@@ -104,44 +142,38 @@ export function OnlineModeLeaderboard({ mode, language, isDarkMode, accent }: Pr
     );
   }
 
+  if (error) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 }}>
+        <Text style={{ textAlign: 'center', fontFamily: FONTS.mono, color: c.textMuted }}>
+          {language === 'fr' ? 'Impossible de charger le classement.' : 'Could not load the leaderboard.'}
+        </Text>
+        <TouchableOpacity
+          onPress={refetch}
+          accessibilityRole="button"
+          style={{
+            marginTop: 16,
+            paddingHorizontal: 20,
+            paddingVertical: 12,
+            borderRadius: 10,
+            borderWidth: 1,
+            borderColor: c.border,
+            backgroundColor: c.card,
+          }}
+        >
+          <Text style={{ fontFamily: FONTS.monoBold, fontSize: 12, color: accent }}>
+            {language === 'fr' ? 'Réessayer' : 'Retry'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <FlatList
       data={data}
       keyExtractor={(_, i) => i.toString()}
-      renderItem={({ item, index }) => {
-        const isTop3 = index < 3;
-        return (
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              padding: 15,
-              borderRadius: 14,
-              marginBottom: 8,
-              borderWidth: 1,
-              backgroundColor: c.card,
-              borderColor: c.border,
-            }}
-          >
-            <View style={{ width: 40, alignItems: 'center' }}>
-              {isTop3 ? (
-                <Award size={24} color={MEDAL_COLORS[index]} />
-              ) : (
-                <Text style={{ fontFamily: FONTS.monoBold, color: c.textMuted }}>{index + 1}</Text>
-              )}
-            </View>
-            <View style={{ flex: 1, paddingLeft: 10 }}>
-              <Text style={{ fontFamily: FONTS.heading, color: c.text }}>{item.username}</Text>
-              <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 10 }}>
-                {item.wins}V / {item.total - item.wins}D
-              </Text>
-            </View>
-            <Text style={{ fontFamily: FONTS.headingBlack, fontSize: 16, color: accent }}>
-              {item.winRate}%
-            </Text>
-          </View>
-        );
-      }}
+      renderItem={renderItem}
       contentContainerStyle={{ padding: 10, paddingBottom: 20 }}
       ListEmptyComponent={
         <Text style={{ textAlign: 'center', marginTop: 40, fontFamily: FONTS.mono, color: c.textMuted }}>

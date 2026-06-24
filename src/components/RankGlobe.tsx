@@ -5,6 +5,7 @@ import type { Language } from '../types';
 import type { RankInfo } from '../lib/ranked';
 import { FONTS } from '../theme/typography';
 import { WORLD_POLYS } from '../data/worldPolys';
+import { ringToPath, graticule } from '../lib/globeProjection';
 
 // Globe center [centerLon, centerLat] per rank — each rank shows a different face of Earth
 const RANK_VIEW: Record<string, [number, number]> = {
@@ -15,71 +16,6 @@ const RANK_VIEW: Record<string, [number, number]> = {
   diamond:  [0,   62],   // Arctic / Greenland / Europe
   master:   [10,  15],   // Classic Earth view
 };
-
-// Orthographic projection: returns [x, y, visible]
-function project(
-  lon: number, lat: number,
-  cLon: number, cLat: number,
-  r: number, cx: number, cy: number,
-): [number, number, boolean] {
-  const λ  = (lon  * Math.PI) / 180;
-  const φ  = (lat  * Math.PI) / 180;
-  const λ0 = (cLon * Math.PI) / 180;
-  const φ0 = (cLat * Math.PI) / 180;
-  const cosc =
-    Math.sin(φ0) * Math.sin(φ) +
-    Math.cos(φ0) * Math.cos(φ) * Math.cos(λ - λ0);
-  const x = cx + r * Math.cos(φ) * Math.sin(λ - λ0);
-  const y = cy - r * (Math.cos(φ0) * Math.sin(φ) - Math.sin(φ0) * Math.cos(φ) * Math.cos(λ - λ0));
-  return [x, y, cosc >= 0];
-}
-
-// Build an SVG path string for one polygon ring with an optional pixel offset
-function ringToPath(
-  ring: [number, number][],
-  cLon: number, cLat: number,
-  r: number, cx: number, cy: number,
-  dx = 0, dy = 0,
-): string {
-  const d: string[] = [];
-  let pen = false;
-  for (const [lon, lat] of ring) {
-    const [x, y, vis] = project(lon, lat, cLon, cLat, r, cx, cy);
-    if (vis) {
-      d.push(`${pen ? 'L' : 'M'}${(x + dx).toFixed(1)},${(y + dy).toFixed(1)}`);
-      pen = true;
-    } else {
-      if (pen && d.length > 1) d.push('Z');
-      pen = false;
-    }
-  }
-  if (d.length > 1) d.push('Z');
-  return d.join(' ');
-}
-
-// Build a graticule line (parallel or meridian) as an SVG path
-function graticule(
-  isLat: boolean, value: number,
-  cLon: number, cLat: number,
-  r: number, cx: number, cy: number,
-): string {
-  const d: string[] = [];
-  let pen = false;
-  const steps = isLat ? 72 : 36; // longitude steps for parallels, lat steps for meridians
-  for (let i = 0; i <= steps; i++) {
-    const lon = isLat ? -180 + (i * 360) / steps : value;
-    const lat = isLat ? value : -90 + (i * 180) / steps;
-    const [x, y, vis] = project(lon, lat, cLon, cLat, r, cx, cy);
-    if (vis) {
-      d.push(`${pen ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`);
-      pen = true;
-    } else {
-      if (pen && d.length > 1) d.push('Z');
-      pen = false;
-    }
-  }
-  return d.join(' ');
-}
 
 interface RankGlobeProps {
   rank: RankInfo;
@@ -93,7 +29,7 @@ interface RankGlobeProps {
   spinSpeed?: number;
 }
 
-export function RankGlobe({
+function RankGlobeBase({
   rank,
   size = 80,
   showName = true,
@@ -267,3 +203,6 @@ export function RankGlobe({
     </View>
   );
 }
+
+/** Memoised: expensive SVG path projection only recomputes when props change. */
+export const RankGlobe = React.memo(RankGlobeBase);

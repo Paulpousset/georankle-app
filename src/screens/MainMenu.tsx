@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -31,7 +30,7 @@ import { FONTS } from '../theme/typography';
 import { CompassRose, CoordLabel } from '../theme/decorative';
 import { tr } from '../i18n';
 
-type PlayType = 'solo' | 'local' | 'online';
+export type PlayType = 'solo' | 'local' | 'online';
 
 interface ModeCardProps {
   icon: ComponentType<{ color: string; size: number }>;
@@ -168,6 +167,10 @@ interface MainMenuProps {
   onPlay: (mode: GameMode) => void;
   onPlayOnline: (mode: MatchMode) => void;
   onPlayRanked: () => void;
+  /** Which play-type sub-list is open (null = the play-type chooser). Lifted to
+   *  App so it survives launching a game — returning lands on the same list. */
+  playType: PlayType | null;
+  onChangePlayType: (playType: PlayType | null) => void;
 }
 
 export function MainMenu({
@@ -184,8 +187,9 @@ export function MainMenu({
   onPlay,
   onPlayOnline,
   onPlayRanked,
+  playType,
+  onChangePlayType: setPlayType,
 }: MainMenuProps) {
-  const [playType, setPlayType] = useState<PlayType | null>(null);
   const c = getColors(isDarkMode);
   const iconColor = c.text;
   const accent = c.accent;
@@ -326,7 +330,7 @@ export function MainMenu({
               letterSpacing: -1,
             }}
           >
-            GeoG
+            GeoGames
           </Text>
           <CoordLabel lat="48°N" lng="2°E" color={c.textFaint} size={10} />
         </View>

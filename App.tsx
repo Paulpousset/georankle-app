@@ -1,16 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Appearance, View } from 'react-native';
+import { Alert, Appearance, BackHandler, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts, PlayfairDisplay_700Bold, PlayfairDisplay_900Black } from '@expo-google-fonts/playfair-display';
 import { SpaceMono_400Regular, SpaceMono_700Bold } from '@expo-google-fonts/space-mono';
 import type { User } from '@supabase/supabase-js';
 
+import { PostHogProvider } from 'posthog-react-native';
+
 import { supabase } from './src/lib/supabase';
 import { registerForPushNotifications } from './src/lib/notifications';
 import type { GameMode, Language, Match, MatchMode } from './src/types';
 import { tr } from './src/i18n';
+import { posthog, track, trackScreen, identify, resetIdentity } from './src/lib/analytics';
+import { initSentry, Sentry } from './src/lib/sentry';
 
-import { MainMenu } from './src/screens/MainMenu';
+// Start crash reporting as early as possible so startup errors are captured.
+initSentry();
+
+import { MainMenu, type PlayType } from './src/screens/MainMenu';
 import { ClassicGame } from './src/screens/ClassicGame';
 import StreakGame from './src/screens/StreakGame';
 import VersusCapitals from './src/screens/VersusCapitals';
@@ -31,14 +38,33 @@ import { PreGameLobby } from './src/components/PreGameLobby';
 import { WaitingOpponent } from './src/components/WaitingOpponent';
 import { RoundSummary, type RoundSummaryData } from './src/components/RoundSummary';
 import { MatchResult } from './src/components/MatchResult';
+import { SwipeBack } from './src/components/SwipeBack';
 
-export default function App() {
-  const [fontsLoaded] = useFonts({
+/** A full-screen page kept in the navigation history (see `pageStack`). */
+type Page =
+  | { name: 'friends' }
+  | { name: 'profile' }
+  | { name: 'ranked' }
+  | { name: 'avatar' }
+  | { name: 'shop' }
+  | { name: 'matchmaking'; mode: MatchMode };
+
+function App() {
+  const [fontsLoaded, fontError] = useFonts({
     PlayfairDisplay_700Bold,
     PlayfairDisplay_900Black,
     SpaceMono_400Regular,
     SpaceMono_700Bold,
   });
+
+  // Don't block the whole app on font loading. If fonts fail or hang, render
+  // anyway with the system font rather than stay stuck on a blank screen.
+  const [fontTimedOut, setFontTimedOut] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setFontTimedOut(true), 3000);
+    return () => clearTimeout(t);
+  }, []);
+  const fontsReady = fontsLoaded || !!fontError || fontTimedOut;
 
   const [isDarkMode, setIsDarkMode] = useState(Appearance.getColorScheme() === 'dark');
   const [language, setLanguage] = useState<Language>('fr');
@@ -48,13 +74,20 @@ export default function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [onlineLeaderboard, setOnlineLeaderboard] = useState<{ mode: MatchMode; accent: string } | null>(null);
-  const [showFriends, setShowFriends] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
-  const [showRankedMatchmaking, setShowRankedMatchmaking] = useState(false);
-  const [showAvatarEditor, setShowAvatarEditor] = useState(false);
-  const [showShop, setShowShop] = useState(false);
-
-  const [selectedMatchMode, setSelectedMatchMode] = useState<MatchMode | null>(null);
+  // Navigation history for the full-screen "pages" (everything reachable from
+  // the menu that isn't a game or a live-match flow). Pages stack on each other
+  // so "back" returns to wherever you actually came from — e.g. Profile → Shop
+  // → back lands on Profile, not the menu. The top of the stack is the page on
+  // screen; an empty stack means the menu (or an active game) is showing.
+  const [pageStack, setPageStack] = useState<Page[]>([]);
+  const currentPage = pageStack[pageStack.length - 1] ?? null;
+  // Which menu sub-list (solo / local / online) is open. Lifted out of MainMenu
+  // so it survives launching a game — leaving the game returns to that list,
+  // not the play-type chooser.
+  const [playType, setPlayType] = useState<PlayType | null>(null);
+  const pushPage = (p: Page) => setPageStack((s) => [...s, p]);
+  const popPage = () => setPageStack((s) => s.slice(0, -1));
+  const clearPages = () => setPageStack([]);
   const [matchData, setMatchData] = useState<Match | null>(null);
   const [incomingInvite, setIncomingInvite] = useState<Match | null>(null);
   const [showPreGameLobby, setShowPreGameLobby] = useState(false);
@@ -70,8 +103,17 @@ export default function App() {
   const [rankResult, setRankResult] = useState<{ eloChange: number; newElo: number; oldElo: number } | null>(null);
   const [coinsAwarded, setCoinsAwarded] = useState<number | null>(null);
 
-  const toggleLanguage = () => setLanguage((l) => (l === 'fr' ? 'en' : 'fr'));
-  const toggleTheme = () => setIsDarkMode((prev) => !prev);
+  const toggleLanguage = () =>
+    setLanguage((l) => {
+      const next = l === 'fr' ? 'en' : 'fr';
+      track('language_toggled', { language: next });
+      return next;
+    });
+  const toggleTheme = () =>
+    setIsDarkMode((prev) => {
+      track('theme_toggled', { dark: !prev });
+      return !prev;
+    });
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -80,10 +122,15 @@ export default function App() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
         setShowAuthModal(false);
+        // Tie analytics + crash reports to this user (links prior anon events).
+        identify(session.user.id);
+        Sentry.setUser({ id: session.user.id });
+        // Distinguish a brand-new account from a returning login.
+        if (event === 'SIGNED_IN') track('logged_in');
         // Ensure a profile row exists for this user.
         supabase
           .from('profiles')
@@ -93,6 +140,10 @@ export default function App() {
           });
         // Register this device for push notifications (multiplayer invites).
         registerForPushNotifications(session.user.id);
+      } else if (event === 'SIGNED_OUT') {
+        track('logged_out');
+        resetIdentity();
+        Sentry.setUser(null);
       }
     });
 
@@ -141,6 +192,17 @@ export default function App() {
     };
   }, [user, incomingInvite?.id]);
 
+  // Screen tracking. Navigation is custom (pageStack + gameMode + matchData),
+  // so PostHog autocapture can't see it — derive a name and report it ourselves.
+  useEffect(() => {
+    let name: string;
+    if (currentPage) name = currentPage.name;
+    else if (matchData) name = `match:${gameMode}`;
+    else if (gameMode !== 'menu') name = `game:${gameMode}`;
+    else name = 'menu';
+    trackScreen(name, { play_type: playType ?? undefined });
+  }, [currentPage, gameMode, matchData, playType]);
+
   // ─── Ranked ELO update ──────────────────────────────────────────────────────
 
   // ELO is computed server-side (SECURITY DEFINER RPC) so it cannot be spoofed
@@ -153,6 +215,10 @@ export default function App() {
 
     if (error) {
       console.log('apply_ranked_result error:', error);
+      Alert.alert(
+        tr(language, 'Erreur', 'Error'),
+        tr(language, 'Impossible de mettre à jour ton classement.', 'Could not update your ranking.'),
+      );
       return;
     }
 
@@ -177,6 +243,10 @@ export default function App() {
     const { data, error } = await supabase.rpc('apply_online_result', { p_match_id: match.id });
     if (error) {
       console.log('apply_online_result error:', error);
+      Alert.alert(
+        tr(language, 'Erreur', 'Error'),
+        tr(language, 'Impossible de créditer tes pièces.', 'Could not credit your coins.'),
+      );
       return;
     }
     if (typeof data?.coins_awarded === 'number' && data.coins_awarded > 0) {
@@ -187,6 +257,14 @@ export default function App() {
   // ─── Match start helper ──────────────────────────────────────────────────────
 
   const startMatch = (match: Match) => {
+    track('match_started', {
+      mode: match.game_mode,
+      is_ranked: match.is_ranked ?? false,
+      source: match.is_ranked ? 'ranked' : match.is_public ? 'matchmaking' : 'invite',
+    });
+    // Entering a live match: drop the page history so leaving the match lands
+    // on the menu rather than back inside matchmaking.
+    clearPages();
     setMatchData(match);
     const ranked_modes = match.game_data?.ranked_modes;
     if (match.is_ranked && ranked_modes?.length) {
@@ -201,6 +279,7 @@ export default function App() {
 
   const acceptInvite = async () => {
     if (!incomingInvite) return;
+    track('match_invite_accepted', { mode: incomingInvite.game_mode });
     const matchCopy = { ...incomingInvite };
 
     const { data: updatedMatch, error } = await supabase
@@ -213,7 +292,6 @@ export default function App() {
     setIncomingInvite(null);
 
     if (!error && updatedMatch) {
-      setSelectedMatchMode(null);
       startMatch(updatedMatch as Match);
     } else {
       Alert.alert(
@@ -286,6 +364,20 @@ export default function App() {
       setRoundSummaryData(summary);
       setAllRounds(prev => [...prev, summary]);
       setMatchPhase(matchOver ? 'match_over' : 'round_summary');
+
+      track('round_completed', {
+        mode: matchData.game_mode,
+        round: roundNum,
+        my_score: myRoundScore,
+        opp_score: oppRoundScore,
+      });
+      if (matchOver) {
+        track('match_completed', {
+          mode: matchData.game_mode,
+          is_ranked: state.is_ranked ?? false,
+          result: myWon >= needed ? 'won' : draw ? 'draw' : 'lost',
+        });
+      }
     };
 
     let handled = false;
@@ -328,24 +420,70 @@ export default function App() {
     setCoinsAwarded(null);
     rankedModesRef.current = null;
     setGameMode('menu');
+    clearPages();
   };
 
   const declineInvite = async () => {
     if (!incomingInvite) return;
+    track('match_invite_declined', { mode: incomingInvite.game_mode });
     await supabase.from('matches').update({ status: 'cancelled' }).eq('id', incomingInvite.id);
     setIncomingInvite(null);
   };
 
-  if (!fontsLoaded) {
+  // The Android hardware/gesture back button mirrors the in-app back: pop a
+  // page, or leave a solo game, returning to where you came from.
+  useEffect(() => {
+    const onHardwareBack = () => {
+      if (pageStack.length > 0) {
+        popPage();
+        return true;
+      }
+      if (gameMode !== 'menu' && !matchData) {
+        resetMatchState();
+        return true;
+      }
+      // On the menu, step out of a play-type sub-list back to the chooser.
+      if (gameMode === 'menu' && playType !== null) {
+        setPlayType(null);
+        return true;
+      }
+      return false;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', onHardwareBack);
+    return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageStack.length, gameMode, matchData, playType]);
+
+  if (!fontsReady) {
     return <View style={{ flex: 1, backgroundColor: '#f2e8d0' }} />;
   }
 
-  if (showFriends) {
+  // Swipe-back / hardware-back is available whenever there's somewhere to go:
+  // a page on the stack, a solo game (live matches are excluded so a stray
+  // gesture can't abandon a match mid-round), or an open menu sub-list.
+  const canGoBack =
+    pageStack.length > 0 ||
+    (gameMode !== 'menu' && !matchData) ||
+    (gameMode === 'menu' && playType !== null);
+  const goBack = () => {
+    if (pageStack.length > 0) {
+      popPage();
+      return;
+    }
+    if (gameMode !== 'menu' && !matchData) {
+      resetMatchState();
+      return;
+    }
+    if (gameMode === 'menu' && playType !== null) setPlayType(null);
+  };
+
+  const renderScreen = () => {
+  if (currentPage?.name === 'friends') {
     return (
       <SafeAreaProvider>
         <Friends
           session={{ user }}
-          onBack={() => setShowFriends(false)}
+          onBack={popPage}
           isDarkMode={isDarkMode}
           language={language}
         />
@@ -353,15 +491,15 @@ export default function App() {
     );
   }
 
-  if (showProfile && user) {
+  if (currentPage?.name === 'profile' && user) {
     return (
       <SafeAreaProvider>
         <Profile
           session={{ user }}
-          onBack={() => setShowProfile(false)}
-          onLoggedOut={() => setShowProfile(false)}
-          onEditAvatar={() => { setShowProfile(false); setShowAvatarEditor(true); }}
-          onOpenShop={() => { setShowProfile(false); setShowShop(true); }}
+          onBack={popPage}
+          onLoggedOut={clearPages}
+          onEditAvatar={() => pushPage({ name: 'avatar' })}
+          onOpenShop={() => pushPage({ name: 'shop' })}
           isDarkMode={isDarkMode}
           language={language}
         />
@@ -369,16 +507,13 @@ export default function App() {
     );
   }
 
-  if (showRankedMatchmaking && user) {
+  if (currentPage?.name === 'ranked' && user) {
     return (
       <SafeAreaProvider>
         <RankedMatchmaking
           session={{ user }}
-          onBack={() => setShowRankedMatchmaking(false)}
-          onStartMatch={(match: Match) => {
-            setShowRankedMatchmaking(false);
-            startMatch(match);
-          }}
+          onBack={popPage}
+          onStartMatch={(match: Match) => startMatch(match)}
           isDarkMode={isDarkMode}
           language={language}
         />
@@ -386,45 +521,42 @@ export default function App() {
     );
   }
 
-  if (showAvatarEditor && user) {
+  if (currentPage?.name === 'avatar' && user) {
     return (
       <SafeAreaProvider>
         <AvatarEditor
           session={{ user }}
           isDarkMode={isDarkMode}
           language={language}
-          onBack={() => setShowAvatarEditor(false)}
-          onOpenShop={() => { setShowAvatarEditor(false); setShowShop(true); }}
+          onBack={popPage}
+          onOpenShop={() => pushPage({ name: 'shop' })}
         />
       </SafeAreaProvider>
     );
   }
 
-  if (showShop && user) {
+  if (currentPage?.name === 'shop' && user) {
     return (
       <SafeAreaProvider>
         <Shop
           session={{ user }}
           isDarkMode={isDarkMode}
           language={language}
-          onBack={() => setShowShop(false)}
-          onEditAvatar={() => { setShowShop(false); setShowAvatarEditor(true); }}
+          onBack={popPage}
+          onEditAvatar={() => pushPage({ name: 'avatar' })}
         />
       </SafeAreaProvider>
     );
   }
 
-  if (selectedMatchMode) {
+  if (currentPage?.name === 'matchmaking') {
     return (
       <SafeAreaProvider>
         <Matchmaking
           session={{ user }}
-          gameMode={selectedMatchMode}
-          onBack={() => setSelectedMatchMode(null)}
-          onStartMatch={(match: Match) => {
-            setSelectedMatchMode(null);
-            startMatch(match);
-          }}
+          gameMode={currentPage.mode}
+          onBack={popPage}
+          onStartMatch={(match: Match) => startMatch(match)}
           isDarkMode={isDarkMode}
           language={language}
         />
@@ -440,6 +572,7 @@ export default function App() {
           gameMode={matchData.game_mode}
           isDarkMode={isDarkMode}
           language={language}
+          onLeave={resetMatchState}
         />
       </SafeAreaProvider>
     );
@@ -624,14 +757,22 @@ export default function App() {
         isAuthenticated={!!user}
         onToggleTheme={toggleTheme}
         onToggleLanguage={toggleLanguage}
-        onOpenAuth={() => (user ? setShowProfile(true) : setShowAuthModal(true))}
-        onOpenShop={() => (user ? setShowShop(true) : setShowAuthModal(true))}
-        onOpenFriends={() => setShowFriends(true)}
-        onOpenLeaderboard={() => setShowLeaderboard(true)}
-        onOpenOnlineModeLeaderboard={(mode, accent) => setOnlineLeaderboard({ mode, accent })}
+        onOpenAuth={() => (user ? pushPage({ name: 'profile' }) : setShowAuthModal(true))}
+        onOpenShop={() => (user ? pushPage({ name: 'shop' }) : setShowAuthModal(true))}
+        onOpenFriends={() => pushPage({ name: 'friends' })}
+        onOpenLeaderboard={() => {
+          track('leaderboard_opened', { type: 'global' });
+          setShowLeaderboard(true);
+        }}
+        onOpenOnlineModeLeaderboard={(mode, accent) => {
+          track('leaderboard_opened', { type: 'online_mode', mode });
+          setOnlineLeaderboard({ mode, accent });
+        }}
         onPlay={setGameMode}
-        onPlayOnline={setSelectedMatchMode}
-        onPlayRanked={() => (user ? setShowRankedMatchmaking(true) : setShowAuthModal(true))}
+        onPlayOnline={(mode) => pushPage({ name: 'matchmaking', mode })}
+        onPlayRanked={() => (user ? pushPage({ name: 'ranked' }) : setShowAuthModal(true))}
+        playType={playType}
+        onChangePlayType={setPlayType}
       />
 
       <AuthModal
@@ -664,4 +805,19 @@ export default function App() {
       />
     </SafeAreaProvider>
   );
+  };
+
+  // Wrap the whole app so an edge swipe-right goes back, mirroring the in-app
+  // back button. Disabled when there's nowhere to go (menu, or a live match).
+  const tree = (
+    <SwipeBack enabled={canGoBack} onBack={goBack}>
+      {renderScreen()}
+    </SwipeBack>
+  );
+
+  // Provide the PostHog client to the tree (enables hooks + autocapture). When
+  // analytics is disabled (no key) `posthog` is null, so render the tree as-is.
+  return posthog ? <PostHogProvider client={posthog}>{tree}</PostHogProvider> : tree;
 }
+
+export default Sentry.wrap(App);

@@ -7,6 +7,7 @@ import {
   Image,
   TextInput,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -22,6 +23,8 @@ import {
   Sun,
 } from 'lucide-react-native';
 
+import * as Haptics from 'expo-haptics';
+import { track } from '../lib/analytics';
 import { getFlagUrl } from '../lib/flags';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
@@ -53,6 +56,17 @@ interface VersusCapitalsProps {
   matchData?: Match | null;
   onRoundComplete?: (score: number) => void;
   onExit?: () => void;
+  /**
+   * When set (local hot-seat parcours), replaces the internal P1/P2 board with a
+   * live standings strip of every player. The current player's running manche
+   * total is `baseScores[currentIdx] + scores[1]` (the points earned this turn).
+   */
+  localBanner?: {
+    names: string[];
+    baseScores: number[];
+    currentIdx: number;
+    colors: string[];
+  };
 }
 
 interface Option {
@@ -126,11 +140,20 @@ export default function VersusCapitals({
   matchData,
   onRoundComplete,
   onExit,
+  localBanner,
 }: VersusCapitalsProps) {
   const insets = useSafeAreaInsets();
   const c = getColors(isDarkMode);
   const isOnline = !!matchData;
   const rngRef = useRef<(() => number) | null>(null);
+
+  // Analytics mode string for solo play, derived from the chosen quiz type.
+  const soloAnalyticsMode =
+    initialGameType === 'FLAG'
+      ? 'quiz-flag'
+      : initialGameType === 'MIX'
+        ? 'quiz-mix'
+        : 'quiz-capital';
 
   const [numPlayers, setNumPlayers] = useState<number | null>(
     isOnline ? 1 : null,
@@ -165,6 +188,11 @@ export default function VersusCapitals({
       rngRef.current = createSeededRng(matchData.game_data.seed + (roundNumber - 1));
     }
   }, [matchData?.game_data?.seed, matchData?.current_round]);
+
+  useEffect(() => {
+    if (soloMode) track('game_started', { mode: soloAnalyticsMode });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (numPlayers) {
@@ -205,7 +233,7 @@ export default function VersusCapitals({
       .sort(() => rng() - 0.5);
 
     const getOptionName = (c: any) => {
-      if (activeType === 'CAPITAL') return c.capital;
+      if (activeType === 'CAPITAL') return language === 'fr' ? c.capital_fr || c.capital : c.capital;
       return language === 'fr' ? c.name : c.name_en || c.name;
     };
 
@@ -235,7 +263,9 @@ export default function VersusCapitals({
     const points = selectedMode === 'CASH' ? 5 : selectedMode === 'CARRE' ? 3 : 1;
     const correctAnswer =
       currentQuestionType === 'CAPITAL'
-        ? question.capital
+        ? language === 'fr'
+          ? question.capital_fr || question.capital
+          : question.capital
         : language === 'fr'
           ? question.name
           : question.name_en || question.name;
@@ -246,6 +276,10 @@ export default function VersusCapitals({
       points: points,
       answer: correctAnswer,
     });
+
+    Haptics.impactAsync(
+      isCorrect ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Heavy,
+    ).catch(() => {});
 
     if (isCorrect) {
       setScores((prev) => ({ ...prev, [currentPlayer]: prev[currentPlayer] + points }));
@@ -260,7 +294,9 @@ export default function VersusCapitals({
     const points = 5;
     const correctAnswer =
       currentQuestionType === 'CAPITAL'
-        ? question.capital
+        ? language === 'fr'
+          ? question.capital_fr || question.capital
+          : question.capital
         : language === 'fr'
           ? question.name
           : question.name_en || question.name;
@@ -268,6 +304,10 @@ export default function VersusCapitals({
     const isCorrect = isAnswerClose(cashInput, correctAnswer);
 
     setFeedback({ correct: isCorrect, mode: 'CASH', answer: correctAnswer, points: points });
+
+    Haptics.impactAsync(
+      isCorrect ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Heavy,
+    ).catch(() => {});
 
     if (isCorrect) {
       setScores((prev) => ({ ...prev, [currentPlayer]: prev[currentPlayer] + points }));
@@ -315,6 +355,8 @@ export default function VersusCapitals({
         onRoundComplete(scores[1]);
         return;
       }
+
+      if (soloMode) track('game_completed', { mode: soloAnalyticsMode, score: scores[1] });
 
       let bestScore = -1;
       let winners: number[] = [];
@@ -374,6 +416,59 @@ export default function VersusCapitals({
   };
 
   const playerColor = PLAYER_COLORS[(currentPlayer - 1) % 4];
+
+  // Live parcours standings strip (hot-seat). Shows every player's running
+  // manche total, with the current player highlighted by name — replaces the
+  // internal P1/P2 board so each turn no longer looks like "Player 1".
+  const renderLocalBanner = () => {
+    if (!localBanner) return null;
+    const { names: pnames, baseScores, currentIdx, colors } = localBanner;
+    return (
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ alignItems: 'center', gap: 6, paddingRight: 8 }}
+      >
+        {pnames.map((nm, p) => {
+          const isCur = p === currentIdx;
+          const total = (baseScores[p] ?? 0) + (isCur ? scores[1] : 0);
+          const color = colors[p % colors.length];
+          return (
+            <View
+              key={p}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 5,
+                backgroundColor: isCur ? color : c.card,
+                borderRadius: 12,
+                paddingHorizontal: 9,
+                paddingVertical: 5,
+                borderWidth: 1,
+                borderColor: isCur ? color : c.border,
+              }}
+            >
+              <Text
+                numberOfLines={1}
+                style={{
+                  maxWidth: 80,
+                  color: isCur ? '#fff' : c.textMuted,
+                  fontSize: 11,
+                  fontFamily: FONTS.monoBold,
+                }}
+              >
+                {nm}
+              </Text>
+              <Text style={{ color: isCur ? '#fff' : c.text, fontSize: 14, fontWeight: 'bold' }}>
+                {total}
+              </Text>
+            </View>
+          );
+        })}
+      </ScrollView>
+    );
+  };
 
   if (!numPlayers) {
     return (
@@ -673,6 +768,7 @@ export default function VersusCapitals({
                   <Moon color="#4a6a88" size={20} />
                 )}
               </TouchableOpacity>
+              {localBanner ? renderLocalBanner() : (
               <View style={[styles.scoreBoard, !isDarkMode && styles.scoreBoardLight]}>
                 <View
                   style={[
@@ -769,6 +865,7 @@ export default function VersusCapitals({
                   )}
                 </View>
               </View>
+              )}
             </>
           ) : (
             <>
@@ -824,6 +921,7 @@ export default function VersusCapitals({
                 </View>
               </View>
 
+              {localBanner ? renderLocalBanner() : (
               <View style={[styles.scoreBoard, !isDarkMode && styles.scoreBoardLight]}>
                 <View
                   style={[
@@ -902,6 +1000,7 @@ export default function VersusCapitals({
                   </View>
                 )}
               </View>
+              )}
             </>
           )}
         </View>
@@ -917,7 +1016,9 @@ export default function VersusCapitals({
               },
             ]}
           >
-            {numPlayers === 1
+            {localBanner
+            ? `${language === 'fr' ? 'Tour de' : 'Turn:'} ${localBanner.names[localBanner.currentIdx]}`
+            : numPlayers === 1
             ? `${language === 'fr' ? 'Question' : 'Question'} ${currentRound}/${totalRounds}`
             : language === 'fr' ? `Tour Joueur ${currentPlayer}` : `Player ${currentPlayer}'s Turn`}
           </Text>

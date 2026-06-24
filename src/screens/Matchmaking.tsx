@@ -12,9 +12,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { track } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
 import { FONTS } from '../theme/typography';
-import { Home, Plus, RefreshCw, Users, Globe, Trophy, ChevronRight } from 'lucide-react-native';
+import { ArrowLeft, Plus, RefreshCw, Users, Globe, Trophy, ChevronRight } from 'lucide-react-native';
 import type { User } from '@supabase/supabase-js';
 import type { MatchMode, Language, Match, AvatarConfig } from '../types';
 import { gameData as gd } from '../data/gameData';
@@ -255,6 +256,7 @@ export default function Matchmaking({
       .select()
       .single();
     if (!error && updated) {
+      track('matchmaking_started', { mode: gameMode, kind: 'public' });
       setMatchState(updated);
       onStartMatch(updated as Match);
     } else {
@@ -290,6 +292,11 @@ export default function Matchmaking({
 
     setCreating(false);
     if (!error && newMatch) {
+      if (friendId) {
+        track('match_invite_sent', { mode: gameMode });
+      } else {
+        track('matchmaking_started', { mode: gameMode, kind: isPublic ? 'public' : 'private' });
+      }
       setMatchState(newMatch);
       setView('waiting');
       // Notify the invited friend via push (fire-and-forget; works when their app is closed).
@@ -304,12 +311,23 @@ export default function Matchmaking({
     }
   };
 
-  const cancelMatch = async () => {
+  const doCancelMatch = async () => {
     if (matchState) {
       await supabase.from('matches').update({ status: 'cancelled' }).eq('id', matchState.id);
     }
     setMatchState(null);
     setView('lobby');
+  };
+
+  const cancelMatch = () => {
+    Alert.alert(
+      language === 'fr' ? 'Annuler la partie ?' : 'Cancel match?',
+      language === 'fr' ? 'La partie en attente sera annulée.' : 'The pending match will be cancelled.',
+      [
+        { text: language === 'fr' ? 'Continuer' : 'Keep waiting', style: 'cancel' },
+        { text: language === 'fr' ? 'Annuler' : 'Cancel', style: 'destructive', onPress: doCancelMatch },
+      ],
+    );
   };
 
   // ─── Theme helpers ────────────────────────────────────────────────────────────
@@ -404,7 +422,13 @@ export default function Matchmaking({
           {language === 'fr' ? 'PARTIES EN ATTENTE' : 'OPEN MATCHES'}
           {publicMatches.length > 0 ? ` (${publicMatches.length})` : ''}
         </Text>
-        <TouchableOpacity onPress={fetchPublicMatches} style={styles.refreshBtn}>
+        <TouchableOpacity
+          onPress={fetchPublicMatches}
+          style={styles.refreshBtn}
+          accessibilityRole="button"
+          accessibilityLabel={language === 'fr' ? 'Rafraîchir la liste' : 'Refresh list'}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
           <RefreshCw size={16} color="#2a6e3f" />
         </TouchableOpacity>
       </View>
@@ -648,7 +672,7 @@ export default function Matchmaking({
             onPress={handleBack}
             style={[styles.backBtn, { backgroundColor: isDarkMode ? 'rgba(16,185,129,0.1)' : 'rgba(16,185,129,0.05)' }]}
           >
-            <Home color="#2a6e3f" size={20} />
+            <ArrowLeft color="#2a6e3f" size={20} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: textPrimary }]}>{headerTitle()}</Text>
           <View style={{ width: 44 }} />

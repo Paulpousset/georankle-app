@@ -6,6 +6,7 @@ import { ChevronRight, Trophy } from 'lucide-react-native';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import type { Language } from '../types';
+import { formatMatchScore } from '../lib/match';
 
 export interface RoundSummaryData {
   roundNumber: number;
@@ -33,11 +34,7 @@ export function RoundSummary({ data, gameMode, isDarkMode, language, onContinue 
   const roundWinner =
     data.myScore > data.opponentScore ? 'me' : data.myScore < data.opponentScore ? 'opponent' : 'draw';
 
-  const scoreLabel = (s: number) => {
-    if (gameMode === 'streak') return `${s}`;
-    if (gameMode === 'globe' || gameMode === 'guess') return `${s} pts`;
-    return `${s}%`;
-  };
+  const scoreLabel = (s: number) => formatMatchScore(gameMode, s);
 
   useEffect(() => {
     if (countdown <= 0) { onContinue(); return; }

@@ -52,7 +52,13 @@ export function ThemeInfoModal({ theme, isDarkMode, language, onClose }: ThemeIn
                 {theme && pickLabel(theme.label, language)}
               </Text>
             </View>
-            <TouchableOpacity onPress={onClose} style={{ padding: 5 }}>
+            <TouchableOpacity
+              onPress={onClose}
+              style={{ padding: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel={language === 'fr' ? 'Fermer' : 'Close'}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
               <X color={c.textMuted} size={24} />
             </TouchableOpacity>
           </View>

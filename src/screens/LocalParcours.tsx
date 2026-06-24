@@ -26,6 +26,7 @@ import {
   Zap,
 } from 'lucide-react-native';
 
+import { track } from '../lib/analytics';
 import { getColors } from '../theme/colors';
 import { PALETTE } from '../theme/colors';
 import { FONTS } from '../theme/typography';
@@ -63,17 +64,16 @@ const MODES: Record<ModeKey, ModeDef> = {
   guess: { key: 'guess', fr: 'Devine le Pays', en: 'Guess Country', icon: Info, accent: PALETTE.vermilion, rounds: 'config', defaultRounds: 3, unitFr: 'pays', unitEn: 'countries' },
   classic: { key: 'classic', fr: 'Population', en: 'Population', icon: LayoutGrid, accent: PALETTE.forestGreen, rounds: 'fixed', defaultRounds: 1, unitFr: '8 thèmes', unitEn: '8 themes' },
   streak: { key: 'streak', fr: 'Streak', en: 'Streak', icon: Zap, accent: PALETTE.sand, rounds: 'fixed', defaultRounds: 1, unitFr: "jusqu'à l'erreur", unitEn: 'until a miss' },
-  globe: { key: 'globe', fr: 'Globe Géo', en: 'Geo Globe', icon: Globe, accent: PALETTE.oceanBlue, rounds: 'fixed', defaultRounds: 1, unitFr: '5 pays', unitEn: '5 countries' },
+  globe: { key: 'globe', fr: 'Globe Géo', en: 'Geo Globe', icon: Globe, accent: PALETTE.oceanBlue, rounds: 'config', defaultRounds: 5, unitFr: 'rounds', unitEn: 'rounds' },
 };
 
 const MODE_ORDER: ModeKey[] = ['capital', 'flag', 'mix', 'guess', 'classic', 'streak', 'globe'];
 
 /**
- * Modes that play one question at a time, so players can alternate question by
- * question (like the native Versus). The others (classic/streak/globe) are
- * atomic sessions: a player plays the whole thing in one turn.
+ * Modes that play one round at a time, so players alternate round by round.
+ * streak is atomic (no fixed round count).
  */
-const QUESTION_MODES: ModeKey[] = ['capital', 'flag', 'mix', 'guess'];
+const QUESTION_MODES: ModeKey[] = ['capital', 'flag', 'mix', 'guess', 'classic'];
 const isPerQuestion = (mode: ModeKey) => QUESTION_MODES.includes(mode);
 
 function toMatchMode(mode: ModeKey): MatchMode {
@@ -219,6 +219,7 @@ export default function LocalParcours({
 
   const launch = () => {
     if (manches.length === 0) return;
+    track('local_parcours_started', { modes: manches.length, players: names.length });
     setSeeds(manches.map(() => Math.floor(Math.random() * 2_000_000_000)));
     setScores(manches.map(() => names.map(() => 0)));
     handledKey.current = '';
@@ -319,6 +320,12 @@ export default function LocalParcours({
             matchData={match}
             onRoundComplete={handleRoundComplete}
             onExit={quit}
+            localBanner={{
+              names,
+              baseScores: scores[s.mancheIdx] ?? names.map(() => 0),
+              currentIdx: s.playerIdx,
+              colors: names.map((_, i) => PLAYER_COLORS[i % PLAYER_COLORS.length]),
+            }}
           />
         );
       case 'streak':

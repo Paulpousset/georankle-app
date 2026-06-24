@@ -35,7 +35,9 @@ const GlobeWebView = forwardRef<Handle, Props>(function GlobeWebView(
         // Only works for same-origin (srcdoc) frames; cross-origin throws and is ignored.
         // eslint-disable-next-line no-eval
         (iframeRef.current?.contentWindow as any)?.eval(code);
-      } catch {}
+      } catch {
+        /* cross-origin frames throw on eval; safe to ignore */
+      }
     },
     postMessage(data: string) {
       // Allowed cross-origin — used for the Ready Player Me frame API.

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import * as Haptics from 'expo-haptics';
 
 import type { AvatarConfig, Language, Match } from '../types';
 import { supabase } from '../lib/supabase';
@@ -51,7 +52,12 @@ export function PreGameLobby({
   }, [matchData.player1_id, matchData.player2_id]);
 
   useEffect(() => {
-    if (countdown <= 0) { onReady(); return; }
+    if (countdown <= 0) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      onReady();
+      return;
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     const t = setTimeout(() => setCountdown((cv) => cv - 1), 1000);
     return () => clearTimeout(t);
   }, [countdown, onReady]);

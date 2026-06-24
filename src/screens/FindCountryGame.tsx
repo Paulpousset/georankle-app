@@ -17,13 +17,15 @@ import type { User } from '@supabase/supabase-js';
 import type { GameMode, Language, Match } from '../types';
 import { getColors, PALETTE } from '../theme/colors';
 import { FONTS } from '../theme/typography';
-import { getFlagUrl } from '../lib/flags';
+import { getFlagUrl, prefetchFlags } from '../lib/flags';
+import { createSeededRng } from '../lib/rng';
 import { tr } from '../i18n';
+import { track } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
 import rawCountriesStats from '../../assets/countries_stats.json';
 import rawWorldPolygons from '../../assets/world_polygons.json';
 
-const TOTAL_ROUNDS = 5;
+const DEFAULT_ROUNDS = 5;
 
 interface CountryStat {
   name: string;
@@ -49,16 +51,6 @@ interface GlobeMessage {
   type: 'GLOBE_READY' | 'COUNTRY_CLICKED' | 'GLOBE_ERROR';
   cca3?: string;
   msg?: string;
-}
-
-function createSeededRng(seed: number) {
-  let s = seed;
-  return function () {
-    s = (s + 0x6d2b79f5) | 0;
-    let t = Math.imul(s ^ (s >>> 15), s | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
 }
 
 function sampleRounds(all: CountryStat[], n: number, seed?: number): CountryStat[] {
@@ -347,12 +339,13 @@ export default function FindCountryGame({
   const colors = getColors(isDarkMode);
   const isOnline = !!matchData;
   const isPlayer1 = matchData?.player1_id === user?.id;
+  const totalRounds = (matchData?.game_data?.roundsPerSet as number) ?? DEFAULT_ROUNDS;
 
   const [rounds, setRounds] = useState<CountryStat[]>(() => {
     const seed = matchData?.game_data?.seed != null
       ? (matchData.game_data.seed as number) + (matchData.current_round ?? 0) * 997
       : undefined;
-    return sampleRounds(rawCountriesStats as unknown as CountryStat[], TOTAL_ROUNDS, seed);
+    return sampleRounds(rawCountriesStats as unknown as CountryStat[], totalRounds, seed);
   });
   const [index, setIndex] = useState(0);
   const [score, setScore] = useState(0);
@@ -362,6 +355,13 @@ export default function FindCountryGame({
 
   const [opponentScore, setOpponentScore] = useState(0);
   const submitted = useRef(false);
+
+  useEffect(() => {
+    if (!matchData) track('game_started', { mode: 'globe' });
+    // Warm the flag cache for every round up front.
+    prefetchFlags(rounds.map((r) => r.cca3));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!matchData || !user) return;
@@ -410,13 +410,14 @@ export default function FindCountryGame({
   );
 
   const handleNext = () => {
-    if (index + 1 >= TOTAL_ROUNDS) {
+    if (index + 1 >= totalRounds) {
       if (onRoundComplete) {
         if (submitted.current) return;
         submitted.current = true;
         onRoundComplete(score);
         return;
       }
+      if (!matchData) track('game_completed', { mode: 'globe', score });
       setPhase('finished');
       return;
     }
@@ -427,7 +428,7 @@ export default function FindCountryGame({
   };
 
   const handleReplay = () => {
-    setRounds(sampleRounds(rawCountriesStats as unknown as CountryStat[], TOTAL_ROUNDS));
+    setRounds(sampleRounds(rawCountriesStats as unknown as CountryStat[], totalRounds));
     setIndex(0);
     setScore(0);
     setSelectedCca3(null);
@@ -448,10 +449,10 @@ export default function FindCountryGame({
               {tr(language, 'Partie terminée !', 'Game over!')}
             </Text>
             <Text style={[styles.finishedScore, { color: PALETTE.sand }]}>
-              {correctCount} / {TOTAL_ROUNDS}
+              {correctCount} / {totalRounds}
             </Text>
             <Text style={[styles.finishedSub, { color: colors.textMuted }]}>
-              {Math.round((correctCount / TOTAL_ROUNDS) * 100)}
+              {Math.round((correctCount / totalRounds) * 100)}
               {tr(language, '% de réussite', '% success rate')}
             </Text>
             <View style={{ gap: 12, width: '100%', maxWidth: 300 }}>
@@ -499,7 +500,7 @@ export default function FindCountryGame({
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text style={[styles.roundLabel, { color: colors.textMuted }]}>
-              {index + 1} / {TOTAL_ROUNDS}
+              {index + 1} / {totalRounds}
             </Text>
             {isOnline ? (
               <View style={styles.scoreRow}>
@@ -620,7 +621,7 @@ export default function FindCountryGame({
             </View>
             <TouchableOpacity style={styles.nextBtn} onPress={handleNext}>
               <Text style={styles.nextBtnText}>
-                {index + 1 < TOTAL_ROUNDS
+                {index + 1 < totalRounds
                   ? tr(language, 'Suivant', 'Next')
                   : tr(language, 'Résultats', 'Results')}
               </Text>
