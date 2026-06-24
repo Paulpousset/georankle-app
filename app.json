@@ -15,6 +15,15 @@
           "icon": "./assets/adaptive-icon.png",
           "color": "#2a6e3f"
         }
+      ],
+      "expo-font",
+      "expo-localization",
+      [
+        "@sentry/react-native/expo",
+        {
+          "organization": "tita-30",
+          "project": "geog"
+        }
       ]
     ],
     "splash": {
