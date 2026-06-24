@@ -1,4 +1,5 @@
 import type { MatchMode } from '../types';
+import { createSeededRng, seededShuffle } from './rng';
 
 export type RankTier = 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond' | 'master';
 
@@ -97,27 +98,8 @@ export function getBestOfForRank(rank: RankInfo): number {
 
 const RANKED_MODES: MatchMode[] = ['classic', 'streak', 'versus', 'globe', 'guess'];
 
-function mkRng(seed: number) {
-  let s = seed;
-  return () => {
-    s = (s + 0x6d2b79f5) | 0;
-    let t = Math.imul(s ^ (s >>> 15), s | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function seededShuffle<T>(arr: T[], rand: () => number): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(rand() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
 export function generateRankedModes(bestOf: number, seed: number): MatchMode[] {
-  const rng = mkRng(seed + 0xdeadbeef);
+  const rng = createSeededRng(seed + 0xdeadbeef);
   const shuffled = seededShuffle([...RANKED_MODES], rng);
   return shuffled.slice(0, bestOf);
 }
