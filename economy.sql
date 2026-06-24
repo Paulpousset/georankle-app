@@ -25,8 +25,13 @@ CREATE TABLE IF NOT EXISTS public.cosmetic_prices (
   item_id    text PRIMARY KEY,
   category   text NOT NULL,
   price      int  NOT NULL CHECK (price >= 0),
-  is_default boolean NOT NULL DEFAULT false
+  is_default boolean NOT NULL DEFAULT false,
+  rarity     text NOT NULL DEFAULT 'common'
 );
+
+-- Existing deployments: add the rarity tier column if missing.
+ALTER TABLE public.cosmetic_prices
+  ADD COLUMN IF NOT EXISTS rarity text NOT NULL DEFAULT 'common';
 
 CREATE TABLE IF NOT EXISTS public.solo_coin_log (
   user_id   uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,

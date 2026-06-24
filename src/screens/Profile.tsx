@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -15,16 +15,17 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as ImagePicker from 'expo-image-picker';
-import { Camera, Check, Coins, Eye, EyeOff, Home, LayoutGrid, LogOut, Palette, ShoppingBag, Trash2, Zap } from 'lucide-react-native';
+import { Camera, Check, Coins, Eye, EyeOff, ArrowLeft, LayoutGrid, LogOut, Palette, ShoppingBag, Trash2, Zap } from 'lucide-react-native';
 
 import { supabase } from '../lib/supabase';
+import { useCachedData } from '../lib/cache';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { getRankFromElo, modeLabel } from '../lib/ranked';
 import { RankGlobe } from '../components/RankGlobe';
 import { Avatar } from '../components/Avatar';
-import { Avatar3D } from '../components/Avatar3D';
-import { deriveDefaultConfigFromSeed } from '../data/cosmetics';
+import { WorldAvatar } from '../components/WorldAvatar';
+import { deriveDefaultConfigFromSeed, normalizeConfig } from '../data/cosmetics';
 import { tr } from '../i18n';
 import type { AvatarConfig, Language, MatchMode } from '../types';
 
@@ -41,6 +42,21 @@ interface ProfileProps {
 const MODES: MatchMode[] = ['classic', 'streak', 'versus', 'globe', 'guess'];
 
 type ModeStat = { wins: number; total: number };
+
+/** Everything the Profile screen reads from Supabase in one cacheable snapshot. */
+interface ProfileSnapshot {
+  username: string;
+  avatarUrl: string | null;
+  avatarConfig: AvatarConfig | null;
+  showRank: boolean;
+  coins: number;
+  elo: number;
+  wins: number;
+  losses: number;
+  modeStats: Record<string, ModeStat>;
+  bestClassic: number | null;
+  bestStreak: number | null;
+}
 
 /** Decode a base64 string into a byte array (no external dependency, web + native). */
 function base64ToBytes(base64: string): Uint8Array {
@@ -83,56 +99,35 @@ export default function Profile({ session, isDarkMode, language, onBack, onLogge
   const [bestClassic, setBestClassic] = useState<number | null>(null);
   const [bestStreak, setBestStreak] = useState<number | null>(null);
 
-  const [loading, setLoading] = useState(true);
   const [savingName, setSavingName] = useState(false);
   const [uploading, setUploading] = useState(false);
 
   const rank = getRankFromElo(elo);
 
-  const fetchAll = useCallback(async () => {
-    if (!userId) return;
-    setLoading(true);
+  const fetchProfile = useCallback(async (): Promise<ProfileSnapshot> => {
+    // All five reads are independent → fire them in parallel.
+    const [profileRes, walletRes, ratingRes, matchesRes, scoresRes] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('username, avatar_url, show_rank, avatar_config')
+        .eq('id', userId)
+        .single(),
+      supabase.from('coin_wallets').select('balance').eq('user_id', userId).maybeSingle(),
+      supabase.from('player_ratings').select('elo, wins, losses').eq('user_id', userId).single(),
+      supabase
+        .from('matches')
+        .select('game_mode, player1_id, player2_id, p1_rounds_won, p2_rounds_won')
+        .or(`player1_id.eq.${userId},player2_id.eq.${userId}`)
+        .eq('status', 'completed'),
+      supabase.from('scores').select('game_mode, score').eq('user_id', userId),
+    ]);
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('username, avatar_url, show_rank, avatar_config')
-      .eq('id', userId)
-      .single();
-    if (profile) {
-      setUsername(profile.username ?? '');
-      setSavedUsername(profile.username ?? '');
-      setAvatarUrl(profile.avatar_url ?? null);
-      setAvatarConfig((profile.avatar_config as AvatarConfig) ?? null);
-      setShowRank(profile.show_rank ?? true);
-    }
-
-    const { data: wallet } = await supabase
-      .from('coin_wallets')
-      .select('balance')
-      .eq('user_id', userId)
-      .maybeSingle();
-    setCoins(wallet?.balance ?? 0);
-
-    const { data: rating } = await supabase
-      .from('player_ratings')
-      .select('elo, wins, losses')
-      .eq('user_id', userId)
-      .single();
-    if (rating) {
-      setElo(rating.elo ?? 1000);
-      setWins(rating.wins ?? 0);
-      setLosses(rating.losses ?? 0);
-    }
+    const profile = profileRes.data;
+    const rating = ratingRes.data;
 
     // Per-mode win rate from completed matches.
-    const { data: matches } = await supabase
-      .from('matches')
-      .select('game_mode, player1_id, player2_id, p1_rounds_won, p2_rounds_won')
-      .or(`player1_id.eq.${userId},player2_id.eq.${userId}`)
-      .eq('status', 'completed');
-
     const stats: Record<string, ModeStat> = {};
-    for (const m of matches ?? []) {
+    for (const m of matchesRes.data ?? []) {
       const mode = m.game_mode as string;
       if (!stats[mode]) stats[mode] = { wins: 0, total: 0 };
       stats[mode].total += 1;
@@ -141,26 +136,56 @@ export default function Profile({ session, isDarkMode, language, onBack, onLogge
       const oppRounds = iAmP1 ? (m.p2_rounds_won ?? 0) : (m.p1_rounds_won ?? 0);
       if (myRounds > oppRounds) stats[mode].wins += 1;
     }
-    setModeStats(stats);
 
     // Solo records.
-    const { data: scores } = await supabase
-      .from('scores')
-      .select('game_mode, score')
-      .eq('user_id', userId);
-    if (scores) {
-      const classic = scores.filter((s) => s.game_mode === 'classic').map((s) => s.score);
-      const streak = scores.filter((s) => s.game_mode === 'streak').map((s) => s.score);
-      if (classic.length) setBestClassic(Math.min(...classic));
-      if (streak.length) setBestStreak(Math.max(...streak));
-    }
+    const scores = scoresRes.data ?? [];
+    const classic = scores.filter((s) => s.game_mode === 'classic').map((s) => s.score);
+    const streak = scores.filter((s) => s.game_mode === 'streak').map((s) => s.score);
 
-    setLoading(false);
+    return {
+      username: profile?.username ?? '',
+      avatarUrl: profile?.avatar_url ?? null,
+      avatarConfig: profile?.avatar_config
+        ? normalizeConfig(profile.avatar_config as AvatarConfig)
+        : null,
+      showRank: profile?.show_rank ?? true,
+      coins: walletRes.data?.balance ?? 0,
+      elo: rating?.elo ?? 1000,
+      wins: rating?.wins ?? 0,
+      losses: rating?.losses ?? 0,
+      modeStats: stats,
+      bestClassic: classic.length ? Math.min(...classic) : null,
+      bestStreak: streak.length ? Math.max(...streak) : null,
+    };
   }, [userId]);
 
+  const { data: snapshot, loading } = useCachedData<ProfileSnapshot>(
+    `profile:${userId}`,
+    fetchProfile,
+    { enabled: !!userId },
+  );
+
+  // Push the cached/fresh snapshot into local state. The username text input is
+  // only seeded once so background refreshes don't clobber what the user is typing.
+  const nameHydrated = useRef(false);
   useEffect(() => {
-    fetchAll();
-  }, [fetchAll]);
+    if (!snapshot) return;
+    setSavedUsername(snapshot.username);
+    if (!nameHydrated.current) {
+      setUsername(snapshot.username);
+      nameHydrated.current = true;
+    }
+    setAvatarUrl(snapshot.avatarUrl);
+    setAvatarConfig(snapshot.avatarConfig);
+    setShowRank(snapshot.showRank);
+    setCoins(snapshot.coins);
+    setElo(snapshot.elo);
+    setWins(snapshot.wins);
+    setLosses(snapshot.losses);
+    setModeStats(snapshot.modeStats);
+    setBestClassic(snapshot.bestClassic);
+    setBestStreak(snapshot.bestStreak);
+  }, [snapshot]);
 
   const saveUsername = async () => {
     const trimmed = username.trim();
@@ -244,9 +269,20 @@ export default function Profile({ session, isDarkMode, language, onBack, onLogge
     }
   };
 
-  const logout = async () => {
+  const doLogout = async () => {
     await supabase.auth.signOut();
     onLoggedOut();
+  };
+
+  const logout = () => {
+    Alert.alert(
+      tr(language, 'Déconnexion', 'Logout'),
+      tr(language, 'Veux-tu vraiment te déconnecter ?', 'Do you really want to log out?'),
+      [
+        { text: tr(language, 'Annuler', 'Cancel'), style: 'cancel' },
+        { text: tr(language, 'Déconnexion', 'Logout'), style: 'destructive', onPress: doLogout },
+      ],
+    );
   };
 
   const [deleting, setDeleting] = useState(false);
@@ -312,7 +348,7 @@ export default function Profile({ session, isDarkMode, language, onBack, onLogge
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: c.border }]}>
         <TouchableOpacity onPress={onBack} style={[styles.iconBtn, { backgroundColor: c.card, borderColor: c.border }]}>
-          <Home color={c.text} size={20} />
+          <ArrowLeft color={c.text} size={20} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: c.text }]}>
           {tr(language, 'Mon Profil', 'My Profile')}
@@ -332,8 +368,8 @@ export default function Profile({ session, isDarkMode, language, onBack, onLogge
           <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border, alignItems: 'center' }]}>
             <View style={styles.avatarWrap}>
               {avatar3DConfig ? (
-                <View style={{ width: 150, height: 185, borderRadius: 18, overflow: 'hidden', borderWidth: 2, borderColor: rank.color }}>
-                  <Avatar3D config={avatar3DConfig} size={150} style={{ width: 150, height: 185 }} interactive />
+                <View style={{ width: 168, height: 168, borderRadius: 18, overflow: 'hidden', borderWidth: 2, borderColor: rank.color }}>
+                  <WorldAvatar config={avatar3DConfig} size={168} animate />
                 </View>
               ) : (
                 <Avatar

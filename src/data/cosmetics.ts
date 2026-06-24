@@ -1,158 +1,95 @@
 /**
- * Cosmetic catalog: professional 3D heroes + gear (KayKit Adventurers, CC0)
- * unlocked through the coin shop, plus environment backgrounds and 2D frames.
+ * Cosmetic catalog: a fully geographic "World" identity — a procedural SVG globe
+ * on a cosmos backdrop, ringed by an orbit, accompanied by a landmark emblem and
+ * an orbiting satellite. Everything renders in SVG/Text via <WorldAvatar>; no 3D
+ * models, no CDN, no binary assets.
  *
- * Models load at runtime from the jsdelivr GitHub CDN — no binary assets ship
- * with the app. Prices here are mirrored into the `cosmetic_prices` table (the
- * economic source of truth used by the purchase/equip RPCs); keep them in sync.
+ * Prices derive from each item's rarity tier (see RARITY_META) and are mirrored
+ * into the `cosmetic_prices` table (the economic source of truth used by the
+ * purchase/equip RPCs). Keep them in sync.
  */
-import type { AvatarConfig, AvatarLayer, CosmeticCategory, CosmeticPart } from '../types';
+import type { AvatarConfig, AvatarLayer, CosmeticCategory, CosmeticPart, Rarity } from '../types';
 
-const KAYKIT =
-  'https://cdn.jsdelivr.net/gh/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0/addons/kaykit_character_pack_adventures';
+/** Rarity tiers: badge colour + base price (aspirational scale). */
+export const RARITY_META: Record<Rarity, { color: string; price: number; labelFr: string; labelEn: string }> = {
+  common:    { color: '#8b97a3', price: 50,   labelFr: 'Commun',     labelEn: 'Common' },
+  uncommon:  { color: '#3fae5a', price: 150,  labelFr: 'Peu commun', labelEn: 'Uncommon' },
+  rare:      { color: '#2f86ff', price: 400,  labelFr: 'Rare',       labelEn: 'Rare' },
+  epic:      { color: '#a458ff', price: 800,  labelFr: 'Épique',     labelEn: 'Epic' },
+  legendary: { color: '#ffb02e', price: 1500, labelFr: 'Légendaire', labelEn: 'Legendary' },
+};
 
-const heroUrl = (name: string) => `${KAYKIT}/Characters/gltf/${name}.glb`;
-const gearUrl = (name: string) => `${KAYKIT}/Assets/gltf/${name}.gltf`;
-const sampleUrl = (name: string) => `${KAYKIT}/Samples/${name}.png`;
+/** Sort key so shop sections list items by ascending rarity. */
+export const RARITY_ORDER: Record<Rarity, number> = {
+  common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4,
+};
 
-/** Selection/order of the editor tabs and shop sections. */
-export const LAYER_ORDER: CosmeticCategory[] = ['hero', 'weapon', 'offhand', 'background', 'frame'];
+/** Selection/order of the editor tabs and shop sections (back → front render order). */
+export const LAYER_ORDER: CosmeticCategory[] = ['cosmos', 'globe', 'orbit', 'emblem', 'satellite'];
 
-/** Tint swatch palettes offered in the editor (backgrounds only). */
+/** Tint swatch palettes offered in the editor (cosmos only). */
 export const TINT_PALETTES: Partial<Record<CosmeticCategory, string[]>> = {
-  background: ['#e8d9b8', '#1a2a44', '#c04a1a', '#1a6e5a', '#5a3a7a', '#2a6e3f'],
+  cosmos: ['#0b1230', '#101a3a', '#1a1030', '#0a2030', '#201020', '#10202a'],
 };
 
 const CATALOG: Record<CosmeticCategory, CosmeticPart[]> = {
-  hero: [
-    {
-      id: 'hero_knight', category: 'hero', price: 0, isDefault: true,
-      nameFr: 'Chevalier', nameEn: 'Knight', tintable: false,
-      modelUrl: heroUrl('Knight'), thumbUrl: sampleUrl('knight'),
-    },
-    {
-      id: 'hero_mage', category: 'hero', price: 400, isDefault: false,
-      nameFr: 'Mage', nameEn: 'Mage', tintable: false,
-      modelUrl: heroUrl('Mage'), thumbUrl: sampleUrl('mage'),
-    },
-    {
-      id: 'hero_barbarian', category: 'hero', price: 400, isDefault: false,
-      nameFr: 'Barbare', nameEn: 'Barbarian', tintable: false,
-      modelUrl: heroUrl('Barbarian'), thumbUrl: sampleUrl('barbarian'),
-    },
-    {
-      id: 'hero_rogue', category: 'hero', price: 400, isDefault: false,
-      nameFr: 'Rôdeuse', nameEn: 'Rogue', tintable: false,
-      modelUrl: heroUrl('Rogue'), thumbUrl: sampleUrl('rogue'),
-    },
-    {
-      id: 'hero_rogue_hooded', category: 'hero', price: 550, isDefault: false,
-      nameFr: 'Rôdeuse encapuchonnée', nameEn: 'Hooded Rogue', tintable: false,
-      modelUrl: heroUrl('Rogue_Hooded'), thumbUrl: sampleUrl('rogue'),
-    },
+  // ── COSMOS — the backdrop behind the globe ───────────────────────────────────
+  cosmos: [
+    { id: 'cosmos_bluenight', category: 'cosmos', price: 0, isDefault: true, rarity: 'common', nameFr: 'Bleu nuit', nameEn: 'Deep blue night', tintable: true, defaultTint: '#0b1230', cosmosStyle: 'gradient', swatch: '#0b1230' },
+    { id: 'cosmos_starfield', category: 'cosmos', price: RARITY_META.common.price, isDefault: false, rarity: 'common', nameFr: "Champ d'étoiles", nameEn: 'Starfield', tintable: false, cosmosStyle: 'stars', swatch: '#070a1c' },
+    { id: 'cosmos_sunrise', category: 'cosmos', price: RARITY_META.uncommon.price, isDefault: false, rarity: 'uncommon', nameFr: 'Lever de soleil orbital', nameEn: 'Orbital sunrise', tintable: false, cosmosStyle: 'sunrise', swatch: '#f0894a' },
+    { id: 'cosmos_aurora', category: 'cosmos', price: RARITY_META.rare.price, isDefault: false, rarity: 'rare', nameFr: 'Aurore boréale', nameEn: 'Aurora borealis', tintable: false, cosmosStyle: 'aurora', swatch: '#1fae8b' },
+    { id: 'cosmos_milkyway', category: 'cosmos', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Voie lactée', nameEn: 'Milky Way', tintable: false, cosmosStyle: 'milkyway', swatch: '#2a1a4a' },
+    { id: 'cosmos_nebula', category: 'cosmos', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Nébuleuse', nameEn: 'Nebula', tintable: false, cosmosStyle: 'nebula', swatch: '#7a1a6a' },
+    { id: 'cosmos_meteors', category: 'cosmos', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Pluie de météores', nameEn: 'Meteor shower', tintable: false, cosmosStyle: 'meteors', swatch: '#101030' },
   ],
 
-  weapon: [
-    {
-      id: 'weapon_none', category: 'weapon', price: 0, isDefault: true,
-      nameFr: 'Aucune', nameEn: 'None', tintable: false,
-    },
-    {
-      id: 'weapon_sword_1h', category: 'weapon', price: 120, isDefault: false,
-      nameFr: 'Épée', nameEn: 'Sword', tintable: false,
-      modelUrl: gearUrl('sword_1handed'), attachBone: 'handslotr',
-    },
-    {
-      id: 'weapon_dagger', category: 'weapon', price: 100, isDefault: false,
-      nameFr: 'Dague', nameEn: 'Dagger', tintable: false,
-      modelUrl: gearUrl('dagger'), attachBone: 'handslotr',
-    },
-    {
-      id: 'weapon_axe_1h', category: 'weapon', price: 140, isDefault: false,
-      nameFr: 'Hache', nameEn: 'Axe', tintable: false,
-      modelUrl: gearUrl('axe_1handed'), attachBone: 'handslotr',
-    },
-    {
-      id: 'weapon_wand', category: 'weapon', price: 150, isDefault: false,
-      nameFr: 'Baguette', nameEn: 'Wand', tintable: false,
-      modelUrl: gearUrl('wand'), attachBone: 'handslotr',
-    },
-    {
-      id: 'weapon_staff', category: 'weapon', price: 180, isDefault: false,
-      nameFr: 'Bâton', nameEn: 'Staff', tintable: false,
-      modelUrl: gearUrl('staff'), attachBone: 'handslotr',
-    },
-    {
-      id: 'weapon_crossbow', category: 'weapon', price: 200, isDefault: false,
-      nameFr: 'Arbalète', nameEn: 'Crossbow', tintable: false,
-      modelUrl: gearUrl('crossbow_1handed'), attachBone: 'handslotr',
-    },
-    {
-      id: 'weapon_sword_2h', category: 'weapon', price: 220, isDefault: false,
-      nameFr: 'Épée à deux mains', nameEn: 'Greatsword', tintable: false,
-      modelUrl: gearUrl('sword_2handed_color'), attachBone: 'handslotr',
-    },
-    {
-      id: 'weapon_axe_2h', category: 'weapon', price: 240, isDefault: false,
-      nameFr: 'Hache de guerre', nameEn: 'Battleaxe', tintable: false,
-      modelUrl: gearUrl('axe_2handed'), attachBone: 'handslotr',
-    },
-    {
-      id: 'weapon_mug', category: 'weapon', price: 80, isDefault: false,
-      nameFr: 'Chope', nameEn: 'Mug', tintable: false,
-      modelUrl: gearUrl('mug_full'), attachBone: 'handslotr',
-    },
+  // ── GLOBE — the planet/map skin ──────────────────────────────────────────────
+  globe: [
+    { id: 'globe_classic', category: 'globe', price: 0, isDefault: true, rarity: 'common', nameFr: 'Terre classique', nameEn: 'Classic Earth', tintable: false, globeStyle: 'classic' },
+    { id: 'globe_political', category: 'globe', price: RARITY_META.uncommon.price, isDefault: false, rarity: 'uncommon', nameFr: 'Carte politique', nameEn: 'Political map', tintable: false, globeStyle: 'political' },
+    { id: 'globe_relief', category: 'globe', price: RARITY_META.uncommon.price, isDefault: false, rarity: 'uncommon', nameFr: 'Relief topographique', nameEn: 'Topographic relief', tintable: false, globeStyle: 'relief' },
+    { id: 'globe_vintage', category: 'globe', price: RARITY_META.rare.price, isDefault: false, rarity: 'rare', nameFr: 'Carte vintage', nameEn: 'Vintage map', tintable: false, globeStyle: 'vintage' },
+    { id: 'globe_satellite', category: 'globe', price: RARITY_META.rare.price, isDefault: false, rarity: 'rare', nameFr: 'Blue Marble', nameEn: 'Blue Marble', tintable: false, globeStyle: 'satellite' },
+    { id: 'globe_night', category: 'globe', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Lumières nocturnes', nameEn: 'Night lights', tintable: false, globeStyle: 'night' },
+    { id: 'globe_hologram', category: 'globe', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Globe hologramme', nameEn: 'Hologram globe', tintable: false, globeStyle: 'hologram' },
+    { id: 'globe_gold', category: 'globe', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: "Planète d'or", nameEn: 'Golden planet', tintable: false, globeStyle: 'gold' },
+    { id: 'globe_gaia', category: 'globe', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Terre Gaïa', nameEn: 'Gaia Earth', tintable: false, globeStyle: 'gaia' },
   ],
 
-  offhand: [
-    {
-      id: 'offhand_none', category: 'offhand', price: 0, isDefault: true,
-      nameFr: 'Aucun', nameEn: 'None', tintable: false,
-    },
-    {
-      id: 'offhand_shield_round', category: 'offhand', price: 150, isDefault: false,
-      nameFr: 'Bouclier rond', nameEn: 'Round shield', tintable: false,
-      modelUrl: gearUrl('shield_round_color'), attachBone: 'handslotl',
-    },
-    {
-      id: 'offhand_shield_square', category: 'offhand', price: 150, isDefault: false,
-      nameFr: 'Bouclier carré', nameEn: 'Square shield', tintable: false,
-      modelUrl: gearUrl('shield_square_color'), attachBone: 'handslotl',
-    },
-    {
-      id: 'offhand_shield_badge', category: 'offhand', price: 180, isDefault: false,
-      nameFr: 'Bouclier blason', nameEn: 'Badge shield', tintable: false,
-      modelUrl: gearUrl('shield_badge_color'), attachBone: 'handslotl',
-    },
-    {
-      id: 'offhand_shield_spikes', category: 'offhand', price: 220, isDefault: false,
-      nameFr: 'Bouclier à pointes', nameEn: 'Spiked shield', tintable: false,
-      modelUrl: gearUrl('shield_spikes_color'), attachBone: 'handslotl',
-    },
-    {
-      id: 'offhand_spellbook', category: 'offhand', price: 180, isDefault: false,
-      nameFr: 'Grimoire', nameEn: 'Spellbook', tintable: false,
-      modelUrl: gearUrl('spellbook_open'), attachBone: 'handslotl',
-    },
+  // ── ORBIT — the ring around the globe ────────────────────────────────────────
+  orbit: [
+    { id: 'orbit_none', category: 'orbit', price: 0, isDefault: true, rarity: 'common', nameFr: 'Aucun', nameEn: 'None', tintable: false, orbitStyle: 'none' },
+    { id: 'orbit_meridian', category: 'orbit', price: RARITY_META.common.price, isDefault: false, rarity: 'common', nameFr: 'Méridien bronze', nameEn: 'Bronze meridian', tintable: false, orbitStyle: 'meridian', swatch: '#cd7f32' },
+    { id: 'orbit_graticule', category: 'orbit', price: RARITY_META.uncommon.price, isDefault: false, rarity: 'uncommon', nameFr: 'Graticule argent', nameEn: 'Silver graticule', tintable: false, orbitStyle: 'graticule', swatch: '#c8d0d8' },
+    { id: 'orbit_compass', category: 'orbit', price: RARITY_META.rare.price, isDefault: false, rarity: 'rare', nameFr: 'Rose des vents', nameEn: 'Compass rose', tintable: false, orbitStyle: 'compass', swatch: '#ffd700' },
+    { id: 'orbit_neon', category: 'orbit', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Anneau néon', nameEn: 'Neon ring', tintable: false, orbitStyle: 'neon', swatch: '#80f0ff' },
+    { id: 'orbit_asteroids', category: 'orbit', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: "Ceinture d'astéroïdes", nameEn: 'Asteroid belt', tintable: false, orbitStyle: 'asteroids', swatch: '#9a8a6a' },
   ],
 
-  background: [
-    { id: 'bg_parchment', category: 'background', price: 0, isDefault: true, nameFr: 'Parchemin', nameEn: 'Parchment', tintable: true, defaultTint: '#e8d9b8', swatch: '#e8d9b8' },
-    { id: 'bg_solid', category: 'background', price: 80, isDefault: false, nameFr: 'Uni', nameEn: 'Solid', tintable: true, defaultTint: '#2a6e3f', swatch: '#2a6e3f' },
-    { id: 'bg_night', category: 'background', price: 120, isDefault: false, nameFr: 'Nuit étoilée', nameEn: 'Starry night', tintable: false, swatch: '#10203f' },
-    { id: 'bg_sunset', category: 'background', price: 150, isDefault: false, nameFr: 'Coucher de soleil', nameEn: 'Sunset', tintable: false, swatch: '#f0894a' },
-    { id: 'bg_ocean', category: 'background', price: 150, isDefault: false, nameFr: 'Océan', nameEn: 'Ocean', tintable: false, swatch: '#2a8fd0' },
-    { id: 'bg_space', category: 'background', price: 200, isDefault: false, nameFr: 'Espace', nameEn: 'Space', tintable: false, swatch: '#0b0d22' },
-    { id: 'bg_grid', category: 'background', price: 220, isDefault: false, nameFr: 'Grille néon', nameEn: 'Neon grid', tintable: false, swatch: '#50e0ff' },
+  // ── EMBLEM — a landmark glyph beside the globe ───────────────────────────────
+  emblem: [
+    { id: 'emblem_none', category: 'emblem', price: 0, isDefault: true, rarity: 'common', nameFr: 'Aucun', nameEn: 'None', tintable: false },
+    { id: 'emblem_compass', category: 'emblem', price: RARITY_META.common.price, isDefault: false, rarity: 'common', nameFr: 'Boussole', nameEn: 'Compass', tintable: false, glyph: '🧭' },
+    { id: 'emblem_eiffel', category: 'emblem', price: RARITY_META.uncommon.price, isDefault: false, rarity: 'uncommon', nameFr: 'Tour Eiffel', nameEn: 'Eiffel Tower', tintable: false, glyph: '🗼' },
+    { id: 'emblem_pyramids', category: 'emblem', price: RARITY_META.uncommon.price, isDefault: false, rarity: 'uncommon', nameFr: 'Pyramides de Gizeh', nameEn: 'Pyramids of Giza', tintable: false, glyph: '🛕' },
+    { id: 'emblem_liberty', category: 'emblem', price: RARITY_META.rare.price, isDefault: false, rarity: 'rare', nameFr: 'Statue de la Liberté', nameEn: 'Statue of Liberty', tintable: false, glyph: '🗽' },
+    { id: 'emblem_bigben', category: 'emblem', price: RARITY_META.rare.price, isDefault: false, rarity: 'rare', nameFr: 'Big Ben', nameEn: 'Big Ben', tintable: false, glyph: '🕰️' },
+    { id: 'emblem_fuji', category: 'emblem', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Mont Fuji', nameEn: 'Mount Fuji', tintable: false, glyph: '🗻' },
+    { id: 'emblem_christ', category: 'emblem', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Christ Rédempteur', nameEn: 'Christ the Redeemer', tintable: false, glyph: '⛪' },
+    { id: 'emblem_taj', category: 'emblem', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Taj Mahal', nameEn: 'Taj Mahal', tintable: false, glyph: '🕌' },
+    { id: 'emblem_colosseum', category: 'emblem', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Colisée', nameEn: 'Colosseum', tintable: false, glyph: '🏛️' },
   ],
 
-  frame: [
-    { id: 'frame_none', category: 'frame', price: 0, isDefault: true, nameFr: 'Aucun', nameEn: 'None', tintable: false },
-    { id: 'frame_bronze', category: 'frame', price: 100, isDefault: false, nameFr: 'Bronze', nameEn: 'Bronze', tintable: false, swatch: '#cd7f32' },
-    { id: 'frame_silver', category: 'frame', price: 180, isDefault: false, nameFr: 'Argent', nameEn: 'Silver', tintable: false, swatch: '#c8d0d8' },
-    { id: 'frame_gold', category: 'frame', price: 250, isDefault: false, nameFr: 'Or', nameEn: 'Gold', tintable: false, swatch: '#ffd700' },
-    { id: 'frame_emerald', category: 'frame', price: 320, isDefault: false, nameFr: 'Émeraude', nameEn: 'Emerald', tintable: false, swatch: '#1fae6b' },
-    { id: 'frame_neon', category: 'frame', price: 400, isDefault: false, nameFr: 'Néon', nameEn: 'Neon', tintable: false, swatch: '#80f0ff' },
+  // ── SATELLITE — a small element in orbit ─────────────────────────────────────
+  satellite: [
+    { id: 'sat_none', category: 'satellite', price: 0, isDefault: true, rarity: 'common', nameFr: 'Aucun', nameEn: 'None', tintable: false },
+    { id: 'sat_moon', category: 'satellite', price: RARITY_META.common.price, isDefault: false, rarity: 'common', nameFr: 'Lune', nameEn: 'Moon', tintable: false, glyph: '🌙' },
+    { id: 'sat_plane', category: 'satellite', price: RARITY_META.uncommon.price, isDefault: false, rarity: 'uncommon', nameFr: 'Avion', nameEn: 'Airplane', tintable: false, glyph: '✈️' },
+    { id: 'sat_balloon', category: 'satellite', price: RARITY_META.uncommon.price, isDefault: false, rarity: 'uncommon', nameFr: 'Montgolfière', nameEn: 'Hot-air balloon', tintable: false, glyph: '🎈' },
+    { id: 'sat_satellite', category: 'satellite', price: RARITY_META.rare.price, isDefault: false, rarity: 'rare', nameFr: 'Satellite', nameEn: 'Satellite', tintable: false, glyph: '🛰️' },
+    { id: 'sat_iss', category: 'satellite', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Station ISS', nameEn: 'Space station', tintable: false, glyph: '🛸' },
+    { id: 'sat_comet', category: 'satellite', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Comète', nameEn: 'Comet', tintable: false, glyph: '☄️' },
   ],
 };
 
@@ -172,9 +109,9 @@ function defaultPartId(category: CosmeticCategory): string {
   return (CATALOG[category].find((p) => p.isDefault) ?? CATALOG[category][0]).id;
 }
 
-/** The free starter look — Knight, no gear, parchment environment. */
+/** The free starter look — classic Earth on a deep-blue cosmos, no ring/emblem/satellite. */
 export const DEFAULT_AVATAR_CONFIG: AvatarConfig = {
-  v: 3,
+  v: 4,
   useCustom: true,
   layers: LAYER_ORDER.reduce((acc, cat) => {
     const part = getPart(cat, defaultPartId(cat));
@@ -192,20 +129,21 @@ function hashString(s: string): number {
 }
 
 /**
- * Legacy users without a saved config get the free Knight with a personal
- * background tint derived from their name (only free items are used).
+ * Users without a saved config get the free classic Earth with a personal cosmos
+ * tint derived from their name (only free items are used).
  */
 export function deriveDefaultConfigFromSeed(seed: string): AvatarConfig {
   const h = hashString(seed || '?');
-  const palette = TINT_PALETTES.background!;
+  const palette = TINT_PALETTES.cosmos!;
   const layers = { ...DEFAULT_AVATAR_CONFIG.layers } as Record<CosmeticCategory, AvatarLayer>;
-  layers.background = { id: 'bg_parchment', tint: palette[h % palette.length] };
-  return { v: 3, useCustom: true, layers };
+  layers.cosmos = { id: 'cosmos_bluenight', tint: palette[h % palette.length] };
+  return { v: 4, useCustom: true, layers };
 }
 
 /**
- * Ensure every slot exists and drop legacy (pre-hero) categories so configs
- * saved by older versions keep validating server-side.
+ * Ensure every slot exists and drop legacy categories so configs saved by older
+ * versions keep validating server-side (legacy fantasy slots fall back to the
+ * new World defaults).
  */
 export function normalizeConfig(config: AvatarConfig): AvatarConfig {
   const layers = {} as Record<CosmeticCategory, AvatarLayer>;
@@ -213,15 +151,16 @@ export function normalizeConfig(config: AvatarConfig): AvatarConfig {
     const existing = config.layers?.[cat];
     layers[cat] = existing && getPart(cat, existing.id) ? existing : DEFAULT_AVATAR_CONFIG.layers[cat];
   }
-  return { v: 3, useCustom: config.useCustom !== false, layers };
+  return { v: 4, useCustom: config.useCustom !== false, layers };
 }
 
 /** Seed rows for the cosmetic_prices table (economic source of truth). */
-export function buildCosmeticPriceRows(): { item_id: string; category: string; price: number; is_default: boolean }[] {
+export function buildCosmeticPriceRows(): { item_id: string; category: string; price: number; is_default: boolean; rarity: string }[] {
   return ALL_PARTS.map((p) => ({
     item_id: p.id,
     category: p.category,
     price: p.price,
     is_default: p.isDefault,
+    rarity: p.rarity,
   }));
 }

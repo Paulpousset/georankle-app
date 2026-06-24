@@ -1,18 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { BookOpen, Beer, Check, Circle, Crosshair, Home, Lock, Shield, ShoppingBag, Sparkles, Sword, Wand2 } from 'lucide-react-native';
-import type { ComponentType } from 'react';
+import { Check, ArrowLeft, Lock, ShoppingBag } from 'lucide-react-native';
 
 import { supabase } from '../lib/supabase';
+import { track } from '../lib/analytics';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { tr } from '../i18n';
-import { Avatar3D } from '../components/Avatar3D';
+import { WorldAvatar } from '../components/WorldAvatar';
+import { GlyphThumb } from '../components/worldGlyphs';
 import {
   DEFAULT_AVATAR_CONFIG,
   LAYER_ORDER,
+  RARITY_META,
   TINT_PALETTES,
   getCategoryParts,
   getPart,
@@ -29,35 +31,29 @@ interface AvatarEditorProps {
 }
 
 const CATEGORY_LABELS: Record<CosmeticCategory, [string, string]> = {
-  hero: ['Héros', 'Hero'],
-  weapon: ['Arme', 'Weapon'],
-  offhand: ['Bouclier', 'Offhand'],
-  background: ['Décor', 'Environment'],
-  frame: ['Cadre', 'Frame'],
-};
-
-/** Icon per gear item for tiles without an image thumbnail. */
-const GEAR_ICONS: Record<string, ComponentType<{ color: string; size: number }>> = {
-  weapon_none: Circle,
-  weapon_sword_1h: Sword,
-  weapon_sword_2h: Sword,
-  weapon_dagger: Sword,
-  weapon_axe_1h: Sword,
-  weapon_axe_2h: Sword,
-  weapon_wand: Wand2,
-  weapon_staff: Sparkles,
-  weapon_crossbow: Crosshair,
-  weapon_mug: Beer,
-  offhand_none: Circle,
-  offhand_shield_round: Shield,
-  offhand_shield_square: Shield,
-  offhand_shield_badge: Shield,
-  offhand_shield_spikes: Shield,
-  offhand_spellbook: BookOpen,
+  cosmos: ['Cosmos', 'Cosmos'],
+  globe: ['Globe', 'Globe'],
+  orbit: ['Orbite', 'Orbit'],
+  emblem: ['Emblème', 'Emblem'],
+  satellite: ['Satellite', 'Satellite'],
 };
 
 function cloneConfig(cfg: AvatarConfig): AvatarConfig {
   return { v: cfg.v, useCustom: cfg.useCustom, layers: { ...cfg.layers } };
+}
+
+/** Mini preview config: defaults everywhere, with `part` swapped into its slot
+ *  so cosmos/orbit/globe tiles show the real rendered element. */
+function tileConfig(part: CosmeticPart): AvatarConfig {
+  const layers: AvatarConfig['layers'] = {
+    cosmos: { id: 'cosmos_bluenight', tint: null },
+    globe: { id: 'globe_classic', tint: null },
+    orbit: { id: 'orbit_none', tint: null },
+    emblem: { id: 'emblem_none', tint: null },
+    satellite: { id: 'sat_none', tint: null },
+  };
+  layers[part.category] = { id: part.id, tint: part.defaultTint ?? null };
+  return { v: 4, useCustom: true, layers };
 }
 
 export default function AvatarEditor({ session, isDarkMode, language, onBack, onOpenShop }: AvatarEditorProps) {
@@ -66,7 +62,7 @@ export default function AvatarEditor({ session, isDarkMode, language, onBack, on
 
   const [config, setConfig] = useState<AvatarConfig>(() => cloneConfig(DEFAULT_AVATAR_CONFIG));
   const [owned, setOwned] = useState<Set<string>>(new Set());
-  const [activeCategory, setActiveCategory] = useState<CosmeticCategory>('hero');
+  const [activeCategory, setActiveCategory] = useState<CosmeticCategory>('globe');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -98,6 +94,7 @@ export default function AvatarEditor({ session, isDarkMode, language, onBack, on
       onOpenShop();
       return;
     }
+    track('avatar_equipped', { category: part.category, item_id: part.id });
     setConfig((prev) => {
       const next = cloneConfig(prev);
       const prevTint = prev.layers[part.category]?.tint ?? null;
@@ -136,33 +133,23 @@ export default function AvatarEditor({ session, isDarkMode, language, onBack, on
   const parts = useMemo(() => getCategoryParts(activeCategory), [activeCategory]);
 
   const renderTileVisual = (part: CosmeticPart, ownedPart: boolean) => {
-    if (part.thumbUrl) {
+    const op = ownedPart ? 1 : 0.4;
+    if (part.category === 'globe' || part.category === 'cosmos' || part.category === 'orbit') {
       return (
-        <Image
-          source={{ uri: part.thumbUrl }}
-          style={{ width: 56, height: 56, borderRadius: 28, opacity: ownedPart ? 1 : 0.4 }}
-          resizeMode="cover"
-        />
+        <View style={{ width: 56, height: 56, borderRadius: 28, overflow: 'hidden', backgroundColor: '#05060f', opacity: op }}>
+          <WorldAvatar config={tileConfig(part)} size={56} />
+        </View>
       );
     }
-    if (part.swatch) {
+    if (part.category === 'emblem' || part.category === 'satellite') {
       return (
-        <View
-          style={{
-            width: 56, height: 56, borderRadius: 28,
-            backgroundColor: part.category === 'frame' ? 'transparent' : part.swatch,
-            borderWidth: part.category === 'frame' ? 6 : 1,
-            borderColor: part.category === 'frame' ? part.swatch : c.border,
-            opacity: ownedPart ? 1 : 0.4,
-          }}
-        />
+        <View style={{ width: 56, height: 56, borderRadius: 28, overflow: 'hidden', backgroundColor: c.background, borderWidth: 1, borderColor: c.border, alignItems: 'center', justifyContent: 'center', opacity: op }}>
+          <GlyphThumb id={part.id} category={part.category} size={52} />
+        </View>
       );
     }
-    const Icon = GEAR_ICONS[part.id] ?? Circle;
     return (
-      <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: c.background, alignItems: 'center', justifyContent: 'center', opacity: ownedPart ? 1 : 0.4 }}>
-        <Icon color={c.text} size={26} />
-      </View>
+      <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: c.background, borderWidth: 1, borderColor: c.border, opacity: op }} />
     );
   };
 
@@ -171,11 +158,21 @@ export default function AvatarEditor({ session, isDarkMode, language, onBack, on
       <StatusBar style={isDarkMode ? 'light' : 'dark'} />
 
       <View style={[styles.header, { borderBottomColor: c.border }]}>
-        <TouchableOpacity onPress={onBack} style={[styles.iconBtn, { backgroundColor: c.card, borderColor: c.border }]}>
-          <Home color={c.text} size={20} />
+        <TouchableOpacity
+          onPress={onBack}
+          style={[styles.iconBtn, { backgroundColor: c.card, borderColor: c.border }]}
+          accessibilityRole="button"
+          accessibilityLabel={tr(language, 'Retour', 'Back')}
+        >
+          <ArrowLeft color={c.text} size={20} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: c.text }]}>{tr(language, 'Mon Héros', 'My Hero')}</Text>
-        <TouchableOpacity onPress={onOpenShop} style={[styles.iconBtn, { backgroundColor: c.card, borderColor: c.border }]}>
+        <Text style={[styles.headerTitle, { color: c.text }]}>{tr(language, 'Mon Monde', 'My World')}</Text>
+        <TouchableOpacity
+          onPress={onOpenShop}
+          style={[styles.iconBtn, { backgroundColor: c.card, borderColor: c.border }]}
+          accessibilityRole="button"
+          accessibilityLabel={tr(language, 'Ouvrir la boutique', 'Open shop')}
+        >
           <ShoppingBag color={c.accent} size={20} />
         </TouchableOpacity>
       </View>
@@ -186,14 +183,11 @@ export default function AvatarEditor({ session, isDarkMode, language, onBack, on
         </View>
       ) : (
         <>
-          {/* Live 3D preview — hero in its environment, drag to rotate */}
+          {/* Live preview — the composed world avatar */}
           <View style={styles.previewWrap}>
             <View style={[styles.previewViewport, { borderColor: c.border }]}>
-              <Avatar3D config={config} size={200} style={{ width: 200, height: 230 }} interactive />
+              <WorldAvatar config={config} size={200} animate />
             </View>
-            <Text style={[styles.spinHint, { color: c.textFaint }]}>
-              {tr(language, 'Glissez pour faire tourner', 'Drag to rotate')}
-            </Text>
           </View>
 
           {/* Category tabs */}
@@ -252,6 +246,9 @@ export default function AvatarEditor({ session, isDarkMode, language, onBack, on
                     ]}
                   >
                     {renderTileVisual(part, ownedPart)}
+                    {!part.isDefault && (
+                      <View style={[styles.rarityDot, { backgroundColor: RARITY_META[part.rarity].color }]} />
+                    )}
                     <Text style={[styles.tileName, { color: c.text }]} numberOfLines={1}>
                       {language === 'fr' ? part.nameFr : part.nameEn}
                     </Text>
@@ -268,7 +265,13 @@ export default function AvatarEditor({ session, isDarkMode, language, onBack, on
           </ScrollView>
 
           <View style={[styles.footer, { borderTopColor: c.border, backgroundColor: c.background }]}>
-            <TouchableOpacity onPress={save} disabled={saving} style={[styles.saveBtn, { backgroundColor: c.accent }]}>
+            <TouchableOpacity
+              onPress={save}
+              disabled={saving}
+              accessibilityRole="button"
+              accessibilityLabel={tr(language, 'Enregistrer mon monde', 'Save my world')}
+              style={[styles.saveBtn, { backgroundColor: c.accent, opacity: saving ? 0.6 : 1 }]}
+            >
               {saving ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
@@ -305,6 +308,7 @@ const styles = StyleSheet.create({
   swatch: { width: 34, height: 34, borderRadius: 17 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-start' },
   tile: { width: 92, borderRadius: 14, padding: 8, alignItems: 'center', gap: 4 },
+  rarityDot: { width: 8, height: 8, borderRadius: 4, position: 'absolute', top: 8, right: 8 },
   tileName: { fontSize: 10, fontFamily: FONTS.mono, textAlign: 'center' },
   lockRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   lockPrice: { fontSize: 10, fontFamily: FONTS.monoBold },

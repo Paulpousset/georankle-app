@@ -2,7 +2,8 @@ import React from 'react';
 import { Image, Text, View } from 'react-native';
 
 import type { AvatarConfig } from '../types';
-import { getPart } from '../data/cosmetics';
+import { DEFAULT_AVATAR_CONFIG } from '../data/cosmetics';
+import { WorldAvatar } from './WorldAvatar';
 import { FONTS } from '../theme/typography';
 
 interface AvatarProps {
@@ -33,42 +34,44 @@ function initials(name: string | null | undefined): string {
 
 /**
  * Shared avatar thumbnail. Priority:
- *  1. hero portrait (config.useCustom) with the equipped 2D frame ring
+ *  1. world avatar (config.useCustom) — procedural globe + cosmos + orbit
  *  2. uploaded photo (photoUrl)
- *  3. hero portrait default (username present — everyone has the free Knight)
+ *  3. world avatar default (username present — everyone has the free Earth)
  *  4. initials circle (ultimate fallback)
  *
- * Purely presentational — images load via <Image>, never fetches data.
+ * Purely presentational — never fetches data.
  */
 function AvatarBase({ config, photoUrl, username, size, ringColor, ringWidth = 3 }: AvatarProps) {
   const radius = size / 2;
 
-  // Equipped 2D frame ring (cosmetic) wins over the contextual ring colour.
-  const framePart = config ? getPart('frame', config.layers?.frame?.id ?? '') : undefined;
-  const ring = framePart?.swatch ?? ringColor;
+  // Contextual ring colour (e.g. online status) drawn as an outer border.
+  const ring = ringColor;
 
-  const heroId = config?.layers?.hero?.id ?? 'hero_knight';
-  const hero = getPart('hero', heroId) ?? getPart('hero', 'hero_knight');
+  const showWorld = config ? config.useCustom !== false : !!username && !photoUrl;
+  const worldConfig = config ?? DEFAULT_AVATAR_CONFIG;
 
-  const showHero = config ? config.useCustom !== false : !!username && !photoUrl;
+  const a11yLabel = username ? `${username}` : undefined;
 
-  if (showHero && hero?.thumbUrl) {
+  if (showWorld) {
     return (
       <View
+        accessible
+        accessibilityRole="image"
+        accessibilityLabel={a11yLabel}
         style={{
           width: size, height: size, borderRadius: radius, overflow: 'hidden',
           borderWidth: ring ? ringWidth : 0, borderColor: ring,
-          backgroundColor: '#ded2b4',
+          backgroundColor: '#05060f',
         }}
       >
-        <Image source={{ uri: hero.thumbUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        <WorldAvatar config={worldConfig} size={size} />
       </View>
     );
   }
 
   if (photoUrl) {
     return (
-      <View style={{ width: size, height: size, borderRadius: radius, overflow: 'hidden', borderWidth: ring ? ringWidth : 0, borderColor: ring }}>
+      <View accessible accessibilityRole="image" accessibilityLabel={a11yLabel} style={{ width: size, height: size, borderRadius: radius, overflow: 'hidden', borderWidth: ring ? ringWidth : 0, borderColor: ring }}>
         <Image source={{ uri: photoUrl }} style={{ width: '100%', height: '100%' }} />
       </View>
     );
@@ -77,6 +80,8 @@ function AvatarBase({ config, photoUrl, username, size, ringColor, ringWidth = 3
   const name = username ?? '?';
   return (
     <View
+      accessible
+      accessibilityLabel={a11yLabel}
       style={{
         width: size, height: size, borderRadius: radius,
         backgroundColor: initialsColor(name),

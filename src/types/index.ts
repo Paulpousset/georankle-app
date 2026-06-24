@@ -98,12 +98,17 @@ export interface PlayerRating {
 // ── Avatar customization ─────────────────────────────────────────────────────
 
 /**
- * Customization slots. The character itself is a professional 3D hero model
- * (KayKit, CC0) unlocked in the shop; weapon/offhand are gear attached to the
- * hero's hand slots; background is the 3D environment; frame is a 2D ring
- * shown around list thumbnails.
+ * Customization slots — a "World" identity rendered entirely in SVG/Text:
+ *  - `globe`     the planet/map skin (procedural globe, see WorldAvatar),
+ *  - `cosmos`    the backdrop behind the globe (gradient + stars),
+ *  - `orbit`     a ring drawn around the globe (meridian, compass, neon…),
+ *  - `emblem`    a landmark glyph floating beside the globe (monuments),
+ *  - `satellite` a small element in orbit (moon, plane, comet…).
  */
-export type CosmeticCategory = 'background' | 'hero' | 'weapon' | 'offhand' | 'frame';
+export type CosmeticCategory = 'cosmos' | 'globe' | 'orbit' | 'emblem' | 'satellite';
+
+/** Rarity tier — drives badge colour and base price. */
+export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 
 /** A purchasable/equippable cosmetic, defined in src/data/cosmetics.ts. */
 export interface CosmeticPart {
@@ -111,19 +116,22 @@ export interface CosmeticPart {
   category: CosmeticCategory;
   price: number;
   isDefault: boolean;
+  rarity: Rarity;
   nameFr: string;
   nameEn: string;
-  /** Whether this part exposes a tint color the user can pick (backgrounds). */
+  /** Whether this part exposes a tint color the user can pick (cosmos). */
   tintable: boolean;
   /** Default tint applied when none is chosen (for tintable parts). */
   defaultTint?: string;
-  /** GLB/GLTF model URL (heroes and gear). */
-  modelUrl?: string;
-  /** Skeleton node the gear attaches to (handslotr / handslotl). */
-  attachBone?: string;
-  /** 2D portrait/thumbnail image URL (heroes). */
-  thumbUrl?: string;
-  /** Representative colour for simple swatch tiles (backgrounds, frames). */
+  /** Globe rendering style key (globe slot) — interpreted by WorldAvatar. */
+  globeStyle?: string;
+  /** Cosmos backdrop style key (cosmos slot). */
+  cosmosStyle?: string;
+  /** Orbit ring style key (orbit slot). */
+  orbitStyle?: string;
+  /** Emoji glyph rendered for emblem/satellite slots. */
+  glyph?: string;
+  /** Representative colour for simple swatch tiles (cosmos, orbit). */
   swatch?: string;
 }
 
@@ -136,7 +144,7 @@ export interface AvatarLayer {
 /** The equipped avatar configuration stored in profiles.avatar_config (JSONB). */
 export interface AvatarConfig {
   v: number;
-  /** When false, fall back to photo/initials instead of the 3D hero. */
+  /** When false, fall back to photo/initials instead of the world avatar. */
   useCustom: boolean;
   layers: Record<CosmeticCategory, AvatarLayer>;
 }

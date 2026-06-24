@@ -1,16 +1,19 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, Dimensions, Modal, Pressable, SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { BookOpen, Beer, Check, Circle, Coins, Crosshair, Home, Palette, Shield, Sparkles, Sword, Wand2 } from 'lucide-react-native';
-import type { ComponentType } from 'react';
+import { Check, Coins, ArrowLeft, Palette, X } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
 
 import { supabase } from '../lib/supabase';
+import { track } from '../lib/analytics';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { tr } from '../i18n';
-import { LAYER_ORDER, getCategoryParts } from '../data/cosmetics';
-import type { CosmeticCategory, CosmeticPart, Language } from '../types';
+import { DEFAULT_AVATAR_CONFIG, LAYER_ORDER, RARITY_META, RARITY_ORDER, getCategoryParts, normalizeConfig } from '../data/cosmetics';
+import { WorldAvatar } from '../components/WorldAvatar';
+import { GlyphThumb } from '../components/worldGlyphs';
+import type { AvatarConfig, CosmeticCategory, CosmeticPart, Language } from '../types';
 
 interface ShopProps {
   session: { user: { id: string } | null };
@@ -21,29 +24,36 @@ interface ShopProps {
 }
 
 const CATEGORY_LABELS: Record<CosmeticCategory, [string, string]> = {
-  hero: ['Héros', 'Heroes'],
-  weapon: ['Armes', 'Weapons'],
-  offhand: ['Boucliers & soutien', 'Shields & offhand'],
-  background: ['Décors', 'Environments'],
-  frame: ['Cadres', 'Frames'],
+  cosmos: ['Cosmos', 'Cosmos'],
+  globe: ['Globes', 'Globes'],
+  orbit: ['Orbites', 'Orbits'],
+  emblem: ['Emblèmes', 'Emblems'],
+  satellite: ['Satellites', 'Satellites'],
 };
 
-const GEAR_ICONS: Record<string, ComponentType<{ color: string; size: number }>> = {
-  weapon_sword_1h: Sword,
-  weapon_sword_2h: Sword,
-  weapon_dagger: Sword,
-  weapon_axe_1h: Sword,
-  weapon_axe_2h: Sword,
-  weapon_wand: Wand2,
-  weapon_staff: Sparkles,
-  weapon_crossbow: Crosshair,
-  weapon_mug: Beer,
-  offhand_shield_round: Shield,
-  offhand_shield_square: Shield,
-  offhand_shield_badge: Shield,
-  offhand_shield_spikes: Shield,
-  offhand_spellbook: BookOpen,
-};
+/** Stable preview config for a tile: defaults everywhere, with the previewed
+ *  part swapped into its slot — so cosmos/orbit/globe tiles show the real element. */
+function tileConfig(part: CosmeticPart): AvatarConfig {
+  const layers: AvatarConfig['layers'] = {
+    cosmos: { id: 'cosmos_bluenight', tint: null },
+    globe: { id: 'globe_classic', tint: null },
+    orbit: { id: 'orbit_none', tint: null },
+    emblem: { id: 'emblem_none', tint: null },
+    satellite: { id: 'sat_none', tint: null },
+  };
+  layers[part.category] = { id: part.id, tint: part.defaultTint ?? null };
+  return { v: 4, useCustom: true, layers };
+}
+
+const PREVIEW_SIZE = Math.min(Dimensions.get('window').width - 48, 300);
+
+/** Tiles per grid row — chunked so a virtualized SectionList can render rows. */
+const SHOP_COLS = 3;
+
+interface ShopSection {
+  cat: CosmeticCategory;
+  data: CosmeticPart[][];
+}
 
 export default function Shop({ session, isDarkMode, language, onBack, onEditAvatar }: ShopProps) {
   const userId = session.user?.id ?? '';
@@ -53,71 +63,190 @@ export default function Shop({ session, isDarkMode, language, onBack, onEditAvat
   const [owned, setOwned] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [buying, setBuying] = useState<string | null>(null);
+  const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(DEFAULT_AVATAR_CONFIG);
+  const [previewPart, setPreviewPart] = useState<CosmeticPart | null>(null);
 
   const fetchAll = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
-    const [{ data: wallet }, { data: cosmetics }] = await Promise.all([
+    const [{ data: wallet }, { data: cosmetics }, { data: profile }] = await Promise.all([
       supabase.from('coin_wallets').select('balance').eq('user_id', userId).maybeSingle(),
       supabase.from('user_cosmetics').select('item_id').eq('user_id', userId),
+      supabase.from('profiles').select('avatar_config').eq('id', userId).single(),
     ]);
     setBalance(wallet?.balance ?? 0);
     setOwned(new Set((cosmetics ?? []).map((r) => r.item_id as string)));
+    if (profile?.avatar_config) setAvatarConfig(normalizeConfig(profile.avatar_config as AvatarConfig));
     setLoading(false);
   }, [userId]);
 
-  useEffect(() => {
-    fetchAll();
-  }, [fetchAll]);
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  useEffect(() => { track('shop_opened'); }, []);
+
+  // Config shown in the 3D modal: base config with the previewed item swapped in.
+  const previewConfig = useMemo<AvatarConfig>(() => {
+    if (!previewPart) return avatarConfig;
+    return {
+      ...avatarConfig,
+      layers: {
+        ...avatarConfig.layers,
+        [previewPart.category]: { id: previewPart.id, tint: previewPart.defaultTint ?? null },
+      },
+    };
+  }, [previewPart, avatarConfig]);
 
   const buy = async (part: CosmeticPart) => {
     if (balance < part.price) {
-      Alert.alert(tr(language, 'Solde insuffisant', 'Insufficient funds'), tr(language, 'Jouez pour gagner des pièces.', 'Play to earn coins.'));
+      Alert.alert(
+        tr(language, 'Solde insuffisant', 'Insufficient funds'),
+        tr(language, 'Jouez pour gagner des pièces.', 'Play to earn coins.'),
+      );
       return;
     }
     setBuying(part.id);
     const { data, error } = await supabase.rpc('purchase_cosmetic', { p_item_id: part.id });
     setBuying(null);
     if (error) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
       Alert.alert(tr(language, 'Erreur', 'Error'), error.message);
       return;
     }
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     const result = data as { already_owned: boolean; new_balance: number };
     setBalance(result.new_balance);
     setOwned((prev) => new Set(prev).add(part.id));
+    track('cosmetic_purchased', { item_id: part.id, price: part.price });
   };
 
-  const renderTileVisual = (part: CosmeticPart) => {
-    if (part.thumbUrl) {
-      return <Image source={{ uri: part.thumbUrl }} style={{ width: 60, height: 60, borderRadius: 30 }} resizeMode="cover" />;
-    }
-    if (part.swatch) {
+  const renderThumb = (part: CosmeticPart) => {
+    if (part.category === 'globe' || part.category === 'cosmos' || part.category === 'orbit') {
       return (
-        <View
-          style={{
-            width: 60, height: 60, borderRadius: 30,
-            backgroundColor: part.category === 'frame' ? 'transparent' : part.swatch,
-            borderWidth: part.category === 'frame' ? 6 : 1,
-            borderColor: part.category === 'frame' ? part.swatch : c.border,
-          }}
-        />
+        <View style={styles.thumbRound}>
+          <WorldAvatar config={tileConfig(part)} size={60} />
+        </View>
       );
     }
-    const Icon = GEAR_ICONS[part.id] ?? Circle;
+    if (part.category === 'emblem' || part.category === 'satellite') {
+      return (
+        <View style={[styles.thumbGlyphWrap, { backgroundColor: c.background, borderColor: c.border }]}>
+          <GlyphThumb id={part.id} category={part.category} size={56} />
+        </View>
+      );
+    }
+    return <View style={[styles.thumbCircle, { backgroundColor: c.background, borderColor: c.border }]} />;
+  };
+
+  const RarityBadge = ({ part }: { part: CosmeticPart }) => {
+    const meta = RARITY_META[part.rarity];
     return (
-      <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: c.background, alignItems: 'center', justifyContent: 'center' }}>
-        <Icon color={c.text} size={28} />
+      <View style={[styles.rarityBadge, { backgroundColor: meta.color + '22', borderColor: meta.color }]}>
+        <View style={[styles.rarityDot, { backgroundColor: meta.color }]} />
+        <Text style={[styles.rarityText, { color: meta.color }]}>
+          {language === 'fr' ? meta.labelFr : meta.labelEn}
+        </Text>
       </View>
     );
   };
+
+  // Section structure (categories → rows of parts) is static; only tile content
+  // depends on owned/balance, so this is memoised once.
+  const sections = useMemo<ShopSection[]>(() => {
+    return LAYER_ORDER.map((cat) => {
+      const parts = getCategoryParts(cat)
+        .filter((p) => !p.isDefault)
+        .sort((a, b) => RARITY_ORDER[a.rarity] - RARITY_ORDER[b.rarity] || a.price - b.price);
+      const rows: CosmeticPart[][] = [];
+      for (let i = 0; i < parts.length; i += SHOP_COLS) rows.push(parts.slice(i, i + SHOP_COLS));
+      return { cat, data: rows };
+    }).filter((s) => s.data.length > 0);
+  }, []);
+
+  const renderTile = useCallback(
+    (part: CosmeticPart) => {
+      const itemOwned = owned.has(part.id);
+      const affordable = balance >= part.price;
+      return (
+        <TouchableOpacity
+          key={part.id}
+          onPress={() => setPreviewPart(part)}
+          style={[styles.tile, { backgroundColor: c.card, borderColor: RARITY_META[part.rarity].color + '88' }]}
+        >
+          {renderThumb(part)}
+          <RarityBadge part={part} />
+          <Text style={[styles.tileName, { color: c.text }]} numberOfLines={2}>
+            {language === 'fr' ? part.nameFr : part.nameEn}
+          </Text>
+          {itemOwned ? (
+            <View style={styles.ownedRow}>
+              <Check size={12} color={c.accent} />
+              <Text style={[styles.ownedText, { color: c.accent }]}>
+                {tr(language, 'Possédé', 'Owned')}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.priceRow}>
+              <Coins color="#ffd700" size={12} />
+              <Text style={[styles.priceText, { color: affordable ? c.text : c.textMuted }]}>
+                {part.price}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      );
+    },
+    // renderThumb/RarityBadge close over c/language which are in deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [owned, balance, c, language],
+  );
+
+  const renderRow = useCallback(
+    ({ item: row }: { item: CosmeticPart[] }) => (
+      <View style={styles.grid}>{row.map(renderTile)}</View>
+    ),
+    [renderTile],
+  );
+
+  const renderSectionHeader = useCallback(
+    ({ section }: { section: ShopSection }) => (
+      <Text style={[styles.sectionTitle, { color: c.textMuted }]}>
+        {tr(language, CATEGORY_LABELS[section.cat][0], CATEGORY_LABELS[section.cat][1]).toUpperCase()}
+      </Text>
+    ),
+    [c, language],
+  );
+
+  const listHeader = useCallback(
+    () => (
+      <TouchableOpacity
+        onPress={onEditAvatar}
+        style={[styles.editBtn, { backgroundColor: c.card, borderColor: c.accent }]}
+      >
+        <Palette color={c.accent} size={18} />
+        <Text style={[styles.editText, { color: c.accent }]}>
+          {tr(language, 'Personnaliser mon monde', 'Customize my world')}
+        </Text>
+      </TouchableOpacity>
+    ),
+    [c, language, onEditAvatar],
+  );
+
+  const isOwned = previewPart ? owned.has(previewPart.id) : false;
+  const canAfford = previewPart ? balance >= previewPart.price : false;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: c.background }]}>
       <StatusBar style={isDarkMode ? 'light' : 'dark'} />
 
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
       <View style={[styles.header, { borderBottomColor: c.border }]}>
-        <TouchableOpacity onPress={onBack} style={[styles.iconBtn, { backgroundColor: c.card, borderColor: c.border }]}>
-          <Home color={c.text} size={20} />
+        <TouchableOpacity
+          onPress={onBack}
+          style={[styles.iconBtn, { backgroundColor: c.card, borderColor: c.border }]}
+          accessibilityRole="button"
+          accessibilityLabel={tr(language, 'Retour', 'Back')}
+        >
+          <ArrowLeft color={c.text} size={20} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: c.text }]}>{tr(language, 'Boutique', 'Shop')}</Text>
         <View style={[styles.coinChip, { backgroundColor: c.card, borderColor: c.border }]}>
@@ -131,60 +260,92 @@ export default function Shop({ session, isDarkMode, language, onBack, onEditAvat
           <ActivityIndicator size="large" color={c.accent} />
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <TouchableOpacity onPress={onEditAvatar} style={[styles.editBtn, { backgroundColor: c.card, borderColor: c.accent }]}>
-            <Palette color={c.accent} size={18} />
-            <Text style={[styles.editText, { color: c.accent }]}>{tr(language, 'Personnaliser mon héros', 'Customize my hero')}</Text>
-          </TouchableOpacity>
-
-          {LAYER_ORDER.map((cat) => {
-            const parts = getCategoryParts(cat).filter((p) => !p.isDefault);
-            if (parts.length === 0) return null;
-            return (
-              <View key={cat} style={{ gap: 10 }}>
-                <Text style={[styles.sectionTitle, { color: c.textMuted }]}>
-                  {tr(language, CATEGORY_LABELS[cat][0], CATEGORY_LABELS[cat][1]).toUpperCase()}
-                </Text>
-                <View style={styles.grid}>
-                  {parts.map((part) => {
-                    const isOwned = owned.has(part.id);
-                    const canAfford = balance >= part.price;
-                    return (
-                      <View key={part.id} style={[styles.tile, { backgroundColor: c.card, borderColor: c.border }]}>
-                        {renderTileVisual(part)}
-                        <Text style={[styles.tileName, { color: c.text }]} numberOfLines={1}>
-                          {language === 'fr' ? part.nameFr : part.nameEn}
-                        </Text>
-                        {isOwned ? (
-                          <View style={styles.ownedRow}>
-                            <Check size={13} color={c.accent} />
-                            <Text style={[styles.ownedText, { color: c.accent }]}>{tr(language, 'Possédé', 'Owned')}</Text>
-                          </View>
-                        ) : (
-                          <TouchableOpacity
-                            onPress={() => buy(part)}
-                            disabled={buying === part.id}
-                            style={[styles.buyBtn, { backgroundColor: canAfford ? c.accent : c.border }]}
-                          >
-                            {buying === part.id ? (
-                              <ActivityIndicator size="small" color="#fff" />
-                            ) : (
-                              <>
-                                <Coins color="#ffd700" size={13} />
-                                <Text style={styles.buyText}>{part.price}</Text>
-                              </>
-                            )}
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                    );
-                  })}
-                </View>
-              </View>
-            );
-          })}
-        </ScrollView>
+        <SectionList
+          sections={sections}
+          keyExtractor={(row, index) => row[0]?.id ?? String(index)}
+          renderItem={renderRow}
+          renderSectionHeader={renderSectionHeader}
+          ListHeaderComponent={listHeader}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          stickySectionHeadersEnabled={false}
+          initialNumToRender={6}
+          windowSize={7}
+          removeClippedSubviews
+        />
       )}
+
+      {/* ── World preview modal ────────────────────────────────────────────── */}
+      <Modal
+        visible={!!previewPart}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setPreviewPart(null)}
+      >
+        <Pressable style={styles.overlay} onPress={() => setPreviewPart(null)}>
+          <Pressable style={[styles.sheet, { backgroundColor: c.card, borderColor: c.border }]} onPress={() => {}}>
+
+            {/* drag handle */}
+            <View style={[styles.handle, { backgroundColor: c.border }]} />
+
+            <TouchableOpacity style={styles.closeBtn} onPress={() => setPreviewPart(null)}>
+              <X color={c.textMuted} size={20} />
+            </TouchableOpacity>
+
+            {/* World avatar preview (pure SVG) */}
+            <View style={[styles.avatar3dWrap, { width: PREVIEW_SIZE, height: PREVIEW_SIZE }]}>
+              {previewPart && (
+                <WorldAvatar
+                  config={previewConfig}
+                  size={PREVIEW_SIZE}
+                  animate
+                />
+              )}
+            </View>
+
+            {previewPart && (
+              <>
+                <RarityBadge part={previewPart} />
+                <Text style={[styles.itemName, { color: c.text }]}>
+                  {language === 'fr' ? previewPart.nameFr : previewPart.nameEn}
+                </Text>
+
+                {isOwned ? (
+                  <View style={[styles.ownedBadge, { borderColor: c.accent }]}>
+                    <Check size={16} color={c.accent} />
+                    <Text style={[styles.ownedBadgeText, { color: c.accent }]}>
+                      {tr(language, 'Déjà possédé', 'Already owned')}
+                    </Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    onPress={() => buy(previewPart)}
+                    disabled={buying === previewPart.id}
+                    accessibilityRole="button"
+                    accessibilityLabel={tr(language, `Acheter pour ${previewPart.price} pièces`, `Buy for ${previewPart.price} coins`)}
+                    style={[
+                      styles.buyBtn,
+                      { backgroundColor: canAfford ? c.accent : c.border, opacity: buying === previewPart.id ? 0.6 : 1 },
+                    ]}
+                  >
+                    {buying === previewPart.id ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <>
+                        <Coins color="#ffd700" size={18} />
+                        <Text style={styles.buyText}>{previewPart.price}</Text>
+                        <Text style={[styles.buyLabel, { color: canAfford ? '#ffffffcc' : '#ffffff88' }]}>
+                          {tr(language, '— Acheter', '— Buy')}
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -205,10 +366,34 @@ const styles = StyleSheet.create({
   editText: { fontSize: 14, fontFamily: FONTS.monoBold },
   sectionTitle: { fontSize: 11, fontFamily: FONTS.monoBold, letterSpacing: 1, marginLeft: 4 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  tile: { width: 96, borderRadius: 14, borderWidth: 1, padding: 10, alignItems: 'center', gap: 6 },
+  tile: { width: 96, borderRadius: 14, borderWidth: 1, padding: 10, alignItems: 'center', gap: 5 },
+  thumbRound: { width: 60, height: 60, borderRadius: 30, overflow: 'hidden', backgroundColor: '#05060f' },
+  thumbSwatch: { width: 60, height: 60, borderRadius: 30 },
+  thumbCircle: { width: 60, height: 60, borderRadius: 30, borderWidth: 1 },
+  thumbGlyphWrap: { width: 60, height: 60, borderRadius: 30, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  thumbGlyph: { fontSize: 30 },
+  rarityBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, borderWidth: 1 },
+  rarityDot: { width: 6, height: 6, borderRadius: 3 },
+  rarityText: { fontSize: 9, fontFamily: FONTS.monoBold, letterSpacing: 0.3, textTransform: 'uppercase' },
   tileName: { fontSize: 10, fontFamily: FONTS.mono, textAlign: 'center' },
   ownedRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   ownedText: { fontSize: 10, fontFamily: FONTS.monoBold },
-  buyBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, height: 28, paddingHorizontal: 10, borderRadius: 8, minWidth: 52 },
-  buyText: { color: '#fff', fontSize: 12, fontFamily: FONTS.monoBold },
+  priceRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  priceText: { fontSize: 11, fontFamily: FONTS.monoBold },
+  // Modal
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
+  sheet: {
+    borderTopLeftRadius: 28, borderTopRightRadius: 28, borderWidth: 1,
+    paddingHorizontal: 24, paddingBottom: 40, paddingTop: 12,
+    alignItems: 'center', gap: 16,
+  },
+  handle: { width: 40, height: 4, borderRadius: 2, marginBottom: 4 },
+  closeBtn: { position: 'absolute', top: 16, right: 20, zIndex: 1 },
+  avatar3dWrap: { borderRadius: 16, overflow: 'hidden' },
+  itemName: { fontSize: 20, fontFamily: FONTS.headingBlack, textAlign: 'center' },
+  ownedBadge: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12 },
+  ownedBadgeText: { fontSize: 15, fontFamily: FONTS.monoBold },
+  buyBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 52, paddingHorizontal: 28, borderRadius: 16, alignSelf: 'stretch' },
+  buyText: { color: '#fff', fontSize: 18, fontFamily: FONTS.headingBlack },
+  buyLabel: { fontSize: 14, fontFamily: FONTS.mono },
 });
