@@ -117,7 +117,7 @@ export function calculateEloChange(
 
 export function modeLabel(mode: MatchMode, lang: 'fr' | 'en'): string {
   const labels: Record<MatchMode, [string, string]> = {
-    classic: ['Classique', 'Classic'],
+    classic: ['Rankle', 'Rankle'],
     streak: ['Streak', 'Streak'],
     versus: ['Versus', 'Versus'],
     globe: ['Globe Géo', 'Geo Globe'],

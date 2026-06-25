@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { Trophy, RefreshCcw, Moon, Sun, Heart, TrendingUp, Home } from 'lucide-react-native';
+import { Trophy, RefreshCcw, Moon, Sun, Heart, TrendingUp, Home, Share2 } from 'lucide-react-native';
 import type { User } from '@supabase/supabase-js';
 
 import { gameData } from '../data/gameData';
@@ -25,6 +25,10 @@ import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 
 const isMobile = Platform.OS === 'ios' || Platform.OS === 'android';
+
+// How long the revealed ranks stay on screen (correct answer highlighted green)
+// before the game-over screen appears / the match advances.
+const GAME_OVER_DELAY = 1800;
 
 interface ThemeOption {
   id: string;
@@ -43,6 +47,16 @@ interface StreakGameProps {
   user: User | null;
   matchData?: Match | null;
   onRoundComplete?: (score: number) => void;
+  /** Daily challenge: deterministic seed for today's puzzle (overrides random). */
+  dailySeed?: number;
+  /** Daily challenge: fired once at game-over with the score. */
+  onDailyComplete?: (score: number, grid?: string) => void;
+  /** Daily challenge: replaces "Retry" with "Share" and skips score saving. */
+  isDaily?: boolean;
+  /** Daily challenge: invoked by the "Share" button on the game-over overlay. */
+  onShare?: () => void;
+  /** Daily challenge: reports the live score so a mid-game quit can lock it in. */
+  onDailyScoreChange?: (score: number) => void;
 }
 
 export default function StreakGame({
@@ -54,6 +68,11 @@ export default function StreakGame({
   user,
   matchData,
   onRoundComplete,
+  dailySeed,
+  onDailyComplete,
+  isDaily,
+  onShare,
+  onDailyScoreChange,
 }: StreakGameProps) {
   const c = getColors(isDarkMode);
   const [currentCountry, setCurrentCountry] = useState<any>(null);
@@ -64,15 +83,32 @@ export default function StreakGame({
   const [lastAnswerCorrect, setLastAnswerCorrect] = useState<boolean | null>(null);
   const [revealedRanks, setRevealedRanks] = useState<Record<string, number>>({});
   const rngRef = useRef<(() => number) | null>(null);
+  const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Surface the running score so the daily host can lock it in on a mid-game quit.
+  useEffect(() => {
+    if (isDaily) onDailyScoreChange?.(score);
+  }, [isDaily, score, onDailyScoreChange]);
+
+  // Clear any pending reveal timer if the screen unmounts mid-reveal.
+  useEffect(
+    () => () => {
+      if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
+    },
+    [],
+  );
 
   useEffect(() => {
-    if (matchData?.game_data?.seed) {
+    if (dailySeed != null) {
+      rngRef.current = createSeededRng(dailySeed);
+    } else if (matchData?.game_data?.seed) {
       const roundNumber = matchData.current_round ?? 1;
       rngRef.current = createSeededRng(matchData.game_data.seed + (roundNumber - 1));
     }
     initRound();
     if (user) fetchUserBestStreak(user.id);
-    if (!matchData) track('game_started', { mode: 'streak' });
+    if (!matchData && !isDaily) track('game_started', { mode: 'streak' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchUserBestStreak = async (userId: string) => {
@@ -129,40 +165,48 @@ export default function StreakGame({
     if (isCorrect) {
       setLastAnswerCorrect(true);
       setScore((prev) => prev + 1);
-      setTimeout(() => {
+      revealTimerRef.current = setTimeout(() => {
         initRound();
       }, 1500);
     } else {
       setLastAnswerCorrect(false);
-      setGameOver(true);
       if (score > bestStreak) setBestStreak(score);
 
-      if (!matchData) track('game_completed', { mode: 'streak', score });
+      // Daily run: record the result, skip the normal score/coins path (daily
+      // results live in their own table).
+      if (!isDaily) {
+        if (!matchData) track('game_completed', { mode: 'streak', score });
 
-      if (user) {
-        supabase
-          .from('scores')
-          .insert({ user_id: user.id, game_mode: 'streak', score })
-          .then(({ error }) => {
-            if (error) {
-              console.log('Error saving streak score:', error);
-              Alert.alert(
-                language === 'fr' ? 'Erreur' : 'Error',
-                language === 'fr' ? "Impossible d'enregistrer ton score." : 'Could not save your score.',
-              );
-            }
-          });
-        // Solo coins (server-side daily cap, score-independent). Skip in matches.
-        if (!matchData) {
-          supabase.rpc('award_solo_coins', { p_game_mode: 'streak' }).then(({ error }) => {
-            if (error) console.log('award_solo_coins error:', error);
-          });
+        if (user) {
+          supabase
+            .from('scores')
+            .insert({ user_id: user.id, game_mode: 'streak', score })
+            .then(({ error }) => {
+              if (error) {
+                console.log('Error saving streak score:', error);
+                Alert.alert(
+                  language === 'fr' ? 'Erreur' : 'Error',
+                  language === 'fr' ? "Impossible d'enregistrer ton score." : 'Could not save your score.',
+                );
+              }
+            });
+          // Solo coins (server-side daily cap, score-independent). Skip in matches.
+          if (!matchData) {
+            supabase.rpc('award_solo_coins', { p_game_mode: 'streak' }).then(({ error }) => {
+              if (error) console.log('award_solo_coins error:', error);
+            });
+          }
         }
       }
 
-      if (matchData && onRoundComplete) {
-        onRoundComplete(score);
-      }
+      // Keep the revealed ranks on screen for a moment so the player can see the
+      // correct answer (highlighted in green) before the game-over screen appears
+      // or the match advances to the next round.
+      revealTimerRef.current = setTimeout(() => {
+        setGameOver(true);
+        if (matchData && onRoundComplete) onRoundComplete(score);
+        if (isDaily) onDailyComplete?.(score);
+      }, GAME_OVER_DELAY);
     }
   };
 
@@ -205,13 +249,13 @@ export default function StreakGame({
               <View style={{ flex: 1 }}>
                 <Text style={themeStyles.title}>GeoStreak</Text>
               </View>
-              <View style={styles.statsContainer}>
+              <View style={[styles.statsContainer, { backgroundColor: c.surface, borderColor: c.border }]}>
                 <View style={styles.statBox}>
-                  <Text style={styles.statLabel}>STREAK</Text>
-                  <Text style={styles.statValue}>{score}</Text>
+                  <Text style={[styles.statLabel, { color: c.textFaint }]}>STREAK</Text>
+                  <Text style={[styles.statValue, { color: c.accent }]}>{score}</Text>
                 </View>
                 <View style={styles.statBox}>
-                  <Text style={styles.statLabel}>BEST</Text>
+                  <Text style={[styles.statLabel, { color: c.textFaint }]}>BEST</Text>
                   <Text style={[styles.statValue, { color: c.accent }]}>{bestStreak}</Text>
                 </View>
               </View>
@@ -249,10 +293,10 @@ export default function StreakGame({
               </View>
 
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <View style={styles.statsContainer}>
+                <View style={[styles.statsContainer, { backgroundColor: c.surface, borderColor: c.border }]}>
                   <View style={styles.statBox}>
-                    <Text style={styles.statLabel}>STREAK</Text>
-                    <Text style={styles.statValue}>{score}</Text>
+                    <Text style={[styles.statLabel, { color: c.textFaint }]}>STREAK</Text>
+                    <Text style={[styles.statValue, { color: c.accent }]}>{score}</Text>
                   </View>
                   <View
                     style={{
@@ -263,7 +307,7 @@ export default function StreakGame({
                     }}
                   />
                   <View style={styles.statBox}>
-                    <Text style={styles.statLabel}>BEST</Text>
+                    <Text style={[styles.statLabel, { color: c.textFaint }]}>BEST</Text>
                     <Text style={[styles.statValue, { color: c.accent }]}>{bestStreak}</Text>
                   </View>
                 </View>
@@ -326,7 +370,7 @@ export default function StreakGame({
                     ? currentCountry.name
                     : currentCountry.name_en || currentCountry.name}
                 </Text>
-                <Text style={styles.instruction}>
+                <Text style={[styles.instruction, { color: c.textMuted }]}>
                   {language === 'fr'
                     ? 'Quel est son meilleur classement ?'
                     : 'What is its best ranking?'}
@@ -378,7 +422,7 @@ export default function StreakGame({
                         ? currentCountry.name
                         : currentCountry.name_en || currentCountry.name}
                     </Text>
-                    <Text style={[styles.instruction, { marginTop: 2, fontSize: 12 }]}>
+                    <Text style={[styles.instruction, { marginTop: 2, fontSize: 12, color: c.textMuted }]}>
                       {language === 'fr'
                         ? 'Quel est son meilleur classement ?'
                         : 'What is its best ranking?'}
@@ -405,25 +449,39 @@ export default function StreakGame({
                   {language === 'fr' ? theme.label.fr : theme.label.en || theme.label.fr}
                 </Text>
                 {revealedRanks[theme.id] !== undefined && (
-                  <Text style={styles.rankText}>#{revealedRanks[theme.id]}</Text>
+                  <Text style={[styles.rankText, { color: c.accent }]}>#{revealedRanks[theme.id]}</Text>
                 )}
               </TouchableOpacity>
             ))}
           </View>
 
           {gameOver && !matchData && (
-            <View style={styles.gameOverOverlay}>
+            <View
+              style={[
+                styles.gameOverOverlay,
+                { backgroundColor: isDarkMode ? 'rgba(10,22,40,0.96)' : 'rgba(242,232,208,0.97)' },
+              ]}
+            >
               <Text style={styles.gameOverTitle}>{language === 'fr' ? 'PERDU !' : 'LOST!'}</Text>
-              <Text style={styles.gameOverScore}>
+              <Text style={[styles.gameOverScore, { color: c.text }]}>
                 {language === 'fr' ? 'Votre score : ' : 'Your score: '}
                 {score}
               </Text>
-              <TouchableOpacity style={styles.resetBtn} onPress={resetGame}>
-                <RefreshCcw color="#fff" size={20} />
-                <Text style={styles.resetBtnText}>
-                  {language === 'fr' ? 'RECOMMENCER' : 'RETRY'}
-                </Text>
-              </TouchableOpacity>
+              {isDaily ? (
+                <TouchableOpacity style={styles.resetBtn} onPress={onShare}>
+                  <Share2 color="#fff" size={20} />
+                  <Text style={styles.resetBtnText}>
+                    {language === 'fr' ? 'PARTAGER' : 'SHARE'}
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity style={styles.resetBtn} onPress={resetGame}>
+                  <RefreshCcw color="#fff" size={20} />
+                  <Text style={styles.resetBtnText}>
+                    {language === 'fr' ? 'RECOMMENCER' : 'RETRY'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
         </View>

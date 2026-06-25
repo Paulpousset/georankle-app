@@ -1,9 +1,15 @@
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 
 import { supabase } from './supabase';
+
+/** AsyncStorage keys for the opt-in daily reminder. */
+const REMINDER_ENABLED_KEY = 'daily:reminder_enabled';
+const REMINDER_TIME_KEY = 'daily:reminder_time'; // "HH:MM" (local time)
+const REMINDER_ID_KEY = 'daily:reminder_id';
 
 // Show notifications as banners even when the app is foregrounded.
 Notifications.setNotificationHandler({
@@ -54,5 +60,91 @@ export async function registerForPushNotifications(userId: string): Promise<void
   } catch (e) {
     // Never let notification setup crash the app.
     console.log('Push registration skipped:', e);
+  }
+}
+
+// ── Daily reminder (opt-in, local scheduled notification) ─────────────────────
+
+export interface DailyReminderPrefs {
+  enabled: boolean;
+  /** Local time as "HH:MM" (24h). */
+  time: string;
+}
+
+/** Read the stored daily-reminder preference (defaults: off, 09:00). */
+export async function getDailyReminderPrefs(): Promise<DailyReminderPrefs> {
+  try {
+    const [enabled, time] = await Promise.all([
+      AsyncStorage.getItem(REMINDER_ENABLED_KEY),
+      AsyncStorage.getItem(REMINDER_TIME_KEY),
+    ]);
+    return { enabled: enabled === '1', time: time ?? '09:00' };
+  } catch {
+    return { enabled: false, time: '09:00' };
+  }
+}
+
+/** Cancel any previously scheduled daily reminder. */
+export async function cancelDailyReminder(): Promise<void> {
+  try {
+    const id = await AsyncStorage.getItem(REMINDER_ID_KEY);
+    if (id) await Notifications.cancelScheduledNotificationAsync(id);
+    await AsyncStorage.multiSet([
+      [REMINDER_ENABLED_KEY, '0'],
+      [REMINDER_ID_KEY, ''],
+    ]);
+  } catch (e) {
+    console.log('Cancel daily reminder skipped:', e);
+  }
+}
+
+/**
+ * Schedule (or reschedule) a repeating local notification at `time` ("HH:MM",
+ * local). Requests permission if needed. Returns true when scheduled. Safe on
+ * web/simulators (returns false without throwing).
+ */
+export async function scheduleDailyReminder(
+  time: string,
+  language: 'fr' | 'en' = 'fr',
+): Promise<boolean> {
+  if (Platform.OS === 'web') return false;
+  try {
+    const { status: existing } = await Notifications.getPermissionsAsync();
+    let status = existing;
+    if (existing !== 'granted') {
+      const req = await Notifications.requestPermissionsAsync();
+      status = req.status;
+    }
+    if (status !== 'granted') return false;
+
+    // Replace any prior schedule so we never stack reminders.
+    const prior = await AsyncStorage.getItem(REMINDER_ID_KEY);
+    if (prior) await Notifications.cancelScheduledNotificationAsync(prior).catch(() => {});
+
+    const [h, m] = time.split(':').map((n) => parseInt(n, 10));
+    const id = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: language === 'fr' ? 'GeoRankle' : 'GeoRankle',
+        body:
+          language === 'fr'
+            ? 'Ton défi du jour t’attend 🌍'
+            : 'Your daily challenge is waiting 🌍',
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
+        hour: Number.isFinite(h) ? h : 9,
+        minute: Number.isFinite(m) ? m : 0,
+      },
+    });
+
+    await AsyncStorage.multiSet([
+      [REMINDER_ENABLED_KEY, '1'],
+      [REMINDER_TIME_KEY, time],
+      [REMINDER_ID_KEY, id],
+    ]);
+    return true;
+  } catch (e) {
+    console.log('Schedule daily reminder skipped:', e);
+    return false;
   }
 }

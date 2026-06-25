@@ -9,7 +9,7 @@ import { tr } from '../i18n';
 import type { Language, MatchMode } from '../types';
 
 const MODE_LABELS: Record<MatchMode, [string, string]> = {
-  classic: ['Mode Classique', 'Classic Mode'],
+  classic: ['Rankle', 'Rankle'],
   streak: ['Mode Streak', 'Streak Mode'],
   versus: ['Mode Versus', 'Versus Mode'],
   globe: ['Globe Géo', 'Geo Globe'],
@@ -23,9 +23,10 @@ interface Props {
   language: Language;
   onClose: () => void;
   onToggleTheme: () => void;
+  onOpenPlayer?: (userId: string, username?: string | null) => void;
 }
 
-export function OnlineModeLeaderboardModal({ mode, accent, isDarkMode, language, onClose, onToggleTheme }: Props) {
+export function OnlineModeLeaderboardModal({ mode, accent, isDarkMode, language, onClose, onToggleTheme, onOpenPlayer }: Props) {
   const c = getColors(isDarkMode);
   const labels = mode ? MODE_LABELS[mode] : ['', ''];
 
@@ -75,6 +76,7 @@ export function OnlineModeLeaderboardModal({ mode, accent, isDarkMode, language,
                 language={language}
                 isDarkMode={isDarkMode}
                 accent={accent}
+                onOpenPlayer={onOpenPlayer}
               />
             )}
           </SafeAreaView>

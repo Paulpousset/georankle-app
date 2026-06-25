@@ -15,10 +15,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as ImagePicker from 'expo-image-picker';
-import { Camera, Check, Coins, Eye, EyeOff, ArrowLeft, LayoutGrid, LogOut, Palette, ShoppingBag, Trash2, Zap } from 'lucide-react-native';
+import { Bell, Camera, Check, Coins, Eye, EyeOff, ArrowLeft, LayoutGrid, LogOut, Palette, ShoppingBag, Trash2, Zap } from 'lucide-react-native';
 
 import { supabase } from '../lib/supabase';
 import { useCachedData } from '../lib/cache';
+import { cancelDailyReminder, getDailyReminderPrefs, scheduleDailyReminder } from '../lib/notifications';
+import { track } from '../lib/analytics';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { getRankFromElo, modeLabel } from '../lib/ranked';
@@ -37,6 +39,8 @@ interface ProfileProps {
   onLoggedOut: () => void;
   onEditAvatar: () => void;
   onOpenShop: () => void;
+  isAdmin?: boolean;
+  onOpenAdmin?: () => void;
 }
 
 const MODES: MatchMode[] = ['classic', 'streak', 'versus', 'globe', 'guess'];
@@ -81,7 +85,7 @@ function base64ToBytes(base64: string): Uint8Array {
   return bytes;
 }
 
-export default function Profile({ session, isDarkMode, language, onBack, onLoggedOut, onEditAvatar, onOpenShop }: ProfileProps) {
+export default function Profile({ session, isDarkMode, language, onBack, onLoggedOut, onEditAvatar, onOpenShop, isAdmin, onOpenAdmin }: ProfileProps) {
   const userId = session.user?.id ?? '';
   const email = session.user?.email ?? '';
   const c = getColors(isDarkMode);
@@ -101,6 +105,37 @@ export default function Profile({ session, isDarkMode, language, onBack, onLogge
 
   const [savingName, setSavingName] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+  // Daily-reminder opt-in (local notification; preference stored in AsyncStorage).
+  const REMINDER_TIMES = ['08:00', '09:00', '12:00', '18:00', '20:00'];
+  const [reminderOn, setReminderOn] = useState(false);
+  const [reminderTime, setReminderTime] = useState('09:00');
+  useEffect(() => {
+    getDailyReminderPrefs().then((p) => {
+      setReminderOn(p.enabled);
+      setReminderTime(p.time);
+    });
+  }, []);
+
+  const toggleReminder = async (value: boolean) => {
+    setReminderOn(value);
+    if (value) {
+      const ok = await scheduleDailyReminder(reminderTime, language);
+      setReminderOn(ok);
+      if (ok) track('daily_reminder_set', { time: reminderTime });
+    } else {
+      await cancelDailyReminder();
+    }
+  };
+
+  const cycleReminderTime = async () => {
+    const next = REMINDER_TIMES[(REMINDER_TIMES.indexOf(reminderTime) + 1) % REMINDER_TIMES.length];
+    setReminderTime(next);
+    if (reminderOn) {
+      await scheduleDailyReminder(next, language);
+      track('daily_reminder_set', { time: next });
+    }
+  };
 
   const rank = getRankFromElo(elo);
 
@@ -512,7 +547,7 @@ export default function Profile({ session, isDarkMode, language, onBack, onLogge
           <View style={styles.recordsRow}>
             <View style={[styles.recordCard, { backgroundColor: c.card, borderColor: c.border }]}>
               <LayoutGrid size={20} color="#2a6e3f" />
-              <Text style={[styles.recordLabel, { color: c.textFaint }]}>CLASSIC</Text>
+              <Text style={[styles.recordLabel, { color: c.textFaint }]}>RANKLE</Text>
               <Text style={[styles.recordValue, { color: '#2a6e3f' }]}>{bestClassic ?? '—'}</Text>
             </View>
             <View style={[styles.recordCard, { backgroundColor: c.card, borderColor: c.border }]}>
@@ -521,6 +556,49 @@ export default function Profile({ session, isDarkMode, language, onBack, onLogge
               <Text style={[styles.recordValue, { color: '#c4872a' }]}>{bestStreak ?? '—'}</Text>
             </View>
           </View>
+
+          {/* Daily reminder */}
+          <Text style={[styles.outerSectionTitle, { color: c.textMuted }]}>
+            {tr(language, 'DÉFI QUOTIDIEN', 'DAILY CHALLENGE')}
+          </Text>
+          <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border }]}>
+            <View style={styles.sectionHeadRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Bell color={c.textMuted} size={16} />
+                <Text style={[styles.sectionTitle, { color: c.textMuted }]}>
+                  {tr(language, 'Rappel quotidien', 'Daily reminder')}
+                </Text>
+              </View>
+              <Switch
+                value={reminderOn}
+                onValueChange={toggleReminder}
+                trackColor={{ false: c.border, true: '#e8772e' }}
+                thumbColor="#fff"
+              />
+            </View>
+            <TouchableOpacity
+              onPress={cycleReminderTime}
+              disabled={!reminderOn}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6, opacity: reminderOn ? 1 : 0.5 }}
+            >
+              <Text style={[styles.hint, { color: c.textFaint }]}>
+                {tr(language, "Heure du rappel (appuie pour changer)", 'Reminder time (tap to change)')}
+              </Text>
+              <Text style={{ fontFamily: FONTS.monoBold, color: c.text, fontSize: 15 }}>{reminderTime}</Text>
+            </TouchableOpacity>
+          </View>
+
+          {isAdmin && onOpenAdmin && (
+            <TouchableOpacity
+              style={[styles.adminBtn, { backgroundColor: c.card, borderColor: c.accent }]}
+              onPress={onOpenAdmin}
+            >
+              <Bell color={c.accent} size={18} />
+              <Text style={[styles.adminText, { color: c.accent }]}>
+                {tr(language, 'Notifications push (Admin)', 'Push notifications (Admin)')}
+              </Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
             <LogOut color="#fff" size={18} />
@@ -647,6 +725,16 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   logoutText: { color: '#fff', fontSize: 15, fontFamily: FONTS.monoBold },
+  adminBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 52,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  adminText: { fontSize: 15, fontFamily: FONTS.monoBold },
   linkBtn: { alignItems: 'center', paddingVertical: 8 },
   linkText: { fontSize: 13, fontFamily: FONTS.mono, textDecorationLine: 'underline' },
   deleteBtn: {

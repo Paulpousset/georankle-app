@@ -11,7 +11,7 @@ import GlobeWebView from '../components/GlobeWebView';
 import type { WebViewMessageEvent } from '../components/GlobeWebView';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { ChevronRight, Home, RotateCcw, Wifi } from 'lucide-react-native';
+import { ChevronRight, Home, RotateCcw, Share2, Wifi } from 'lucide-react-native';
 import type { User } from '@supabase/supabase-js';
 
 import type { GameMode, Language, Match } from '../types';
@@ -43,6 +43,16 @@ interface FindCountryGameProps {
   user?: User | null;
   matchData?: Match | null;
   onRoundComplete?: (score: number) => void;
+  /** Daily challenge: deterministic seed for today's puzzle (overrides random). */
+  dailySeed?: number;
+  /** Daily challenge: fired once at the end with the score + emoji share grid. */
+  onDailyComplete?: (score: number, grid?: string) => void;
+  /** Daily challenge: replaces "Play again" with "Share" and skips score saving. */
+  isDaily?: boolean;
+  /** Daily challenge: invoked by the "Share" button on the finished screen. */
+  onShare?: () => void;
+  /** Daily challenge: reports the live score so a mid-game quit can lock it in. */
+  onDailyScoreChange?: (score: number) => void;
 }
 
 type Phase = 'loading' | 'playing' | 'result' | 'finished';
@@ -335,6 +345,11 @@ export default function FindCountryGame({
   user,
   matchData,
   onRoundComplete,
+  dailySeed,
+  onDailyComplete,
+  isDaily,
+  onShare,
+  onDailyScoreChange,
 }: FindCountryGameProps) {
   const colors = getColors(isDarkMode);
   const isOnline = !!matchData;
@@ -342,11 +357,16 @@ export default function FindCountryGame({
   const totalRounds = (matchData?.game_data?.roundsPerSet as number) ?? DEFAULT_ROUNDS;
 
   const [rounds, setRounds] = useState<CountryStat[]>(() => {
-    const seed = matchData?.game_data?.seed != null
-      ? (matchData.game_data.seed as number) + (matchData.current_round ?? 0) * 997
-      : undefined;
+    let seed: number | undefined;
+    if (dailySeed != null) {
+      seed = dailySeed;
+    } else if (matchData?.game_data?.seed != null) {
+      seed = (matchData.game_data.seed as number) + (matchData.current_round ?? 0) * 997;
+    }
     return sampleRounds(rawCountriesStats as unknown as CountryStat[], totalRounds, seed);
   });
+  // Per-round correctness, in play order — drives the daily emoji share grid.
+  const roundResults = useRef<boolean[]>([]);
   const [index, setIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [phase, setPhase] = useState<Phase>('playing');
@@ -355,6 +375,11 @@ export default function FindCountryGame({
 
   const [opponentScore, setOpponentScore] = useState(0);
   const submitted = useRef(false);
+
+  // Surface the running score so the daily host can lock it in on a mid-game quit.
+  useEffect(() => {
+    if (isDaily) onDailyScoreChange?.(score);
+  }, [isDaily, score, onDailyScoreChange]);
 
   useEffect(() => {
     if (!matchData) track('game_started', { mode: 'globe' });
@@ -397,6 +422,7 @@ export default function FindCountryGame({
         const cca3 = msg.cca3;
         const correct = cca3 === current.cca3;
         if (correct) setScore((s) => s + 1000);
+        roundResults.current.push(correct);
         setSelectedCca3(cca3);
         setPhase('result');
         webViewRef.current?.injectJavaScript(
@@ -415,6 +441,15 @@ export default function FindCountryGame({
         if (submitted.current) return;
         submitted.current = true;
         onRoundComplete(score);
+        return;
+      }
+      if (isDaily) {
+        if (!submitted.current) {
+          submitted.current = true;
+          const grid = roundResults.current.map((r) => (r ? '🟩' : '🟥')).join('');
+          onDailyComplete?.(score, grid);
+        }
+        setPhase('finished');
         return;
       }
       if (!matchData) track('game_completed', { mode: 'globe', score });
@@ -456,13 +491,23 @@ export default function FindCountryGame({
               {tr(language, '% de réussite', '% success rate')}
             </Text>
             <View style={{ gap: 12, width: '100%', maxWidth: 300 }}>
-              <TouchableOpacity
-                style={[styles.btn, { backgroundColor: PALETTE.chartBlue }]}
-                onPress={handleReplay}
-              >
-                <RotateCcw color="white" size={18} />
-                <Text style={styles.btnText}>{tr(language, 'Rejouer', 'Play again')}</Text>
-              </TouchableOpacity>
+              {isDaily ? (
+                <TouchableOpacity
+                  style={[styles.btn, { backgroundColor: PALETTE.chartBlue }]}
+                  onPress={onShare}
+                >
+                  <Share2 color="white" size={18} />
+                  <Text style={styles.btnText}>{tr(language, 'Partager', 'Share')}</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.btn, { backgroundColor: PALETTE.chartBlue }]}
+                  onPress={handleReplay}
+                >
+                  <RotateCcw color="white" size={18} />
+                  <Text style={styles.btnText}>{tr(language, 'Rejouer', 'Play again')}</Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 style={[
                   styles.btn,

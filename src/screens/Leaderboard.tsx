@@ -26,11 +26,12 @@ interface LeaderboardEntry {
 interface LeaderboardProps {
   language: Language;
   isDarkMode: boolean;
+  onOpenPlayer?: (userId: string, username?: string | null) => void;
 }
 
 const MEDAL_COLORS = ['#c4872a', '#7aa0c4', '#a08060']; // Gold → sand, Silver → nightMuted, Bronze → brownLight
 
-const Leaderboard = ({ language, isDarkMode }: LeaderboardProps) => {
+const Leaderboard = ({ language, isDarkMode, onOpenPlayer }: LeaderboardProps) => {
   const c = getColors(isDarkMode);
   const [activeTab, setActiveTab] = useState<Tab>('classic');
 
@@ -77,9 +78,13 @@ const Leaderboard = ({ language, isDarkMode }: LeaderboardProps) => {
 
   const renderItem = useCallback(({ item, index }: { item: LeaderboardEntry; index: number }) => {
     const isTop3 = index < 3;
+    const name = item.profiles?.username || (language === 'fr' ? 'Joueur Anonyme' : 'Anonymous Player');
 
     return (
-      <View
+      <TouchableOpacity
+        activeOpacity={onOpenPlayer ? 0.6 : 1}
+        disabled={!onOpenPlayer}
+        onPress={() => onOpenPlayer?.(item.user_id, item.profiles?.username ?? null)}
         style={[
           styles.itemRow,
           { backgroundColor: c.card, borderColor: c.border },
@@ -94,9 +99,7 @@ const Leaderboard = ({ language, isDarkMode }: LeaderboardProps) => {
         </View>
 
         <View style={styles.userInfo}>
-          <Text style={[styles.username, { color: c.text }]}>
-            {item.profiles?.username || (language === 'fr' ? 'Joueur Anonyme' : 'Anonymous Player')}
-          </Text>
+          <Text style={[styles.username, { color: c.text }]}>{name}</Text>
         </View>
 
         <View style={styles.scoreContainer}>
@@ -109,9 +112,9 @@ const Leaderboard = ({ language, isDarkMode }: LeaderboardProps) => {
             {activeTab === 'classic' ? `${item.score}%` : `${item.score} pts`}
           </Text>
         </View>
-      </View>
+      </TouchableOpacity>
     );
-  }, [c, language, activeTab]);
+  }, [c, language, activeTab, onOpenPlayer]);
 
   return (
     <View style={[styles.container, { backgroundColor: c.background }]}>
@@ -126,7 +129,7 @@ const Leaderboard = ({ language, isDarkMode }: LeaderboardProps) => {
         >
           <LayoutGrid size={18} color={activeTab === 'classic' ? 'white' : c.textMuted} />
           <Text style={[styles.tabText, { color: activeTab === 'classic' ? 'white' : c.textMuted }]}>
-            CLASSIC
+            RANKLE
           </Text>
         </TouchableOpacity>
 

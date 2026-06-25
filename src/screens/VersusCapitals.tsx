@@ -21,6 +21,7 @@ import {
   Eye,
   Moon,
   Sun,
+  Share2,
 } from 'lucide-react-native';
 
 import * as Haptics from 'expo-haptics';
@@ -56,6 +57,13 @@ interface VersusCapitalsProps {
   matchData?: Match | null;
   onRoundComplete?: (score: number) => void;
   onExit?: () => void;
+  /** Daily challenge: deterministic seed → auto-starts a solo run, skips setup. */
+  dailySeed?: number;
+  onDailyComplete?: (score: number, grid?: string) => void;
+  isDaily?: boolean;
+  onShare?: () => void;
+  /** Daily challenge: reports the live score so a mid-game quit can lock it in. */
+  onDailyScoreChange?: (score: number) => void;
   /**
    * When set (local hot-seat parcours), replaces the internal P1/P2 board with a
    * live standings strip of every player. The current player's running manche
@@ -141,6 +149,11 @@ export default function VersusCapitals({
   onRoundComplete,
   onExit,
   localBanner,
+  dailySeed,
+  onDailyComplete,
+  isDaily,
+  onShare,
+  onDailyScoreChange,
 }: VersusCapitalsProps) {
   const insets = useSafeAreaInsets();
   const c = getColors(isDarkMode);
@@ -156,7 +169,7 @@ export default function VersusCapitals({
         : 'quiz-capital';
 
   const [numPlayers, setNumPlayers] = useState<number | null>(
-    isOnline ? 1 : null,
+    isOnline || isDaily ? 1 : null,
   );
   const [gameType, setGameType] = useState<string>(
     isOnline ? ((matchData?.game_data?.questionType as string) ?? 'MIX') : (initialGameType ?? 'CAPITAL'),
@@ -183,16 +196,23 @@ export default function VersusCapitals({
   const [matchWinner, setMatchWinner] = useState<number | null>(null); // Winner of global match
 
   useEffect(() => {
-    if (matchData?.game_data?.seed != null) {
+    if (dailySeed != null) {
+      rngRef.current = createSeededRng(dailySeed);
+    } else if (matchData?.game_data?.seed != null) {
       const roundNumber = matchData.current_round ?? 1;
       rngRef.current = createSeededRng(matchData.game_data.seed + (roundNumber - 1));
     }
-  }, [matchData?.game_data?.seed, matchData?.current_round]);
+  }, [dailySeed, matchData?.game_data?.seed, matchData?.current_round]);
 
   useEffect(() => {
-    if (soloMode) track('game_started', { mode: soloAnalyticsMode });
+    if (soloMode && !isDaily) track('game_started', { mode: soloAnalyticsMode });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Surface the running solo score so the daily host can lock it in on a mid-game quit.
+  useEffect(() => {
+    if (isDaily) onDailyScoreChange?.(scores[1]);
+  }, [isDaily, scores, onDailyScoreChange]);
 
   useEffect(() => {
     if (numPlayers) {
@@ -353,6 +373,11 @@ export default function VersusCapitals({
     if (gameOver && !matchOver) {
       if (isOnline && onRoundComplete) {
         onRoundComplete(scores[1]);
+        return;
+      }
+
+      if (isDaily) {
+        onDailyComplete?.(scores[1]);
         return;
       }
 
@@ -737,7 +762,7 @@ export default function VersusCapitals({
           {!isMobile ? (
             <>
               <TouchableOpacity
-                onPress={() => setNumPlayers(null)}
+                onPress={quitToMenu}
                 style={{
                   width: 40,
                   height: 40,
@@ -871,7 +896,7 @@ export default function VersusCapitals({
             <>
               <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                 <TouchableOpacity
-                  onPress={() => setNumPlayers(null)}
+                  onPress={quitToMenu}
                   style={{
                     width: 36,
                     height: 36,
@@ -1145,14 +1170,10 @@ export default function VersusCapitals({
             </View>
           ) : (mode === 'DUO' || mode === 'CARRE') && !feedback ? (
             <View style={styles.optionsGrid}>
-              <TouchableOpacity
-                style={{ alignSelf: 'flex-start', marginBottom: 10 }}
-                onPress={() => setMode(null)}
-              >
-                <Text style={{ color: '#4a9eff', fontWeight: 'bold' }}>
-                  ← {language === 'fr' ? 'RETOUR' : 'BACK'}
-                </Text>
-              </TouchableOpacity>
+              {/* No "back" here: the answer options are already revealed, so returning
+                  to mode selection would let the player re-pick a higher-value mode
+                  (e.g. CASH) with the answers in view. CASH shows no options, so it
+                  keeps its back button. */}
               {(mode === 'DUO'
                 ? (options as OptionsState).duo
                 : (options as OptionsState).carre
@@ -1186,32 +1207,36 @@ export default function VersusCapitals({
                     : `La réponse était : ${feedback.answer}`}
                 </Text>
 
-                <TouchableOpacity
-                  style={{
-                    marginTop: 15,
-                    paddingHorizontal: 20,
-                    paddingVertical: 10,
-                    borderRadius: 12,
-                    backgroundColor: feedback.correct
-                      ? 'rgba(239, 68, 68, 0.2)'
-                      : 'rgba(16, 185, 129, 0.2)',
-                    borderColor: feedback.correct ? '#8b1a1a' : '#2a6e3f',
-                    borderWidth: 1,
-                  }}
-                  onPress={togglePoints}
-                >
-                  <Text
-                    style={{ color: feedback.correct ? '#8b1a1a' : '#2a6e3f', fontWeight: 'bold' }}
+                {/* Self-scoring is honor-system only: hide it in online/daily where
+                    the result is sent to the server and could be abused to cheat. */}
+                {!isOnline && !isDaily && (
+                  <TouchableOpacity
+                    style={{
+                      marginTop: 15,
+                      paddingHorizontal: 20,
+                      paddingVertical: 10,
+                      borderRadius: 12,
+                      backgroundColor: feedback.correct
+                        ? 'rgba(239, 68, 68, 0.2)'
+                        : 'rgba(16, 185, 129, 0.2)',
+                      borderColor: feedback.correct ? '#8b1a1a' : '#2a6e3f',
+                      borderWidth: 1,
+                    }}
+                    onPress={togglePoints}
                   >
-                    {feedback.correct
-                      ? language === 'fr'
-                        ? 'MARQUER COMME FAUX'
-                        : 'MARK AS WRONG'
-                      : language === 'fr'
-                        ? 'MARQUER COMME JUSTE'
-                        : 'MARK AS CORRECT'}
-                  </Text>
-                </TouchableOpacity>
+                    <Text
+                      style={{ color: feedback.correct ? '#8b1a1a' : '#2a6e3f', fontWeight: 'bold' }}
+                    >
+                      {feedback.correct
+                        ? language === 'fr'
+                          ? 'MARQUER COMME FAUX'
+                          : 'MARK AS WRONG'
+                        : language === 'fr'
+                          ? 'MARQUER COMME JUSTE'
+                          : 'MARK AS CORRECT'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )
           )}
@@ -1252,7 +1277,17 @@ export default function VersusCapitals({
             <View
               style={{ gap: 15, width: '100%', maxWidth: 300, marginTop: matchFormat > 1 ? 0 : 30 }}
             >
-              {numPlayers === 1 ? (
+              {numPlayers === 1 && isDaily ? (
+                <TouchableOpacity
+                  style={[styles.resetBtn, { flexDirection: 'row', gap: 8 }]}
+                  onPress={onShare}
+                >
+                  <Share2 color="#fff" size={18} />
+                  <Text style={styles.resetBtnText}>
+                    {language === 'fr' ? 'PARTAGER' : 'SHARE'}
+                  </Text>
+                </TouchableOpacity>
+              ) : numPlayers === 1 ? (
                 <TouchableOpacity style={styles.resetBtn} onPress={() => { resetMatch(); setNumPlayers(1); }}>
                   <Text style={styles.resetBtnText}>
                     {language === 'fr' ? 'REJOUER' : 'PLAY AGAIN'}

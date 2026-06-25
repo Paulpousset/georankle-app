@@ -118,8 +118,8 @@ describe('generateRankedModes', () => {
 
 describe('modeLabel', () => {
   it('localises mode names', () => {
-    expect(modeLabel('classic', 'fr')).toBe('Classique');
-    expect(modeLabel('classic', 'en')).toBe('Classic');
+    expect(modeLabel('classic', 'fr')).toBe('Rankle');
+    expect(modeLabel('classic', 'en')).toBe('Rankle');
     expect(modeLabel('guess', 'fr')).toBe('Devine le Pays');
     expect(modeLabel('guess', 'en')).toBe('Guess Country');
   });

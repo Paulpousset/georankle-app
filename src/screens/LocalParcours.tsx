@@ -17,6 +17,7 @@ import {
   Globe,
   Info,
   LayoutGrid,
+  Map,
   Minus,
   Play,
   Plus,
@@ -37,11 +38,13 @@ import VersusCapitals from './VersusCapitals';
 import StreakGame from './StreakGame';
 import GuessCountryGame from './GuessCountryGame';
 import FindCountryGame from './FindCountryGame';
+import FindRegionGame from './FindRegionGame';
+import RegionCountryPicker, { type RegionPick } from './RegionCountryPicker';
 import { ClassicGame } from './ClassicGame';
 
 // ─── Mode catalogue ───────────────────────────────────────────────────────────
 
-type ModeKey = 'capital' | 'flag' | 'mix' | 'classic' | 'streak' | 'guess' | 'globe';
+type ModeKey = 'capital' | 'flag' | 'mix' | 'classic' | 'streak' | 'guess' | 'globe' | 'regions';
 
 interface ModeDef {
   key: ModeKey;
@@ -62,12 +65,13 @@ const MODES: Record<ModeKey, ModeDef> = {
   flag: { key: 'flag', fr: 'Drapeaux', en: 'Flags', icon: Flag, accent: PALETTE.vermilion, rounds: 'config', defaultRounds: 5, unitFr: 'questions', unitEn: 'questions' },
   mix: { key: 'mix', fr: 'Mix Capitales/Drapeaux', en: 'Mix Capitals/Flags', icon: Flag, accent: PALETTE.brown, rounds: 'config', defaultRounds: 5, unitFr: 'questions', unitEn: 'questions' },
   guess: { key: 'guess', fr: 'Devine le Pays', en: 'Guess Country', icon: Info, accent: PALETTE.vermilion, rounds: 'config', defaultRounds: 3, unitFr: 'pays', unitEn: 'countries' },
-  classic: { key: 'classic', fr: 'Population', en: 'Population', icon: LayoutGrid, accent: PALETTE.forestGreen, rounds: 'fixed', defaultRounds: 1, unitFr: '8 thèmes', unitEn: '8 themes' },
+  classic: { key: 'classic', fr: 'Rankle', en: 'Rankle', icon: LayoutGrid, accent: PALETTE.forestGreen, rounds: 'fixed', defaultRounds: 1, unitFr: '8 thèmes', unitEn: '8 themes' },
   streak: { key: 'streak', fr: 'Streak', en: 'Streak', icon: Zap, accent: PALETTE.sand, rounds: 'fixed', defaultRounds: 1, unitFr: "jusqu'à l'erreur", unitEn: 'until a miss' },
   globe: { key: 'globe', fr: 'Globe Géo', en: 'Geo Globe', icon: Globe, accent: PALETTE.oceanBlue, rounds: 'config', defaultRounds: 5, unitFr: 'rounds', unitEn: 'rounds' },
+  regions: { key: 'regions', fr: 'Régions Géo', en: 'Geo Regions', icon: Map, accent: PALETTE.oceanBlue, rounds: 'config', defaultRounds: 5, unitFr: 'rounds', unitEn: 'rounds' },
 };
 
-const MODE_ORDER: ModeKey[] = ['capital', 'flag', 'mix', 'guess', 'classic', 'streak', 'globe'];
+const MODE_ORDER: ModeKey[] = ['capital', 'flag', 'mix', 'guess', 'classic', 'streak', 'globe', 'regions'];
 
 /**
  * Modes that play one round at a time, so players alternate round by round.
@@ -125,6 +129,8 @@ interface Manche {
   id: string;
   mode: ModeKey;
   rounds: number;
+  /** For the 'regions' mode: the country + division level chosen at build time. */
+  region?: RegionPick;
 }
 
 /** How many turns-per-player a manche has (1 for atomic modes). */
@@ -173,6 +179,7 @@ export default function LocalParcours({
   // scores[mancheIdx][playerIdx]
   const [scores, setScores] = useState<number[][]>([]);
   const [step, setStep] = useState<Step>({ phase: 'builder' });
+  const [pickingRegion, setPickingRegion] = useState(false);
   const handledKey = useRef<string>('');
 
   const numPlayers = names.length;
@@ -193,8 +200,16 @@ export default function LocalParcours({
   const renamePlayer = (idx: number, value: string) =>
     setNames((prev) => prev.map((n, i) => (i === idx ? value : n)));
 
-  const addManche = (mode: ModeKey) =>
+  const addManche = (mode: ModeKey) => {
+    // 'regions' needs a country + level chosen first — open the picker.
+    if (mode === 'regions') { setPickingRegion(true); return; }
     setManches((prev) => [...prev, { id: newMancheId(), mode, rounds: MODES[mode].defaultRounds }]);
+  };
+
+  const addRegionManche = (region: RegionPick) => {
+    setPickingRegion(false);
+    setManches((prev) => [...prev, { id: newMancheId(), mode: 'regions', rounds: MODES.regions.defaultRounds, region }]);
+  };
 
   const removeManche = (idx: number) =>
     setManches((prev) => prev.filter((_, i) => i !== idx));
@@ -366,6 +381,26 @@ export default function LocalParcours({
             onRoundComplete={handleRoundComplete}
           />
         );
+      case 'regions':
+        if (!manche.region) return null;
+        return (
+          <FindRegionGame
+            key={key}
+            isDarkMode={isDarkMode}
+            language={language}
+            setGameMode={quit as (m: GameMode) => void}
+            country={{
+              cca3: manche.region.cca3,
+              name: manche.region.name,
+              name_en: manche.region.name_en,
+              unit: manche.region.unit,
+            }}
+            level={manche.region.level}
+            user={null}
+            matchData={match}
+            onRoundComplete={handleRoundComplete}
+          />
+        );
       case 'classic':
         return (
           <ClassicGame
@@ -386,6 +421,18 @@ export default function LocalParcours({
   // ─────────────────────────────────────────────────────────────────────────────
   // RENDER
   // ─────────────────────────────────────────────────────────────────────────────
+
+  if (pickingRegion) {
+    return (
+      <RegionCountryPicker
+        isDarkMode={isDarkMode}
+        language={language}
+        onPick={addRegionManche}
+        onBack={() => setPickingRegion(false)}
+        title={tr(language, 'Pays de la manche', 'Round country')}
+      />
+    );
+  }
 
   if (step.phase === 'play') {
     return renderActiveMode(step) ?? null;
@@ -455,6 +502,7 @@ export default function LocalParcours({
                     <Icon color={def.accent} size={20} />
                     <Text style={{ flex: 1, fontFamily: FONTS.monoBold, color: c.text, fontSize: 14 }}>
                       {tr(language, def.fr, def.en)}
+                      {m.region ? ` · ${language === 'fr' ? m.region.name : m.region.name_en}` : ''}
                     </Text>
                     <TouchableOpacity onPress={() => moveManche(i, -1)} disabled={i === 0} style={{ padding: 4, opacity: i === 0 ? 0.3 : 1 }}>
                       <ChevronUp color={c.text} size={18} />

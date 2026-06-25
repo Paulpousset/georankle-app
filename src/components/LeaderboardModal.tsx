@@ -14,6 +14,7 @@ interface LeaderboardModalProps {
   language: Language;
   onClose: () => void;
   onToggleTheme: () => void;
+  onOpenPlayer?: (userId: string, username?: string | null) => void;
 }
 
 export function LeaderboardModal({
@@ -22,6 +23,7 @@ export function LeaderboardModal({
   language,
   onClose,
   onToggleTheme,
+  onOpenPlayer,
 }: LeaderboardModalProps) {
   const c = getColors(isDarkMode);
   return (
@@ -55,7 +57,7 @@ export function LeaderboardModal({
               {isDarkMode ? <Sun color="#c4872a" size={20} /> : <Moon color="#4a6a88" size={20} />}
             </TouchableOpacity>
           </View>
-          <Leaderboard language={language} isDarkMode={isDarkMode} />
+          <Leaderboard language={language} isDarkMode={isDarkMode} onOpenPlayer={onOpenPlayer} />
         </SafeAreaView>
       </View>
       </SafeAreaProvider>

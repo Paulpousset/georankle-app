@@ -42,6 +42,9 @@ google-service-account.json
 *.aab
 *.apk
 
+# region-data build cache (raw Natural Earth / france-geojson downloads, ~40MB)
+scripts/.regioncache/
+
 # typescript
 *.tsbuildinfo
 

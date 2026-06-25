@@ -239,7 +239,7 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
             <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
               <View style={styles.statCard}>
                 <LayoutGrid size={20} color="#2a6e3f" />
-                <Text style={styles.statLabel}>CLASSIC</Text>
+                <Text style={styles.statLabel}>RANKLE</Text>
                 <Text style={[styles.statValue, { color: '#2a6e3f' }]}>
                   {bestClassic || '—'}
                 </Text>

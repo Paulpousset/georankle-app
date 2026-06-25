@@ -36,6 +36,11 @@ export type AnalyticsEvent =
   | 'game_started'
   | 'game_completed'
   | 'local_parcours_started'
+  // Daily challenge
+  | 'daily_opened'
+  | 'daily_completed'
+  | 'daily_shared'
+  | 'daily_reminder_set'
   // Multiplayer
   | 'matchmaking_started'
   | 'match_invite_sent'
@@ -53,11 +58,15 @@ export type AnalyticsEvent =
   | 'friend_request_accepted'
   | 'friend_removed'
   | 'user_searched'
+  | 'player_profile_viewed'
   // Discovery
   | 'leaderboard_opened'
   // Settings
   | 'theme_toggled'
-  | 'language_toggled';
+  | 'language_toggled'
+  // Admin
+  | 'admin_broadcast_sent'
+  | 'admin_campaign_saved';
 
 type Props = Record<string, string | number | boolean | null | undefined>;
 

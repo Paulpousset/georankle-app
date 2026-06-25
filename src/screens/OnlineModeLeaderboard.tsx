@@ -21,11 +21,12 @@ interface Props {
   language: Language;
   isDarkMode: boolean;
   accent: string;
+  onOpenPlayer?: (userId: string, username?: string | null) => void;
 }
 
 const MEDAL_COLORS = ['#c4872a', '#7aa0c4', '#a08060'];
 
-export function OnlineModeLeaderboard({ mode, language, isDarkMode, accent }: Props) {
+export function OnlineModeLeaderboard({ mode, language, isDarkMode, accent, onOpenPlayer }: Props) {
   const c = getColors(isDarkMode);
 
   const fetchLeaderboard = useCallback(async (): Promise<WinEntry[]> => {
@@ -67,12 +68,12 @@ export function OnlineModeLeaderboard({ mode, language, isDarkMode, accent }: Pr
 
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('user_id, username')
-      .in('user_id', Array.from(userIds));
+      .select('id, username')
+      .in('id', Array.from(userIds));
 
     const usernameMap: Record<string, string> = {};
     for (const p of profiles ?? []) {
-      usernameMap[p.user_id] = p.username ?? (language === 'fr' ? 'Anonyme' : 'Anonymous');
+      usernameMap[p.id] = p.username ?? (language === 'fr' ? 'Anonyme' : 'Anonymous');
     }
 
     return Object.entries(stats)
@@ -100,7 +101,10 @@ export function OnlineModeLeaderboard({ mode, language, isDarkMode, accent }: Pr
     ({ item, index }: { item: WinEntry; index: number }) => {
       const isTop3 = index < 3;
       return (
-        <View
+        <TouchableOpacity
+          activeOpacity={onOpenPlayer ? 0.6 : 1}
+          disabled={!onOpenPlayer}
+          onPress={() => onOpenPlayer?.(item.user_id, item.username)}
           style={{
             flexDirection: 'row',
             alignItems: 'center',
@@ -128,10 +132,10 @@ export function OnlineModeLeaderboard({ mode, language, isDarkMode, accent }: Pr
           <Text style={{ fontFamily: FONTS.headingBlack, fontSize: 16, color: accent }}>
             {item.winRate}%
           </Text>
-        </View>
+        </TouchableOpacity>
       );
     },
-    [c, accent],
+    [c, accent, onOpenPlayer],
   );
 
   if (loading) {

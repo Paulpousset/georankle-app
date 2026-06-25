@@ -64,7 +64,7 @@ export function PreGameLobby({
 
   const modeLabel =
     matchData.game_mode === 'classic'
-      ? 'Mode Classique'
+      ? 'Rankle'
       : matchData.game_mode === 'streak'
         ? 'Mode Streak'
         : 'Mode Versus';

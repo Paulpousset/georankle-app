@@ -1,0 +1,377 @@
+[
+  {
+    "cca3": "ZAF",
+    "name": "Afrique du Sud",
+    "name_en": "South Africa",
+    "unit": "Province",
+    "levels": [
+      {
+        "key": "regions",
+        "count": 9
+      }
+    ]
+  },
+  {
+    "cca3": "DEU",
+    "name": "Allemagne",
+    "name_en": "Germany",
+    "unit": "State",
+    "levels": [
+      {
+        "key": "regions",
+        "count": 16
+      }
+    ]
+  },
+  {
+    "cca3": "ARG",
+    "name": "Argentine",
+    "name_en": "Argentina",
+    "unit": "Province",
+    "levels": [
+      {
+        "key": "regions",
+        "count": 24
+      }
+    ]
+  },
+  {
+    "cca3": "AUS",
+    "name": "Australie",
+    "name_en": "Australia",
+    "unit": "State",
+    "levels": [
+      {
+        "key": "regions",
+        "count": 10
+      }
+    ]
+  },
+  {
+    "cca3": "AUT",
+    "name": "Autriche",
+    "name_en": "Austria",
+    "unit": "State",
+    "levels": [
+      {
+        "key": "regions",
+        "count": 9
+      }
+    ]
+  },
+  {
+    "cca3": "BEL",
+    "name": "Belgique",
+    "name_en": "Belgium",
+    "unit": "Province",
+    "levels": [
+      {
+        "key": "regions",
+        "count": 11
+      }
+    ]
+  },
+  {
+    "cca3": "BRA",
+    "name": "Brésil",
+    "name_en": "Brazil",
+    "unit": "State",
+    "levels": [
+      {
+        "key": "regions",
+        "count": 27
+      }
+    ]
+  },
+  {
+    "cca3": "CAN",
+    "name": "Canada",
+    "name_en": "Canada",
+    "unit": "Province",
+    "levels": [
+      {
+        "key": "regions",
+        "count": 13
+      }
+    ]
+  },
+  {
+    "cca3": "CHL",
+    "name": "Chili",
+    "name_en": "Chile",
+    "unit": "Region",
+    "levels": [
+      {
+        "key": "regions",
+        "count": 16
+      }
+    ]
+  },
+  {
+    "cca3": "CHN",
+    "name": "Chine",
+    "name_en": "China",
+    "unit": "Province",
+    "levels": [
+      {
+        "key": "regions",
+        "count": 31
+      }
+    ]
+  },
+  {
+    "cca3": "COL",
+    "name": "Colombie",
+    "name_en": "Colombia",
+    "unit": "Department",
+    "levels": [
+      {
+        "key": "regions",
+        "count": 32
+      }
+    ]
+  },
+  {
+    "cca3": "EGY",
+    "name": "Égypte",
+    "name_en": "Egypt",
+    "unit": "Governorate",
+    "levels": [
+      {
+        "key": "regions",
+        "count": 26
+      }
+    ]
+  },
+  {
+    "cca3": "ESP",
+    "name": "Espagne",
+    "name_en": "Spain",
+    "unit": "Autonomous Community",
+    "levels": [
+      {
+        "key": "regions",
+        "count": 51
+      }
+    ]
+  },
+  {
+    "cca3": "USA",
+    "name": "États-Unis",
+    "name_en": "United States",
+    "unit": "State",
+    "levels": [
+      {
+        "key": "regions",
+        "count": 51
+      }
+    ]
+  },
+  {
+    "cca3": "FRA",
+    "name": "France",
+    "name_en": "France",
+    "levels": [
+      {
+        "key": "regions",
+        "count": 13
+      },
+      {
+        "key": "departments",
+        "count": 96
+      }
+    ]
+  },
+  {
+    "cca3": "GRC",
+    "name": "Grèce",
+    "name_en": "Greece",
+    "unit": "Region",
+    "levels": [
+      {
+        "key": "regions",
+        "count": 14
+      }
+    ]
+  },
+  {
+    "cca3": "IND",
+    "name": "Inde",
+    "name_en": "India",
+    "unit": "State",
+    "levels": [
+      {
+        "key": "regions",
+        "count": 35
+      }
+    ]
+  },
+  {
+    "cca3": "IDN",
+    "name": "Indonésie",
+    "name_en": "Indonesia",
+    "unit": "Province",
+    "levels": [
+      {
+        "key": "regions",
+        "count": 33
+      }
+    ]
+  },
+  {
+    "cca3": "ITA",
+    "name": "Italie",
+    "name_en": "Italy",
+    "unit": "Province",
+    "levels": [
+      {
+        "key": "regions",
+        "count": 110
+      }
+    ]
+  },
+  {
+    "cca3": "JPN",
+    "name": "Japon",
+    "name_en": "Japan",
+    "unit": "Prefecture",
+    "levels": [
+      {
+        "key": "regions",
+        "count": 47
+      }
+    ]
+  },
+  {
+    "cca3": "MAR",
+    "name": "Maroc",
+    "name_en": "Morocco",
+    "unit": "Region",
+    "levels": [
+      {
+        "key": "regions",
+        "count": 16
+      }
+    ]
+  },
+  {
+    "cca3": "MEX",
+    "name": "Mexique",
+    "name_en": "Mexico",
+    "unit": "State",
+    "levels": [
+      {
+        "key": "regions",
+        "count": 32
+      }
+    ]
+  },
+  {
+    "cca3": "NGA",
+    "name": "Nigéria",
+    "name_en": "Nigeria",
+    "unit": "State",
+    "levels": [
+      {
+        "key": "regions",
+        "count": 37
+      }
+    ]
+  },
+  {
+    "cca3": "NOR",
+    "name": "Norvège",
+    "name_en": "Norway",
+    "unit": "County",
+    "levels": [
+      {
+        "key": "regions",
+        "count": 21
+      }
+    ]
+  },
+  {
+    "cca3": "NLD",
+    "name": "Pays-Bas",
+    "name_en": "Netherlands",
+    "unit": "Province",
+    "levels": [
+      {
+        "key": "regions",
+        "count": 13
+      }
+    ]
+  },
+  {
+    "cca3": "POL",
+    "name": "Pologne",
+    "name_en": "Poland",
+    "unit": "Voivodeship|Province",
+    "levels": [
+      {
+        "key": "regions",
+        "count": 16
+      }
+    ]
+  },
+  {
+    "cca3": "PRT",
+    "name": "Portugal",
+    "name_en": "Portugal",
+    "unit": "District",
+    "levels": [
+      {
+        "key": "regions",
+        "count": 20
+      }
+    ]
+  },
+  {
+    "cca3": "RUS",
+    "name": "Russie",
+    "name_en": "Russia",
+    "unit": "Region",
+    "levels": [
+      {
+        "key": "regions",
+        "count": 85
+      }
+    ]
+  },
+  {
+    "cca3": "SWE",
+    "name": "Suède",
+    "name_en": "Sweden",
+    "unit": "County",
+    "levels": [
+      {
+        "key": "regions",
+        "count": 21
+      }
+    ]
+  },
+  {
+    "cca3": "CHE",
+    "name": "Suisse",
+    "name_en": "Switzerland",
+    "unit": "Canton",
+    "levels": [
+      {
+        "key": "regions",
+        "count": 26
+      }
+    ]
+  },
+  {
+    "cca3": "TUR",
+    "name": "Turquie",
+    "name_en": "Turkey",
+    "unit": "Province",
+    "levels": [
+      {
+        "key": "regions",
+        "count": 81
+      }
+    ]
+  }
+]

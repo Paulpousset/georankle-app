@@ -24,11 +24,12 @@ import { tr } from '../i18n';
 interface FriendsProps {
   session: { user: User | null };
   onBack: () => void;
+  onOpenPlayer?: (userId: string, username?: string | null) => void;
   isDarkMode: boolean;
   language: Language;
 }
 
-export default function Friends({ session, onBack, isDarkMode, language }: FriendsProps) {
+export default function Friends({ session, onBack, onOpenPlayer, isDarkMode, language }: FriendsProps) {
   const c = getColors(isDarkMode);
   const [friends, setFriends] = useState<any[]>([]);
   const [pendingRequests, setPendingRequests] = useState<any[]>([]);
@@ -180,11 +181,16 @@ export default function Friends({ session, onBack, isDarkMode, language }: Frien
 
     return (
       <View style={[styles.userCard, isDarkMode ? styles.cardDark : styles.cardLight]}>
-        <Text
-          style={[styles.usernameText, { color: c.text }]}
+        <TouchableOpacity
+          style={styles.nameTap}
+          activeOpacity={onOpenPlayer ? 0.6 : 1}
+          disabled={!onOpenPlayer}
+          onPress={() => onOpenPlayer?.(friendData.id, friendData.username)}
+          accessibilityRole="button"
+          accessibilityLabel={tr(language, 'Voir le profil', 'View profile')}
         >
-          {friendData.username}
-        </Text>
+          <Text style={[styles.usernameText, { color: c.text }]}>{friendData.username}</Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={styles.removeBtn}
           onPress={() => removeFriend(item.id)}
@@ -200,11 +206,18 @@ export default function Friends({ session, onBack, isDarkMode, language }: Frien
   const renderPending = ({ item }: { item: any }) => {
     return (
       <View style={[styles.userCard, isDarkMode ? styles.cardDark : styles.cardLight]}>
-        <Text
-          style={[styles.usernameText, { color: c.text }]}
+        <TouchableOpacity
+          style={styles.nameTap}
+          activeOpacity={onOpenPlayer ? 0.6 : 1}
+          disabled={!onOpenPlayer}
+          onPress={() => item.user1 && onOpenPlayer?.(item.user1.id, item.user1.username)}
+          accessibilityRole="button"
+          accessibilityLabel={tr(language, 'Voir le profil', 'View profile')}
         >
-          {item.user1?.username} {language === 'fr' ? 'veut être votre ami' : 'wants to be friends'}
-        </Text>
+          <Text style={[styles.usernameText, { color: c.text }]}>
+            {item.user1?.username} {language === 'fr' ? 'veut être votre ami' : 'wants to be friends'}
+          </Text>
+        </TouchableOpacity>
         <View style={styles.actionRow}>
           <TouchableOpacity
             style={styles.acceptBtn}
@@ -229,9 +242,16 @@ export default function Friends({ session, onBack, isDarkMode, language }: Frien
 
   const renderSearchResult = ({ item }: { item: any }) => (
     <View style={[styles.userCard, isDarkMode ? styles.cardDark : styles.cardLight]}>
-      <Text style={[styles.usernameText, { color: c.text }]}>
-        {item.username}
-      </Text>
+      <TouchableOpacity
+        style={styles.nameTap}
+        activeOpacity={onOpenPlayer ? 0.6 : 1}
+        disabled={!onOpenPlayer}
+        onPress={() => onOpenPlayer?.(item.id, item.username)}
+        accessibilityRole="button"
+        accessibilityLabel={tr(language, 'Voir le profil', 'View profile')}
+      >
+        <Text style={[styles.usernameText, { color: c.text }]}>{item.username}</Text>
+      </TouchableOpacity>
       <TouchableOpacity
         style={styles.addBtn}
         onPress={() => sendFriendRequest(item.id)}
@@ -432,6 +452,7 @@ const styles = StyleSheet.create({
   cardDark: { backgroundColor: '#132040', borderColor: '#2d4a70' },
 
   usernameText: { fontSize: 16, fontFamily: FONTS.heading },
+  nameTap: { flex: 1, paddingVertical: 4, paddingRight: 8 },
 
   addBtn: { backgroundColor: '#2a6e3f', padding: 8, borderRadius: 8 },
   removeBtn: { padding: 8 },

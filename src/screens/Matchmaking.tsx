@@ -102,7 +102,7 @@ const QUESTION_TYPES = [
 ];
 
 function modeName(mode: MatchMode, lang: Language): string {
-  if (mode === 'classic') return lang === 'fr' ? 'Classique' : 'Classic';
+  if (mode === 'classic') return 'Rankle';
   if (mode === 'streak') return 'Streak';
   if (mode === 'globe') return lang === 'fr' ? 'Globe Géo' : 'Geo Globe';
   return 'Versus';

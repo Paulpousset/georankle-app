@@ -3,6 +3,7 @@ import {
   Alert,
   Image,
   Platform,
+  ScrollView,
   Text,
   TouchableOpacity,
   View,
@@ -10,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { Home, Info, Moon, RefreshCcw, Sun, Trophy } from 'lucide-react-native';
+import { Home, Info, Moon, RefreshCcw, Share2, Sun, Trophy } from 'lucide-react-native';
 import type { User } from '@supabase/supabase-js';
 
 import type { Language, Match, Selection, SelectionMap, Theme } from '../types';
@@ -38,6 +39,22 @@ interface ClassicGameProps {
   onExit: () => void;
   onToggleTheme: () => void;
   onToggleLanguage: () => void;
+  /** Daily challenge: deterministic seed for today's puzzle (overrides random). */
+  dailySeed?: number;
+  /** Daily challenge: fired once at game-over with the score + emoji share grid. */
+  onDailyComplete?: (score: number, grid?: string) => void;
+  /** Daily challenge: replaces "Play again" with "Share" and skips score saving. */
+  isDaily?: boolean;
+  /** Daily challenge: invoked by the "Share" button on the win screen. */
+  onShare?: () => void;
+}
+
+/** Emoji cell for the share grid: how close a pick was to the optimal rank. */
+function gridCell(mineRank: number, optimalRank: number): string {
+  const diff = mineRank - optimalRank;
+  if (diff <= 0) return '🟩';
+  if (diff <= 10) return '🟨';
+  return '🟥';
 }
 
 /**
@@ -53,6 +70,10 @@ export function ClassicGame({
   onExit,
   onToggleTheme,
   onToggleLanguage,
+  dailySeed,
+  onDailyComplete,
+  isDaily,
+  onShare,
 }: ClassicGameProps) {
   const c = getColors(isDarkMode);
   const [sessionThemes, setSessionThemes] = useState<Theme[]>([]);
@@ -69,12 +90,14 @@ export function ClassicGame({
   const rngRef = useRef<(() => number) | null>(null);
 
   useEffect(() => {
-    if (matchData?.game_data?.seed) {
+    if (dailySeed != null) {
+      rngRef.current = createSeededRng(dailySeed);
+    } else if (matchData?.game_data?.seed) {
       const roundNumber = matchData.current_round ?? 1;
       rngRef.current = createSeededRng(matchData.game_data.seed + (roundNumber - 1));
     }
     initGame();
-    if (!matchData) track('game_started', { mode: 'classic' });
+    if (!matchData && !isDaily) track('game_started', { mode: 'classic' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -181,6 +204,20 @@ export function ClassicGame({
         const gameEfficiency = Math.round((gameOptimalTotal / Math.max(finalScore, 1)) * 100);
 
         setBestScore((prev) => (prev === null || gameEfficiency > prev ? gameEfficiency : prev));
+
+        // Daily run: record the result + emoji grid; skip the normal score/coins
+        // path (daily results live in their own table). Build the grid from the
+        // final picks — include the just-made selection (state hasn't flushed).
+        if (isDaily) {
+          const grid = sessionThemes
+            .map((t) => {
+              const mine = t.id === themeId ? rank : selections[t.id]?.rank ?? MISSING_RANK;
+              return gridCell(mine, optimalSelections[t.id]?.rank ?? 0);
+            })
+            .join('');
+          onDailyComplete?.(gameEfficiency, grid);
+          return;
+        }
 
         if (!matchData) track('game_completed', { mode: 'classic', score: gameEfficiency });
 
@@ -669,219 +706,251 @@ export function ClassicGame({
               </View>
             </View>
           ) : (
-            <View style={{ flex: 1, padding: 20, alignItems: 'center' }}>
+            <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 12 }}>
               <View
                 style={[
                   themeStyles.winCard,
                   {
                     flex: 1,
-                    padding: 30,
-                    justifyContent: 'space-between',
+                    padding: 0,
+                    overflow: 'hidden',
                     width: '100%',
                     maxWidth: 800,
+                    alignSelf: 'center',
                   },
                 ]}
               >
-                <View style={{ alignItems: 'center' }}>
-                  <Trophy color={c.accent} size={48} />
-                  <Text
-                    style={[themeStyles.winTitle, { fontSize: 32, marginTop: 10, marginBottom: 5 }]}
-                  >
-                    {tr(language, 'SESSION TERMINÉE', 'SESSION FINISHED')}
-                  </Text>
-
-                  <View style={{ flexDirection: 'row', gap: 30, marginBottom: 20 }}>
-                    <View style={{ alignItems: 'center' }}>
-                      <Text style={[themeStyles.statLabel, { fontSize: 12 }]}>
-                        {tr(language, 'SCORE TOTAL', 'TOTAL SCORE')}
-                      </Text>
-                      <Text
-                        style={[
-                          themeStyles.statValue,
-                          { fontSize: 48, lineHeight: 48, color: getRankColor(totalScore / 8) },
-                        ]}
-                      >
-                        {totalScore}
-                      </Text>
-                      <Text style={{ fontFamily: FONTS.mono, fontSize: 10, color: c.textMuted }}>
-                        {tr(language, 'Optimal : ', 'Optimal: ')}
-                        <Text style={{ fontFamily: FONTS.monoBold }}>{optimalTotalValue}</Text>
-                      </Text>
-                    </View>
+                <ScrollView
+                  contentContainerStyle={{ padding: 20, paddingBottom: 16 }}
+                  showsVerticalScrollIndicator={false}
+                >
+                  <View style={{ alignItems: 'center', marginBottom: 18 }}>
+                    <Trophy color={c.accent} size={44} />
+                    <Text
+                      style={[themeStyles.winTitle, { fontSize: 28, marginTop: 8, marginBottom: 16 }]}
+                    >
+                      {tr(language, 'SESSION TERMINÉE', 'SESSION FINISHED')}
+                    </Text>
 
                     <View
                       style={{
-                        width: 1,
-                        height: '80%',
-                        backgroundColor: c.border,
-                        alignSelf: 'center',
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        alignSelf: 'stretch',
+                        justifyContent: 'center',
+                        backgroundColor: c.surface,
+                        borderRadius: 16,
+                        borderWidth: 1,
+                        borderColor: c.border,
+                        paddingVertical: 16,
+                        gap: 24,
                       }}
-                    />
+                    >
+                      <View style={{ alignItems: 'center' }}>
+                        <Text style={[themeStyles.statLabel, { fontSize: 11 }]}>
+                          {tr(language, 'SCORE TOTAL', 'TOTAL SCORE')}
+                        </Text>
+                        <Text
+                          style={[
+                            themeStyles.statValue,
+                            { fontSize: 44, lineHeight: 48, color: getRankColor(totalScore / 8) },
+                          ]}
+                        >
+                          {totalScore}
+                        </Text>
+                        <Text style={{ fontFamily: FONTS.mono, fontSize: 10, color: c.textMuted }}>
+                          {tr(language, 'Optimal : ', 'Optimal: ')}
+                          <Text style={{ fontFamily: FONTS.monoBold }}>{optimalTotalValue}</Text>
+                        </Text>
+                      </View>
 
-                    <View style={{ alignItems: 'center' }}>
-                      <Text style={[themeStyles.statLabel, { fontSize: 12 }]}>
-                        {tr(language, 'EFFICACITÉ', 'EFFICIENCY')}
-                      </Text>
-                      <Text
-                        style={[
-                          themeStyles.statValue,
-                          { fontSize: 48, lineHeight: 48, color: getEfficiencyColor(efficiency) },
-                        ]}
-                      >
-                        {efficiency}%
-                      </Text>
-                      <Text style={{ fontFamily: FONTS.mono, fontSize: 10, color: c.textMuted }}>
-                        {tr(language, 'Indice de perf', 'Perf index')}
-                      </Text>
+                      <View style={{ width: 1, alignSelf: 'stretch', backgroundColor: c.border }} />
+
+                      <View style={{ alignItems: 'center' }}>
+                        <Text style={[themeStyles.statLabel, { fontSize: 11 }]}>
+                          {tr(language, 'EFFICACITÉ', 'EFFICIENCY')}
+                        </Text>
+                        <Text
+                          style={[
+                            themeStyles.statValue,
+                            { fontSize: 44, lineHeight: 48, color: getEfficiencyColor(efficiency) },
+                          ]}
+                        >
+                          {efficiency}%
+                        </Text>
+                        <Text style={{ fontFamily: FONTS.mono, fontSize: 10, color: c.textMuted }}>
+                          {tr(language, 'Indice de perf', 'Perf index')}
+                        </Text>
+                      </View>
                     </View>
                   </View>
-                </View>
 
-                <View style={[styles.summaryTable, { flex: 1, marginVertical: 10 }]}>
-                  <View style={[styles.summaryHeader, { marginBottom: 8, paddingHorizontal: 15 }]}>
-                    <Text style={[themeStyles.summaryHeaderText, { flex: 1.5, fontSize: 12 }]}>
-                      {tr(language, 'THÈME', 'THEME')}
-                    </Text>
-                    <Text style={[themeStyles.summaryHeaderText, { flex: 2.2, fontSize: 12 }]}>
-                      {tr(language, 'VOTRE CHOIX', 'YOUR CHOICE')}
-                    </Text>
-                    <Text style={[themeStyles.summaryHeaderText, { flex: 2.2, fontSize: 12 }]}>
-                      {tr(language, 'SCORE OPTIMAL', 'OPTIMAL SCORE')}
-                    </Text>
-                  </View>
+                  <Text
+                    style={[
+                      themeStyles.summaryHeaderText,
+                      { fontSize: 11, marginBottom: 10, marginLeft: 4 },
+                    ]}
+                  >
+                    {tr(language, 'DÉTAIL PAR THÈME', 'BREAKDOWN BY THEME')}
+                  </Text>
 
-                  <View style={{ flex: 1, gap: 4 }}>
+                  <View style={{ gap: 8 }}>
                     {sessionThemes.map((theme) => {
                       const selection = selections[theme.id];
                       const optimal = optimalSelections[theme.id];
                       const optimalCountryName =
                         language === 'fr'
                           ? optimal.countryName
-                          : gameData.countries.find((c) => c.cca3 === optimal.cca3)?.name_en ||
+                          : gameData.countries.find((co) => co.cca3 === optimal.cca3)?.name_en ||
                             optimal.countryName;
                       return (
                         <View
                           key={theme.id}
-                          style={[
-                            themeStyles.summaryRow,
-                            {
-                              padding: 8,
-                              borderRadius: 10,
-                              backgroundColor: c.surface,
-                            },
-                          ]}
+                          style={{
+                            backgroundColor: c.surface,
+                            borderRadius: 12,
+                            padding: 12,
+                            borderLeftWidth: 4,
+                            borderLeftColor: getRankColor(selection.rank),
+                          }}
                         >
                           <View
                             style={{
-                              flex: 1.5,
                               flexDirection: 'row',
                               alignItems: 'center',
                               gap: 8,
+                              marginBottom: 10,
                             }}
                           >
-                            <Text style={{ fontSize: 16 }}>{theme.emoji}</Text>
+                            <Text style={{ fontSize: 18 }}>{theme.emoji}</Text>
                             <Text
-                              style={[themeStyles.rowThemeLabel, { fontSize: 12 }]}
+                              style={[themeStyles.rowThemeLabel, { fontSize: 15, flex: 1 }]}
                               numberOfLines={1}
                             >
                               {pickLabel(theme.label, language)}
                             </Text>
                           </View>
 
-                          <View
-                            style={{
-                              flex: 2.2,
-                              flexDirection: 'row',
-                              alignItems: 'center',
-                              gap: 8,
-                              borderRightWidth: 1,
-                              borderRightColor: c.border,
-                              paddingRight: 8,
-                            }}
-                          >
-                            <Image
-                              source={{ uri: getFlagUrl(selection.cca3) }}
-                              style={{ width: 24, height: 16, borderRadius: 3 }}
-                            />
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                             <View style={{ flex: 1 }}>
-                              <Text
-                                style={{
-                                  fontFamily: FONTS.heading,
-                                  fontSize: 11,
-                                  color: c.text,
-                                }}
-                                numberOfLines={1}
-                              >
-                                {selection.countryName}
+                              <Text style={[themeStyles.summaryHeaderText, { marginBottom: 6 }]}>
+                                {tr(language, 'VOTRE CHOIX', 'YOUR CHOICE')}
                               </Text>
-                              <Text
-                                style={{
-                                  fontSize: 14,
-                                  fontWeight: '900',
-                                  color: getRankColor(selection.rank),
-                                  lineHeight: 16,
-                                }}
-                              >
-                                #{selection.rank}
-                              </Text>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <Image
+                                  source={{ uri: getFlagUrl(selection.cca3) }}
+                                  style={{ width: 26, height: 18, borderRadius: 3 }}
+                                />
+                                <Text
+                                  style={{
+                                    fontFamily: FONTS.heading,
+                                    fontSize: 13,
+                                    color: c.text,
+                                    flex: 1,
+                                  }}
+                                  numberOfLines={1}
+                                >
+                                  {selection.countryName}
+                                </Text>
+                                <Text
+                                  style={{
+                                    fontFamily: FONTS.monoBold,
+                                    fontSize: 16,
+                                    color: getRankColor(selection.rank),
+                                  }}
+                                >
+                                  #{selection.rank}
+                                </Text>
+                              </View>
                             </View>
-                          </View>
 
-                          <View
-                            style={{
-                              flex: 2.2,
-                              flexDirection: 'row',
-                              alignItems: 'center',
-                              gap: 8,
-                              paddingLeft: 8,
-                            }}
-                          >
-                            <Image
-                              source={{ uri: getFlagUrl(optimal.cca3) }}
-                              style={{ width: 24, height: 16, borderRadius: 3, opacity: 0.8 }}
+                            <View
+                              style={{
+                                width: 1,
+                                alignSelf: 'stretch',
+                                backgroundColor: c.border,
+                                marginHorizontal: 12,
+                              }}
                             />
+
                             <View style={{ flex: 1 }}>
-                              <Text
-                                style={{ fontFamily: FONTS.mono, fontSize: 10, color: c.textMuted }}
-                                numberOfLines={1}
-                              >
-                                {optimalCountryName}
+                              <Text style={[themeStyles.summaryHeaderText, { marginBottom: 6 }]}>
+                                {tr(language, 'OPTIMAL', 'OPTIMAL')}
                               </Text>
-                              <Text
-                                style={{
-                                  fontFamily: FONTS.monoBold,
-                                  fontSize: 14,
-                                  color: c.textMuted,
-                                  lineHeight: 16,
-                                }}
-                              >
-                                #{optimal.rank}
-                              </Text>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <Image
+                                  source={{ uri: getFlagUrl(optimal.cca3) }}
+                                  style={{ width: 26, height: 18, borderRadius: 3, opacity: 0.85 }}
+                                />
+                                <Text
+                                  style={{
+                                    fontFamily: FONTS.mono,
+                                    fontSize: 12,
+                                    color: c.textMuted,
+                                    flex: 1,
+                                  }}
+                                  numberOfLines={1}
+                                >
+                                  {optimalCountryName}
+                                </Text>
+                                <Text
+                                  style={{
+                                    fontFamily: FONTS.monoBold,
+                                    fontSize: 16,
+                                    color: c.textMuted,
+                                  }}
+                                >
+                                  #{optimal.rank}
+                                </Text>
+                              </View>
                             </View>
                           </View>
                         </View>
                       );
                     })}
                   </View>
-                </View>
+                </ScrollView>
 
-                <View style={{ flexDirection: 'row', gap: 15, width: '100%', marginTop: 10 }}>
-                  <TouchableOpacity
-                    style={[styles.playAgainBtn, { flex: 2, paddingVertical: 14 }]}
-                    onPress={initGame}
-                  >
-                    <RefreshCcw color="#fff" size={20} />
-                    <Text style={[styles.playAgainText, { fontSize: 16 }]}>
-                      {tr(language, 'REJOUER', 'PLAY AGAIN')}
-                    </Text>
-                  </TouchableOpacity>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    gap: 12,
+                    paddingHorizontal: 16,
+                    paddingVertical: 14,
+                    borderTopWidth: 1,
+                    borderTopColor: c.border,
+                  }}
+                >
+                  {isDaily ? (
+                    <TouchableOpacity
+                      style={[styles.playAgainBtn, { flex: 2, paddingVertical: 14, marginTop: 0 }]}
+                      onPress={onShare}
+                    >
+                      <Share2 color="#fff" size={20} />
+                      <Text style={[styles.playAgainText, { fontSize: 16 }]}>
+                        {tr(language, 'PARTAGER', 'SHARE')}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      style={[styles.playAgainBtn, { flex: 2, paddingVertical: 14, marginTop: 0 }]}
+                      onPress={initGame}
+                    >
+                      <RefreshCcw color="#fff" size={20} />
+                      <Text style={[styles.playAgainText, { fontSize: 16 }]}>
+                        {tr(language, 'REJOUER', 'PLAY AGAIN')}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                   <TouchableOpacity
                     style={[
                       styles.playAgainBtn,
                       {
                         backgroundColor: c.border,
+                        borderColor: c.border,
                         flex: 1,
                         paddingVertical: 14,
+                        marginTop: 0,
                       },
                     ]}
                     onPress={onExit}

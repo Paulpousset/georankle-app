@@ -1,14 +1,17 @@
+import { useEffect, useState } from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import {
   ArrowLeft,
   BarChart3,
+  CalendarDays,
   Flag,
   Globe,
   Info,
   LayoutGrid,
   LogIn,
+  Map,
   Monitor,
   Moon,
   ShoppingBag,
@@ -29,8 +32,12 @@ import { PALETTE, getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { CompassRose, CoordLabel } from '../theme/decorative';
 import { tr } from '../i18n';
+import { getLocalState } from '../lib/daily';
 
 export type PlayType = 'solo' | 'local' | 'online';
+
+/** Flame accent for the daily-challenge hero + streak badge. */
+const DAILY_FLAME = '#e8772e';
 
 interface ModeCardProps {
   icon: ComponentType<{ color: string; size: number }>;
@@ -167,6 +174,7 @@ interface MainMenuProps {
   onPlay: (mode: GameMode) => void;
   onPlayOnline: (mode: MatchMode) => void;
   onPlayRanked: () => void;
+  onOpenDaily: () => void;
   /** Which play-type sub-list is open (null = the play-type chooser). Lifted to
    *  App so it survives launching a game — returning lands on the same list. */
   playType: PlayType | null;
@@ -187,12 +195,19 @@ export function MainMenu({
   onPlay,
   onPlayOnline,
   onPlayRanked,
+  onOpenDaily,
   playType,
   onChangePlayType: setPlayType,
 }: MainMenuProps) {
   const c = getColors(isDarkMode);
   const iconColor = c.text;
   const accent = c.accent;
+
+  // Daily streak badge — read from the local cache (works logged-out too).
+  const [dailyStreak, setDailyStreak] = useState(0);
+  useEffect(() => {
+    getLocalState().then((s) => setDailyStreak(s.streak));
+  }, []);
 
   return (
     <SafeAreaView
@@ -337,6 +352,50 @@ export function MainMenu({
 
         <View style={{ width: '100%', marginVertical: 16, overflow: 'hidden', height: 1, backgroundColor: c.border, opacity: 0.6 }} />
 
+        {/* Daily challenge hero — always visible, the first thing players see. */}
+        <TouchableOpacity
+          onPress={onOpenDaily}
+          style={[
+            styles.countryCard,
+            !isDarkMode && styles.countryCardLight,
+            {
+              width: '100%',
+              maxWidth: 400,
+              padding: 18,
+              marginBottom: 18,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 15,
+              borderWidth: 2,
+              borderColor: DAILY_FLAME,
+              backgroundColor: isDarkMode ? 'rgba(232,119,46,0.12)' : 'rgba(232,119,46,0.10)',
+            },
+          ]}
+        >
+          <View style={{ backgroundColor: isDarkMode ? 'rgba(232,119,46,0.22)' : 'rgba(232,119,46,0.16)', padding: 12, borderRadius: 12 }}>
+            <CalendarDays color={DAILY_FLAME} size={28} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.countryName, !isDarkMode && styles.countryNameLight, { fontSize: 17, textAlign: 'left', marginBottom: 3, color: DAILY_FLAME }]}>
+              {tr(language, 'Défi du Jour', 'Daily Challenge')}
+            </Text>
+            <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 10 }}>
+              {dailyStreak > 0
+                ? tr(language, `🔥 Série de ${dailyStreak} · 8 modes`, `🔥 ${dailyStreak}-day streak · 8 modes`)
+                : tr(language, 'Un puzzle par mode, chaque jour', 'One puzzle per mode, every day')}
+            </Text>
+          </View>
+          {dailyStreak > 0 ? (
+            <Text style={{ fontFamily: FONTS.headingBlack, color: DAILY_FLAME, fontSize: 20 }}>🔥{dailyStreak}</Text>
+          ) : (
+            <View style={{ backgroundColor: DAILY_FLAME, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 }}>
+              <Text style={{ fontFamily: FONTS.monoBold, color: '#fff', fontSize: 9 }}>
+                {tr(language, 'NOUVEAU', 'NEW')}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
         {!playType ? (
           <>
             <Text style={{ fontFamily: FONTS.mono, color: c.textMuted, fontSize: 11, marginBottom: 28, textAlign: 'center' }}>
@@ -382,7 +441,7 @@ export function MainMenu({
                 icon={LayoutGrid}
                 accent={isDarkMode ? PALETTE.forestGreen : PALETTE.forestGreen}
                 tint={isDarkMode ? 'rgba(42,110,63,0.15)' : 'rgba(42,110,63,0.10)'}
-                title={tr(language, 'Mode Classique', 'Classic Mode')}
+                title="Rankle"
                 subtitle={tr(language, 'Classez les pays par population', 'Rank countries by population')}
                 isDarkMode={isDarkMode}
                 onPress={() => onPlay('classic')}
@@ -413,6 +472,15 @@ export function MainMenu({
                 subtitle={tr(language, 'Trouvez les pays sur le globe', 'Find countries on the globe')}
                 isDarkMode={isDarkMode}
                 onPress={() => onPlay('globe')}
+              />
+              <ModeCard
+                icon={Map}
+                accent={isDarkMode ? PALETTE.chartBlue : PALETTE.oceanBlue}
+                tint={isDarkMode ? 'rgba(74,158,255,0.12)' : 'rgba(26,74,122,0.10)'}
+                title={tr(language, 'Régions Géo', 'Geo Regions')}
+                subtitle={tr(language, "Placez les régions d'un pays", "Place a country's regions")}
+                isDarkMode={isDarkMode}
+                onPress={() => onPlay('regions')}
               />
               <ModeCard
                 icon={Flag}
@@ -512,7 +580,7 @@ export function MainMenu({
                 icon={LayoutGrid}
                 accent={PALETTE.forestGreen}
                 tint={isDarkMode ? 'rgba(42,110,63,0.15)' : 'rgba(42,110,63,0.10)'}
-                title={tr(language, 'Mode Classique', 'Classic Mode')}
+                title="Rankle"
                 subtitle={tr(language, 'Classez les pays par population', 'Rank countries by population')}
                 isDarkMode={isDarkMode}
                 onPress={() => onPlayOnline('classic')}

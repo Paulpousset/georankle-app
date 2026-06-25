@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Appearance, BackHandler, View } from 'react-native';
+import { Alert, Appearance, AppState, BackHandler, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts, PlayfairDisplay_700Bold, PlayfairDisplay_900Black } from '@expo-google-fonts/playfair-display';
 import { SpaceMono_400Regular, SpaceMono_700Bold } from '@expo-google-fonts/space-mono';
@@ -9,6 +9,9 @@ import { PostHogProvider } from 'posthog-react-native';
 
 import { supabase } from './src/lib/supabase';
 import { registerForPushNotifications } from './src/lib/notifications';
+import { touchLastSeen } from './src/lib/activity';
+import { fetchIsAdmin } from './src/lib/admin';
+import { getTodayUTC, syncOnLogin } from './src/lib/daily';
 import type { GameMode, Language, Match, MatchMode } from './src/types';
 import { tr } from './src/i18n';
 import { posthog, track, trackScreen, identify, resetIdentity } from './src/lib/analytics';
@@ -18,18 +21,23 @@ import { initSentry, Sentry } from './src/lib/sentry';
 initSentry();
 
 import { MainMenu, type PlayType } from './src/screens/MainMenu';
+import DailyHub from './src/screens/DailyHub';
+import DailyGameHost from './src/screens/DailyGameHost';
 import { ClassicGame } from './src/screens/ClassicGame';
 import StreakGame from './src/screens/StreakGame';
 import VersusCapitals from './src/screens/VersusCapitals';
 import GuessCountryGame from './src/screens/GuessCountryGame';
 import FindCountryGame from './src/screens/FindCountryGame';
+import RegionGameFlow from './src/screens/RegionGameFlow';
 import LocalParcours from './src/screens/LocalParcours';
 import Friends from './src/screens/Friends';
 import Profile from './src/screens/Profile';
+import PlayerProfile from './src/screens/PlayerProfile';
 import Matchmaking from './src/screens/Matchmaking';
 import RankedMatchmaking from './src/screens/RankedMatchmaking';
 import AvatarEditor from './src/screens/AvatarEditor';
 import Shop from './src/screens/Shop';
+import AdminNotifications from './src/screens/AdminNotifications';
 import { AuthModal } from './src/components/AuthModal';
 import { LeaderboardModal } from './src/components/LeaderboardModal';
 import { OnlineModeLeaderboardModal } from './src/components/OnlineModeLeaderboardModal';
@@ -44,9 +52,12 @@ import { SwipeBack } from './src/components/SwipeBack';
 type Page =
   | { name: 'friends' }
   | { name: 'profile' }
+  | { name: 'player-profile'; userId: string; username?: string | null }
   | { name: 'ranked' }
   | { name: 'avatar' }
   | { name: 'shop' }
+  | { name: 'daily' }
+  | { name: 'admin-notifications' }
   | { name: 'matchmaking'; mode: MatchMode };
 
 function App() {
@@ -70,6 +81,7 @@ function App() {
   const [language, setLanguage] = useState<Language>('fr');
   const [gameMode, setGameMode] = useState<GameMode>('menu');
   const [user, setUser] = useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
@@ -88,7 +100,16 @@ function App() {
   const pushPage = (p: Page) => setPageStack((s) => [...s, p]);
   const popPage = () => setPageStack((s) => s.slice(0, -1));
   const clearPages = () => setPageStack([]);
+  // Open a player's profile from anywhere (leaderboards, friends, lobby).
+  // Tapping yourself opens your own editable profile instead of the read-only one.
+  const openPlayer = (playerId: string, playerName?: string | null) => {
+    if (!user) return;
+    if (playerId === user.id) pushPage({ name: 'profile' });
+    else pushPage({ name: 'player-profile', userId: playerId, username: playerName });
+  };
   const [matchData, setMatchData] = useState<Match | null>(null);
+  // Daily challenge in progress: which solo mode + the (fixed) UTC date played.
+  const [daily, setDaily] = useState<{ mode: GameMode; date: string } | null>(null);
   const [incomingInvite, setIncomingInvite] = useState<Match | null>(null);
   const [showPreGameLobby, setShowPreGameLobby] = useState(false);
 
@@ -140,15 +161,31 @@ function App() {
           });
         // Register this device for push notifications (multiplayer invites).
         registerForPushNotifications(session.user.id);
+        // Push any logged-out daily results to the server and adopt its streak.
+        syncOnLogin(session.user);
+        // Record activity (powers the "inactive" notification segment) and
+        // learn whether this user can open the admin notifications panel.
+        touchLastSeen();
+        fetchIsAdmin(session.user.id).then(setIsAdmin);
       } else if (event === 'SIGNED_OUT') {
         track('logged_out');
         resetIdentity();
         Sentry.setUser(null);
+        setIsAdmin(false);
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Keep last_seen fresh whenever the app comes to the foreground (throttled in
+  // the helper). This is what makes "inactive for N days" targeting meaningful.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active' && user) touchLastSeen();
+    });
+    return () => sub.remove();
+  }, [user]);
 
   // Listen for incoming matchmaking invites.
   useEffect(() => {
@@ -434,6 +471,10 @@ function App() {
   // page, or leave a solo game, returning to where you came from.
   useEffect(() => {
     const onHardwareBack = () => {
+      if (daily) {
+        setDaily(null);
+        return true;
+      }
       if (pageStack.length > 0) {
         popPage();
         return true;
@@ -452,7 +493,7 @@ function App() {
     const sub = BackHandler.addEventListener('hardwareBackPress', onHardwareBack);
     return () => sub.remove();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageStack.length, gameMode, matchData, playType]);
+  }, [pageStack.length, gameMode, matchData, playType, daily]);
 
   if (!fontsReady) {
     return <View style={{ flex: 1, backgroundColor: '#f2e8d0' }} />;
@@ -462,10 +503,15 @@ function App() {
   // a page on the stack, a solo game (live matches are excluded so a stray
   // gesture can't abandon a match mid-round), or an open menu sub-list.
   const canGoBack =
+    daily != null ||
     pageStack.length > 0 ||
     (gameMode !== 'menu' && !matchData) ||
     (gameMode === 'menu' && playType !== null);
   const goBack = () => {
+    if (daily) {
+      setDaily(null);
+      return;
+    }
     if (pageStack.length > 0) {
       popPage();
       return;
@@ -478,11 +524,61 @@ function App() {
   };
 
   const renderScreen = () => {
+  // A daily challenge in progress overlays everything (it has its own seed +
+  // completion flow); leaving it returns to the daily hub page underneath.
+  if (daily) {
+    return (
+      <DailyGameHost
+        mode={daily.mode}
+        date={daily.date}
+        user={user}
+        isDarkMode={isDarkMode}
+        setIsDarkMode={setIsDarkMode}
+        language={language}
+        setLanguage={setLanguage}
+        onToggleTheme={toggleTheme}
+        onToggleLanguage={toggleLanguage}
+        onExit={() => setDaily(null)}
+      />
+    );
+  }
+
+  if (currentPage?.name === 'daily') {
+    return (
+      <SafeAreaProvider>
+        <DailyHub
+          user={user}
+          isDarkMode={isDarkMode}
+          language={language}
+          onPlayDaily={(mode) => setDaily({ mode, date: getTodayUTC() })}
+          onBack={popPage}
+          onOpenPlayer={user ? openPlayer : undefined}
+        />
+      </SafeAreaProvider>
+    );
+  }
+
   if (currentPage?.name === 'friends') {
     return (
       <SafeAreaProvider>
         <Friends
           session={{ user }}
+          onBack={popPage}
+          onOpenPlayer={openPlayer}
+          isDarkMode={isDarkMode}
+          language={language}
+        />
+      </SafeAreaProvider>
+    );
+  }
+
+  if (currentPage?.name === 'player-profile' && user) {
+    return (
+      <SafeAreaProvider>
+        <PlayerProfile
+          userId={currentPage.userId}
+          initialUsername={currentPage.username}
+          currentUserId={user.id}
           onBack={popPage}
           isDarkMode={isDarkMode}
           language={language}
@@ -500,6 +596,21 @@ function App() {
           onLoggedOut={clearPages}
           onEditAvatar={() => pushPage({ name: 'avatar' })}
           onOpenShop={() => pushPage({ name: 'shop' })}
+          isAdmin={isAdmin}
+          onOpenAdmin={() => pushPage({ name: 'admin-notifications' })}
+          isDarkMode={isDarkMode}
+          language={language}
+        />
+      </SafeAreaProvider>
+    );
+  }
+
+  if (currentPage?.name === 'admin-notifications' && user && isAdmin) {
+    return (
+      <SafeAreaProvider>
+        <AdminNotifications
+          session={{ user }}
+          onBack={popPage}
           isDarkMode={isDarkMode}
           language={language}
         />
@@ -716,6 +827,19 @@ function App() {
     );
   }
 
+  if (gameMode === 'regions') {
+    return (
+      <SafeAreaProvider>
+        <RegionGameFlow
+          isDarkMode={isDarkMode}
+          language={language}
+          setGameMode={(mode) => { resetMatchState(); setGameMode(mode); }}
+          user={user}
+        />
+      </SafeAreaProvider>
+    );
+  }
+
   if (gameMode === 'versus') {
     return (
       <SafeAreaProvider>
@@ -771,6 +895,7 @@ function App() {
         onPlay={setGameMode}
         onPlayOnline={(mode) => pushPage({ name: 'matchmaking', mode })}
         onPlayRanked={() => (user ? pushPage({ name: 'ranked' }) : setShowAuthModal(true))}
+        onOpenDaily={() => pushPage({ name: 'daily' })}
         playType={playType}
         onChangePlayType={setPlayType}
       />
@@ -787,6 +912,7 @@ function App() {
         language={language}
         onClose={() => setShowLeaderboard(false)}
         onToggleTheme={toggleTheme}
+        onOpenPlayer={user ? openPlayer : undefined}
       />
       <OnlineModeLeaderboardModal
         mode={onlineLeaderboard?.mode ?? null}
@@ -795,6 +921,7 @@ function App() {
         language={language}
         onClose={() => setOnlineLeaderboard(null)}
         onToggleTheme={toggleTheme}
+        onOpenPlayer={user ? openPlayer : undefined}
       />
       <IncomingInviteModal
         invite={incomingInvite}

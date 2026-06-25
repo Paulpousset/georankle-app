@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { Home, Search, XCircle, RefreshCcw, Wifi, Flag } from 'lucide-react-native';
+import { Home, Search, XCircle, RefreshCcw, Wifi, Flag, Share2 } from 'lucide-react-native';
 import Fuse from 'fuse.js';
 import type { User } from '@supabase/supabase-js';
 
@@ -40,6 +40,14 @@ interface Props {
   user?: User | null;
   matchData?: Match | null;
   onRoundComplete?: (score: number) => void;
+  /** Daily challenge: deterministic seed for today's puzzle (overrides random). */
+  dailySeed?: number;
+  /** Daily challenge: fired once on win with the score + emoji share grid. */
+  onDailyComplete?: (score: number, grid?: string) => void;
+  /** Daily challenge: replaces "Play again" with "Share" and skips score saving. */
+  isDaily?: boolean;
+  /** Daily challenge: invoked by the "Share" button on the win card. */
+  onShare?: () => void;
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -75,12 +83,19 @@ export default function GuessCountryGame({
   user,
   matchData,
   onRoundComplete,
+  dailySeed,
+  onDailyComplete,
+  isDaily,
+  onShare,
 }: Props) {
   const isOnline = !!matchData;
   const isPlayer1 = matchData?.player1_id === user?.id;
   const { width } = useWindowDimensions();
 
   const [target, setTarget] = useState<{ country: any; stats: any }>(() => {
+    if (dailySeed != null) {
+      return pickSeeded(dailySeed);
+    }
     if (matchData?.game_data?.seed != null) {
       const seed = (matchData.game_data.seed as number) + (matchData.current_round ?? 0) * 997;
       return pickSeeded(seed);
@@ -148,8 +163,14 @@ export default function GuessCountryGame({
       setMyScore(score);
       setWon(true);
       setSubmitted(true);
-      if (!matchData) track('game_completed', { mode: 'guess', score });
-      if (onRoundComplete) onRoundComplete(score);
+      if (isDaily) {
+        // Wordle-style: one square per attempt — wrong tries then the find.
+        const grid = '🟥'.repeat(newGuessCount - 1) + '🟩';
+        onDailyComplete?.(score, grid);
+      } else {
+        if (!matchData) track('game_completed', { mode: 'guess', score });
+        if (onRoundComplete) onRoundComplete(score);
+      }
     }
     setSearch('');
     setSuggestions([]);
@@ -329,6 +350,11 @@ export default function GuessCountryGame({
                 <Text style={[styles.winSub, { color: textSec }]}>
                   {language === 'fr' ? "En attente de l'adversaire…" : 'Waiting for opponent…'}
                 </Text>
+              ) : isDaily ? (
+                <TouchableOpacity style={styles.replayBtn} onPress={onShare}>
+                  <Share2 color="#fff" size={18} />
+                  <Text style={styles.replayText}>{language === 'fr' ? 'Partager' : 'Share'}</Text>
+                </TouchableOpacity>
               ) : (
                 <TouchableOpacity style={styles.replayBtn} onPress={reset}>
                   <RefreshCcw color="#fff" size={18} />
