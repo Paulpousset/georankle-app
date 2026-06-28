@@ -1,0 +1,15 @@
+-- In-app notifications for friend requests.
+--
+-- The `friends` table was never published over Supabase Realtime (only
+-- `matches` was — see multiplayer_setup.sql), so the app had no way to learn
+-- about an incoming friend request while it was open. Publishing the table lets
+-- the client subscribe to row changes.
+--
+-- Delivery is already scoped by the existing SELECT RLS policy on `friends`
+-- (auth.uid() = user_id1 OR auth.uid() = user_id2): a user only receives row
+-- changes for rows they may read, i.e. their own incoming requests (they are
+-- user_id2) and acceptances of the requests they sent (they are user_id1).
+--
+-- Run via the Supabase Dashboard SQL editor or the MCP migration tool
+-- (publishing a table requires elevated privileges).
+alter publication supabase_realtime add table public.friends;

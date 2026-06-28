@@ -6,6 +6,7 @@ import { Check, Coins, ArrowLeft, Palette, X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
 import { supabase } from '../lib/supabase';
+import { purchaseCosmetic } from '../lib/shop';
 import { track } from '../lib/analytics';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
@@ -13,12 +14,13 @@ import { tr } from '../i18n';
 import { DEFAULT_AVATAR_CONFIG, LAYER_ORDER, RARITY_META, RARITY_ORDER, getCategoryParts, normalizeConfig } from '../data/cosmetics';
 import { WorldAvatar } from '../components/WorldAvatar';
 import { GlyphThumb } from '../components/worldGlyphs';
-import type { AvatarConfig, CosmeticCategory, CosmeticPart, Language } from '../types';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
+import { a11yButton, announce, ICON_HIT_SLOP } from '../lib/a11y';
+import type { AvatarConfig, CosmeticCategory, CosmeticPart } from '../types';
 
 interface ShopProps {
-  session: { user: { id: string } | null };
-  isDarkMode: boolean;
-  language: Language;
   onBack: () => void;
   onEditAvatar: () => void;
 }
@@ -55,8 +57,11 @@ interface ShopSection {
   data: CosmeticPart[][];
 }
 
-export default function Shop({ session, isDarkMode, language, onBack, onEditAvatar }: ShopProps) {
-  const userId = session.user?.id ?? '';
+export default function Shop({ onBack, onEditAvatar }: ShopProps) {
+  const { user } = useAuth();
+  const { isDarkMode } = useTheme();
+  const { language } = useLanguage();
+  const userId = user?.id ?? '';
   const c = getColors(isDarkMode);
 
   const [balance, setBalance] = useState(0);
@@ -76,7 +81,7 @@ export default function Shop({ session, isDarkMode, language, onBack, onEditAvat
     ]);
     setBalance(wallet?.balance ?? 0);
     setOwned(new Set((cosmetics ?? []).map((r) => r.item_id as string)));
-    if (profile?.avatar_config) setAvatarConfig(normalizeConfig(profile.avatar_config as AvatarConfig));
+    if (profile?.avatar_config) setAvatarConfig(normalizeConfig(profile.avatar_config as unknown as AvatarConfig));
     setLoading(false);
   }, [userId]);
 
@@ -105,18 +110,33 @@ export default function Shop({ session, isDarkMode, language, onBack, onEditAvat
       return;
     }
     setBuying(part.id);
-    const { data, error } = await supabase.rpc('purchase_cosmetic', { p_item_id: part.id });
-    setBuying(null);
-    if (error) {
+    const result = await purchaseCosmetic(part.id, userId);
+    if (result.ok) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      setBalance(result.newBalance);
+      setOwned((prev) => new Set(prev).add(part.id));
+      announce(
+        tr(
+          language,
+          `${part.nameFr} acheté. Nouveau solde : ${result.newBalance} pièces.`,
+          `${part.nameEn} purchased. New balance: ${result.newBalance} coins.`,
+        ),
+      );
+      track('cosmetic_purchased', { item_id: part.id, price: part.price });
+    } else {
+      // The purchase runs inside a native Modal, where an app-root toast would be
+      // hidden behind it — Alert reliably surfaces above the modal.
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
-      Alert.alert(tr(language, 'Erreur', 'Error'), error.message);
-      return;
+      Alert.alert(
+        tr(language, 'Achat impossible', 'Purchase failed'),
+        tr(
+          language,
+          `Ton achat n'a pas pu être finalisé. Vérifie ta connexion et réessaie.\n\n${result.message}`,
+          `Your purchase could not be completed. Check your connection and try again.\n\n${result.message}`,
+        ),
+      );
     }
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    const result = data as { already_owned: boolean; new_balance: number };
-    setBalance(result.new_balance);
-    setOwned((prev) => new Set(prev).add(part.id));
-    track('cosmetic_purchased', { item_id: part.id, price: part.price });
+    setBuying(null);
   };
 
   const renderThumb = (part: CosmeticPart) => {
@@ -166,11 +186,19 @@ export default function Shop({ session, isDarkMode, language, onBack, onEditAvat
     (part: CosmeticPart) => {
       const itemOwned = owned.has(part.id);
       const affordable = balance >= part.price;
+      const itemName = language === 'fr' ? part.nameFr : part.nameEn;
+      const stateLabel = itemOwned
+        ? tr(language, 'possédé', 'owned')
+        : tr(language, `${part.price} pièces`, `${part.price} coins`);
       return (
         <TouchableOpacity
           key={part.id}
           onPress={() => setPreviewPart(part)}
           style={[styles.tile, { backgroundColor: c.card, borderColor: RARITY_META[part.rarity].color + '88' }]}
+          {...a11yButton(`${itemName}, ${stateLabel}`, {
+            selected: itemOwned,
+            hint: tr(language, 'Voir cet objet', 'View this item'),
+          })}
         >
           {renderThumb(part)}
           <RarityBadge part={part} />
@@ -221,6 +249,7 @@ export default function Shop({ session, isDarkMode, language, onBack, onEditAvat
       <TouchableOpacity
         onPress={onEditAvatar}
         style={[styles.editBtn, { backgroundColor: c.card, borderColor: c.accent }]}
+        {...a11yButton(tr(language, 'Personnaliser mon monde', 'Customize my world'))}
       >
         <Palette color={c.accent} size={18} />
         <Text style={[styles.editText, { color: c.accent }]}>
@@ -288,7 +317,12 @@ export default function Shop({ session, isDarkMode, language, onBack, onEditAvat
             {/* drag handle */}
             <View style={[styles.handle, { backgroundColor: c.border }]} />
 
-            <TouchableOpacity style={styles.closeBtn} onPress={() => setPreviewPart(null)}>
+            <TouchableOpacity
+              style={styles.closeBtn}
+              onPress={() => setPreviewPart(null)}
+              hitSlop={ICON_HIT_SLOP}
+              {...a11yButton(tr(language, 'Fermer', 'Close'))}
+            >
               <X color={c.textMuted} size={20} />
             </TouchableOpacity>
 
@@ -321,8 +355,16 @@ export default function Shop({ session, isDarkMode, language, onBack, onEditAvat
                   <TouchableOpacity
                     onPress={() => buy(previewPart)}
                     disabled={buying === previewPart.id}
-                    accessibilityRole="button"
-                    accessibilityLabel={tr(language, `Acheter pour ${previewPart.price} pièces`, `Buy for ${previewPart.price} coins`)}
+                    {...a11yButton(
+                      tr(language, `Acheter pour ${previewPart.price} pièces`, `Buy for ${previewPart.price} coins`),
+                      {
+                        disabled: buying === previewPart.id,
+                        busy: buying === previewPart.id,
+                        hint: canAfford
+                          ? undefined
+                          : tr(language, 'Solde insuffisant', 'Insufficient funds'),
+                      },
+                    )}
                     style={[
                       styles.buyBtn,
                       { backgroundColor: canAfford ? c.accent : c.border, opacity: buying === previewPart.id ? 0.6 : 1 },

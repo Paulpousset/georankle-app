@@ -1,21 +1,24 @@
 import { useEffect, useState } from 'react';
 import { Modal, Text, TouchableOpacity, View } from 'react-native';
 import { Share2, X } from 'lucide-react-native';
+import { AtlasFlame } from './AtlasIcons';
 
 import type { Language } from '../types';
 import type { DailyResult } from '../lib/daily';
 import { dailyModeLabel, getPuzzleNumber, msUntilNextPuzzle } from '../lib/daily';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { tr } from '../i18n';
+import { a11yButton, a11yImage, ICON_HIT_SLOP } from '../lib/a11y';
+import { ScoreText } from './ScoreText';
 
 interface DailyResultCardProps {
   /** The completed daily result to show, or null to hide the card. */
   result: DailyResult | null;
   streak: number;
   todayCount: number;
-  isDarkMode: boolean;
-  language: Language;
   onShare: () => void;
   onClose: () => void;
 }
@@ -49,11 +52,11 @@ export function DailyResultCard({
   result,
   streak,
   todayCount,
-  isDarkMode,
-  language,
   onShare,
   onClose,
 }: DailyResultCardProps) {
+  const { isDarkMode } = useTheme();
+  const { language } = useLanguage();
   const c = getColors(isDarkMode);
   const [countdown, setCountdown] = useState(() => msUntilNextPuzzle());
 
@@ -89,8 +92,9 @@ export function DailyResultCard({
         >
           <TouchableOpacity
             onPress={onClose}
+            hitSlop={ICON_HIT_SLOP}
             style={{ position: 'absolute', top: 14, right: 14, padding: 6 }}
-            accessibilityLabel={tr(language, 'Fermer', 'Close')}
+            {...a11yButton(tr(language, 'Fermer', 'Close'))}
           >
             <X color={c.textMuted} size={22} />
           </TouchableOpacity>
@@ -99,7 +103,7 @@ export function DailyResultCard({
             {dailyModeLabel(result.mode, language).toUpperCase()} #{puzzle}
           </Text>
 
-          <Text
+          <ScoreText
             style={{
               fontFamily: FONTS.headingBlack,
               color: c.text,
@@ -108,17 +112,28 @@ export function DailyResultCard({
             }}
           >
             {scoreText(result, language)}
-          </Text>
+          </ScoreText>
 
           {result.grid ? (
-            <Text style={{ fontSize: 24, marginTop: 12, letterSpacing: 2 }}>{result.grid}</Text>
+            <Text
+              {...a11yImage(tr(language, 'Grille de résultat', 'Result grid'))}
+              style={{ fontSize: 24, marginTop: 12, letterSpacing: 2 }}
+            >
+              {result.grid}
+            </Text>
           ) : null}
 
           <View style={{ flexDirection: 'row', gap: 24, marginTop: 18 }}>
             <View style={{ alignItems: 'center' }}>
-              <Text style={{ fontFamily: FONTS.headingBlack, color: PALETTE_FLAME, fontSize: 22 }}>
-                🔥 {streak}
-              </Text>
+              <View
+                accessibilityLabel={tr(language, `Série : ${streak}`, `Streak: ${streak}`)}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+              >
+                <AtlasFlame color={PALETTE_FLAME} size={19} />
+                <Text style={{ fontFamily: FONTS.headingBlack, color: PALETTE_FLAME, fontSize: 22 }}>
+                  {streak}
+                </Text>
+              </View>
               <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 9 }}>
                 {tr(language, 'SÉRIE', 'STREAK')}
               </Text>
@@ -135,6 +150,7 @@ export function DailyResultCard({
 
           <TouchableOpacity
             onPress={onShare}
+            {...a11yButton(tr(language, 'Partager', 'Share'))}
             style={{
               flexDirection: 'row',
               alignItems: 'center',

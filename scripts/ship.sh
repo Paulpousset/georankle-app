@@ -9,8 +9,24 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 PLATFORM="${PLATFORM:-all}"
-BLUE='\033[1;34m'; GREEN='\033[1;32m'; NC='\033[0m'
+BLUE='\033[1;34m'; GREEN='\033[1;32m'; RED='\033[1;31m'; NC='\033[0m'
 step() { echo -e "${BLUE}▶ $1${NC}"; }
+
+# Pre-flight: never ship a broken build. A typo that fails typecheck or the test
+# suite must stop here, before the long parallel web + native builds kick off.
+# Bypass intentionally with SKIP_CHECKS=1 (e.g. shipping a known-broken hotfix).
+if [ -z "${SKIP_CHECKS:-}" ]; then
+  step "Pré-vol → typecheck + tests"
+  if ! npm run typecheck; then
+    echo -e "${RED}❌ typecheck a échoué — déploiement annulé.${NC}"; exit 1
+  fi
+  if ! npm test -- --ci; then
+    echo -e "${RED}❌ tests ont échoué — déploiement annulé.${NC}"; exit 1
+  fi
+  echo -e "${GREEN}✅ Pré-vol OK${NC}"
+else
+  echo "⏭️  SKIP_CHECKS=1 — pré-vol ignoré"
+fi
 
 WEB_PID=""
 if [ -z "${NO_WEB:-}" ]; then

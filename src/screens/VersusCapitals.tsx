@@ -23,13 +23,19 @@ import {
   Sun,
   Share2,
 } from 'lucide-react-native';
+import { AtlasStar, AtlasTrophy, AtlasCross } from '../components/AtlasIcons';
 
 import * as Haptics from 'expo-haptics';
 import { track } from '../lib/analytics';
 import { getFlagUrl } from '../lib/flags';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
-import type { GameMode, Language, Match } from '../types';
+import type { GameMode, Match } from '../types';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
+import { tr } from '../i18n';
+import { a11yButton, announce, a11yImage, ICON_HIT_SLOP } from '../lib/a11y';
+import { ScoreText } from '../components/ScoreText';
 
 const PLAYER_COLORS = ['#4a9eff', '#8b1a1a', '#2a6e3f', '#c4872a'];
 import countriesStats from '../../assets/countries_stats.json';
@@ -48,10 +54,7 @@ function createSeededRng(seed: number) {
 const isMobile = Platform.OS === 'ios' || Platform.OS === 'android';
 
 interface VersusCapitalsProps {
-  isDarkMode: boolean;
-  setIsDarkMode: React.Dispatch<React.SetStateAction<boolean>>;
   setGameMode: (mode: GameMode) => void;
-  language: Language;
   soloMode?: boolean;
   initialGameType?: string;
   matchData?: Match | null;
@@ -138,11 +141,18 @@ const isAnswerClose = (input: string, answer: string): boolean => {
   return levenshtein(a, b) <= tolerance;
 };
 
+/** Inline "star + set-score" pill used in the live scoreboard. */
+function StarScore({ color, value, size = 10 }: { color: string; value: number; size?: number }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+      <AtlasStar color={color} size={size + 1} />
+      <Text style={{ color, fontSize: size, fontWeight: 'bold' }}>{value}</Text>
+    </View>
+  );
+}
+
 export default function VersusCapitals({
-  isDarkMode,
-  setIsDarkMode,
   setGameMode,
-  language,
   soloMode = false,
   initialGameType,
   matchData,
@@ -155,6 +165,8 @@ export default function VersusCapitals({
   onShare,
   onDailyScoreChange,
 }: VersusCapitalsProps) {
+  const { isDarkMode, setIsDarkMode } = useTheme();
+  const { language } = useLanguage();
   const insets = useSafeAreaInsets();
   const c = getColors(isDarkMode);
   const isOnline = !!matchData;
@@ -219,6 +231,24 @@ export default function VersusCapitals({
       initRound();
     }
   }, [currentRound, currentPlayer, numPlayers]);
+
+  // Announce the active player's turn change (hot-seat) so screen-reader users
+  // know whose turn it is without the score-board border-highlight visual cue.
+  useEffect(() => {
+    if (!numPlayers || gameOver) return;
+    if (localBanner) {
+      announce(
+        tr(
+          language,
+          `Au tour de ${localBanner.names[localBanner.currentIdx]}`,
+          `${localBanner.names[localBanner.currentIdx]}'s turn`,
+        ),
+      );
+    } else if (numPlayers > 1) {
+      announce(tr(language, `Au tour du joueur ${currentPlayer}`, `Player ${currentPlayer}'s turn`));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPlayer]);
 
   const initRound = () => {
     if (gameOver) return;
@@ -301,6 +331,12 @@ export default function VersusCapitals({
       isCorrect ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Heavy,
     ).catch(() => {});
 
+    announce(
+      isCorrect
+        ? tr(language, `Bonne réponse, plus ${points} point(s)`, `Correct, plus ${points} point(s)`)
+        : tr(language, `Mauvaise réponse, la réponse était ${correctAnswer}`, `Wrong, the answer was ${correctAnswer}`),
+    );
+
     if (isCorrect) {
       setScores((prev) => ({ ...prev, [currentPlayer]: prev[currentPlayer] + points }));
     }
@@ -328,6 +364,12 @@ export default function VersusCapitals({
     Haptics.impactAsync(
       isCorrect ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Heavy,
     ).catch(() => {});
+
+    announce(
+      isCorrect
+        ? tr(language, `Bonne réponse, plus ${points} point(s)`, `Correct, plus ${points} point(s)`)
+        : tr(language, `Mauvaise réponse, la réponse était ${correctAnswer}`, `Wrong, the answer was ${correctAnswer}`),
+    );
 
     if (isCorrect) {
       setScores((prev) => ({ ...prev, [currentPlayer]: prev[currentPlayer] + points }));
@@ -397,6 +439,7 @@ export default function VersusCapitals({
       const roundWinner = winners.length === 1 ? winners[0] : 0;
       setWinner(roundWinner);
 
+      let matchIsOver = false;
       if (roundWinner !== 0) {
         const newMatchScores = { ...matchScores, [roundWinner]: matchScores[roundWinner] + 1 };
         setMatchScores(newMatchScores);
@@ -405,6 +448,27 @@ export default function VersusCapitals({
         if (newMatchScores[roundWinner] >= winsNeeded) {
           setMatchWinner(roundWinner);
           setMatchOver(true);
+          matchIsOver = true;
+        }
+      }
+
+      // Announce the final outcome + score for screen-reader users.
+      if (numPlayers === 1) {
+        announce(tr(language, `Terminé. Score ${scores[1]} points`, `Done. Score ${scores[1]} points`));
+      } else {
+        const setScore = `${scores[1]} - ${scores[2]}${numPlayers! >= 3 ? ` - ${scores[3]}` : ''}${numPlayers === 4 ? ` - ${scores[4]}` : ''}`;
+        if (matchIsOver) {
+          announce(
+            roundWinner === 0
+              ? tr(language, `Match nul. Score ${setScore}`, `Match drawn. Score ${setScore}`)
+              : tr(language, `Joueur ${roundWinner} gagne le match. Score ${setScore}`, `Player ${roundWinner} wins the match. Score ${setScore}`),
+          );
+        } else {
+          announce(
+            roundWinner === 0
+              ? tr(language, `Égalité. Score ${setScore}`, `Tie. Score ${setScore}`)
+              : tr(language, `Joueur ${roundWinner} gagne la manche. Score ${setScore}`, `Player ${roundWinner} wins the set. Score ${setScore}`),
+          );
         }
       }
     }
@@ -510,6 +574,8 @@ export default function VersusCapitals({
             >
               <TouchableOpacity
                 onPress={() => setGameMode('menu')}
+                hitSlop={ICON_HIT_SLOP}
+                {...a11yButton(tr(language, 'Menu principal', 'Main menu'))}
                 style={{
                   width: 45,
                   height: 45,
@@ -533,6 +599,12 @@ export default function VersusCapitals({
             >
               <TouchableOpacity
                 onPress={() => setIsDarkMode(!isDarkMode)}
+                hitSlop={ICON_HIT_SLOP}
+                {...a11yButton(
+                  isDarkMode
+                    ? tr(language, 'Activer le mode clair', 'Switch to light mode')
+                    : tr(language, 'Activer le mode sombre', 'Switch to dark mode'),
+                )}
                 style={{
                   width: 45,
                   height: 45,
@@ -555,7 +627,7 @@ export default function VersusCapitals({
               size={80}
               style={{ marginBottom: 10, marginTop: isMobile ? 60 : 0 }}
             />
-            <Text style={[styles.menuTitle, { color: c.text }]}>
+            <Text style={[styles.menuTitle, { color: c.text }]} maxFontSizeMultiplier={1.3}>
               {soloMode
                 ? gameType === 'CAPITAL'
                   ? language === 'fr' ? 'CAPITALES' : 'CAPITALS'
@@ -581,6 +653,7 @@ export default function VersusCapitals({
                   gameType === 'CAPITAL' && { backgroundColor: '#4a9eff' },
                 ]}
                 onPress={() => setGameType('CAPITAL')}
+                {...a11yButton(tr(language, 'CAPITALES', 'CAPITALS'), { selected: gameType === 'CAPITAL' })}
               >
                 <Text
                   style={{
@@ -597,6 +670,7 @@ export default function VersusCapitals({
                   gameType === 'FLAG' && { backgroundColor: '#4a9eff' },
                 ]}
                 onPress={() => setGameType('FLAG')}
+                {...a11yButton(tr(language, 'DRAPEAUX', 'FLAGS'), { selected: gameType === 'FLAG' })}
               >
                 <Text
                   style={{
@@ -613,6 +687,7 @@ export default function VersusCapitals({
                   gameType === 'MIX' && { backgroundColor: '#4a9eff' },
                 ]}
                 onPress={() => setGameType('MIX')}
+                {...a11yButton('MIX', { selected: gameType === 'MIX' })}
               >
                 <Text
                   style={{
@@ -655,6 +730,10 @@ export default function VersusCapitals({
                       matchFormat === format && { backgroundColor: '#c04a1a' },
                     ]}
                     onPress={() => setMatchFormat(format)}
+                    {...a11yButton(
+                      tr(language, `Format au meilleur des ${format}`, `Best of ${format} format`),
+                      { selected: matchFormat === format },
+                    )}
                   >
                     <Text
                       style={{
@@ -700,6 +779,10 @@ export default function VersusCapitals({
                       totalRounds === rounds && { backgroundColor: '#2a6e3f' },
                     ]}
                     onPress={() => setTotalRounds(rounds)}
+                    {...a11yButton(
+                      tr(language, `${rounds} tours par manche`, `${rounds} turns per set`),
+                      { selected: totalRounds === rounds },
+                    )}
                   >
                     <Text
                       style={{
@@ -719,6 +802,9 @@ export default function VersusCapitals({
                 <TouchableOpacity
                   style={[styles.playerPickBtn, { backgroundColor: '#2a6e3f' }]}
                   onPress={() => setNumPlayers(1)}
+                  {...a11yButton(tr(language, 'JOUER', 'PLAY'), {
+                    hint: tr(language, 'Démarrer la partie', 'Start the game'),
+                  })}
                 >
                   <Timer color="#fff" size={28} />
                   <Text style={styles.playerPickText}>{language === 'fr' ? 'JOUER' : 'PLAY'}</Text>
@@ -726,13 +812,18 @@ export default function VersusCapitals({
               </View>
             ) : (
               <View style={styles.modeSelectionGrid}>
-                <TouchableOpacity style={styles.playerPickBtn} onPress={() => setNumPlayers(2)}>
+                <TouchableOpacity
+                  style={styles.playerPickBtn}
+                  onPress={() => setNumPlayers(2)}
+                  {...a11yButton('1 VS 1', { hint: tr(language, 'Démarrer le match', 'Start the match') })}
+                >
                   <Users color="#fff" size={28} />
                   <Text style={styles.playerPickText}>1 VS 1</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.playerPickBtn, { backgroundColor: '#c04a1a' }]}
                   onPress={() => setNumPlayers(3)}
+                  {...a11yButton('1 VS 1 VS 1', { hint: tr(language, 'Démarrer le match', 'Start the match') })}
                 >
                   <Users color="#fff" size={28} />
                   <Text style={styles.playerPickText}>1 VS 1 VS 1</Text>
@@ -740,6 +831,7 @@ export default function VersusCapitals({
                 <TouchableOpacity
                   style={[styles.playerPickBtn, { backgroundColor: '#c4872a' }]}
                   onPress={() => setNumPlayers(4)}
+                  {...a11yButton('1 VS 1 VS 1 VS 1', { hint: tr(language, 'Démarrer le match', 'Start the match') })}
                 >
                   <Users color="#fff" size={28} />
                   <Text style={styles.playerPickText}>1 VS 1 VS 1 VS 1</Text>
@@ -763,6 +855,8 @@ export default function VersusCapitals({
             <>
               <TouchableOpacity
                 onPress={quitToMenu}
+                hitSlop={ICON_HIT_SLOP}
+                {...a11yButton(tr(language, 'Quitter vers le menu', 'Quit to menu'))}
                 style={{
                   width: 40,
                   height: 40,
@@ -777,6 +871,12 @@ export default function VersusCapitals({
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setIsDarkMode(!isDarkMode)}
+                hitSlop={ICON_HIT_SLOP}
+                {...a11yButton(
+                  isDarkMode
+                    ? tr(language, 'Activer le mode clair', 'Switch to light mode')
+                    : tr(language, 'Activer le mode sombre', 'Switch to dark mode'),
+                )}
                 style={{
                   width: 40,
                   height: 40,
@@ -807,9 +907,7 @@ export default function VersusCapitals({
                       {scores[1]}
                     </Text>
                     {matchFormat > 1 && (
-                      <Text style={{ color: '#4a9eff', fontSize: 10, fontWeight: 'bold' }}>
-                        ⭐{matchScores[1]}
-                      </Text>
+                      <StarScore color="#4a9eff" value={matchScores[1]} />
                     )}
                   </View>
                 </View>
@@ -825,9 +923,7 @@ export default function VersusCapitals({
                       {scores[2]}
                     </Text>
                     {matchFormat > 1 && (
-                      <Text style={{ color: '#8b1a1a', fontSize: 10, fontWeight: 'bold' }}>
-                        ⭐{matchScores[2]}
-                      </Text>
+                      <StarScore color="#8b1a1a" value={matchScores[2]} />
                     )}
                   </View>
                 </View>
@@ -844,9 +940,7 @@ export default function VersusCapitals({
                         {scores[3]}
                       </Text>
                       {matchFormat > 1 && (
-                        <Text style={{ color: '#2a6e3f', fontSize: 10, fontWeight: 'bold' }}>
-                          ⭐{matchScores[3]}
-                        </Text>
+                        <StarScore color="#2a6e3f" value={matchScores[3]} />
                       )}
                     </View>
                   </View>
@@ -864,9 +958,7 @@ export default function VersusCapitals({
                         {scores[4]}
                       </Text>
                       {matchFormat > 1 && (
-                        <Text style={{ color: '#c4872a', fontSize: 10, fontWeight: 'bold' }}>
-                          ⭐{matchScores[4]}
-                        </Text>
+                        <StarScore color="#c4872a" value={matchScores[4]} />
                       )}
                     </View>
                   </View>
@@ -897,6 +989,8 @@ export default function VersusCapitals({
               <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                 <TouchableOpacity
                   onPress={quitToMenu}
+                  hitSlop={ICON_HIT_SLOP}
+                  {...a11yButton(tr(language, 'Quitter vers le menu', 'Quit to menu'))}
                   style={{
                     width: 36,
                     height: 36,
@@ -911,6 +1005,12 @@ export default function VersusCapitals({
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => setIsDarkMode(!isDarkMode)}
+                  hitSlop={ICON_HIT_SLOP}
+                  {...a11yButton(
+                    isDarkMode
+                      ? tr(language, 'Activer le mode clair', 'Switch to light mode')
+                      : tr(language, 'Activer le mode sombre', 'Switch to dark mode'),
+                  )}
                   style={{
                     width: 36,
                     height: 36,
@@ -960,9 +1060,7 @@ export default function VersusCapitals({
                       {scores[1]}
                     </Text>
                     {matchFormat > 1 && (
-                      <Text style={{ color: '#4a9eff', fontSize: 9, fontWeight: 'bold' }}>
-                        ⭐{matchScores[1]}
-                      </Text>
+                      <StarScore color="#4a9eff" value={matchScores[1]} size={9} />
                     )}
                   </View>
                 </View>
@@ -978,9 +1076,7 @@ export default function VersusCapitals({
                       {scores[2]}
                     </Text>
                     {matchFormat > 1 && (
-                      <Text style={{ color: '#8b1a1a', fontSize: 9, fontWeight: 'bold' }}>
-                        ⭐{matchScores[2]}
-                      </Text>
+                      <StarScore color="#8b1a1a" value={matchScores[2]} size={9} />
                     )}
                   </View>
                 </View>
@@ -997,9 +1093,7 @@ export default function VersusCapitals({
                         {scores[3]}
                       </Text>
                       {matchFormat > 1 && (
-                        <Text style={{ color: '#2a6e3f', fontSize: 9, fontWeight: 'bold' }}>
-                          ⭐{matchScores[3]}
-                        </Text>
+                        <StarScore color="#2a6e3f" value={matchScores[3]} size={9} />
                       )}
                     </View>
                   </View>
@@ -1017,9 +1111,7 @@ export default function VersusCapitals({
                         {scores[4]}
                       </Text>
                       {matchFormat > 1 && (
-                        <Text style={{ color: '#c4872a', fontSize: 9, fontWeight: 'bold' }}>
-                          ⭐{matchScores[4]}
-                        </Text>
+                        <StarScore color="#c4872a" value={matchScores[4]} size={9} />
                       )}
                     </View>
                   </View>
@@ -1052,7 +1144,7 @@ export default function VersusCapitals({
             <View style={[styles.card, !isDarkMode && styles.cardLight]}>
               <Image source={{ uri: getFlagUrl(question.cca3) }} style={styles.flag} />
               {currentQuestionType === 'CAPITAL' && (
-                <Text style={[styles.countryName, { color: c.text }]}>
+                <Text style={[styles.countryName, { color: c.text }]} maxFontSizeMultiplier={1.3}>
                   {language === 'fr' ? question.name : question.name_en || question.name}
                 </Text>
               )}
@@ -1108,6 +1200,9 @@ export default function VersusCapitals({
                   { borderColor: '#8b1a1a' },
                 ]}
                 onPress={() => setMode('DUO')}
+                {...a11yButton(tr(language, 'DUO, 1 point', 'DUO, 1 point'), {
+                  hint: tr(language, 'Choisir entre deux réponses', 'Choose between two answers'),
+                })}
               >
                 <HelpCircle color="#8b1a1a" size={24} />
                 <Text style={[styles.modeBtnTitle, { color: '#8b1a1a' }]}>DUO</Text>
@@ -1121,6 +1216,9 @@ export default function VersusCapitals({
                   { borderColor: '#4a9eff' },
                 ]}
                 onPress={() => setMode('CARRE')}
+                {...a11yButton(tr(language, 'CARRÉ, 3 points', 'CARRÉ, 3 points'), {
+                  hint: tr(language, 'Choisir entre quatre réponses', 'Choose between four answers'),
+                })}
               >
                 <Eye color="#4a9eff" size={24} />
                 <Text style={[styles.modeBtnTitle, { color: '#4a9eff' }]}>CARRÉ</Text>
@@ -1134,6 +1232,9 @@ export default function VersusCapitals({
                   { borderColor: '#2a6e3f' },
                 ]}
                 onPress={() => setMode('CASH')}
+                {...a11yButton(tr(language, 'CASH, 5 points', 'CASH, 5 points'), {
+                  hint: tr(language, 'Saisir la réponse', 'Type the answer'),
+                })}
               >
                 <CheckCircle color="#2a6e3f" size={24} />
                 <Text style={[styles.modeBtnTitle, { color: '#2a6e3f' }]}>CASH</Text>
@@ -1150,6 +1251,8 @@ export default function VersusCapitals({
                   alignItems: 'center',
                 }}
                 onPress={() => setMode(null)}
+                hitSlop={ICON_HIT_SLOP}
+                {...a11yButton(tr(language, 'Retour', 'Back'))}
               >
                 <Text style={{ color: '#4a9eff', fontWeight: 'bold' }}>
                   ← {language === 'fr' ? 'RETOUR' : 'BACK'}
@@ -1157,14 +1260,18 @@ export default function VersusCapitals({
               </TouchableOpacity>
               <TextInput
                 style={[styles.cashInput, !isDarkMode && styles.cashInputLight]}
-                placeholder="Réponse..."
+                placeholder={tr(language, 'Réponse...', 'Answer...')}
                 placeholderTextColor="#4a6a88"
                 value={cashInput}
                 onChangeText={setCashInput}
                 autoFocus
                 onSubmitEditing={handleCashSubmit}
               />
-              <TouchableOpacity style={styles.cashSubmitBtn} onPress={handleCashSubmit}>
+              <TouchableOpacity
+                style={styles.cashSubmitBtn}
+                onPress={handleCashSubmit}
+                {...a11yButton(tr(language, 'Valider', 'Submit'))}
+              >
                 <Text style={styles.cashSubmitText}>VALIDER</Text>
               </TouchableOpacity>
             </View>
@@ -1182,6 +1289,7 @@ export default function VersusCapitals({
                   key={option.id}
                   style={[styles.optionBtn, !isDarkMode && styles.optionBtnLight]}
                   onPress={() => handleAnswer(option, mode)}
+                  {...a11yButton(option.name)}
                 >
                   <Text style={[styles.optionText, { color: c.text }]}>
                     {option.name}
@@ -1197,14 +1305,33 @@ export default function VersusCapitals({
                   feedback.correct ? styles.correctCard : styles.wrongCard,
                 ]}
               >
-                <Text style={styles.feedbackEmoji}>{feedback.correct ? '🏆' : '❌'}</Text>
+                <View
+                  style={styles.feedbackEmoji}
+                  {...a11yImage(
+                    feedback.correct
+                      ? tr(language, 'Bonne réponse', 'Correct')
+                      : tr(language, 'Mauvaise réponse', 'Wrong'),
+                  )}
+                >
+                  {feedback.correct ? (
+                    <AtlasTrophy color="#2a6e3f" size={40} />
+                  ) : (
+                    <AtlasCross color="#8b1a1a" size={40} />
+                  )}
+                </View>
                 <Text style={[styles.feedbackTitle, { color: c.text }]}>
-                  {feedback.correct ? 'BIEN JOUÉ !' : 'DOMMAGE...'}
+                  {feedback.correct
+                    ? tr(language, 'BIEN JOUÉ !', 'WELL DONE!')
+                    : tr(language, 'DOMMAGE...', 'TOO BAD...')}
                 </Text>
                 <Text style={styles.feedbackSub}>
                   {feedback.correct
                     ? `+${feedback.points} point(s)`
-                    : `La réponse était : ${feedback.answer}`}
+                    : tr(
+                        language,
+                        `La réponse était : ${feedback.answer}`,
+                        `The answer was: ${feedback.answer}`,
+                      )}
                 </Text>
 
                 {/* Self-scoring is honor-system only: hide it in online/daily where
@@ -1223,6 +1350,11 @@ export default function VersusCapitals({
                       borderWidth: 1,
                     }}
                     onPress={togglePoints}
+                    {...a11yButton(
+                      feedback.correct
+                        ? tr(language, 'Marquer comme faux', 'Mark as wrong')
+                        : tr(language, 'Marquer comme juste', 'Mark as correct'),
+                    )}
                   >
                     <Text
                       style={{ color: feedback.correct ? '#8b1a1a' : '#2a6e3f', fontWeight: 'bold' }}
@@ -1245,7 +1377,7 @@ export default function VersusCapitals({
         {gameOver && !isOnline && (
           <View style={[styles.overlay, !isDarkMode && styles.overlayLight]}>
             <Trophy color={numPlayers === 1 ? '#2a6e3f' : matchOver ? '#c4872a' : '#cbd5e1'} size={80} />
-            <Text style={[styles.winnerTitle, { color: c.text }]}>
+            <ScoreText style={[styles.winnerTitle, { color: c.text }]}>
               {numPlayers === 1
                 ? language === 'fr' ? 'TERMINÉ !' : 'DONE!'
                 : !matchOver
@@ -1255,23 +1387,40 @@ export default function VersusCapitals({
                   : matchWinner === 0
                     ? language === 'fr' ? 'ÉGALITÉ DU MATCH !' : 'MATCH TIE !'
                     : `VICTOIRE DU MATCH P${matchWinner} !`}
-            </Text>
+            </ScoreText>
 
-            <Text
+            <ScoreText
               style={[styles.finalScore, { color: c.textMuted }, { marginBottom: 10 }]}
             >
               {numPlayers === 1
                 ? `${language === 'fr' ? 'Score :' : 'Score:'} ${scores[1]} pts`
                 : `${language === 'fr' ? 'Score de la manche :' : 'Set score:'} ${scores[1]} - ${scores[2]}${numPlayers >= 3 ? ` - ${scores[3]}` : ''}${numPlayers === 4 ? ` - ${scores[4]}` : ''}`}
-            </Text>
+            </ScoreText>
 
             {matchFormat > 1 && (
-              <Text
-                style={[styles.finalScore, { color: '#c04a1a', fontSize: 24, marginBottom: 40 }]}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexWrap: 'wrap',
+                  gap: 8,
+                  marginBottom: 40,
+                }}
               >
-                {language === 'fr' ? 'Match (Étoiles) :' : 'Match (Stars):'} {matchScores[1]} ⭐ -{' '}
-                {matchScores[2]} ⭐ {numPlayers === 3 ? `- ${matchScores[3]} ⭐` : ''}
-              </Text>
+                <ScoreText style={[styles.finalScore, { color: '#c04a1a', fontSize: 24 }]}>
+                  {language === 'fr' ? 'Match :' : 'Match:'}
+                </ScoreText>
+                <StarScore color="#c04a1a" value={matchScores[1]} size={22} />
+                <Text style={{ color: '#c04a1a', fontSize: 22, fontWeight: 'bold' }}>–</Text>
+                <StarScore color="#c04a1a" value={matchScores[2]} size={22} />
+                {numPlayers === 3 && (
+                  <>
+                    <Text style={{ color: '#c04a1a', fontSize: 22, fontWeight: 'bold' }}>–</Text>
+                    <StarScore color="#c04a1a" value={matchScores[3]} size={22} />
+                  </>
+                )}
+              </View>
             )}
 
             <View
@@ -1281,6 +1430,7 @@ export default function VersusCapitals({
                 <TouchableOpacity
                   style={[styles.resetBtn, { flexDirection: 'row', gap: 8 }]}
                   onPress={onShare}
+                  {...a11yButton(tr(language, 'Partager', 'Share'))}
                 >
                   <Share2 color="#fff" size={18} />
                   <Text style={styles.resetBtnText}>
@@ -1288,19 +1438,31 @@ export default function VersusCapitals({
                   </Text>
                 </TouchableOpacity>
               ) : numPlayers === 1 ? (
-                <TouchableOpacity style={styles.resetBtn} onPress={() => { resetMatch(); setNumPlayers(1); }}>
+                <TouchableOpacity
+                  style={styles.resetBtn}
+                  onPress={() => { resetMatch(); setNumPlayers(1); }}
+                  {...a11yButton(tr(language, 'Rejouer', 'Play again'))}
+                >
                   <Text style={styles.resetBtnText}>
                     {language === 'fr' ? 'REJOUER' : 'PLAY AGAIN'}
                   </Text>
                 </TouchableOpacity>
               ) : !matchOver ? (
-                <TouchableOpacity style={styles.resetBtn} onPress={nextSet}>
+                <TouchableOpacity
+                  style={styles.resetBtn}
+                  onPress={nextSet}
+                  {...a11yButton(tr(language, 'Manche suivante', 'Next set'))}
+                >
                   <Text style={styles.resetBtnText}>
                     {language === 'fr' ? 'MANCHE SUIVANTE' : 'NEXT SET'}
                   </Text>
                 </TouchableOpacity>
               ) : (
-                <TouchableOpacity style={styles.resetBtn} onPress={resetMatch}>
+                <TouchableOpacity
+                  style={styles.resetBtn}
+                  onPress={resetMatch}
+                  {...a11yButton(tr(language, 'Rejouer le match', 'Play match again'))}
+                >
                   <Text style={styles.resetBtnText}>
                     {language === 'fr' ? 'REJOUER LE MATCH' : 'PLAY MATCH AGAIN'}
                   </Text>
@@ -1312,6 +1474,7 @@ export default function VersusCapitals({
                   { backgroundColor: 'transparent', borderWidth: 2, borderColor: c.border },
                 ]}
                 onPress={quitToMenu}
+                {...a11yButton(tr(language, 'Menu principal', 'Main menu'))}
               >
                 <Text style={styles.resetBtnText}>
                   {language === 'fr' ? 'MENU PRINCIPAL' : 'MAIN MENU'}

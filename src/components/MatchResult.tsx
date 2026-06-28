@@ -4,13 +4,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
 import { Coins, Home, Trophy } from 'lucide-react-native';
+import { AtlasPromote, AtlasDemote } from './AtlasIcons';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
-import type { Language } from '../types';
 import type { RoundSummaryData } from './RoundSummary';
 import { getRankFromElo } from '../lib/ranked';
 import { computeMatchOutcome, formatMatchScore } from '../lib/match';
 import { RankGlobe } from './RankGlobe';
+import { a11yButton, announce } from '../lib/a11y';
+import { ScoreText } from './ScoreText';
 
 interface RankResult {
   eloChange: number;
@@ -27,8 +31,6 @@ interface MatchResultProps {
   isRanked?: boolean;
   rankResult?: RankResult | null;
   coinsAwarded?: number | null;
-  isDarkMode: boolean;
-  language: Language;
   onExit: () => void;
 }
 
@@ -41,10 +43,10 @@ export function MatchResult({
   isRanked = false,
   rankResult = null,
   coinsAwarded = null,
-  isDarkMode,
-  language,
   onExit,
 }: MatchResultProps) {
+  const { isDarkMode } = useTheme();
+  const { language } = useLanguage();
   const c = getColors(isDarkMode);
 
   const { iWon, isDraw } = computeMatchOutcome(bestOf, myRoundsWon, opponentRoundsWon);
@@ -56,7 +58,9 @@ export function MatchResult({
       ? language === 'fr' ? 'VICTOIRE !' : 'VICTORY!'
       : language === 'fr' ? 'DÉFAITE' : 'DEFEAT';
 
-  const scoreLabel = (s: number) => formatMatchScore(gameMode, s);
+  // Each round formats with the mode it was actually played in (ranked mixes
+  // modes across rounds); the `gameMode` prop is only a fallback.
+  const scoreLabel = (mode: string, s: number) => formatMatchScore(mode, s);
 
   // Tactile feedback matching the outcome when the result screen appears.
   useEffect(() => {
@@ -67,7 +71,17 @@ export function MatchResult({
           ? Haptics.NotificationFeedbackType.Success
           : Haptics.NotificationFeedbackType.Error,
     ).catch(() => {});
-  }, [isDraw, iWon]);
+    // Announce the match outcome and final score for screen-reader users.
+    const outcome = isDraw
+      ? language === 'fr' ? 'Égalité' : 'Draw'
+      : iWon
+        ? language === 'fr' ? 'Victoire' : 'Victory'
+        : language === 'fr' ? 'Défaite' : 'Defeat';
+    const score = language === 'fr'
+      ? `${myRoundsWon} à ${opponentRoundsWon}`
+      : `${myRoundsWon} to ${opponentRoundsWon}`;
+    announce(`${outcome}, ${score}`);
+  }, [isDraw, iWon, language, myRoundsWon, opponentRoundsWon]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.background }}>
@@ -76,12 +90,12 @@ export function MatchResult({
       <ScrollView contentContainerStyle={{ alignItems: 'center', padding: 24, gap: 24 }}>
         <View style={{ alignItems: 'center', gap: 12, marginTop: 16 }}>
           <Trophy size={56} color={resultColor} />
-          <Text style={{ color: resultColor, fontSize: 36, fontFamily: FONTS.headingBlack, letterSpacing: 1 }}>
+          <ScoreText style={{ color: resultColor, fontSize: 36, fontFamily: FONTS.headingBlack, letterSpacing: 1 }}>
             {resultText}
-          </Text>
-          <Text style={{ color: c.text, fontSize: 48, fontFamily: FONTS.headingBlack }}>
+          </ScoreText>
+          <ScoreText style={{ color: c.text, fontSize: 48, fontFamily: FONTS.headingBlack }}>
             {myRoundsWon} – {opponentRoundsWon}
-          </Text>
+          </ScoreText>
           <Text style={{ color: c.textMuted, fontSize: 14, fontFamily: FONTS.mono }}>
             {`BO${bestOf} · ${language === 'fr' ? 'Série terminée' : 'Series over'}`}
           </Text>
@@ -122,9 +136,9 @@ export function MatchResult({
                     {rankResult.oldElo}
                   </Text>
                 </View>
-                <Text style={{ color: deltaColor, fontFamily: FONTS.headingBlack, fontSize: 28 }}>
+                <ScoreText style={{ color: deltaColor, fontFamily: FONTS.headingBlack, fontSize: 28 }}>
                   {`${deltaSign}${rankResult.eloChange}`}
-                </Text>
+                </ScoreText>
                 <View style={{ alignItems: 'center', gap: 2 }}>
                   <Text style={{ color: c.textFaint, fontFamily: FONTS.mono, fontSize: 11 }}>
                     {language === 'fr' ? 'APRÈS' : 'AFTER'}
@@ -135,16 +149,23 @@ export function MatchResult({
                 </View>
               </View>
               {(promoted || demoted) && (
-                <Text style={{
-                  fontFamily: FONTS.monoBold,
-                  fontSize: 13,
-                  color: promoted ? '#2a6e3f' : '#8b1a1a',
-                  letterSpacing: 0.5,
-                }}>
-                  {promoted
-                    ? (language === 'fr' ? `⬆ Promotion en ${newRank.nameFr} !` : `⬆ Promoted to ${newRank.name}!`)
-                    : (language === 'fr' ? `⬇ Rétrogradé en ${newRank.nameFr}` : `⬇ Demoted to ${newRank.name}`)}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                  {promoted ? (
+                    <AtlasPromote color="#2a6e3f" size={16} />
+                  ) : (
+                    <AtlasDemote color="#8b1a1a" size={16} />
+                  )}
+                  <Text style={{
+                    fontFamily: FONTS.monoBold,
+                    fontSize: 13,
+                    color: promoted ? '#2a6e3f' : '#8b1a1a',
+                    letterSpacing: 0.5,
+                  }}>
+                    {promoted
+                      ? (language === 'fr' ? `Promotion en ${newRank.nameFr} !` : `Promoted to ${newRank.name}!`)
+                      : (language === 'fr' ? `Rétrogradé en ${newRank.nameFr}` : `Demoted to ${newRank.name}`)}
+                  </Text>
+                </View>
               )}
             </View>
           );
@@ -180,11 +201,11 @@ export function MatchResult({
                 </Text>
                 <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
                   <Text style={{ color: roundWinner === 'me' ? '#2a6e3f' : c.text, fontFamily: FONTS.headingBlack, fontSize: 18 }}>
-                    {scoreLabel(round.myScore)}
+                    {scoreLabel(round.gameMode ?? gameMode, round.myScore)}
                   </Text>
                   <Text style={{ color: c.textFaint, fontFamily: FONTS.mono }}>vs</Text>
                   <Text style={{ color: roundWinner === 'opponent' ? '#8b1a1a' : c.text, fontFamily: FONTS.headingBlack, fontSize: 18 }}>
-                    {scoreLabel(round.opponentScore)}
+                    {scoreLabel(round.gameMode ?? gameMode, round.opponentScore)}
                   </Text>
                 </View>
                 <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: rowColor }} />
@@ -195,6 +216,7 @@ export function MatchResult({
 
         <TouchableOpacity
           onPress={onExit}
+          {...a11yButton(language === 'fr' ? 'Retour au menu' : 'Back to menu')}
           style={{
             flexDirection: 'row', alignItems: 'center', gap: 10,
             backgroundColor: c.card,

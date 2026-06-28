@@ -1,12 +1,18 @@
 import { useCallback } from 'react';
-import { ActivityIndicator, FlatList, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, Text, TouchableOpacity, View } from 'react-native';
 import { Award } from 'lucide-react-native';
 
 import { supabase } from '../lib/supabase';
 import { useCachedData } from '../lib/cache';
+import { log } from '../lib/log';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
-import type { Language, MatchMode } from '../types';
+import { tr } from '../i18n';
+import { a11yButton, a11yImage } from '../lib/a11y';
+import { AsyncState } from '../components/AsyncState';
+import type { MatchMode } from '../types';
 
 interface WinEntry {
   user_id: string;
@@ -18,15 +24,15 @@ interface WinEntry {
 
 interface Props {
   mode: MatchMode;
-  language: Language;
-  isDarkMode: boolean;
   accent: string;
   onOpenPlayer?: (userId: string, username?: string | null) => void;
 }
 
 const MEDAL_COLORS = ['#c4872a', '#7aa0c4', '#a08060'];
 
-export function OnlineModeLeaderboard({ mode, language, isDarkMode, accent, onOpenPlayer }: Props) {
+export function OnlineModeLeaderboard({ mode, accent, onOpenPlayer }: Props) {
+  const { isDarkMode } = useTheme();
+  const { language } = useLanguage();
   const c = getColors(isDarkMode);
 
   const fetchLeaderboard = useCallback(async (): Promise<WinEntry[]> => {
@@ -37,7 +43,7 @@ export function OnlineModeLeaderboard({ mode, language, isDarkMode, accent, onOp
       .eq('status', 'completed');
 
     if (error) {
-      console.error('Online leaderboard fetch error:', error);
+      log.error('Online leaderboard fetch error:', error);
       throw error;
     }
 
@@ -49,7 +55,7 @@ export function OnlineModeLeaderboard({ mode, language, isDarkMode, accent, onOp
     const userIds = new Set<string>();
 
     for (const m of matches) {
-      if (!m.player2_id) continue;
+      if (!m.player1_id || !m.player2_id) continue;
       userIds.add(m.player1_id);
       userIds.add(m.player2_id);
 
@@ -59,9 +65,9 @@ export function OnlineModeLeaderboard({ mode, language, isDarkMode, accent, onOp
       stats[m.player1_id].total++;
       stats[m.player2_id].total++;
 
-      if (m.p1_rounds_won > m.p2_rounds_won) {
+      if ((m.p1_rounds_won ?? 0) > (m.p2_rounds_won ?? 0)) {
         stats[m.player1_id].wins++;
-      } else if (m.p2_rounds_won > m.p1_rounds_won) {
+      } else if ((m.p2_rounds_won ?? 0) > (m.p1_rounds_won ?? 0)) {
         stats[m.player2_id].wins++;
       }
     }
@@ -100,6 +106,7 @@ export function OnlineModeLeaderboard({ mode, language, isDarkMode, accent, onOp
   const renderItem = useCallback(
     ({ item, index }: { item: WinEntry; index: number }) => {
       const isTop3 = index < 3;
+      const rankLabel = tr(language, `Rang ${index + 1}`, `Rank ${index + 1}`);
       return (
         <TouchableOpacity
           activeOpacity={onOpenPlayer ? 0.6 : 1}
@@ -115,10 +122,14 @@ export function OnlineModeLeaderboard({ mode, language, isDarkMode, accent, onOp
             backgroundColor: c.card,
             borderColor: c.border,
           }}
+          {...a11yButton(`${rankLabel}, ${item.username}`, {
+            disabled: !onOpenPlayer,
+            hint: onOpenPlayer ? tr(language, 'Voir le profil', 'View profile') : undefined,
+          })}
         >
           <View style={{ width: 40, alignItems: 'center' }}>
             {isTop3 ? (
-              <Award size={24} color={MEDAL_COLORS[index]} />
+              <Award size={24} color={MEDAL_COLORS[index]} {...a11yImage(rankLabel)} />
             ) : (
               <Text style={{ fontFamily: FONTS.monoBold, color: c.textMuted }}>{index + 1}</Text>
             )}
@@ -138,52 +149,28 @@ export function OnlineModeLeaderboard({ mode, language, isDarkMode, accent, onOp
     [c, accent, onOpenPlayer],
   );
 
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color={accent} />
-      </View>
-    );
-  }
-
-  if (error) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 }}>
-        <Text style={{ textAlign: 'center', fontFamily: FONTS.mono, color: c.textMuted }}>
-          {language === 'fr' ? 'Impossible de charger le classement.' : 'Could not load the leaderboard.'}
-        </Text>
-        <TouchableOpacity
-          onPress={refetch}
-          accessibilityRole="button"
-          style={{
-            marginTop: 16,
-            paddingHorizontal: 20,
-            paddingVertical: 12,
-            borderRadius: 10,
-            borderWidth: 1,
-            borderColor: c.border,
-            backgroundColor: c.card,
-          }}
-        >
-          <Text style={{ fontFamily: FONTS.monoBold, fontSize: 12, color: accent }}>
-            {language === 'fr' ? 'Réessayer' : 'Retry'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
   return (
-    <FlatList
-      data={data}
-      keyExtractor={(_, i) => i.toString()}
-      renderItem={renderItem}
-      contentContainerStyle={{ padding: 10, paddingBottom: 20 }}
-      ListEmptyComponent={
-        <Text style={{ textAlign: 'center', marginTop: 40, fontFamily: FONTS.mono, color: c.textMuted }}>
-          {language === 'fr' ? 'Aucune partie enregistrée' : 'No games recorded yet'}
-        </Text>
+    <AsyncState
+      loading={loading}
+      error={error}
+      onRetry={refetch}
+      errorLabel={
+        language === 'fr'
+          ? 'Impossible de charger le classement.'
+          : 'Could not load the leaderboard.'
       }
-    />
+    >
+      <FlatList
+        data={data}
+        keyExtractor={(item) => item.user_id}
+        renderItem={renderItem}
+        contentContainerStyle={{ padding: 10, paddingBottom: 20 }}
+        ListEmptyComponent={
+          <Text style={{ textAlign: 'center', marginTop: 40, fontFamily: FONTS.mono, color: c.textMuted }}>
+            {language === 'fr' ? 'Aucune partie enregistrée' : 'No games recorded yet'}
+          </Text>
+        }
+      />
+    </AsyncState>
   );
 }

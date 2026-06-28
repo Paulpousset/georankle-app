@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -12,7 +12,19 @@ import { LayoutGrid, LogIn, Lock, Mail, User, UserPlus, Zap } from 'lucide-react
 
 import { track } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
+import { a11yButton } from '../lib/a11y';
+import { log } from '../lib/log';
+import {
+  confirmPasswordError,
+  emailError,
+  isValidEmail,
+  isValidUsername,
+  passwordError,
+  usernameError,
+  USERNAME_MAX,
+} from '../lib/validation';
 import { FONTS } from '../theme/typography';
+import { PALETTE } from '../theme/colors';
 import type { Language } from '../types';
 
 type Mode = 'login' | 'signup' | 'profile';
@@ -31,6 +43,27 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
   const [bestStreak, setBestStreak] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<Mode>('login');
+
+  const passwordRef = useRef<TextInput>(null);
+  const confirmRef = useRef<TextInput>(null);
+
+  // Live inline validation. Helpers return null for an empty field; `submitted`
+  // forces the email/password "required" feedback after a submit attempt.
+  const emailErr = emailError(language, email);
+  const passwordErr = passwordError(language, password);
+  const confirmErr = confirmPasswordError(language, password, confirmPassword);
+  const usernameErr = usernameError(language, username);
+
+  // Login only requires a non-empty password — the min-length rule is enforced
+  // at account creation, not on existing accounts (older accounts may be shorter).
+  const canSubmitLogin = isValidEmail(email) && password.length > 0;
+  const canSubmitSignup =
+    isValidEmail(email) &&
+    password.length > 0 &&
+    passwordErr === null &&
+    password === confirmPassword &&
+    confirmPassword.length > 0;
+  const canSubmit = mode === 'login' ? canSubmitLogin : canSubmitSignup;
 
   useEffect(() => {
     const checkUser = async () => {
@@ -83,8 +116,8 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
       success: 'Succès',
       checkEmail: "Vérifiez vos emails pour confirmer l'inscription !",
       passwordsDontMatch: 'Les mots de passe ne correspondent pas',
-      passwordTooShort: 'Le mot de passe doit faire au moins 6 caractères',
       invalidEmail: 'Adresse email invalide',
+      invalidUsername: 'Pseudo invalide',
     },
     en: {
       email: 'Email',
@@ -98,12 +131,16 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
       success: 'Success',
       checkEmail: 'Check your email for confirmation link!',
       passwordsDontMatch: 'Passwords do not match',
-      passwordTooShort: 'Password must be at least 6 characters',
       invalidEmail: 'Invalid email address',
+      invalidUsername: 'Invalid username',
     },
   }[language];
 
   async function updateUsername() {
+    if (!isValidUsername(username)) {
+      Alert.alert(t.error, usernameErr ?? t.invalidUsername);
+      return;
+    }
     setLoading(true);
     const {
       data: { user },
@@ -114,7 +151,7 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
     }
     const { error } = await supabase
       .from('profiles')
-      .upsert({ id: user.id, username, updated_at: new Date() });
+      .upsert({ id: user.id, username: username.trim(), updated_at: new Date().toISOString() });
 
     if (error) Alert.alert(t.error, error.message);
     else Alert.alert(t.success, language === 'fr' ? 'Profil mis à jour !' : 'Profile updated!');
@@ -122,7 +159,7 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
   }
 
   async function signInWithEmail() {
-    if (!email.includes('@')) {
+    if (!isValidEmail(email)) {
       Alert.alert(t.error, t.invalidEmail);
       return;
     }
@@ -148,12 +185,13 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
   }
 
   async function signUpWithEmail() {
-    if (!email.includes('@')) {
+    if (!isValidEmail(email)) {
       Alert.alert(t.error, t.invalidEmail);
       return;
     }
-    if (password.length < 6) {
-      Alert.alert(t.error, t.passwordTooShort);
+    const pwErr = passwordError(language, password);
+    if (pwErr) {
+      Alert.alert(t.error, pwErr);
       return;
     }
     if (password !== confirmPassword) {
@@ -168,7 +206,7 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
     });
 
     if (error) {
-      console.log('Signup error details:', error);
+      log.error('Signup error details:', error);
       Alert.alert(t.error, error.message);
     } else if (data?.session) {
       // Email confirmation disabled: the session exists, log in directly.
@@ -196,15 +234,15 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
                   width: 80,
                   height: 80,
                   borderRadius: 40,
-                  backgroundColor: '#1a4a7a',
+                  backgroundColor: PALETTE.oceanBlue,
                   alignItems: 'center',
                   justifyContent: 'center',
                   marginBottom: 15,
                   borderWidth: 2,
-                  borderColor: '#c4a87a',
+                  borderColor: PALETTE.tan,
                 }}
               >
-                <User color="#d8e8f4" size={40} />
+                <User color={PALETTE.nightText} size={40} />
               </View>
 
               <View style={[styles.inputContainer, { marginBottom: 10, width: '100%' }]}>
@@ -213,22 +251,38 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
                   value={username}
                   onChangeText={setUsername}
                   style={styles.input}
-                  placeholderTextColor="#a08060"
+                  placeholderTextColor={PALETTE.brownLight}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  maxLength={USERNAME_MAX}
+                  returnKeyType="done"
+                  onSubmitEditing={updateUsername}
+                  accessibilityLabel={language === 'fr' ? 'Pseudo' : 'Username'}
                 />
-                <TouchableOpacity onPress={updateUsername} disabled={loading}>
-                  <Text style={{ color: '#c04a1a', fontFamily: FONTS.monoBold, paddingRight: 10 }}>
+                <TouchableOpacity
+                  onPress={updateUsername}
+                  disabled={loading}
+                  {...a11yButton(
+                    language === 'fr' ? 'Enregistrer le pseudo' : 'Save username',
+                    { disabled: loading },
+                  )}
+                >
+                  <Text style={{ color: PALETTE.vermilion, fontFamily: FONTS.monoBold, paddingRight: 10 }}>
                     {language === 'fr' ? 'OK' : 'SET'}
                   </Text>
                 </TouchableOpacity>
               </View>
-              <Text style={{ fontSize: 12, fontFamily: FONTS.mono, color: '#7a5c38' }}>{email}</Text>
+              {usernameErr && (
+                <Text style={[styles.fieldError, { alignSelf: 'flex-start' }]}>{usernameErr}</Text>
+              )}
+              <Text style={{ fontSize: 12, fontFamily: FONTS.mono, color: PALETTE.brown }}>{email}</Text>
             </View>
 
             <Text
               style={{
                 fontSize: 14,
                 fontFamily: FONTS.monoBold,
-                color: '#2c1810',
+                color: PALETTE.sepia,
                 marginBottom: 10,
                 textAlign: 'center',
               }}
@@ -238,23 +292,23 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
 
             <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
               <View style={styles.statCard}>
-                <LayoutGrid size={20} color="#2a6e3f" />
+                <LayoutGrid size={20} color={PALETTE.forestGreen} />
                 <Text style={styles.statLabel}>RANKLE</Text>
-                <Text style={[styles.statValue, { color: '#2a6e3f' }]}>
+                <Text style={[styles.statValue, { color: PALETTE.forestGreen }]}>
                   {bestClassic || '—'}
                 </Text>
               </View>
               <View style={styles.statCard}>
-                <Zap size={20} color="#c4872a" />
+                <Zap size={20} color={PALETTE.sand} />
                 <Text style={styles.statLabel}>STREAK</Text>
-                <Text style={[styles.statValue, { color: '#c4872a' }]}>
+                <Text style={[styles.statValue, { color: PALETTE.sand }]}>
                   {bestStreak || '—'}
                 </Text>
               </View>
             </View>
 
             <TouchableOpacity
-              style={[styles.button, { backgroundColor: '#8b1a1a' }]}
+              style={[styles.button, { backgroundColor: PALETTE.dangerRed }]}
               onPress={async () => {
                 await supabase.auth.signOut();
                 setMode('login');
@@ -262,6 +316,7 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
                 setPassword('');
                 onAuthSuccess();
               }}
+              {...a11yButton(language === 'fr' ? 'Déconnexion' : 'Logout')}
             >
               <Text style={styles.buttonText}>{language === 'fr' ? 'Déconnexion' : 'Logout'}</Text>
             </TouchableOpacity>
@@ -271,49 +326,86 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
             <Text style={styles.title}>{mode === 'login' ? t.login : t.signup}</Text>
 
             <View style={styles.inputContainer}>
-              <Mail size={20} color="#7a5c38" style={styles.icon} />
+              <Mail size={20} color={PALETTE.brown} style={styles.icon} />
               <TextInput
                 onChangeText={setEmail}
                 value={email}
                 placeholder="email@address.com"
                 autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+                textContentType="emailAddress"
+                autoComplete="email"
+                returnKeyType="next"
+                maxLength={254}
+                onSubmitEditing={() => passwordRef.current?.focus()}
+                submitBehavior="submit"
                 style={styles.input}
-                placeholderTextColor="#a08060"
+                placeholderTextColor={PALETTE.brownLight}
+                accessibilityLabel={t.email}
               />
             </View>
+            {emailErr && <Text style={styles.fieldError}>{emailErr}</Text>}
 
             <View style={styles.inputContainer}>
-              <Lock size={20} color="#7a5c38" style={styles.icon} />
+              <Lock size={20} color={PALETTE.brown} style={styles.icon} />
               <TextInput
+                ref={passwordRef}
                 onChangeText={setPassword}
                 value={password}
                 secureTextEntry
                 placeholder={t.password}
                 autoCapitalize="none"
+                autoCorrect={false}
+                textContentType={mode === 'signup' ? 'newPassword' : 'password'}
+                returnKeyType={mode === 'signup' ? 'next' : 'done'}
+                maxLength={72}
+                onSubmitEditing={() =>
+                  mode === 'signup' ? confirmRef.current?.focus() : signInWithEmail()
+                }
+                submitBehavior={mode === 'signup' ? 'submit' : 'blurAndSubmit'}
                 style={styles.input}
-                placeholderTextColor="#a08060"
+                placeholderTextColor={PALETTE.brownLight}
+                accessibilityLabel={t.password}
               />
             </View>
+            {mode === 'signup' && passwordErr && (
+              <Text style={styles.fieldError}>{passwordErr}</Text>
+            )}
 
             {mode === 'signup' && (
-              <View style={styles.inputContainer}>
-                <Lock size={20} color="#7a5c38" style={styles.icon} />
-                <TextInput
-                  onChangeText={setConfirmPassword}
-                  value={confirmPassword}
-                  secureTextEntry
-                  placeholder={t.confirmPassword}
-                  autoCapitalize="none"
-                  style={styles.input}
-                  placeholderTextColor="#a08060"
-                />
-              </View>
+              <>
+                <View style={styles.inputContainer}>
+                  <Lock size={20} color={PALETTE.brown} style={styles.icon} />
+                  <TextInput
+                    ref={confirmRef}
+                    onChangeText={setConfirmPassword}
+                    value={confirmPassword}
+                    secureTextEntry
+                    placeholder={t.confirmPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    textContentType="newPassword"
+                    returnKeyType="done"
+                    maxLength={72}
+                    onSubmitEditing={signUpWithEmail}
+                    style={styles.input}
+                    placeholderTextColor={PALETTE.brownLight}
+                    accessibilityLabel={t.confirmPassword}
+                  />
+                </View>
+                {confirmErr && <Text style={styles.fieldError}>{confirmErr}</Text>}
+              </>
             )}
 
             <TouchableOpacity
-              style={styles.button}
+              style={[styles.button, (loading || !canSubmit) && styles.buttonDisabled]}
               onPress={() => (mode === 'login' ? signInWithEmail() : signUpWithEmail())}
-              disabled={loading}
+              disabled={loading || !canSubmit}
+              {...a11yButton(mode === 'login' ? t.login : t.signup, {
+                disabled: loading || !canSubmit,
+                busy: loading,
+              })}
             >
               {loading ? (
                 <ActivityIndicator color="white" />
@@ -329,7 +421,19 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
               )}
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => setMode(mode === 'login' ? 'signup' : 'login')}>
+            <TouchableOpacity
+              onPress={() => setMode(mode === 'login' ? 'signup' : 'login')}
+              {...a11yButton(mode === 'login' ? t.noAccount : t.haveAccount, {
+                hint:
+                  mode === 'login'
+                    ? language === 'fr'
+                      ? "Bascule vers la création de compte"
+                      : 'Switches to account creation'
+                    : language === 'fr'
+                      ? 'Bascule vers la connexion'
+                      : 'Switches to login',
+              })}
+            >
               <Text style={styles.switchText}>
                 {mode === 'login' ? t.noAccount : t.haveAccount}
               </Text>
@@ -344,12 +448,12 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
 const styles = StyleSheet.create({
   container: { padding: 20, width: '100%', maxWidth: 400, alignSelf: 'center' },
   card: {
-    backgroundColor: '#e8d9b8',
+    backgroundColor: PALETTE.parchmentDark,
     padding: 24,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#c4a87a',
-    shadowColor: '#2c1810',
+    borderColor: PALETTE.tan,
+    shadowColor: PALETTE.sepia,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 10,
@@ -360,22 +464,30 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.headingBlack,
     marginBottom: 24,
     textAlign: 'center',
-    color: '#2c1810',
+    color: PALETTE.sepia,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f2e8d0',
+    backgroundColor: PALETTE.parchment,
     borderRadius: 12,
     marginBottom: 16,
     paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: '#c4a87a',
+    borderColor: PALETTE.tan,
   },
   icon: { marginRight: 10 },
-  input: { flex: 1, height: 50, color: '#2c1810', fontSize: 16, fontFamily: FONTS.mono },
+  input: { flex: 1, height: 50, color: PALETTE.sepia, fontSize: 16, fontFamily: FONTS.mono },
+  fieldError: {
+    color: PALETTE.dangerRed,
+    fontSize: 12,
+    fontFamily: FONTS.mono,
+    marginTop: -8,
+    marginBottom: 12,
+    marginLeft: 4,
+  },
   button: {
-    backgroundColor: '#c04a1a',
+    backgroundColor: PALETTE.vermilion,
     height: 50,
     borderRadius: 12,
     flexDirection: 'row',
@@ -384,18 +496,19 @@ const styles = StyleSheet.create({
     marginTop: 8,
     gap: 10,
   },
+  buttonDisabled: { opacity: 0.5 },
   buttonText: { color: 'white', fontSize: 16, fontFamily: FONTS.monoBold },
-  switchText: { marginTop: 20, color: '#c04a1a', textAlign: 'center', fontSize: 14, fontFamily: FONTS.mono },
+  switchText: { marginTop: 20, color: PALETTE.vermilion, textAlign: 'center', fontSize: 14, fontFamily: FONTS.mono },
   statCard: {
     flex: 1,
-    backgroundColor: '#f2e8d0',
+    backgroundColor: PALETTE.parchment,
     padding: 12,
     borderRadius: 12,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#c4a87a',
+    borderColor: PALETTE.tan,
   },
-  statLabel: { fontSize: 10, fontFamily: FONTS.mono, color: '#7a5c38', marginTop: 4 },
+  statLabel: { fontSize: 10, fontFamily: FONTS.mono, color: PALETTE.brown, marginTop: 4 },
   statValue: { fontSize: 18, fontFamily: FONTS.headingBlack },
 });
 

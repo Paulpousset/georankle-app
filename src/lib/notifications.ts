@@ -5,11 +5,18 @@ import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 
 import { supabase } from './supabase';
+import { log } from './log';
 
-/** AsyncStorage keys for the opt-in daily reminder. */
+/**
+ * AsyncStorage keys for the daily reminder. The reminder is ON by default for
+ * everyone — only an explicit '0' (the user disabled it) turns it off.
+ */
 const REMINDER_ENABLED_KEY = 'daily:reminder_enabled';
 const REMINDER_TIME_KEY = 'daily:reminder_time'; // "HH:MM" (local time)
 const REMINDER_ID_KEY = 'daily:reminder_id';
+
+/** Default reminder time when the user has never picked one. */
+const DEFAULT_REMINDER_TIME = '09:00';
 
 // Show notifications as banners even when the app is foregrounded.
 Notifications.setNotificationHandler({
@@ -22,6 +29,27 @@ Notifications.setNotificationHandler({
 });
 
 /**
+ * Ensure the OS notification permission is granted, requesting it once if
+ * needed. The in-flight request is memoized so that callers firing at the same
+ * time (push registration + daily reminder on launch) share a single native
+ * prompt instead of stacking two dialogs.
+ */
+let permissionRequest: Promise<boolean> | null = null;
+async function ensurePermissionGranted(): Promise<boolean> {
+  const { status } = await Notifications.getPermissionsAsync();
+  if (status === 'granted') return true;
+  if (!permissionRequest) {
+    permissionRequest = Notifications.requestPermissionsAsync()
+      .then((r) => r.status === 'granted')
+      .catch(() => false)
+      .finally(() => {
+        permissionRequest = null;
+      });
+  }
+  return permissionRequest;
+}
+
+/**
  * Registers the device for Expo push notifications and stores the token on the
  * user's profile so the backend can target them. Safe to call on every login —
  * no-ops on web, simulators, or when permission is denied.
@@ -31,13 +59,7 @@ export async function registerForPushNotifications(userId: string): Promise<void
   if (Platform.OS === 'web' || !Device.isDevice) return;
 
   try {
-    const { status: existing } = await Notifications.getPermissionsAsync();
-    let status = existing;
-    if (existing !== 'granted') {
-      const req = await Notifications.requestPermissionsAsync();
-      status = req.status;
-    }
-    if (status !== 'granted') return;
+    if (!(await ensurePermissionGranted())) return;
 
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
@@ -59,11 +81,11 @@ export async function registerForPushNotifications(userId: string): Promise<void
     }
   } catch (e) {
     // Never let notification setup crash the app.
-    console.log('Push registration skipped:', e);
+    log.debug('Push registration skipped:', e);
   }
 }
 
-// ── Daily reminder (opt-in, local scheduled notification) ─────────────────────
+// ── Daily reminder (on by default, local scheduled notification) ──────────────
 
 export interface DailyReminderPrefs {
   enabled: boolean;
@@ -71,16 +93,38 @@ export interface DailyReminderPrefs {
   time: string;
 }
 
-/** Read the stored daily-reminder preference (defaults: off, 09:00). */
+/**
+ * Read the stored daily-reminder preference. The reminder is ON by default for
+ * everyone: it counts as enabled unless the user has explicitly turned it off
+ * (stored as '0'). Default time is 09:00.
+ */
 export async function getDailyReminderPrefs(): Promise<DailyReminderPrefs> {
   try {
     const [enabled, time] = await Promise.all([
       AsyncStorage.getItem(REMINDER_ENABLED_KEY),
       AsyncStorage.getItem(REMINDER_TIME_KEY),
     ]);
-    return { enabled: enabled === '1', time: time ?? '09:00' };
+    return { enabled: enabled !== '0', time: time ?? DEFAULT_REMINDER_TIME };
   } catch {
-    return { enabled: false, time: '09:00' };
+    return { enabled: true, time: DEFAULT_REMINDER_TIME };
+  }
+}
+
+/**
+ * Auto-enable the daily reminder for everyone. Schedules it on launch unless the
+ * user has explicitly opted out. Safe to call on every launch / language change —
+ * it replaces any prior schedule and no-ops on web or after an explicit opt-out.
+ */
+export async function ensureDailyReminder(language: 'fr' | 'en' = 'fr'): Promise<void> {
+  if (Platform.OS === 'web') return;
+  try {
+    const enabled = await AsyncStorage.getItem(REMINDER_ENABLED_KEY);
+    // Respect an explicit opt-out; otherwise default ON.
+    if (enabled === '0') return;
+    const time = (await AsyncStorage.getItem(REMINDER_TIME_KEY)) ?? DEFAULT_REMINDER_TIME;
+    await scheduleDailyReminder(time, language);
+  } catch (e) {
+    log.debug('Ensure daily reminder skipped:', e);
   }
 }
 
@@ -94,7 +138,7 @@ export async function cancelDailyReminder(): Promise<void> {
       [REMINDER_ID_KEY, ''],
     ]);
   } catch (e) {
-    console.log('Cancel daily reminder skipped:', e);
+    log.debug('Cancel daily reminder skipped:', e);
   }
 }
 
@@ -109,13 +153,7 @@ export async function scheduleDailyReminder(
 ): Promise<boolean> {
   if (Platform.OS === 'web') return false;
   try {
-    const { status: existing } = await Notifications.getPermissionsAsync();
-    let status = existing;
-    if (existing !== 'granted') {
-      const req = await Notifications.requestPermissionsAsync();
-      status = req.status;
-    }
-    if (status !== 'granted') return false;
+    if (!(await ensurePermissionGranted())) return false;
 
     // Replace any prior schedule so we never stack reminders.
     const prior = await AsyncStorage.getItem(REMINDER_ID_KEY);
@@ -144,7 +182,7 @@ export async function scheduleDailyReminder(
     ]);
     return true;
   } catch (e) {
-    console.log('Schedule daily reminder skipped:', e);
+    log.debug('Schedule daily reminder skipped:', e);
     return false;
   }
 }

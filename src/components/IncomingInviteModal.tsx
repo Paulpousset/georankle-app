@@ -1,27 +1,37 @@
+import { useEffect } from 'react';
 import { Modal, Text, TouchableOpacity, View } from 'react-native';
 import { Users } from 'lucide-react-native';
 
-import type { Language, Match } from '../types';
+import type { Match } from '../types';
 import { tr } from '../i18n';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
+import { a11yButton, announce } from '../lib/a11y';
 
 interface IncomingInviteModalProps {
   invite: Match | null;
-  isDarkMode: boolean;
-  language: Language;
   onAccept: () => void;
   onDecline: () => void;
 }
 
 export function IncomingInviteModal({
   invite,
-  isDarkMode,
-  language,
   onAccept,
   onDecline,
 }: IncomingInviteModalProps) {
+  const { isDarkMode } = useTheme();
+  const { language } = useLanguage();
   const c = getColors(isDarkMode);
+
+  // Announce the incoming invite so screen-reader users notice the modal.
+  useEffect(() => {
+    if (invite) {
+      announce(tr(language, 'Nouveau défi ! Vous avez été invité à jouer.', 'New challenge! You have been invited to play.'));
+    }
+  }, [invite, language]);
+
   return (
     <Modal visible={!!invite} animationType="slide" transparent onRequestClose={onDecline}>
       <View
@@ -70,6 +80,7 @@ export function IncomingInviteModal({
           <View style={{ flexDirection: 'row', gap: 10, width: '100%' }}>
             <TouchableOpacity
               onPress={onDecline}
+              {...a11yButton(tr(language, 'Refuser', 'Decline'))}
               style={{
                 flex: 1, padding: 15,
                 backgroundColor: c.surface,
@@ -83,6 +94,7 @@ export function IncomingInviteModal({
             </TouchableOpacity>
             <TouchableOpacity
               onPress={onAccept}
+              {...a11yButton(tr(language, 'Accepter', 'Accept'))}
               style={{
                 flex: 1, padding: 15,
                 backgroundColor: '#2a6e3f',

@@ -4,17 +4,18 @@ import { Home } from 'lucide-react-native';
 
 import { DailyLeaderboard } from '../screens/DailyLeaderboard';
 import { dailyModeLabel, getPuzzleNumber } from '../lib/daily';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { tr } from '../i18n';
-import type { GameMode, Language } from '../types';
+import { a11yButton, ICON_HIT_SLOP } from '../lib/a11y';
+import type { GameMode } from '../types';
 
 interface Props {
   /** The daily mode to rank, or null to hide the modal. */
   mode: GameMode | null;
   accent: string;
-  isDarkMode: boolean;
-  language: Language;
   currentUserId?: string | null;
   onClose: () => void;
   onOpenPlayer?: (userId: string, username?: string | null) => void;
@@ -24,12 +25,12 @@ interface Props {
 export function DailyLeaderboardModal({
   mode,
   accent,
-  isDarkMode,
-  language,
   currentUserId,
   onClose,
   onOpenPlayer,
 }: Props) {
+  const { isDarkMode } = useTheme();
+  const { language } = useLanguage();
   const c = getColors(isDarkMode);
 
   return (
@@ -52,7 +53,8 @@ export function DailyLeaderboardModal({
                 <TouchableOpacity
                   onPress={onClose}
                   style={{ padding: 8, marginRight: 10, backgroundColor: c.surface, borderRadius: 10 }}
-                  accessibilityLabel={tr(language, 'Fermer', 'Close')}
+                  hitSlop={ICON_HIT_SLOP}
+                  {...a11yButton(tr(language, 'Fermer', 'Close'))}
                 >
                   <Home color={accent} size={20} />
                 </TouchableOpacity>
@@ -70,8 +72,6 @@ export function DailyLeaderboardModal({
             {mode && (
               <DailyLeaderboard
                 mode={mode}
-                language={language}
-                isDarkMode={isDarkMode}
                 accent={accent}
                 currentUserId={currentUserId}
                 onOpenPlayer={onOpenPlayer}

@@ -1,14 +1,15 @@
 import { useRef, useState } from 'react';
 import { Alert, Share, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import type { Dispatch, SetStateAction } from 'react';
 import type { User } from '@supabase/supabase-js';
 
-import type { GameMode, Language } from '../types';
+import type { GameMode } from '../types';
 import { completeDaily, seedFor, type DailyResult } from '../lib/daily';
 import { buildShareMessage } from '../lib/share';
 import { track } from '../lib/analytics';
 import { tr } from '../i18n';
+import { useLanguage } from '../contexts/LanguageContext';
+import { useToast } from '../components/ToastProvider';
 
 import { ClassicGame } from './ClassicGame';
 import StreakGame from './StreakGame';
@@ -21,12 +22,6 @@ interface DailyGameHostProps {
   mode: GameMode;
   date: string;
   user: User | null;
-  isDarkMode: boolean;
-  setIsDarkMode: Dispatch<SetStateAction<boolean>>;
-  language: Language;
-  setLanguage: Dispatch<SetStateAction<Language>>;
-  onToggleTheme: () => void;
-  onToggleLanguage: () => void;
   onExit: () => void;
 }
 
@@ -40,14 +35,10 @@ export default function DailyGameHost({
   mode,
   date,
   user,
-  isDarkMode,
-  setIsDarkMode,
-  language,
-  setLanguage,
-  onToggleTheme,
-  onToggleLanguage,
   onExit,
 }: DailyGameHostProps) {
+  const { language } = useLanguage();
+  const toast = useToast();
   const seed = seedFor(date, mode);
   const resultRef = useRef<DailyResult | null>(null);
   const [streak, setStreak] = useState(0);
@@ -68,6 +59,17 @@ export default function DailyGameHost({
     track('daily_completed', { mode, score });
     const state = await completeDaily(user, result);
     setStreak(state.streak);
+    // Signed in but the server didn't confirm → tell the player it's saved
+    // locally and will sync, rather than letting them assume it's on the server.
+    if (user && !state.synced) {
+      toast.info(
+        tr(
+          language,
+          'Résultat enregistré hors-ligne — synchronisation à la reconnexion.',
+          'Saved offline — will sync when you reconnect.',
+        ),
+      );
+    }
   };
 
   // Continuous-score modes call this on every score change so a mid-game quit
@@ -127,23 +129,15 @@ export default function DailyGameHost({
   if (mode === 'classic') {
     screen = (
       <ClassicGame
-        isDarkMode={isDarkMode}
-        language={language}
         user={user}
         onExit={requestExit}
-        onToggleTheme={onToggleTheme}
-        onToggleLanguage={onToggleLanguage}
         {...common}
       />
     );
   } else if (mode === 'streak') {
     screen = (
       <StreakGame
-        isDarkMode={isDarkMode}
-        setIsDarkMode={setIsDarkMode}
         setGameMode={exitOnMenu}
-        language={language}
-        setLanguage={setLanguage}
         user={user}
         onDailyScoreChange={reportScore}
         {...common}
@@ -152,8 +146,6 @@ export default function DailyGameHost({
   } else if (mode === 'guess') {
     screen = (
       <GuessCountryGame
-        isDarkMode={isDarkMode}
-        language={language}
         onBackToMenu={requestExit}
         user={user}
         {...common}
@@ -162,8 +154,6 @@ export default function DailyGameHost({
   } else if (mode === 'globe') {
     screen = (
       <FindCountryGame
-        isDarkMode={isDarkMode}
-        language={language}
         setGameMode={exitOnMenu}
         user={user}
         onDailyScoreChange={reportScore}
@@ -173,8 +163,6 @@ export default function DailyGameHost({
   } else if (mode === 'regions') {
     screen = (
       <RegionGameFlow
-        isDarkMode={isDarkMode}
-        language={language}
         setGameMode={exitOnMenu}
         user={user}
         onDailyScoreChange={reportScore}
@@ -185,10 +173,7 @@ export default function DailyGameHost({
     const initialGameType = mode === 'quiz-capital' ? 'CAPITAL' : mode === 'quiz-flag' ? 'FLAG' : 'MIX';
     screen = (
       <VersusCapitals
-        isDarkMode={isDarkMode}
-        setIsDarkMode={setIsDarkMode}
         setGameMode={exitOnMenu}
-        language={language}
         soloMode
         initialGameType={initialGameType}
         onDailyScoreChange={reportScore}

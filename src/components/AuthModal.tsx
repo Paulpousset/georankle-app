@@ -1,18 +1,19 @@
-import { Modal, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, TouchableOpacity, View } from 'react-native';
+import { X } from 'lucide-react-native';
 
 import Auth from '../screens/Auth';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { getColors } from '../theme/colors';
-import { FONTS } from '../theme/typography';
-import type { Language } from '../types';
 
 interface AuthModalProps {
   visible: boolean;
-  isDarkMode: boolean;
-  language: Language;
   onClose: () => void;
 }
 
-export function AuthModal({ visible, isDarkMode, language, onClose }: AuthModalProps) {
+export function AuthModal({ visible, onClose }: AuthModalProps) {
+  const { isDarkMode } = useTheme();
+  const { language } = useLanguage();
   const c = getColors(isDarkMode);
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
@@ -37,7 +38,7 @@ export function AuthModal({ visible, isDarkMode, language, onClose }: AuthModalP
             accessibilityLabel={language === 'fr' ? 'Fermer' : 'Close'}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Text style={{ color: c.textMuted, fontFamily: FONTS.monoBold, fontSize: 18 }}>✕</Text>
+            <X color={c.textMuted} size={20} />
           </TouchableOpacity>
           <Auth language={language} onAuthSuccess={onClose} />
         </View>

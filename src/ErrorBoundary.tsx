@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from 'react';
 import { ScrollView, Text, View } from 'react-native';
+import { log } from './lib/log';
 
 type Props = { children: ReactNode };
 type State = { error: Error | null };
@@ -17,7 +18,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   override componentDidCatch(error: Error) {
-    console.log('App crashed:', error);
+    log.error('App crashed:', error);
   }
 
   override render() {
@@ -28,7 +29,7 @@ export class ErrorBoundary extends Component<Props, State> {
           contentContainerStyle={{ padding: 24, paddingTop: 80 }}
         >
           <Text style={{ color: '#ff6b6b', fontSize: 20, fontWeight: '700', marginBottom: 16 }}>
-            Erreur au démarrage
+            Erreur au démarrage · Startup error
           </Text>
           <Text style={{ color: '#fff', fontSize: 14, marginBottom: 12 }}>
             {this.state.error.message}

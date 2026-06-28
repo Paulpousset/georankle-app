@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 
-import type { GameMode, Language } from '../types';
+import type { GameMode } from '../types';
 import { createSeededRng } from '../lib/rng';
 import { REGION_MANIFEST } from '../../assets/regions';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import FindRegionGame, { type RegionLevelKey } from './FindRegionGame';
 import RegionCountryPicker, { type RegionPick } from './RegionCountryPicker';
 
 interface RegionGameFlowProps {
-  isDarkMode: boolean;
-  language: Language;
   setGameMode: (mode: GameMode) => void;
   user?: User | null;
   /** Daily challenge: deterministic seed → auto-picks the country, skips the picker. */
@@ -31,8 +31,6 @@ function pickDailyCountry(seed: number): RegionPick {
 
 /** Solo "Régions Géo": pick a country/level, then play; back returns to the picker. */
 export default function RegionGameFlow({
-  isDarkMode,
-  language,
   setGameMode,
   user,
   dailySeed,
@@ -41,6 +39,8 @@ export default function RegionGameFlow({
   onShare,
   onDailyScoreChange,
 }: RegionGameFlowProps) {
+  const { isDarkMode } = useTheme();
+  const { language } = useLanguage();
   // Daily run: a fixed country for the day, played straight away (no picker).
   const [pick, setPick] = useState<RegionPick | null>(() =>
     isDaily && dailySeed != null ? pickDailyCountry(dailySeed) : null,
@@ -49,8 +49,6 @@ export default function RegionGameFlow({
   if (!pick) {
     return (
       <RegionCountryPicker
-        isDarkMode={isDarkMode}
-        language={language}
         onPick={setPick}
         onBack={() => setGameMode('menu')}
       />
@@ -59,8 +57,6 @@ export default function RegionGameFlow({
 
   return (
     <FindRegionGame
-      isDarkMode={isDarkMode}
-      language={language}
       setGameMode={setGameMode}
       country={{ cca3: pick.cca3, name: pick.name, name_en: pick.name_en, unit: pick.unit }}
       level={pick.level}

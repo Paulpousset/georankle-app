@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,24 +12,38 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { supabase } from '../lib/supabase';
+import {
+  sendFriendRequest as sendFriendRequestApi,
+  acceptFriendRequest,
+  removeFriendRow,
+} from '../lib/friends';
 import { track } from '../lib/analytics';
+import { log } from '../lib/log';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { Ionicons } from '@expo/vector-icons';
 import { ArrowLeft } from 'lucide-react-native';
-import type { User } from '@supabase/supabase-js';
-import type { Language } from '../types';
 import { tr } from '../i18n';
+import { a11yButton, ICON_HIT_SLOP } from '../lib/a11y';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface FriendsProps {
-  session: { user: User | null };
   onBack: () => void;
   onOpenPlayer?: (userId: string, username?: string | null) => void;
-  isDarkMode: boolean;
-  language: Language;
+  /** Notify the parent (header badge) whenever the pending-request set changes. */
+  onRequestsChanged?: () => void;
 }
 
-export default function Friends({ session, onBack, onOpenPlayer, isDarkMode, language }: FriendsProps) {
+// Stable keyExtractors so the lists don't get a fresh function on every render.
+const searchKeyExtractor = (item: any) => item.id;
+const combinedKeyExtractor = (item: any) => item.type + '-' + (item.id || item.title);
+
+export default function Friends({ onBack, onOpenPlayer, onRequestsChanged }: FriendsProps) {
+  const { user } = useAuth();
+  const { isDarkMode } = useTheme();
+  const { language } = useLanguage();
   const c = getColors(isDarkMode);
   const [friends, setFriends] = useState<any[]>([]);
   const [pendingRequests, setPendingRequests] = useState<any[]>([]);
@@ -38,15 +52,9 @@ export default function Friends({ session, onBack, onOpenPlayer, isDarkMode, lan
   const [loading, setLoading] = useState<boolean>(false);
   const [searchLoading, setSearchLoading] = useState<boolean>(false);
 
-  useEffect(() => {
-    if (session?.user?.id) {
-      loadFriendsAndRequests();
-    }
-  }, [session]);
-
-  const loadFriendsAndRequests = async () => {
+  const loadFriendsAndRequests = useCallback(async () => {
     setLoading(true);
-    const userId = session.user!.id;
+    const userId = user!.id;
 
     // Load accepted friends
     const { data: friendsData, error: friendsError } = await supabase
@@ -56,7 +64,7 @@ export default function Friends({ session, onBack, onOpenPlayer, isDarkMode, lan
       .eq('status', 'accepted');
 
     if (friendsError) {
-      console.error('Error loading friends:', friendsError);
+      log.error('Error loading friends:', friendsError);
       Alert.alert(tr(language, 'Erreur', 'Error'), tr(language, 'Impossible de charger vos amis.', 'Could not load your friends.'));
     }
 
@@ -67,12 +75,23 @@ export default function Friends({ session, onBack, onOpenPlayer, isDarkMode, lan
       .eq('user_id2', userId)
       .eq('status', 'pending');
 
-    if (pendingError) console.error('Error loading pending:', pendingError);
+    if (pendingError) log.error('Error loading pending:', pendingError);
 
     setFriends(friendsData || []);
     setPendingRequests(pendingData || []);
     setLoading(false);
-  };
+    // Keep the menu's friend-request badge in sync (entering the screen, and
+    // after every accept/reject which re-runs this loader).
+    onRequestsChanged?.();
+  }, [user, language, onRequestsChanged]);
+
+  useEffect(() => {
+    if (user?.id) {
+      loadFriendsAndRequests();
+    }
+    // Reload only when the session changes (not on every language toggle).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const searchUsers = async () => {
     if (!searchQuery.trim()) {
@@ -80,7 +99,7 @@ export default function Friends({ session, onBack, onOpenPlayer, isDarkMode, lan
       return;
     }
     setSearchLoading(true);
-    const userId = session.user!.id;
+    const userId = user!.id;
     const { data, error } = await supabase
       .from('profiles')
       .select('id, username')
@@ -89,7 +108,7 @@ export default function Friends({ session, onBack, onOpenPlayer, isDarkMode, lan
       .limit(10);
 
     if (error) {
-      console.error('Search error:', error);
+      log.error('Search error:', error);
       Alert.alert(tr(language, 'Erreur', 'Error'), tr(language, 'Impossible de chercher des utilisateurs.', 'Could not search users.'));
     } else {
       track('user_searched', { query_length: searchQuery.trim().length });
@@ -98,83 +117,66 @@ export default function Friends({ session, onBack, onOpenPlayer, isDarkMode, lan
     setSearchLoading(false);
   };
 
-  const sendFriendRequest = async (targetUserId: string) => {
-    const userId = session.user!.id;
+  const sendFriendRequest = useCallback(async (targetUserId: string) => {
+    const result = await sendFriendRequestApi(user!.id, targetUserId);
 
-    // Check if a relationship already exists
-    const { data: existing, error: checkError } = await supabase
-      .from('friends')
-      .select('id')
-      .or(
-        `and(user_id1.eq.${userId},user_id2.eq.${targetUserId}),and(user_id1.eq.${targetUserId},user_id2.eq.${userId})`,
-      )
-      .single();
-
-    if (existing) {
+    if (result.alreadyExists) {
       Alert.alert(tr(language, 'Info', 'Info'), tr(language, 'Une relation ou demande existe déjà avec cet utilisateur.', 'A relationship or request already exists with this user.'));
       return;
     }
-
-    const { error } = await supabase
-      .from('friends')
-      .insert([{ user_id1: userId, user_id2: targetUserId, status: 'pending' }]);
-
-    if (error) {
-      console.error('Send request error:', error);
+    if (!result.ok) {
+      log.error('Send request error:', result.error);
       Alert.alert(tr(language, 'Erreur', 'Error'), tr(language, "Impossible d'envoyer la demande.", 'Could not send the request.'));
-    } else {
-      track('friend_request_sent', { target_user_id: targetUserId });
-      Alert.alert(tr(language, 'Succès', 'Success'), tr(language, "Demande d'ami envoyée !", 'Friend request sent!'));
-      setSearchQuery('');
-      setSearchResults([]);
+      return;
     }
-  };
+    track('friend_request_sent', { target_user_id: targetUserId });
+    Alert.alert(tr(language, 'Succès', 'Success'), tr(language, "Demande d'ami envoyée !", 'Friend request sent!'));
+    setSearchQuery('');
+    setSearchResults([]);
+  }, [user, language]);
 
-  const acceptRequest = async (requestId: string) => {
-    const { error } = await supabase
-      .from('friends')
-      .update({ status: 'accepted' })
-      .eq('id', requestId);
+  const acceptRequest = useCallback(async (requestId: string) => {
+    const result = await acceptFriendRequest(requestId);
 
-    if (error) {
-      console.error('Accept error:', error);
+    if (!result.ok) {
+      log.error('Accept error:', result.error);
       Alert.alert(tr(language, 'Erreur', 'Error'), tr(language, "Impossible d'accepter la demande.", 'Could not accept the request.'));
-    } else {
-      track('friend_request_accepted');
-      loadFriendsAndRequests();
+      return;
     }
-  };
+    track('friend_request_accepted');
+    loadFriendsAndRequests();
+  }, [language, loadFriendsAndRequests]);
 
-  const rejectRequest = async (requestId: string) => {
-    const { error } = await supabase.from('friends').delete().eq('id', requestId);
+  const rejectRequest = useCallback(async (requestId: string) => {
+    const result = await removeFriendRow(requestId);
 
-    if (error) {
-      console.error('Reject error:', error);
+    if (!result.ok) {
+      log.error('Reject error:', result.error);
       Alert.alert(tr(language, 'Erreur', 'Error'), tr(language, "Impossible de refuser la demande.", 'Could not reject the request.'));
-    } else {
-      loadFriendsAndRequests();
+      return;
     }
-  };
+    loadFriendsAndRequests();
+  }, [language, loadFriendsAndRequests]);
 
-  const removeFriend = async (requestId: string) => {
+  const removeFriend = useCallback(async (requestId: string) => {
     Alert.alert(tr(language, 'Supprimer', 'Remove'), tr(language, 'Voulez-vous vraiment supprimer cet ami ?', 'Do you really want to remove this friend?'), [
       { text: tr(language, 'Annuler', 'Cancel'), style: 'cancel' },
       {
         text: tr(language, 'Supprimer', 'Remove'),
         style: 'destructive',
         onPress: async () => {
-          const { error } = await supabase.from('friends').delete().eq('id', requestId);
-          if (!error) {
+          const result = await removeFriendRow(requestId);
+          if (result.ok) {
             track('friend_removed');
             loadFriendsAndRequests();
           }
         },
       },
     ]);
-  };
+  }, [language, loadFriendsAndRequests]);
 
-  const renderFriend = ({ item }: { item: any }) => {
-    const isUser1 = item.user_id1 === session.user!.id;
+  const renderFriend = useCallback(({ item }: { item: any }) => {
+    const isUser1 = item.user_id1 === user!.id;
     const friendData = isUser1 ? item.user2 : item.user1;
 
     if (!friendData) return null;
@@ -194,6 +196,7 @@ export default function Friends({ session, onBack, onOpenPlayer, isDarkMode, lan
         <TouchableOpacity
           style={styles.removeBtn}
           onPress={() => removeFriend(item.id)}
+          hitSlop={ICON_HIT_SLOP}
           accessibilityRole="button"
           accessibilityLabel={tr(language, 'Supprimer cet ami', 'Remove this friend')}
         >
@@ -201,9 +204,9 @@ export default function Friends({ session, onBack, onOpenPlayer, isDarkMode, lan
         </TouchableOpacity>
       </View>
     );
-  };
+  }, [user, onOpenPlayer, c, isDarkMode, language, removeFriend]);
 
-  const renderPending = ({ item }: { item: any }) => {
+  const renderPending = useCallback(({ item }: { item: any }) => {
     return (
       <View style={[styles.userCard, isDarkMode ? styles.cardDark : styles.cardLight]}>
         <TouchableOpacity
@@ -222,6 +225,7 @@ export default function Friends({ session, onBack, onOpenPlayer, isDarkMode, lan
           <TouchableOpacity
             style={styles.acceptBtn}
             onPress={() => acceptRequest(item.id)}
+            hitSlop={ICON_HIT_SLOP}
             accessibilityRole="button"
             accessibilityLabel={tr(language, 'Accepter la demande', 'Accept request')}
           >
@@ -230,6 +234,7 @@ export default function Friends({ session, onBack, onOpenPlayer, isDarkMode, lan
           <TouchableOpacity
             style={styles.rejectBtn}
             onPress={() => rejectRequest(item.id)}
+            hitSlop={ICON_HIT_SLOP}
             accessibilityRole="button"
             accessibilityLabel={tr(language, 'Refuser la demande', 'Reject request')}
           >
@@ -238,9 +243,9 @@ export default function Friends({ session, onBack, onOpenPlayer, isDarkMode, lan
         </View>
       </View>
     );
-  };
+  }, [onOpenPlayer, c, isDarkMode, language, acceptRequest, rejectRequest]);
 
-  const renderSearchResult = ({ item }: { item: any }) => (
+  const renderSearchResult = useCallback(({ item }: { item: any }) => (
     <View style={[styles.userCard, isDarkMode ? styles.cardDark : styles.cardLight]}>
       <TouchableOpacity
         style={styles.nameTap}
@@ -255,12 +260,47 @@ export default function Friends({ session, onBack, onOpenPlayer, isDarkMode, lan
       <TouchableOpacity
         style={styles.addBtn}
         onPress={() => sendFriendRequest(item.id)}
+        hitSlop={ICON_HIT_SLOP}
         accessibilityRole="button"
         accessibilityLabel={tr(language, 'Ajouter en ami', 'Add friend')}
       >
         <Ionicons name="person-add" size={20} color="#fff" />
       </TouchableOpacity>
     </View>
+  ), [onOpenPlayer, c, isDarkMode, language, sendFriendRequest]);
+
+  // Build the flat list of section headers + rows once per data change, so typing in
+  // the search box doesn't rebuild it (and re-render every friend row) on each keystroke.
+  const combinedData = useMemo(
+    () => [
+      ...(pendingRequests.length > 0
+        ? [
+            {
+              type: 'header',
+              title: language === 'fr' ? 'Demandes en attente' : 'Pending requests',
+            },
+            ...pendingRequests.map((r) => ({ ...r, type: 'pending' })),
+          ]
+        : []),
+      ...(friends.length > 0
+        ? [
+            { type: 'header', title: language === 'fr' ? 'Mes amis' : 'My friends' },
+            ...friends.map((f) => ({ ...f, type: 'friend' })),
+          ]
+        : []),
+    ],
+    [pendingRequests, friends, language],
+  );
+
+  const renderCombinedItem = useCallback(
+    ({ item }: { item: any }) => {
+      if (item.type === 'header')
+        return <Text style={[styles.sectionTitle, { color: c.textMuted }]}>{item.title}</Text>;
+      if (item.type === 'pending') return renderPending({ item });
+      if (item.type === 'friend') return renderFriend({ item });
+      return null;
+    },
+    [c, renderPending, renderFriend],
   );
 
   return (
@@ -273,6 +313,7 @@ export default function Friends({ session, onBack, onOpenPlayer, isDarkMode, lan
           <TouchableOpacity
             onPress={onBack}
             style={[styles.backButton, isDarkMode ? styles.backButtonDark : styles.backButtonLight]}
+            hitSlop={ICON_HIT_SLOP}
             accessibilityRole="button"
             accessibilityLabel={tr(language, 'Retour au menu', 'Back to menu')}
           >
@@ -297,7 +338,11 @@ export default function Friends({ session, onBack, onOpenPlayer, isDarkMode, lan
             onSubmitEditing={searchUsers}
             returnKeyType="search"
           />
-          <TouchableOpacity style={styles.searchButton} onPress={searchUsers}>
+          <TouchableOpacity
+            style={styles.searchButton}
+            onPress={searchUsers}
+            {...a11yButton(tr(language, 'Rechercher', 'Search'))}
+          >
             <Ionicons name="search" size={24} color="#fff" />
           </TouchableOpacity>
         </View>
@@ -316,7 +361,7 @@ export default function Friends({ session, onBack, onOpenPlayer, isDarkMode, lan
             </Text>
             <FlatList
               data={searchResults}
-              keyExtractor={(item) => item.id}
+              keyExtractor={searchKeyExtractor}
               renderItem={renderSearchResult}
             />
           </View>
@@ -326,40 +371,9 @@ export default function Friends({ session, onBack, onOpenPlayer, isDarkMode, lan
           <ActivityIndicator style={{ marginTop: 50 }} size="large" color={c.accent} />
         ) : (
           <FlatList
-            data={[
-              ...(pendingRequests.length > 0
-                ? [
-                    {
-                      type: 'header',
-                      title: language === 'fr' ? 'Demandes en attente' : 'Pending requests',
-                    },
-                    ...pendingRequests.map((r) => ({ ...r, type: 'pending' })),
-                  ]
-                : []),
-              ...(friends.length > 0
-                ? [
-                    { type: 'header', title: language === 'fr' ? 'Mes amis' : 'My friends' },
-                    ...friends.map((f) => ({ ...f, type: 'friend' })),
-                  ]
-                : []),
-            ]}
-            keyExtractor={(item) => item.type + '-' + (item.id || item.title)}
-            renderItem={({ item }) => {
-              if (item.type === 'header')
-                return (
-                  <Text
-                    style={[
-                      styles.sectionTitle,
-                      { color: c.textMuted },
-                    ]}
-                  >
-                    {item.title}
-                  </Text>
-                );
-              if (item.type === 'pending') return renderPending({ item });
-              if (item.type === 'friend') return renderFriend({ item });
-              return null;
-            }}
+            data={combinedData}
+            keyExtractor={combinedKeyExtractor}
+            renderItem={renderCombinedItem}
             ListEmptyComponent={() =>
               !searchQuery ? (
                 <Text

@@ -11,11 +11,15 @@ import GlobeWebView from '../components/GlobeWebView';
 import type { WebViewMessageEvent } from '../components/GlobeWebView';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { ChevronRight, Home, RotateCcw, Share2, Wifi } from 'lucide-react-native';
+import { Check, ChevronRight, Home, RotateCcw, Share2, Wifi } from 'lucide-react-native';
+import { AtlasGlobe, AtlasCheck, AtlasCross } from '../components/AtlasIcons';
 import type { User } from '@supabase/supabase-js';
 
-import type { GameMode, Language, Match } from '../types';
+import type { GameMode, Match } from '../types';
 import { getColors, PALETTE } from '../theme/colors';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
+import { getMapPalette } from '../theme/mapPalette';
 import { FONTS } from '../theme/typography';
 import { getFlagUrl, prefetchFlags } from '../lib/flags';
 import { createSeededRng } from '../lib/rng';
@@ -24,6 +28,8 @@ import { track } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
 import rawCountriesStats from '../../assets/countries_stats.json';
 import rawWorldPolygons from '../../assets/world_polygons.json';
+import { a11yButton, announce, a11yImage, ICON_HIT_SLOP } from '../lib/a11y';
+import { ScoreText } from '../components/ScoreText';
 
 const DEFAULT_ROUNDS = 5;
 
@@ -37,8 +43,6 @@ interface CountryStat {
 }
 
 interface FindCountryGameProps {
-  isDarkMode: boolean;
-  language: Language;
   setGameMode: (mode: GameMode) => void;
   user?: User | null;
   matchData?: Match | null;
@@ -58,7 +62,7 @@ interface FindCountryGameProps {
 type Phase = 'loading' | 'playing' | 'result' | 'finished';
 
 interface GlobeMessage {
-  type: 'GLOBE_READY' | 'COUNTRY_CLICKED' | 'GLOBE_ERROR';
+  type: 'GLOBE_READY' | 'COUNTRY_SELECTED' | 'GLOBE_ERROR';
   cca3?: string;
   msg?: string;
 }
@@ -83,7 +87,8 @@ function buildGlobeHtml(
   isDark: boolean,
   polygons: WorldPolygon[],
 ): string {
-  const bg = isDark ? '#0f172a' : '#0d2b5e';
+  const pal = getMapPalette(isDark);
+  const bg = pal.bg;
   const dots = JSON.stringify(countries.map((c) => ({ cca3: c.cca3, lat: c.lat, lng: c.lng })));
   const polys = JSON.stringify(polygons);
 
@@ -102,6 +107,7 @@ canvas{display:block;position:absolute;top:0;left:0;touch-action:none;}
 <script>
 var COUNTRIES=${dots};
 var POLYGONS=${polys};
+var PAL=${JSON.stringify(pal)};
 var dpr=window.devicePixelRatio||1;
 var canvas=document.getElementById('c');
 var ctx=canvas.getContext('2d');
@@ -167,12 +173,12 @@ POLYGONS.forEach(function(p,i){polyMap[p.id]=i;});
 function drawGlobe(resultMode,correct,picked){
   ctx.clearRect(0,0,W,H);
   var g=ctx.createRadialGradient(cx-R*0.2,cy-R*0.2,R*0.05,cx,cy,R);
-  g.addColorStop(0,'#1a4a8a');g.addColorStop(1,'#0a1a3a');
+  g.addColorStop(0,PAL.ocean0);g.addColorStop(1,PAL.ocean1);
   ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
 
   ctx.save();ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.clip();
 
-  ctx.strokeStyle='rgba(100,160,255,0.10)';ctx.lineWidth=0.5;
+  ctx.strokeStyle=PAL.grat;ctx.lineWidth=0.5;
   for(var la=-60;la<=60;la+=30){
     var f1=true;
     for(var lo=-180;lo<=180;lo+=3){
@@ -191,13 +197,13 @@ function drawGlobe(resultMode,correct,picked){
   for(var pi=0;pi<POLYGONS.length;pi++){
     var poly=POLYGONS[pi],id=poly.id,fill,stroke,lw;
     if(resultMode){
-      if(id===correct){fill='rgba(16,185,129,0.75)';stroke='#10b981';lw=1.2;}
-      else if(id===picked&&id!==correct){fill='rgba(239,68,68,0.70)';stroke='#ef4444';lw=1.2;}
-      else{fill='rgba(22,58,140,0.75)';stroke='rgba(80,130,220,0.50)';lw=0.6;}
+      if(id===correct){fill=PAL.okF;stroke=PAL.okS;lw=1.2;}
+      else if(id===picked&&id!==correct){fill=PAL.badF;stroke=PAL.badS;lw=1.2;}
+      else{fill=PAL.landF;stroke=PAL.landS;lw=0.6;}
     }else{
-      if(id===sel){fill='rgba(251,191,36,0.80)';stroke='#fbbf24';lw=1.5;}
-      else if(!locked&&id===hov){fill='rgba(38,82,170,0.88)';stroke='rgba(120,185,255,1.0)';lw=2.2;}
-      else{fill='rgba(22,58,140,0.75)';stroke='rgba(80,130,220,0.50)';lw=0.6;}
+      if(id===sel){fill=PAL.selF;stroke=PAL.selS;lw=1.5;}
+      else if(!locked&&id===hov){fill=PAL.hovF;stroke=PAL.hovS;lw=2.2;}
+      else{fill=PAL.landF;stroke=PAL.landS;lw=0.6;}
     }
     pathPolygon(poly.r);
     ctx.fillStyle=fill;ctx.fill();
@@ -209,12 +215,12 @@ function drawGlobe(resultMode,correct,picked){
     var p=project(c.lat,c.lng);if(!p)return;
     var alpha=0.4+p.d*0.6,dotR=4,color,glow=false;
     if(resultMode){
-      if(c.cca3===correct){dotR=9;color='#10b981';glow=true;}
-      else if(c.cca3===picked&&c.cca3!==correct){dotR=9;color='#ef4444';glow=true;}
-      else color='rgba(56,189,248,'+alpha+')';
+      if(c.cca3===correct){dotR=9;color=PAL.okS;glow=true;}
+      else if(c.cca3===picked&&c.cca3!==correct){dotR=9;color=PAL.badS;glow=true;}
+      else color=PAL.dot+alpha+')';
     }else{
-      if(c.cca3===sel){dotR=9;color='#fbbf24';glow=true;}
-      else color='rgba(56,189,248,'+alpha+')';
+      if(c.cca3===sel){dotR=9;color=PAL.selS;glow=true;}
+      else color=PAL.dot+alpha+')';
     }
     if(glow){ctx.shadowColor=color;ctx.shadowBlur=12;}
     ctx.beginPath();ctx.arc(p.sx,p.sy,dotR,0,Math.PI*2);
@@ -223,10 +229,12 @@ function drawGlobe(resultMode,correct,picked){
 
   ctx.restore();
   ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);
-  ctx.strokeStyle='rgba(100,160,255,0.30)';ctx.lineWidth=1.5;ctx.stroke();
-  var atm=ctx.createRadialGradient(cx,cy,R*0.96,cx,cy,R*1.06);
-  atm.addColorStop(0,'rgba(100,160,255,0.20)');atm.addColorStop(1,'rgba(100,160,255,0)');
-  ctx.beginPath();ctx.arc(cx,cy,R*1.06,0,Math.PI*2);ctx.fillStyle=atm;ctx.fill();
+  ctx.strokeStyle=PAL.rim;ctx.lineWidth=1.5;ctx.stroke();
+  if(PAL.atm){
+    var atm=ctx.createRadialGradient(cx,cy,R*0.96,cx,cy,R*1.06);
+    atm.addColorStop(0,PAL.atm);atm.addColorStop(1,PAL.atmEnd);
+    ctx.beginPath();ctx.arc(cx,cy,R*1.06,0,Math.PI*2);ctx.fillStyle=atm;ctx.fill();
+  }
 }
 
 function render(){drawGlobe(false,null,null);}
@@ -311,8 +319,8 @@ function handleTap(tx,ty){
     if(best)hit=best.cca3;
   }
   if(!hit)return;
-  sel=hit;locked=true;render();
-  postMsg({type:'COUNTRY_CLICKED',cca3:hit});
+  sel=hit;render();
+  postMsg({type:'COUNTRY_SELECTED',cca3:hit});
 }
 
 window.resetRound=function(){sel=null;locked=false;hov=null;canvas.style.cursor='default';render();};
@@ -339,8 +347,6 @@ requestAnimationFrame(setup);
 }
 
 export default function FindCountryGame({
-  isDarkMode,
-  language,
   setGameMode,
   user,
   matchData,
@@ -351,6 +357,8 @@ export default function FindCountryGame({
   onShare,
   onDailyScoreChange,
 }: FindCountryGameProps) {
+  const { isDarkMode } = useTheme();
+  const { language } = useLanguage();
   const colors = getColors(isDarkMode);
   const isOnline = !!matchData;
   const isPlayer1 = matchData?.player1_id === user?.id;
@@ -407,6 +415,32 @@ export default function FindCountryGame({
   const webViewRef = useRef<any>(null);
   const current = rounds[index];
   const isCorrect = selectedCca3 === current.cca3;
+  const countryName = language === 'fr' ? current.name : (current.name_en ?? current.name);
+
+  // Announce each find result (correct/wrong + the target name) for screen readers.
+  useEffect(() => {
+    if (phase !== 'result') return;
+    announce(
+      isCorrect
+        ? tr(language, `Correct ! ${countryName}`, `Correct! ${countryName}`)
+        : tr(language, `Raté ! C'était ${countryName}`, `Wrong! It was ${countryName}`),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
+
+  // Announce the final score when the game finishes.
+  useEffect(() => {
+    if (phase !== 'finished') return;
+    const correctCount = score / 1000;
+    announce(
+      tr(
+        language,
+        `Partie terminée. Score : ${correctCount} sur ${totalRounds}.`,
+        `Game over. Score: ${correctCount} out of ${totalRounds}.`,
+      ),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
 
   const handleMessage = useCallback(
     (event: WebViewMessageEvent) => {
@@ -418,22 +452,26 @@ export default function FindCountryGame({
       }
       if (msg.type === 'GLOBE_READY') {
         setPhase('playing');
-      } else if (msg.type === 'COUNTRY_CLICKED' && msg.cca3) {
-        const cca3 = msg.cca3;
-        const correct = cca3 === current.cca3;
-        if (correct) setScore((s) => s + 1000);
-        roundResults.current.push(correct);
-        setSelectedCca3(cca3);
-        setPhase('result');
-        webViewRef.current?.injectJavaScript(
-          `window.showResult('${current.cca3}','${cca3}');true;`,
-        );
+      } else if (msg.type === 'COUNTRY_SELECTED' && msg.cca3) {
+        // Tentative pick — highlighted on the globe, validated only on confirm.
+        setSelectedCca3(msg.cca3);
       } else if (msg.type === 'GLOBE_ERROR') {
         setErrorMsg(msg.msg ?? 'Globe failed to load');
       }
     },
-    [current.cca3],
+    [],
   );
+
+  const handleConfirm = () => {
+    if (!selectedCca3 || phase !== 'playing') return;
+    const correct = selectedCca3 === current.cca3;
+    if (correct) setScore((s) => s + 1000);
+    roundResults.current.push(correct);
+    setPhase('result');
+    webViewRef.current?.injectJavaScript(
+      `window.showResult('${current.cca3}','${selectedCca3}');true;`,
+    );
+  };
 
   const handleNext = () => {
     if (index + 1 >= totalRounds) {
@@ -479,13 +517,15 @@ export default function FindCountryGame({
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <StatusBar style={isDarkMode ? 'light' : 'dark'} />
         <View style={styles.centered}>
-            <Text style={styles.finishedEmoji}>🌍</Text>
+            <View style={{ marginBottom: 8 }} {...a11yImage(tr(language, 'Globe', 'Globe'))}>
+              <AtlasGlobe color={PALETTE.oceanBlue} size={64} />
+            </View>
             <Text style={[styles.finishedTitle, { color: colors.text }]}>
               {tr(language, 'Partie terminée !', 'Game over!')}
             </Text>
-            <Text style={[styles.finishedScore, { color: PALETTE.sand }]}>
+            <ScoreText style={[styles.finishedScore, { color: PALETTE.sand }]}>
               {correctCount} / {totalRounds}
-            </Text>
+            </ScoreText>
             <Text style={[styles.finishedSub, { color: colors.textMuted }]}>
               {Math.round((correctCount / totalRounds) * 100)}
               {tr(language, '% de réussite', '% success rate')}
@@ -495,6 +535,7 @@ export default function FindCountryGame({
                 <TouchableOpacity
                   style={[styles.btn, { backgroundColor: PALETTE.chartBlue }]}
                   onPress={onShare}
+                  {...a11yButton(tr(language, 'Partager', 'Share'))}
                 >
                   <Share2 color="white" size={18} />
                   <Text style={styles.btnText}>{tr(language, 'Partager', 'Share')}</Text>
@@ -503,6 +544,7 @@ export default function FindCountryGame({
                 <TouchableOpacity
                   style={[styles.btn, { backgroundColor: PALETTE.chartBlue }]}
                   onPress={handleReplay}
+                  {...a11yButton(tr(language, 'Rejouer', 'Play again'))}
                 >
                   <RotateCcw color="white" size={18} />
                   <Text style={styles.btnText}>{tr(language, 'Rejouer', 'Play again')}</Text>
@@ -518,6 +560,7 @@ export default function FindCountryGame({
                   },
                 ]}
                 onPress={() => setGameMode('menu')}
+                {...a11yButton(tr(language, 'Menu', 'Menu'))}
               >
                 <Home color={colors.text} size={18} />
                 <Text style={[styles.btnText, { color: colors.text }]}>Menu</Text>
@@ -540,7 +583,12 @@ export default function FindCountryGame({
             { backgroundColor: colors.card, borderBottomColor: colors.border },
           ]}
         >
-          <TouchableOpacity onPress={() => setGameMode('menu')} style={styles.backBtn}>
+          <TouchableOpacity
+            onPress={() => setGameMode('menu')}
+            style={styles.backBtn}
+            hitSlop={ICON_HIT_SLOP}
+            {...a11yButton(tr(language, 'Menu', 'Menu'))}
+          >
             <Home color={colors.textMuted} size={20} />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
@@ -549,7 +597,7 @@ export default function FindCountryGame({
             </Text>
             {isOnline ? (
               <View style={styles.scoreRow}>
-                <Wifi size={12} color="#10b981" />
+                <Wifi size={12} color={PALETTE.forestGreen} />
                 <Text style={[styles.scoreLabel, { color: PALETTE.sand }]}>{score}</Text>
                 <Text style={[styles.scoreSep, { color: colors.textMuted }]}>vs</Text>
                 <Text style={[styles.scoreLabel, { color: colors.textMuted }]}>{opponentScore}</Text>
@@ -589,6 +637,7 @@ export default function FindCountryGame({
                   <TouchableOpacity
                     style={[styles.btn, { backgroundColor: PALETTE.chartBlue, alignSelf: 'center' }]}
                     onPress={() => setGameMode('menu')}
+                    {...a11yButton(tr(language, 'Menu', 'Menu'))}
                   >
                     <Home color="white" size={18} />
                     <Text style={styles.btnText}>Menu</Text>
@@ -622,7 +671,7 @@ export default function FindCountryGame({
           />
         </View>
 
-        {/* Hint bar (playing) */}
+        {/* Hint / confirm bar (playing) */}
         {phase === 'playing' && (
           <View
             style={[
@@ -630,9 +679,25 @@ export default function FindCountryGame({
               { backgroundColor: colors.card, borderTopColor: colors.border },
             ]}
           >
-            <Text style={[styles.hint, { color: colors.textMuted }]}>
-              {tr(language, 'Tape sur le pays pour répondre', 'Tap the country to answer')}
-            </Text>
+            {selectedCca3 ? (
+              <View style={styles.confirmRow}>
+                <Text style={[styles.hint, { color: colors.textMuted, flex: 1, textAlign: 'left' }]}>
+                  {tr(language, 'Confirme ton choix', 'Confirm your pick')}
+                </Text>
+                <TouchableOpacity
+                  style={[styles.confirmBtn, { backgroundColor: PALETTE.chartBlue }]}
+                  onPress={handleConfirm}
+                  {...a11yButton(tr(language, 'Valider', 'Confirm'))}
+                >
+                  <Check color="white" size={18} />
+                  <Text style={styles.confirmBtnText}>{tr(language, 'Valider', 'Confirm')}</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <Text style={[styles.hint, { color: colors.textMuted }]}>
+                {tr(language, 'Tape sur le pays puis valide', 'Tap the country, then confirm')}
+              </Text>
+            )}
           </View>
         )}
 
@@ -643,13 +708,26 @@ export default function FindCountryGame({
               styles.resultBar,
               {
                 backgroundColor: isCorrect
-                  ? 'rgba(16,185,129,0.95)'
-                  : 'rgba(239,68,68,0.95)',
+                  ? 'rgba(42,110,63,0.95)'
+                  : 'rgba(139,26,26,0.95)',
               },
             ]}
           >
             <View style={styles.resultRow}>
-              <Text style={styles.resultEmoji}>{isCorrect ? '✅' : '❌'}</Text>
+              <View
+                style={styles.resultEmoji}
+                {...a11yImage(
+                  isCorrect
+                    ? tr(language, 'Correct', 'Correct')
+                    : tr(language, 'Incorrect', 'Incorrect'),
+                )}
+              >
+                {isCorrect ? (
+                  <AtlasCheck color={PALETTE.forestGreen} size={32} />
+                ) : (
+                  <AtlasCross color={PALETTE.dangerRed} size={32} />
+                )}
+              </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.resultTitle}>
                   {isCorrect
@@ -664,7 +742,15 @@ export default function FindCountryGame({
                 </View>
               </View>
             </View>
-            <TouchableOpacity style={styles.nextBtn} onPress={handleNext}>
+            <TouchableOpacity
+              style={styles.nextBtn}
+              onPress={handleNext}
+              {...a11yButton(
+                index + 1 < totalRounds
+                  ? tr(language, 'Suivant', 'Next')
+                  : tr(language, 'Résultats', 'Results'),
+              )}
+            >
               <Text style={styles.nextBtnText}>
                 {index + 1 < totalRounds
                   ? tr(language, 'Suivant', 'Next')
@@ -735,10 +821,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   hint: { fontSize: 14, textAlign: 'center', fontFamily: FONTS.mono },
+  confirmRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    width: '100%',
+  },
+  confirmBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+  },
+  confirmBtnText: { color: 'white', fontFamily: FONTS.monoBold, fontSize: 15 },
 
   resultBar: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20, gap: 12 },
   resultRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  resultEmoji: { fontSize: 32 },
+  resultEmoji: { alignItems: 'center', justifyContent: 'center' },
   resultTitle: { color: 'white', fontFamily: FONTS.headingBlack, fontSize: 18 },
   resultFlag: { width: 32, height: 22, borderRadius: 3 },
   resultName: { color: 'white', fontFamily: FONTS.monoBold, fontSize: 15 },

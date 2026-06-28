@@ -20,12 +20,14 @@ import {
   getPart,
   normalizeConfig,
 } from '../data/cosmetics';
-import type { AvatarConfig, CosmeticCategory, CosmeticPart, Language } from '../types';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
+import { a11yButton, announce } from '../lib/a11y';
+import type { AvatarConfig, CosmeticCategory, CosmeticPart } from '../types';
+import type { Json } from '../types/database';
 
 interface AvatarEditorProps {
-  session: { user: { id: string } | null };
-  isDarkMode: boolean;
-  language: Language;
   onBack: () => void;
   onOpenShop: () => void;
 }
@@ -56,8 +58,11 @@ function tileConfig(part: CosmeticPart): AvatarConfig {
   return { v: 4, useCustom: true, layers };
 }
 
-export default function AvatarEditor({ session, isDarkMode, language, onBack, onOpenShop }: AvatarEditorProps) {
-  const userId = session.user?.id ?? '';
+export default function AvatarEditor({ onBack, onOpenShop }: AvatarEditorProps) {
+  const { user } = useAuth();
+  const { isDarkMode } = useTheme();
+  const { language } = useLanguage();
+  const userId = user?.id ?? '';
   const c = getColors(isDarkMode);
 
   const [config, setConfig] = useState<AvatarConfig>(() => cloneConfig(DEFAULT_AVATAR_CONFIG));
@@ -74,7 +79,7 @@ export default function AvatarEditor({ session, isDarkMode, language, onBack, on
       supabase.from('user_cosmetics').select('item_id').eq('user_id', userId),
     ]);
     if (profile?.avatar_config) {
-      setConfig(normalizeConfig(profile.avatar_config as AvatarConfig));
+      setConfig(normalizeConfig(profile.avatar_config as unknown as AvatarConfig));
     }
     setOwned(new Set((cosmetics ?? []).map((r) => r.item_id as string)));
     setLoading(false);
@@ -116,12 +121,15 @@ export default function AvatarEditor({ session, isDarkMode, language, onBack, on
 
   const save = async () => {
     setSaving(true);
-    const { error } = await supabase.rpc('equip_cosmetics', { p_config: normalizeConfig(config) });
+    const { error } = await supabase.rpc('equip_cosmetics', {
+      p_config: normalizeConfig(config) as unknown as Json,
+    });
     setSaving(false);
     if (error) {
       Alert.alert(tr(language, 'Erreur', 'Error'), error.message);
       return;
     }
+    announce(tr(language, 'Monde enregistré', 'World saved'));
     onBack();
   };
 
@@ -203,6 +211,10 @@ export default function AvatarEditor({ session, isDarkMode, language, onBack, on
                       styles.tab,
                       { borderColor: active ? c.accent : c.border, backgroundColor: active ? c.accent : c.card },
                     ]}
+                    {...a11yButton(tr(language, CATEGORY_LABELS[cat][0], CATEGORY_LABELS[cat][1]), {
+                      selected: active,
+                      role: 'tab',
+                    })}
                   >
                     <Text style={[styles.tabText, { color: active ? '#fff' : c.textMuted }]}>
                       {tr(language, CATEGORY_LABELS[cat][0], CATEGORY_LABELS[cat][1])}
@@ -224,6 +236,7 @@ export default function AvatarEditor({ session, isDarkMode, language, onBack, on
                       key={tint}
                       onPress={() => selectTint(tint)}
                       style={[styles.swatch, { backgroundColor: tint, borderColor: selected ? c.text : c.border, borderWidth: selected ? 3 : 1 }]}
+                      {...a11yButton(tr(language, `Couleur ${tint}`, `Color ${tint}`), { selected })}
                     />
                   );
                 })}
@@ -235,6 +248,10 @@ export default function AvatarEditor({ session, isDarkMode, language, onBack, on
               {parts.map((part) => {
                 const ownedPart = isOwned(part);
                 const selected = activeLayer?.id === part.id;
+                const partName = language === 'fr' ? part.nameFr : part.nameEn;
+                const tileLabel = ownedPart
+                  ? partName
+                  : tr(language, `${partName}, verrouillé, ${part.price} pièces`, `${partName}, locked, ${part.price} coins`);
                 return (
                   <TouchableOpacity
                     key={part.id}
@@ -244,6 +261,10 @@ export default function AvatarEditor({ session, isDarkMode, language, onBack, on
                       styles.tile,
                       { backgroundColor: c.card, borderColor: selected ? c.accent : c.border, borderWidth: selected ? 3 : 1 },
                     ]}
+                    {...a11yButton(tileLabel, {
+                      selected,
+                      hint: ownedPart ? undefined : tr(language, 'Ouvrir la boutique pour débloquer', 'Open shop to unlock'),
+                    })}
                   >
                     {renderTileVisual(part, ownedPart)}
                     {!part.isDefault && (
@@ -268,8 +289,10 @@ export default function AvatarEditor({ session, isDarkMode, language, onBack, on
             <TouchableOpacity
               onPress={save}
               disabled={saving}
-              accessibilityRole="button"
-              accessibilityLabel={tr(language, 'Enregistrer mon monde', 'Save my world')}
+              {...a11yButton(tr(language, 'Enregistrer mon monde', 'Save my world'), {
+                disabled: saving,
+                busy: saving,
+              })}
               style={[styles.saveBtn, { backgroundColor: c.accent, opacity: saving ? 0.6 : 1 }]}
             >
               {saving ? (

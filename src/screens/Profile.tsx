@@ -19,6 +19,7 @@ import { Bell, Camera, Check, Coins, Eye, EyeOff, ArrowLeft, LayoutGrid, LogOut,
 
 import { supabase } from '../lib/supabase';
 import { useCachedData } from '../lib/cache';
+import { isValidUsername, usernameError, USERNAME_MAX } from '../lib/validation';
 import { cancelDailyReminder, getDailyReminderPrefs, scheduleDailyReminder } from '../lib/notifications';
 import { track } from '../lib/analytics';
 import { getColors } from '../theme/colors';
@@ -29,12 +30,14 @@ import { Avatar } from '../components/Avatar';
 import { WorldAvatar } from '../components/WorldAvatar';
 import { deriveDefaultConfigFromSeed, normalizeConfig } from '../data/cosmetics';
 import { tr } from '../i18n';
-import type { AvatarConfig, Language, MatchMode } from '../types';
+import { a11yButton, ICON_HIT_SLOP } from '../lib/a11y';
+import { ScoreText } from '../components/ScoreText';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
+import type { AvatarConfig, MatchMode } from '../types';
 
 interface ProfileProps {
-  session: { user: { id: string; email?: string | null } | null };
-  isDarkMode: boolean;
-  language: Language;
   onBack: () => void;
   onLoggedOut: () => void;
   onEditAvatar: () => void;
@@ -85,9 +88,12 @@ function base64ToBytes(base64: string): Uint8Array {
   return bytes;
 }
 
-export default function Profile({ session, isDarkMode, language, onBack, onLoggedOut, onEditAvatar, onOpenShop, isAdmin, onOpenAdmin }: ProfileProps) {
-  const userId = session.user?.id ?? '';
-  const email = session.user?.email ?? '';
+export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop, isAdmin, onOpenAdmin }: ProfileProps) {
+  const { user } = useAuth();
+  const { isDarkMode } = useTheme();
+  const { language } = useLanguage();
+  const userId = user?.id ?? '';
+  const email = user?.email ?? '';
   const c = getColors(isDarkMode);
 
   const [username, setUsername] = useState('');
@@ -106,9 +112,10 @@ export default function Profile({ session, isDarkMode, language, onBack, onLogge
   const [savingName, setSavingName] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  // Daily-reminder opt-in (local notification; preference stored in AsyncStorage).
+  // Daily reminder — ON by default for everyone, opt-out (local notification;
+  // preference stored in AsyncStorage).
   const REMINDER_TIMES = ['08:00', '09:00', '12:00', '18:00', '20:00'];
-  const [reminderOn, setReminderOn] = useState(false);
+  const [reminderOn, setReminderOn] = useState(true);
   const [reminderTime, setReminderTime] = useState('09:00');
   useEffect(() => {
     getDailyReminderPrefs().then((p) => {
@@ -181,7 +188,7 @@ export default function Profile({ session, isDarkMode, language, onBack, onLogge
       username: profile?.username ?? '',
       avatarUrl: profile?.avatar_url ?? null,
       avatarConfig: profile?.avatar_config
-        ? normalizeConfig(profile.avatar_config as AvatarConfig)
+        ? normalizeConfig(profile.avatar_config as unknown as AvatarConfig)
         : null,
       showRank: profile?.show_rank ?? true,
       coins: walletRes.data?.balance ?? 0,
@@ -222,13 +229,17 @@ export default function Profile({ session, isDarkMode, language, onBack, onLogge
     setBestStreak(snapshot.bestStreak);
   }, [snapshot]);
 
+  // Inline username validation: only allow saving a changed, well-formed name.
+  const usernameErr = usernameError(language, username);
+  const canSaveName = isValidUsername(username) && username.trim() !== savedUsername;
+
   const saveUsername = async () => {
     const trimmed = username.trim();
-    if (!trimmed || trimmed === savedUsername) return;
+    if (!isValidUsername(username) || trimmed === savedUsername) return;
     setSavingName(true);
     const { error } = await supabase
       .from('profiles')
-      .upsert({ id: userId, username: trimmed, updated_at: new Date() });
+      .upsert({ id: userId, username: trimmed, updated_at: new Date().toISOString() });
     setSavingName(false);
     if (error) {
       Alert.alert(tr(language, 'Erreur', 'Error'), error.message);
@@ -241,7 +252,7 @@ export default function Profile({ session, isDarkMode, language, onBack, onLogge
     setShowRank(value);
     const { error } = await supabase
       .from('profiles')
-      .upsert({ id: userId, show_rank: value, updated_at: new Date() });
+      .upsert({ id: userId, show_rank: value, updated_at: new Date().toISOString() });
     if (error) {
       setShowRank(!value);
       Alert.alert(tr(language, 'Erreur', 'Error'), error.message);
@@ -293,7 +304,7 @@ export default function Profile({ session, isDarkMode, language, onBack, onLogge
 
       const { error: saveError } = await supabase
         .from('profiles')
-        .upsert({ id: userId, avatar_url: publicUrl, updated_at: new Date() });
+        .upsert({ id: userId, avatar_url: publicUrl, updated_at: new Date().toISOString() });
       if (saveError) throw saveError;
 
       setAvatarUrl(publicUrl);
@@ -382,13 +393,21 @@ export default function Profile({ session, isDarkMode, language, onBack, onLogge
 
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: c.border }]}>
-        <TouchableOpacity onPress={onBack} style={[styles.iconBtn, { backgroundColor: c.card, borderColor: c.border }]}>
+        <TouchableOpacity
+          onPress={onBack}
+          style={[styles.iconBtn, { backgroundColor: c.card, borderColor: c.border }]}
+          {...a11yButton(tr(language, 'Retour', 'Back'))}
+        >
           <ArrowLeft color={c.text} size={20} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: c.text }]}>
           {tr(language, 'Mon Profil', 'My Profile')}
         </Text>
-        <TouchableOpacity onPress={logout} style={[styles.iconBtn, { backgroundColor: c.card, borderColor: c.border }]}>
+        <TouchableOpacity
+          onPress={logout}
+          style={[styles.iconBtn, { backgroundColor: c.card, borderColor: c.border }]}
+          {...a11yButton(tr(language, 'Déconnexion', 'Logout'))}
+        >
           <LogOut color="#8b1a1a" size={20} />
         </TouchableOpacity>
       </View>
@@ -420,15 +439,31 @@ export default function Profile({ session, isDarkMode, language, onBack, onLogge
 
             {/* Avatar actions */}
             <View style={styles.avatarActions}>
-              <TouchableOpacity onPress={pickAndUploadAvatar} disabled={uploading} style={[styles.avatarActionBtn, { backgroundColor: c.background, borderColor: c.border }]}>
+              <TouchableOpacity
+                onPress={pickAndUploadAvatar}
+                disabled={uploading}
+                style={[styles.avatarActionBtn, { backgroundColor: c.background, borderColor: c.border }]}
+                {...a11yButton(tr(language, 'Changer la photo de profil', 'Change profile photo'), {
+                  disabled: uploading,
+                  busy: uploading,
+                })}
+              >
                 {uploading ? <ActivityIndicator size="small" color={c.accent} /> : <Camera color={c.textMuted} size={15} />}
                 <Text style={[styles.avatarActionText, { color: c.textMuted }]}>{tr(language, 'Photo', 'Photo')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={onEditAvatar} style={[styles.avatarActionBtn, { backgroundColor: c.background, borderColor: c.border }]}>
+              <TouchableOpacity
+                onPress={onEditAvatar}
+                style={[styles.avatarActionBtn, { backgroundColor: c.background, borderColor: c.border }]}
+                {...a11yButton(tr(language, 'Personnaliser l\'avatar', 'Customize avatar'))}
+              >
                 <Palette color={c.accent} size={15} />
                 <Text style={[styles.avatarActionText, { color: c.accent }]}>{tr(language, 'Personnaliser', 'Customize')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={onOpenShop} style={[styles.avatarActionBtn, { backgroundColor: c.background, borderColor: c.border }]}>
+              <TouchableOpacity
+                onPress={onOpenShop}
+                style={[styles.avatarActionBtn, { backgroundColor: c.background, borderColor: c.border }]}
+                {...a11yButton(tr(language, `Boutique, ${coins} pièces`, `Shop, ${coins} coins`))}
+              >
                 <Coins color="#ffd700" size={15} />
                 <Text style={[styles.avatarActionText, { color: c.text }]}>{coins}</Text>
                 <ShoppingBag color={c.textMuted} size={15} />
@@ -446,22 +481,30 @@ export default function Profile({ session, isDarkMode, language, onBack, onLogge
                 placeholderTextColor={c.textFaint}
                 style={[styles.nameInput, { color: c.text }]}
                 autoCapitalize="none"
-                maxLength={20}
+                autoCorrect={false}
+                maxLength={USERNAME_MAX}
+                returnKeyType="done"
+                onSubmitEditing={saveUsername}
               />
               <TouchableOpacity
                 onPress={saveUsername}
-                disabled={savingName || !username.trim() || username.trim() === savedUsername}
+                disabled={savingName || !canSaveName}
+                hitSlop={ICON_HIT_SLOP}
                 style={[
                   styles.nameSaveBtn,
-                  {
-                    backgroundColor:
-                      !username.trim() || username.trim() === savedUsername ? c.border : c.accent,
-                  },
+                  { backgroundColor: canSaveName ? c.accent : c.border },
                 ]}
+                {...a11yButton(tr(language, 'Enregistrer le pseudo', 'Save username'), {
+                  disabled: savingName || !canSaveName,
+                  busy: savingName,
+                })}
               >
                 {savingName ? <ActivityIndicator size="small" color="#fff" /> : <Check color="#fff" size={18} />}
               </TouchableOpacity>
             </View>
+            {usernameErr && (
+              <Text style={[styles.nameError, { color: '#c0392b' }]}>{usernameErr}</Text>
+            )}
           </View>
 
           {/* Ranked rank with show/hide toggle */}
@@ -480,6 +523,8 @@ export default function Profile({ session, isDarkMode, language, onBack, onLogge
                   onValueChange={toggleShowRank}
                   trackColor={{ false: c.border, true: rank.color }}
                   thumbColor="#fff"
+                  accessibilityLabel={tr(language, 'Afficher mon rang aux autres joueurs', 'Show my rank to other players')}
+                  accessibilityState={{ checked: showRank }}
                 />
               </View>
             </View>
@@ -490,9 +535,9 @@ export default function Profile({ session, isDarkMode, language, onBack, onLogge
                 <Text style={[styles.rankName, { color: rank.color }]}>
                   {language === 'fr' ? rank.nameFr : rank.name}
                 </Text>
-                <Text style={[styles.eloText, { color: c.text }]}>
+                <ScoreText style={[styles.eloText, { color: c.text }]}>
                   {elo} <Text style={{ color: c.textFaint, fontSize: 12 }}>ELO</Text>
-                </Text>
+                </ScoreText>
                 <View style={styles.wlRow}>
                   <Text style={[styles.wlStat, { color: '#2a6e3f' }]}>{wins}V</Text>
                   <Text style={{ color: c.textFaint }}> · </Text>
@@ -548,12 +593,12 @@ export default function Profile({ session, isDarkMode, language, onBack, onLogge
             <View style={[styles.recordCard, { backgroundColor: c.card, borderColor: c.border }]}>
               <LayoutGrid size={20} color="#2a6e3f" />
               <Text style={[styles.recordLabel, { color: c.textFaint }]}>RANKLE</Text>
-              <Text style={[styles.recordValue, { color: '#2a6e3f' }]}>{bestClassic ?? '—'}</Text>
+              <ScoreText style={[styles.recordValue, { color: '#2a6e3f' }]}>{bestClassic ?? '—'}</ScoreText>
             </View>
             <View style={[styles.recordCard, { backgroundColor: c.card, borderColor: c.border }]}>
               <Zap size={20} color="#c4872a" />
               <Text style={[styles.recordLabel, { color: c.textFaint }]}>STREAK</Text>
-              <Text style={[styles.recordValue, { color: '#c4872a' }]}>{bestStreak ?? '—'}</Text>
+              <ScoreText style={[styles.recordValue, { color: '#c4872a' }]}>{bestStreak ?? '—'}</ScoreText>
             </View>
           </View>
 
@@ -574,12 +619,18 @@ export default function Profile({ session, isDarkMode, language, onBack, onLogge
                 onValueChange={toggleReminder}
                 trackColor={{ false: c.border, true: '#e8772e' }}
                 thumbColor="#fff"
+                accessibilityLabel={tr(language, 'Rappel quotidien', 'Daily reminder')}
+                accessibilityState={{ checked: reminderOn }}
               />
             </View>
             <TouchableOpacity
               onPress={cycleReminderTime}
               disabled={!reminderOn}
               style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6, opacity: reminderOn ? 1 : 0.5 }}
+              {...a11yButton(tr(language, `Heure du rappel, ${reminderTime}`, `Reminder time, ${reminderTime}`), {
+                hint: tr(language, 'Appuyer pour changer', 'Tap to change'),
+                disabled: !reminderOn,
+              })}
             >
               <Text style={[styles.hint, { color: c.textFaint }]}>
                 {tr(language, "Heure du rappel (appuie pour changer)", 'Reminder time (tap to change)')}
@@ -592,6 +643,7 @@ export default function Profile({ session, isDarkMode, language, onBack, onLogge
             <TouchableOpacity
               style={[styles.adminBtn, { backgroundColor: c.card, borderColor: c.accent }]}
               onPress={onOpenAdmin}
+              {...a11yButton(tr(language, 'Notifications push (Admin)', 'Push notifications (Admin)'))}
             >
               <Bell color={c.accent} size={18} />
               <Text style={[styles.adminText, { color: c.accent }]}>
@@ -600,12 +652,20 @@ export default function Profile({ session, isDarkMode, language, onBack, onLogge
             </TouchableOpacity>
           )}
 
-          <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
+          <TouchableOpacity
+            style={styles.logoutBtn}
+            onPress={logout}
+            {...a11yButton(tr(language, 'Déconnexion', 'Logout'))}
+          >
             <LogOut color="#fff" size={18} />
             <Text style={styles.logoutText}>{tr(language, 'Déconnexion', 'Logout')}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.linkBtn} onPress={openPrivacyPolicy}>
+          <TouchableOpacity
+            style={styles.linkBtn}
+            onPress={openPrivacyPolicy}
+            {...a11yButton(tr(language, 'Politique de confidentialité', 'Privacy Policy'), { role: 'link' })}
+          >
             <Text style={[styles.linkText, { color: c.textMuted }]}>
               {tr(language, 'Politique de confidentialité', 'Privacy Policy')}
             </Text>
@@ -616,6 +676,10 @@ export default function Profile({ session, isDarkMode, language, onBack, onLogge
             style={[styles.deleteBtn, { borderColor: '#8b1a1a' }]}
             onPress={confirmDeleteAccount}
             disabled={deleting}
+            {...a11yButton(tr(language, 'Supprimer mon compte', 'Delete my account'), {
+              disabled: deleting,
+              busy: deleting,
+            })}
           >
             {deleting ? (
               <ActivityIndicator size="small" color="#8b1a1a" />
@@ -687,6 +751,7 @@ const styles = StyleSheet.create({
     paddingRight: 6,
   },
   nameInput: { flex: 1, height: 48, fontSize: 16, fontFamily: FONTS.mono },
+  nameError: { fontSize: 11, fontFamily: FONTS.mono, marginTop: 6, marginLeft: 4 },
   nameSaveBtn: { width: 40, height: 36, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   sectionHeadRow: {
     flexDirection: 'row',

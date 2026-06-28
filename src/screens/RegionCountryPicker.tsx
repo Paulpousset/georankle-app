@@ -16,9 +16,12 @@ import Fuse from 'fuse.js';
 import { getColors, PALETTE } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { tr } from '../i18n';
+import { a11yButton, ICON_HIT_SLOP } from '../lib/a11y';
 import { getFlagUrl } from '../lib/flags';
 import { REGION_MANIFEST, type RegionCountry } from '../../assets/regions';
 import type { Language } from '../types';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import type { RegionLevelKey, RegionCountrySel } from './FindRegionGame';
 
 export interface RegionPick extends RegionCountrySel {
@@ -26,8 +29,6 @@ export interface RegionPick extends RegionCountrySel {
 }
 
 interface RegionCountryPickerProps {
-  isDarkMode: boolean;
-  language: Language;
   onPick: (pick: RegionPick) => void;
   onBack: () => void;
   title?: string;
@@ -40,12 +41,12 @@ function levelLabel(key: string, language: Language): string {
 }
 
 export default function RegionCountryPicker({
-  isDarkMode,
-  language,
   onPick,
   onBack,
   title,
 }: RegionCountryPickerProps) {
+  const { isDarkMode } = useTheme();
+  const { language } = useLanguage();
   const c = getColors(isDarkMode);
   const [search, setSearch] = useState('');
   const [chosen, setChosen] = useState<RegionCountry | null>(null);
@@ -83,7 +84,12 @@ export default function RegionCountryPicker({
       <SafeAreaView style={[styles.root, { backgroundColor: c.background }]}>
         <StatusBar style={isDarkMode ? 'light' : 'dark'} />
         <View style={[styles.header, { borderBottomColor: c.border }]}>
-          <TouchableOpacity onPress={() => setChosen(null)} style={styles.iconBtn}>
+          <TouchableOpacity
+            onPress={() => setChosen(null)}
+            style={styles.iconBtn}
+            hitSlop={ICON_HIT_SLOP}
+            {...a11yButton(tr(language, 'Retour', 'Back'))}
+          >
             <ArrowLeft color={c.text} size={22} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: c.text }]} numberOfLines={1}>
@@ -103,6 +109,9 @@ export default function RegionCountryPicker({
                 key={lvl.key}
                 onPress={() => select(chosen, lvl.key as RegionLevelKey)}
                 style={[styles.levelCard, { backgroundColor: c.card, borderColor: c.border }]}
+                {...a11yButton(`${levelLabel(lvl.key, language)}, ${lvl.count}`, {
+                  hint: tr(language, 'Choisir ce niveau', 'Choose this level'),
+                })}
               >
                 <Icon color={PALETTE.oceanBlue} size={26} />
                 <View style={{ flex: 1 }}>
@@ -126,7 +135,12 @@ export default function RegionCountryPicker({
     <SafeAreaView style={[styles.root, { backgroundColor: c.background }]}>
       <StatusBar style={isDarkMode ? 'light' : 'dark'} />
       <View style={[styles.header, { borderBottomColor: c.border }]}>
-        <TouchableOpacity onPress={onBack} style={styles.iconBtn}>
+        <TouchableOpacity
+          onPress={onBack}
+          style={styles.iconBtn}
+          hitSlop={ICON_HIT_SLOP}
+          {...a11yButton(tr(language, 'Retour', 'Back'))}
+        >
           <ArrowLeft color={c.text} size={22} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: c.text }]} numberOfLines={1}>
@@ -148,7 +162,11 @@ export default function RegionCountryPicker({
             autoCapitalize="none"
           />
           {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch('')} style={{ padding: 14 }}>
+            <TouchableOpacity
+              onPress={() => setSearch('')}
+              style={{ padding: 14 }}
+              {...a11yButton(tr(language, 'Effacer la recherche', 'Clear search'))}
+            >
               <XCircle color={c.textMuted} size={20} />
             </TouchableOpacity>
           )}
@@ -166,8 +184,13 @@ export default function RegionCountryPicker({
               key={country.cca3}
               onPress={() => onCountryPress(country)}
               style={[styles.row, { backgroundColor: c.card, borderColor: c.border }]}
+              {...a11yButton(`${countryName(country)}, ${detail}`, {
+                hint: country.levels.length > 1
+                  ? tr(language, 'Choisir le niveau de découpage', 'Choose the division level')
+                  : tr(language, 'Choisir ce pays', 'Choose this country'),
+              })}
             >
-              <Image source={{ uri: getFlagUrl(country.cca3) }} style={styles.rowFlag} />
+              <Image source={{ uri: getFlagUrl(country.cca3) }} style={styles.rowFlag} accessibilityElementsHidden importantForAccessibility="no" />
               <View style={{ flex: 1 }}>
                 <Text style={{ fontFamily: FONTS.heading, color: c.text, fontSize: 16 }}>
                   {countryName(country)}

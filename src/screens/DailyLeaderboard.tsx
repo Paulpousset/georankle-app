@@ -1,13 +1,19 @@
 import { useCallback } from 'react';
-import { ActivityIndicator, FlatList, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, Text, TouchableOpacity, View } from 'react-native';
 import { Award } from 'lucide-react-native';
 
 import { supabase } from '../lib/supabase';
 import { useCachedData } from '../lib/cache';
+import { log } from '../lib/log';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
+import { tr } from '../i18n';
+import { a11yButton, a11yImage } from '../lib/a11y';
 import { getTodayUTC } from '../lib/daily';
 import { Avatar } from '../components/Avatar';
+import { AsyncState } from '../components/AsyncState';
 import type { AvatarConfig, GameMode, Language } from '../types';
 
 interface DailyEntry {
@@ -20,8 +26,6 @@ interface DailyEntry {
 
 interface Props {
   mode: GameMode;
-  language: Language;
-  isDarkMode: boolean;
   accent: string;
   currentUserId?: string | null;
   onOpenPlayer?: (userId: string, username?: string | null) => void;
@@ -37,7 +41,9 @@ function formatScore(mode: GameMode, score: number, language: Language): string 
 }
 
 /** Per-mode daily leaderboard: today's best score for the given mode. */
-export function DailyLeaderboard({ mode, language, isDarkMode, accent, currentUserId, onOpenPlayer }: Props) {
+export function DailyLeaderboard({ mode, accent, currentUserId, onOpenPlayer }: Props) {
+  const { isDarkMode } = useTheme();
+  const { language } = useLanguage();
   const c = getColors(isDarkMode);
   const today = getTodayUTC();
 
@@ -51,7 +57,7 @@ export function DailyLeaderboard({ mode, language, isDarkMode, accent, currentUs
       .limit(50);
 
     if (error) {
-      console.error('Daily leaderboard fetch error:', error);
+      log.error('Daily leaderboard fetch error:', error);
       throw error;
     }
 
@@ -77,6 +83,8 @@ export function DailyLeaderboard({ mode, language, isDarkMode, accent, currentUs
     ({ item, index }: { item: DailyEntry; index: number }) => {
       const isTop3 = index < 3;
       const isMe = !!currentUserId && item.user_id === currentUserId;
+      const rankLabel = tr(language, `Rang ${index + 1}`, `Rank ${index + 1}`);
+      const meSuffix = isMe ? (language === 'fr' ? ' (toi)' : ' (you)') : '';
       return (
         <TouchableOpacity
           activeOpacity={onOpenPlayer ? 0.6 : 1}
@@ -92,10 +100,14 @@ export function DailyLeaderboard({ mode, language, isDarkMode, accent, currentUs
             backgroundColor: c.card,
             borderColor: isMe ? accent : c.border,
           }}
+          {...a11yButton(`${rankLabel}, ${item.username}${meSuffix}`, {
+            disabled: !onOpenPlayer,
+            hint: onOpenPlayer ? tr(language, 'Voir le profil', 'View profile') : undefined,
+          })}
         >
           <View style={{ width: 34, alignItems: 'center' }}>
             {isTop3 ? (
-              <Award size={24} color={MEDAL_COLORS[index]} />
+              <Award size={24} color={MEDAL_COLORS[index]} {...a11yImage(rankLabel)} />
             ) : (
               <Text style={{ fontFamily: FONTS.monoBold, color: c.textMuted }}>{index + 1}</Text>
             )}
@@ -123,54 +135,28 @@ export function DailyLeaderboard({ mode, language, isDarkMode, accent, currentUs
 
   // Show the spinner while loading, or while revalidating a (possibly stale)
   // empty cache — avoids briefly flashing "nobody played" right after you play.
-  if (loading || (refreshing && data.length === 0)) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color={accent} />
-      </View>
-    );
-  }
-
-  if (error) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 }}>
-        <Text style={{ textAlign: 'center', fontFamily: FONTS.mono, color: c.textMuted }}>
-          {language === 'fr' ? 'Impossible de charger le classement.' : 'Could not load the leaderboard.'}
-        </Text>
-        <TouchableOpacity
-          onPress={refetch}
-          accessibilityRole="button"
-          style={{
-            marginTop: 16,
-            paddingHorizontal: 20,
-            paddingVertical: 12,
-            borderRadius: 10,
-            borderWidth: 1,
-            borderColor: c.border,
-            backgroundColor: c.card,
-          }}
-        >
-          <Text style={{ fontFamily: FONTS.monoBold, fontSize: 12, color: accent }}>
-            {language === 'fr' ? 'Réessayer' : 'Retry'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+  const showSpinner = loading || (refreshing && data.length === 0);
 
   return (
-    <FlatList
-      data={data}
-      keyExtractor={(item) => item.user_id}
-      renderItem={renderItem}
-      contentContainerStyle={{ padding: 10, paddingBottom: 20 }}
-      ListEmptyComponent={
-        <Text style={{ textAlign: 'center', marginTop: 40, fontFamily: FONTS.mono, color: c.textMuted }}>
-          {language === 'fr'
-            ? "Personne n'a encore joué ce défi aujourd'hui.\nSois le premier !"
-            : 'Nobody has played this challenge today yet.\nBe the first!'}
-        </Text>
-      }
-    />
+    <AsyncState
+      loading={showSpinner}
+      error={error}
+      onRetry={refetch}
+      errorLabel={tr(language, 'Impossible de charger le classement.', 'Could not load the leaderboard.')}
+    >
+      <FlatList
+        data={data}
+        keyExtractor={(item) => item.user_id}
+        renderItem={renderItem}
+        contentContainerStyle={{ padding: 10, paddingBottom: 20 }}
+        ListEmptyComponent={
+          <Text style={{ textAlign: 'center', marginTop: 40, fontFamily: FONTS.mono, color: c.textMuted }}>
+            {language === 'fr'
+              ? "Personne n'a encore joué ce défi aujourd'hui.\nSois le premier !"
+              : 'Nobody has played this challenge today yet.\nBe the first!'}
+          </Text>
+        }
+      />
+    </AsyncState>
   );
 }

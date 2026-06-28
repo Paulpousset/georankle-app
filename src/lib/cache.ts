@@ -124,25 +124,30 @@ export function useCachedData<T>(
     [key, enabled, ttl],
   );
 
-  // Tracks the current mount/key generation so stale async loads are ignored.
-  const activeRef = useRef(true);
+  // Monotonic generation id. Each mount, key change and unmount bumps it, so an
+  // async load captured from an earlier generation is ignored when it finally
+  // resolves. (A boolean "active" flag can't distinguish a brand-new generation
+  // from a revived stale one: switching keys while a fetch is in flight would
+  // let the old response clobber the new key's data — see the race test.)
+  const genRef = useRef(0);
 
   useEffect(() => {
-    activeRef.current = true;
-    const isActive = () => activeRef.current;
+    const gen = (genRef.current += 1);
+    const isActive = () => genRef.current === gen;
     // Drop any previous-key data so a stale value isn't shown for a new query.
     setData(null);
     setLoading(true);
     setError(false);
     void load(false, isActive);
     return () => {
-      activeRef.current = false;
+      // Invalidate this generation; the next effect (or unmount) supersedes it.
+      genRef.current += 1;
     };
   }, [load]);
 
   const refetch = useCallback(() => {
-    activeRef.current = true;
-    void load(true, () => activeRef.current);
+    const gen = genRef.current;
+    void load(true, () => genRef.current === gen);
   }, [load]);
 
   return { data, loading, refreshing, error, refetch };

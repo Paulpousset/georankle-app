@@ -11,11 +11,15 @@ import GlobeWebView from '../components/GlobeWebView';
 import type { WebViewMessageEvent } from '../components/GlobeWebView';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { ChevronRight, Home, RotateCcw, Share2, Wifi } from 'lucide-react-native';
+import { Check, ChevronRight, Home, RotateCcw, Share2, Wifi } from 'lucide-react-native';
+import { AtlasMap, AtlasCheck, AtlasCross } from '../components/AtlasIcons';
 import type { User } from '@supabase/supabase-js';
 
 import type { GameMode, Language, Match } from '../types';
 import { getColors, PALETTE } from '../theme/colors';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
+import { getMapPalette } from '../theme/mapPalette';
 import { FONTS } from '../theme/typography';
 import { getFlagUrl } from '../lib/flags';
 import { createSeededRng } from '../lib/rng';
@@ -24,6 +28,8 @@ import { tr } from '../i18n';
 import { track } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
 import { getRegionFile, type Region } from '../../assets/regions';
+import { a11yButton, announce, a11yImage, ICON_HIT_SLOP } from '../lib/a11y';
+import { ScoreText } from '../components/ScoreText';
 
 const DEFAULT_ROUNDS = 5;
 
@@ -37,8 +43,6 @@ export interface RegionCountrySel {
 export type RegionLevelKey = 'regions' | 'departments';
 
 interface FindRegionGameProps {
-  isDarkMode: boolean;
-  language: Language;
   setGameMode: (mode: GameMode) => void;
   country: RegionCountrySel;
   level: RegionLevelKey;
@@ -62,7 +66,7 @@ interface FindRegionGameProps {
 type Phase = 'loading' | 'playing' | 'result' | 'finished';
 
 interface RegionMessage {
-  type: 'MAP_READY' | 'REGION_CLICKED' | 'MAP_ERROR';
+  type: 'MAP_READY' | 'REGION_SELECTED' | 'MAP_ERROR';
   id?: string;
   msg?: string;
 }
@@ -90,7 +94,8 @@ function findPrompt(level: RegionLevelKey, unit: string | null | undefined, lang
 }
 
 function buildRegionMapHtml(regions: Region[], isDark: boolean, view: RegionView): string {
-  const bg = isDark ? '#0f172a' : '#0d2b5e';
+  const pal = getMapPalette(isDark);
+  const bg = pal.bg;
   const polys = JSON.stringify(regions.map((r) => ({ id: r.id, r: r.r })));
   const dots = JSON.stringify(regions.map((r) => ({ id: r.id, lat: r.lat, lng: r.lng })));
 
@@ -109,6 +114,7 @@ canvas{display:block;position:absolute;top:0;left:0;touch-action:none;}
 <script>
 var POLYGONS=${polys};
 var DOTS=${dots};
+var PAL=${JSON.stringify(pal)};
 var CLON=${view.clng.toFixed(3)},CLAT=${view.clat.toFixed(3)},MAXANG=${view.maxAng.toFixed(3)};
 var dpr=window.devicePixelRatio||1;
 var canvas=document.getElementById('c');
@@ -185,12 +191,12 @@ var DRAW_ORDER=POLYGONS.map(function(_,i){return i;}).sort(function(a,b){return 
 function drawMap(resultMode,correct,picked){
   ctx.clearRect(0,0,W,H);
   var g=ctx.createRadialGradient(cx-R*0.2,cy-R*0.2,R*0.05,cx,cy,R);
-  g.addColorStop(0,'#1a4a8a');g.addColorStop(1,'#0a1a3a');
+  g.addColorStop(0,PAL.ocean0);g.addColorStop(1,PAL.ocean1);
   ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
 
   ctx.save();ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.clip();
 
-  ctx.strokeStyle='rgba(100,160,255,0.08)';ctx.lineWidth=0.5;
+  ctx.strokeStyle=PAL.grat;ctx.lineWidth=0.5;
   for(var la=-80;la<=80;la+=10){
     var f1=true;
     for(var lo=-180;lo<=180;lo+=3){
@@ -209,13 +215,13 @@ function drawMap(resultMode,correct,picked){
   for(var dk=0;dk<DRAW_ORDER.length;dk++){
     var poly=POLYGONS[DRAW_ORDER[dk]],id=poly.id,fill,stroke,lw;
     if(resultMode){
-      if(id===correct){fill='rgba(16,185,129,0.78)';stroke='#10b981';lw=1.4;}
-      else if(id===picked&&id!==correct){fill='rgba(239,68,68,0.72)';stroke='#ef4444';lw=1.4;}
-      else{fill='rgba(110,158,82,0.78)';stroke='rgba(60,100,45,0.7)';lw=0.7;}
+      if(id===correct){fill=PAL.okF;stroke=PAL.okS;lw=1.4;}
+      else if(id===picked&&id!==correct){fill=PAL.badF;stroke=PAL.badS;lw=1.4;}
+      else{fill=PAL.landF;stroke=PAL.landS;lw=0.7;}
     }else{
-      if(id===sel){fill='rgba(251,191,36,0.85)';stroke='#fbbf24';lw=1.6;}
-      else if(!locked&&id===hov){fill='rgba(120,190,90,0.95)';stroke='rgba(220,255,200,1.0)';lw=2.0;}
-      else{fill='rgba(110,158,82,0.85)';stroke='rgba(60,100,45,0.75)';lw=0.7;}
+      if(id===sel){fill=PAL.selF;stroke=PAL.selS;lw=1.6;}
+      else if(!locked&&id===hov){fill=PAL.hovF;stroke=PAL.hovS;lw=2.0;}
+      else{fill=PAL.landF;stroke=PAL.landS;lw=0.7;}
     }
     pathPolygon(poly.r);
     ctx.fillStyle=fill;ctx.fill();
@@ -227,7 +233,7 @@ function drawMap(resultMode,correct,picked){
     DOTS.forEach(function(c){
       if(c.id!==correct&&c.id!==picked)return;
       var p=project(c.lat,c.lng);if(!p)return;
-      var color=c.id===correct?'#10b981':'#ef4444';
+      var color=c.id===correct?PAL.okS:PAL.badS;
       ctx.shadowColor=color;ctx.shadowBlur=12;
       ctx.beginPath();ctx.arc(p.sx,p.sy,7,0,Math.PI*2);
       ctx.fillStyle=color;ctx.fill();ctx.shadowBlur=0;
@@ -236,10 +242,12 @@ function drawMap(resultMode,correct,picked){
 
   ctx.restore();
   ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);
-  ctx.strokeStyle='rgba(100,160,255,0.30)';ctx.lineWidth=1.5;ctx.stroke();
-  var atm=ctx.createRadialGradient(cx,cy,R*0.96,cx,cy,R*1.06);
-  atm.addColorStop(0,'rgba(100,160,255,0.20)');atm.addColorStop(1,'rgba(100,160,255,0)');
-  ctx.beginPath();ctx.arc(cx,cy,R*1.06,0,Math.PI*2);ctx.fillStyle=atm;ctx.fill();
+  ctx.strokeStyle=PAL.rim;ctx.lineWidth=1.5;ctx.stroke();
+  if(PAL.atm){
+    var atm=ctx.createRadialGradient(cx,cy,R*0.96,cx,cy,R*1.06);
+    atm.addColorStop(0,PAL.atm);atm.addColorStop(1,PAL.atmEnd);
+    ctx.beginPath();ctx.arc(cx,cy,R*1.06,0,Math.PI*2);ctx.fillStyle=atm;ctx.fill();
+  }
 }
 
 function render(){drawMap(false,null,null);}
@@ -326,8 +334,8 @@ function handleTap(tx,ty){
   var coords=unproject(tx,ty);if(!coords)return;
   var hit=findRegion(coords);
   if(!hit)return;
-  sel=hit;locked=true;render();
-  postMsg({type:'REGION_CLICKED',id:hit});
+  sel=hit;render();
+  postMsg({type:'REGION_SELECTED',id:hit});
 }
 
 window.resetRound=function(){sel=null;locked=false;hov=null;canvas.style.cursor='default';render();};
@@ -361,8 +369,6 @@ requestAnimationFrame(setup);
 }
 
 export default function FindRegionGame({
-  isDarkMode,
-  language,
   setGameMode,
   country,
   level,
@@ -376,6 +382,8 @@ export default function FindRegionGame({
   onShare,
   onDailyScoreChange,
 }: FindRegionGameProps) {
+  const { isDarkMode } = useTheme();
+  const { language } = useLanguage();
   const colors = getColors(isDarkMode);
   const isOnline = !!matchData;
   const isPlayer1 = matchData?.player1_id === user?.id;
@@ -442,6 +450,32 @@ export default function FindRegionGame({
   const isCorrect = current != null && selectedId === current.id;
   const regionName = (r: Region) => (language === 'fr' ? r.name : (r.name_en ?? r.name));
 
+  // Announce each find result (correct/wrong + the target name) for screen readers.
+  useEffect(() => {
+    if (phase !== 'result' || !current) return;
+    const name = regionName(current);
+    announce(
+      isCorrect
+        ? tr(language, `Correct ! ${name}`, `Correct! ${name}`)
+        : tr(language, `Raté ! C'était ${name}`, `Wrong! It was ${name}`),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
+
+  // Announce the final score when the game finishes.
+  useEffect(() => {
+    if (phase !== 'finished') return;
+    const correctCount = score / 1000;
+    announce(
+      tr(
+        language,
+        `Partie terminée. Score : ${correctCount} sur ${totalRounds}.`,
+        `Game over. Score: ${correctCount} out of ${totalRounds}.`,
+      ),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
+
   const handleMessage = useCallback(
     (event: WebViewMessageEvent) => {
       let msg: RegionMessage;
@@ -452,22 +486,26 @@ export default function FindRegionGame({
       }
       if (msg.type === 'MAP_READY') {
         setPhase('playing');
-      } else if (msg.type === 'REGION_CLICKED' && msg.id) {
-        const id = msg.id;
-        const correct = id === current?.id;
-        if (correct) setScore((s) => s + 1000);
-        roundResults.current.push(correct);
-        setSelectedId(id);
-        setPhase('result');
-        webViewRef.current?.injectJavaScript(
-          `window.showResult('${current?.id}','${id}');true;`,
-        );
+      } else if (msg.type === 'REGION_SELECTED' && msg.id) {
+        // Tentative pick — highlighted on the map, validated only on confirm.
+        setSelectedId(msg.id);
       } else if (msg.type === 'MAP_ERROR') {
         setErrorMsg(msg.msg ?? 'Map failed to load');
       }
     },
-    [current?.id],
+    [],
   );
+
+  const handleConfirm = () => {
+    if (!selectedId || !current || phase !== 'playing') return;
+    const correct = selectedId === current.id;
+    if (correct) setScore((s) => s + 1000);
+    roundResults.current.push(correct);
+    setPhase('result');
+    webViewRef.current?.injectJavaScript(
+      `window.showResult('${current.id}','${selectedId}');true;`,
+    );
+  };
 
   const handleNext = () => {
     if (index + 1 >= totalRounds) {
@@ -519,6 +557,7 @@ export default function FindRegionGame({
           <TouchableOpacity
             style={[styles.btn, { backgroundColor: PALETTE.chartBlue }]}
             onPress={goBack}
+            {...a11yButton(tr(language, 'Retour', 'Back'))}
           >
             <Home color="white" size={18} />
             <Text style={styles.btnText}>{tr(language, 'Retour', 'Back')}</Text>
@@ -535,13 +574,15 @@ export default function FindRegionGame({
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <StatusBar style={isDarkMode ? 'light' : 'dark'} />
         <View style={styles.centered}>
-          <Text style={styles.finishedEmoji}>🗺️</Text>
+          <View style={{ marginBottom: 8 }} {...a11yImage(tr(language, 'Carte', 'Map'))}>
+            <AtlasMap color={PALETTE.sand} size={64} />
+          </View>
           <Text style={[styles.finishedTitle, { color: colors.text }]}>
             {tr(language, 'Partie terminée !', 'Game over!')}
           </Text>
-          <Text style={[styles.finishedScore, { color: PALETTE.sand }]}>
+          <ScoreText style={[styles.finishedScore, { color: PALETTE.sand }]}>
             {correctCount} / {totalRounds}
-          </Text>
+          </ScoreText>
           <Text style={[styles.finishedSub, { color: colors.textMuted }]}>
             {Math.round((correctCount / totalRounds) * 100)}
             {tr(language, '% de réussite', '% success rate')}
@@ -551,6 +592,7 @@ export default function FindRegionGame({
               <TouchableOpacity
                 style={[styles.btn, { backgroundColor: PALETTE.chartBlue }]}
                 onPress={onShare}
+                {...a11yButton(tr(language, 'Partager', 'Share'))}
               >
                 <Share2 color="white" size={18} />
                 <Text style={styles.btnText}>{tr(language, 'Partager', 'Share')}</Text>
@@ -559,6 +601,7 @@ export default function FindRegionGame({
               <TouchableOpacity
                 style={[styles.btn, { backgroundColor: PALETTE.chartBlue }]}
                 onPress={handleReplay}
+                {...a11yButton(tr(language, 'Rejouer', 'Play again'))}
               >
                 <RotateCcw color="white" size={18} />
                 <Text style={styles.btnText}>{tr(language, 'Rejouer', 'Play again')}</Text>
@@ -567,6 +610,11 @@ export default function FindRegionGame({
             <TouchableOpacity
               style={[styles.btn, { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }]}
               onPress={goBack}
+              {...a11yButton(
+                isDaily
+                  ? tr(language, 'Retour', 'Back')
+                  : tr(language, 'Changer de pays', 'Change country'),
+              )}
             >
               <Home color={colors.text} size={18} />
               <Text style={[styles.btnText, { color: colors.text }]}>
@@ -588,7 +636,12 @@ export default function FindRegionGame({
 
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={goBack} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={goBack}
+          style={styles.backBtn}
+          hitSlop={ICON_HIT_SLOP}
+          {...a11yButton(tr(language, 'Retour', 'Back'))}
+        >
           <Home color={colors.textMuted} size={20} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
@@ -597,7 +650,7 @@ export default function FindRegionGame({
           </Text>
           {isOnline ? (
             <View style={styles.scoreRow}>
-              <Wifi size={12} color="#10b981" />
+              <Wifi size={12} color={PALETTE.forestGreen} />
               <Text style={[styles.scoreLabel, { color: PALETTE.sand }]}>{score}</Text>
               <Text style={[styles.scoreSep, { color: colors.textMuted }]}>vs</Text>
               <Text style={[styles.scoreLabel, { color: colors.textMuted }]}>{opponentScore}</Text>
@@ -633,6 +686,7 @@ export default function FindRegionGame({
                 <TouchableOpacity
                   style={[styles.btn, { backgroundColor: PALETTE.chartBlue, alignSelf: 'center' }]}
                   onPress={goBack}
+                  {...a11yButton(tr(language, 'Retour', 'Back'))}
                 >
                   <Home color="white" size={18} />
                   <Text style={styles.btnText}>{tr(language, 'Retour', 'Back')}</Text>
@@ -660,12 +714,28 @@ export default function FindRegionGame({
         />
       </View>
 
-      {/* Hint bar (playing) */}
+      {/* Hint / confirm bar (playing) */}
       {phase === 'playing' && (
         <View style={[styles.bar, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
-          <Text style={[styles.hint, { color: colors.textMuted }]}>
-            {tr(language, 'Tape la bonne zone sur la carte', 'Tap the right area on the map')}
-          </Text>
+          {selectedId ? (
+            <View style={styles.confirmRow}>
+              <Text style={[styles.hint, { color: colors.textMuted, flex: 1, textAlign: 'left' }]}>
+                {tr(language, 'Confirme ton choix', 'Confirm your pick')}
+              </Text>
+              <TouchableOpacity
+                style={[styles.confirmBtn, { backgroundColor: PALETTE.chartBlue }]}
+                onPress={handleConfirm}
+                {...a11yButton(tr(language, 'Valider', 'Confirm'))}
+              >
+                <Check color="white" size={18} />
+                <Text style={styles.confirmBtnText}>{tr(language, 'Valider', 'Confirm')}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <Text style={[styles.hint, { color: colors.textMuted }]}>
+              {tr(language, 'Tape une zone puis valide', 'Tap an area, then confirm')}
+            </Text>
+          )}
         </View>
       )}
 
@@ -674,11 +744,24 @@ export default function FindRegionGame({
         <View
           style={[
             styles.resultBar,
-            { backgroundColor: isCorrect ? 'rgba(16,185,129,0.95)' : 'rgba(239,68,68,0.95)' },
+            { backgroundColor: isCorrect ? 'rgba(42,110,63,0.95)' : 'rgba(139,26,26,0.95)' },
           ]}
         >
           <View style={styles.resultRow}>
-            <Text style={styles.resultEmoji}>{isCorrect ? '✅' : '❌'}</Text>
+            <View
+              style={styles.resultEmoji}
+              {...a11yImage(
+                isCorrect
+                  ? tr(language, 'Correct', 'Correct')
+                  : tr(language, 'Incorrect', 'Incorrect'),
+              )}
+            >
+              {isCorrect ? (
+                <AtlasCheck color={PALETTE.forestGreen} size={32} />
+              ) : (
+                <AtlasCross color={PALETTE.dangerRed} size={32} />
+              )}
+            </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.resultTitle}>
                 {isCorrect ? tr(language, 'Correct !', 'Correct!') : tr(language, 'Raté !', 'Wrong!')}
@@ -686,7 +769,15 @@ export default function FindRegionGame({
               <Text style={styles.resultName}>{regionName(current)}</Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.nextBtn} onPress={handleNext}>
+          <TouchableOpacity
+            style={styles.nextBtn}
+            onPress={handleNext}
+            {...a11yButton(
+              index + 1 < totalRounds
+                ? tr(language, 'Suivant', 'Next')
+                : tr(language, 'Résultats', 'Results'),
+            )}
+          >
             <Text style={styles.nextBtnText}>
               {index + 1 < totalRounds
                 ? tr(language, 'Suivant', 'Next')
@@ -757,10 +848,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   hint: { fontSize: 14, textAlign: 'center', fontFamily: FONTS.mono },
+  confirmRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    width: '100%',
+  },
+  confirmBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+  },
+  confirmBtnText: { color: 'white', fontFamily: FONTS.monoBold, fontSize: 15 },
 
   resultBar: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20, gap: 12 },
   resultRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  resultEmoji: { fontSize: 32 },
+  resultEmoji: { alignItems: 'center', justifyContent: 'center' },
   resultTitle: { color: 'white', fontFamily: FONTS.headingBlack, fontSize: 18 },
   resultName: { color: 'white', fontFamily: FONTS.monoBold, fontSize: 15, marginTop: 2 },
   nextBtn: {

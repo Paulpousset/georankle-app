@@ -81,6 +81,7 @@ function AvatarBase({ config, photoUrl, username, size, ringColor, ringWidth = 3
   return (
     <View
       accessible
+      accessibilityRole="image"
       accessibilityLabel={a11yLabel}
       style={{
         width: size, height: size, borderRadius: radius,

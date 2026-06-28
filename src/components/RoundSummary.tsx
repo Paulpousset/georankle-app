@@ -3,10 +3,13 @@ import { Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { ChevronRight, Trophy } from 'lucide-react-native';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
-import type { Language } from '../types';
 import { formatMatchScore } from '../lib/match';
+import { a11yButton, announce } from '../lib/a11y';
+import { ScoreText } from './ScoreText';
 
 export interface RoundSummaryData {
   roundNumber: number;
@@ -17,24 +20,33 @@ export interface RoundSummaryData {
   bestOf: number;
   isMatchOver: boolean;
   matchWinner: 'me' | 'opponent' | 'draw' | null;
+  /**
+   * The game mode this round was actually played in. In ranked matches every
+   * round uses a different mode, so the score unit must follow the round, not
+   * the match's base `game_mode` (which is only the first round's mode).
+   */
+  gameMode: string;
 }
 
 interface RoundSummaryProps {
   data: RoundSummaryData;
   gameMode: string;
-  isDarkMode: boolean;
-  language: Language;
   onContinue: () => void;
 }
 
-export function RoundSummary({ data, gameMode, isDarkMode, language, onContinue }: RoundSummaryProps) {
+export function RoundSummary({ data, gameMode, onContinue }: RoundSummaryProps) {
+  const { isDarkMode } = useTheme();
+  const { language } = useLanguage();
   const [countdown, setCountdown] = useState(5);
   const c = getColors(isDarkMode);
 
   const roundWinner =
     data.myScore > data.opponentScore ? 'me' : data.myScore < data.opponentScore ? 'opponent' : 'draw';
 
-  const scoreLabel = (s: number) => formatMatchScore(gameMode, s);
+  // Prefer the mode carried by the round itself; fall back to the prop for
+  // safety. This keeps the unit correct even in ranked, where the round's mode
+  // differs from the match's base mode.
+  const scoreLabel = (s: number) => formatMatchScore(data.gameMode ?? gameMode, s);
 
   useEffect(() => {
     if (countdown <= 0) { onContinue(); return; }
@@ -49,6 +61,16 @@ export function RoundSummary({ data, gameMode, isDarkMode, language, onContinue 
     if (roundWinner === 'me') return language === 'fr' ? 'Vous gagnez ce round !' : 'You win this round!';
     return language === 'fr' ? "L'adversaire gagne ce round" : 'Opponent wins this round';
   };
+
+  // Announce the round outcome and score for screen-reader users when the
+  // summary data is set.
+  useEffect(() => {
+    const score = language === 'fr'
+      ? `${scoreLabel(data.myScore)} contre ${scoreLabel(data.opponentScore)}`
+      : `${scoreLabel(data.myScore)} to ${scoreLabel(data.opponentScore)}`;
+    announce(`${winnerLabel()}, ${score}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, language]);
 
   const winnerColor = roundWinner === 'me' ? '#2a6e3f' : roundWinner === 'opponent' ? '#8b1a1a' : '#c4872a';
 
@@ -69,9 +91,9 @@ export function RoundSummary({ data, gameMode, isDarkMode, language, onContinue 
             <Text style={{ color: c.textFaint, fontSize: 11, fontFamily: FONTS.monoBold }}>
               {language === 'fr' ? 'VOUS' : 'YOU'}
             </Text>
-            <Text style={{ color: roundWinner === 'me' ? '#2a6e3f' : c.text, fontSize: 40, fontFamily: FONTS.headingBlack }}>
+            <ScoreText style={{ color: roundWinner === 'me' ? '#2a6e3f' : c.text, fontSize: 40, fontFamily: FONTS.headingBlack }}>
               {scoreLabel(data.myScore)}
-            </Text>
+            </ScoreText>
             {roundWinner === 'me' && <Trophy size={16} color="#c4872a" />}
           </View>
 
@@ -81,9 +103,9 @@ export function RoundSummary({ data, gameMode, isDarkMode, language, onContinue 
             <Text style={{ color: c.textFaint, fontSize: 11, fontFamily: FONTS.monoBold }}>
               {language === 'fr' ? 'ADVERSAIRE' : 'OPPONENT'}
             </Text>
-            <Text style={{ color: roundWinner === 'opponent' ? '#8b1a1a' : c.text, fontSize: 40, fontFamily: FONTS.headingBlack }}>
+            <ScoreText style={{ color: roundWinner === 'opponent' ? '#8b1a1a' : c.text, fontSize: 40, fontFamily: FONTS.headingBlack }}>
               {scoreLabel(data.opponentScore)}
-            </Text>
+            </ScoreText>
             {roundWinner === 'opponent' && <Trophy size={16} color="#c4872a" />}
           </View>
         </View>
@@ -124,6 +146,7 @@ export function RoundSummary({ data, gameMode, isDarkMode, language, onContinue 
 
       <TouchableOpacity
         onPress={onContinue}
+        {...a11yButton(language === 'fr' ? 'Round suivant' : 'Next round')}
         style={{
           flexDirection: 'row', alignItems: 'center', gap: 10,
           backgroundColor: c.accent,

@@ -4,11 +4,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
 
-import type { AvatarConfig, Language, Match } from '../types';
+import type { AvatarConfig, Match } from '../types';
 import { supabase } from '../lib/supabase';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { Avatar } from './Avatar';
+import { a11yHidden, announce } from '../lib/a11y';
 
 interface PlayerProfile {
   id: string;
@@ -20,18 +23,16 @@ interface PlayerProfile {
 interface PreGameLobbyProps {
   matchData: Match;
   currentUserId: string;
-  language: Language;
-  isDarkMode: boolean;
   onReady: () => void;
 }
 
 export function PreGameLobby({
   matchData,
   currentUserId,
-  language,
-  isDarkMode,
   onReady,
 }: PreGameLobbyProps) {
+  const { isDarkMode } = useTheme();
+  const { language } = useLanguage();
   const c = getColors(isDarkMode);
   const [player1, setPlayer1] = useState<PlayerProfile | null>(null);
   const [player2, setPlayer2] = useState<PlayerProfile | null>(null);
@@ -54,13 +55,14 @@ export function PreGameLobby({
   useEffect(() => {
     if (countdown <= 0) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      announce(language === 'fr' ? "C'est parti !" : "Let's go!");
       onReady();
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     const t = setTimeout(() => setCountdown((cv) => cv - 1), 1000);
     return () => clearTimeout(t);
-  }, [countdown, onReady]);
+  }, [countdown, onReady, language]);
 
   const modeLabel =
     matchData.game_mode === 'classic'
@@ -115,7 +117,7 @@ export function PreGameLobby({
               alignItems: 'center', justifyContent: 'center',
             }}
           >
-            <Text style={{ color: '#fff', fontSize: 26, fontFamily: FONTS.headingBlack }}>
+            <Text {...a11yHidden} style={{ color: '#fff', fontSize: 26, fontFamily: FONTS.headingBlack }}>
               {countdown > 0 ? countdown : '▶'}
             </Text>
           </View>

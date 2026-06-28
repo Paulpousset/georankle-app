@@ -3,10 +3,13 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Home, Moon, Sun } from 'lucide-react-native';
 
 import { OnlineModeLeaderboard } from '../screens/OnlineModeLeaderboard';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { tr } from '../i18n';
-import type { Language, MatchMode } from '../types';
+import { a11yButton, ICON_HIT_SLOP } from '../lib/a11y';
+import type { MatchMode } from '../types';
 
 const MODE_LABELS: Record<MatchMode, [string, string]> = {
   classic: ['Rankle', 'Rankle'],
@@ -19,14 +22,13 @@ const MODE_LABELS: Record<MatchMode, [string, string]> = {
 interface Props {
   mode: MatchMode | null;
   accent: string;
-  isDarkMode: boolean;
-  language: Language;
   onClose: () => void;
-  onToggleTheme: () => void;
   onOpenPlayer?: (userId: string, username?: string | null) => void;
 }
 
-export function OnlineModeLeaderboardModal({ mode, accent, isDarkMode, language, onClose, onToggleTheme, onOpenPlayer }: Props) {
+export function OnlineModeLeaderboardModal({ mode, accent, onClose, onOpenPlayer }: Props) {
+  const { isDarkMode, toggleTheme } = useTheme();
+  const { language } = useLanguage();
   const c = getColors(isDarkMode);
   const labels = mode ? MODE_LABELS[mode] : ['', ''];
 
@@ -50,6 +52,8 @@ export function OnlineModeLeaderboardModal({ mode, accent, isDarkMode, language,
                 <TouchableOpacity
                   onPress={onClose}
                   style={{ padding: 8, marginRight: 10, backgroundColor: c.surface, borderRadius: 10 }}
+                  hitSlop={ICON_HIT_SLOP}
+                  {...a11yButton(tr(language, 'Fermer', 'Close'))}
                 >
                   <Home color={accent} size={20} />
                 </TouchableOpacity>
@@ -63,8 +67,14 @@ export function OnlineModeLeaderboardModal({ mode, accent, isDarkMode, language,
                 </View>
               </View>
               <TouchableOpacity
-                onPress={onToggleTheme}
+                onPress={toggleTheme}
                 style={{ padding: 8, backgroundColor: c.surface, borderRadius: 10 }}
+                hitSlop={ICON_HIT_SLOP}
+                {...a11yButton(
+                  isDarkMode
+                    ? tr(language, 'Mode clair', 'Light mode')
+                    : tr(language, 'Mode sombre', 'Dark mode'),
+                )}
               >
                 {isDarkMode ? <Sun color="#c4872a" size={20} /> : <Moon color="#4a6a88" size={20} />}
               </TouchableOpacity>
@@ -73,8 +83,6 @@ export function OnlineModeLeaderboardModal({ mode, accent, isDarkMode, language,
             {mode && (
               <OnlineModeLeaderboard
                 mode={mode}
-                language={language}
-                isDarkMode={isDarkMode}
                 accent={accent}
                 onOpenPlayer={onOpenPlayer}
               />

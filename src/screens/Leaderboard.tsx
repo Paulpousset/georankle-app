@@ -1,19 +1,17 @@
 import { useCallback, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Award, LayoutGrid, Zap } from 'lucide-react-native';
 
 import { supabase } from '../lib/supabase';
 import { useCachedData } from '../lib/cache';
+import { log } from '../lib/log';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
-import type { Language } from '../types';
+import { tr } from '../i18n';
+import { a11yButton, a11yImage, ICON_HIT_SLOP } from '../lib/a11y';
+import { AsyncState } from '../components/AsyncState';
 
 type Tab = 'classic' | 'streak';
 
@@ -24,14 +22,14 @@ interface LeaderboardEntry {
 }
 
 interface LeaderboardProps {
-  language: Language;
-  isDarkMode: boolean;
   onOpenPlayer?: (userId: string, username?: string | null) => void;
 }
 
 const MEDAL_COLORS = ['#c4872a', '#7aa0c4', '#a08060']; // Gold → sand, Silver → nightMuted, Bronze → brownLight
 
-const Leaderboard = ({ language, isDarkMode, onOpenPlayer }: LeaderboardProps) => {
+const Leaderboard = ({ onOpenPlayer }: LeaderboardProps) => {
+  const { isDarkMode } = useTheme();
+  const { language } = useLanguage();
   const c = getColors(isDarkMode);
   const [activeTab, setActiveTab] = useState<Tab>('classic');
 
@@ -52,7 +50,7 @@ const Leaderboard = ({ language, isDarkMode, onOpenPlayer }: LeaderboardProps) =
       .limit(50);
 
     if (error) {
-      console.error('Leaderboard fetch error:', error);
+      log.error('Leaderboard fetch error:', error);
       throw error;
     }
 
@@ -79,6 +77,7 @@ const Leaderboard = ({ language, isDarkMode, onOpenPlayer }: LeaderboardProps) =
   const renderItem = useCallback(({ item, index }: { item: LeaderboardEntry; index: number }) => {
     const isTop3 = index < 3;
     const name = item.profiles?.username || (language === 'fr' ? 'Joueur Anonyme' : 'Anonymous Player');
+    const rankLabel = tr(language, `Rang ${index + 1}`, `Rank ${index + 1}`);
 
     return (
       <TouchableOpacity
@@ -89,10 +88,14 @@ const Leaderboard = ({ language, isDarkMode, onOpenPlayer }: LeaderboardProps) =
           styles.itemRow,
           { backgroundColor: c.card, borderColor: c.border },
         ]}
+        {...a11yButton(`${rankLabel}, ${name}`, {
+          disabled: !onOpenPlayer,
+          hint: onOpenPlayer ? tr(language, 'Voir le profil', 'View profile') : undefined,
+        })}
       >
         <View style={styles.rankContainer}>
           {isTop3 ? (
-            <Award size={24} color={MEDAL_COLORS[index]} />
+            <Award size={24} color={MEDAL_COLORS[index]} {...a11yImage(rankLabel)} />
           ) : (
             <Text style={[styles.rankText, { color: c.textMuted }]}>{index + 1}</Text>
           )}
@@ -126,6 +129,7 @@ const Leaderboard = ({ language, isDarkMode, onOpenPlayer }: LeaderboardProps) =
         <TouchableOpacity
           onPress={() => setActiveTab('classic')}
           style={[styles.tab, activeTab === 'classic' && { backgroundColor: '#2a6e3f' }]}
+          {...a11yButton(tr(language, 'Rankle', 'Rankle'), { role: 'tab', selected: activeTab === 'classic' })}
         >
           <LayoutGrid size={18} color={activeTab === 'classic' ? 'white' : c.textMuted} />
           <Text style={[styles.tabText, { color: activeTab === 'classic' ? 'white' : c.textMuted }]}>
@@ -136,6 +140,7 @@ const Leaderboard = ({ language, isDarkMode, onOpenPlayer }: LeaderboardProps) =
         <TouchableOpacity
           onPress={() => setActiveTab('streak')}
           style={[styles.tab, activeTab === 'streak' && { backgroundColor: '#c4872a' }]}
+          {...a11yButton(tr(language, 'Streak', 'Streak'), { role: 'tab', selected: activeTab === 'streak' })}
         >
           <Zap size={18} color={activeTab === 'streak' ? 'white' : c.textMuted} />
           <Text style={[styles.tabText, { color: activeTab === 'streak' ? 'white' : c.textMuted }]}>
@@ -144,31 +149,19 @@ const Leaderboard = ({ language, isDarkMode, onOpenPlayer }: LeaderboardProps) =
         </TouchableOpacity>
       </View>
 
-      {loading ? (
-        <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color={c.accent} />
-        </View>
-      ) : error ? (
-        <View style={styles.loaderContainer}>
-          <Text style={[styles.emptyText, { color: c.textMuted, marginTop: 0 }]}>
-            {language === 'fr'
-              ? 'Impossible de charger le classement.'
-              : 'Could not load the leaderboard.'}
-          </Text>
-          <TouchableOpacity
-            onPress={refetch}
-            style={[styles.retryBtn, { borderColor: c.border, backgroundColor: c.card }]}
-            accessibilityRole="button"
-          >
-            <Text style={[styles.tabText, { color: c.accent }]}>
-              {language === 'fr' ? 'Réessayer' : 'Retry'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
+      <AsyncState
+        loading={loading}
+        error={error}
+        onRetry={refetch}
+        errorLabel={
+          language === 'fr'
+            ? 'Impossible de charger le classement.'
+            : 'Could not load the leaderboard.'
+        }
+      >
         <FlatList
           data={data}
-          keyExtractor={(_item, index) => index.toString()}
+          keyExtractor={(item) => item.user_id}
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
@@ -177,7 +170,7 @@ const Leaderboard = ({ language, isDarkMode, onOpenPlayer }: LeaderboardProps) =
             </Text>
           }
         />
-      )}
+      </AsyncState>
     </View>
   );
 };
@@ -223,15 +216,7 @@ const styles = StyleSheet.create({
   username: { fontFamily: FONTS.heading },
   scoreContainer: { alignItems: 'flex-end' },
   scoreValue: { fontFamily: FONTS.headingBlack, fontSize: 16 },
-  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
   emptyText: { textAlign: 'center', marginTop: 40, fontFamily: FONTS.mono },
-  retryBtn: {
-    marginTop: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
 });
 
 export default Leaderboard;

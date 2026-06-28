@@ -15,10 +15,13 @@ import {
   Share2,
   Zap,
 } from 'lucide-react-native';
+import { AtlasFlame } from '../components/AtlasIcons';
 import type { ComponentType } from 'react';
 import type { User } from '@supabase/supabase-js';
 
-import type { GameMode, Language } from '../types';
+import type { GameMode } from '../types';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import {
   DAILY_MODES,
   dailyModeLabel,
@@ -34,6 +37,8 @@ import { commonStyles as styles } from '../theme/commonStyles';
 import { PALETTE, getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { tr } from '../i18n';
+import { a11yButton, a11yImage, ICON_HIT_SLOP } from '../lib/a11y';
+import { ScoreText } from '../components/ScoreText';
 import { DailyResultCard } from '../components/DailyResultCard';
 import { DailyLeaderboardModal } from '../components/DailyLeaderboardModal';
 
@@ -53,8 +58,6 @@ const MODE_META: Record<string, { icon: ComponentType<{ color: string; size: num
 
 interface DailyHubProps {
   user: User | null;
-  isDarkMode: boolean;
-  language: Language;
   onPlayDaily: (mode: GameMode) => void;
   onBack: () => void;
   onOpenPlayer?: (userId: string, username?: string | null) => void;
@@ -77,7 +80,9 @@ function shortScore(result: DailyResult): string {
  * today's status per mode (play / done + score), the global streak, X/8 done,
  * and a countdown to the next puzzle.
  */
-export default function DailyHub({ user, isDarkMode, language, onPlayDaily, onBack, onOpenPlayer }: DailyHubProps) {
+export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: DailyHubProps) {
+  const { isDarkMode } = useTheme();
+  const { language } = useLanguage();
   const c = getColors(isDarkMode);
   const [state, setState] = useState<DailyState | null>(null);
   const [countdown, setCountdown] = useState(() => msUntilNextPuzzle());
@@ -122,7 +127,8 @@ export default function DailyHub({ user, isDarkMode, language, onPlayDaily, onBa
         <TouchableOpacity
           onPress={onBack}
           style={[styles.refreshBtn, !isDarkMode && styles.refreshBtnLight, { padding: 10 }]}
-          accessibilityLabel={tr(language, 'Retour', 'Back')}
+          hitSlop={ICON_HIT_SLOP}
+          {...a11yButton(tr(language, 'Retour', 'Back'))}
         >
           <ArrowLeft color={c.text} size={18} />
         </TouchableOpacity>
@@ -148,16 +154,24 @@ export default function DailyHub({ user, isDarkMode, language, onPlayDaily, onBa
           }}
         >
           <View style={{ alignItems: 'center' }}>
-            <Text style={{ fontFamily: FONTS.headingBlack, color: FLAME, fontSize: 28 }}>🔥 {streak}</Text>
+            <View
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}
+              {...a11yImage(tr(language, `Série de ${streak} jours`, `${streak}-day streak`))}
+            >
+              <AtlasFlame color={FLAME} size={24} />
+              <ScoreText style={{ fontFamily: FONTS.headingBlack, color: FLAME, fontSize: 28 }}>
+                {streak}
+              </ScoreText>
+            </View>
             <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 9 }}>
               {tr(language, 'SÉRIE', 'STREAK')}
             </Text>
           </View>
           <View style={{ width: 1, height: '70%', backgroundColor: c.border }} />
           <View style={{ alignItems: 'center' }}>
-            <Text style={{ fontFamily: FONTS.headingBlack, color: c.accent, fontSize: 28 }}>
+            <ScoreText style={{ fontFamily: FONTS.headingBlack, color: c.accent, fontSize: 28 }}>
               {todayCount}/8
-            </Text>
+            </ScoreText>
             <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 9 }}>
               {tr(language, "AUJOURD'HUI", 'TODAY')}
             </Text>
@@ -195,6 +209,11 @@ export default function DailyHub({ user, isDarkMode, language, onPlayDaily, onBa
               <TouchableOpacity
                 key={mode}
                 onPress={() => (done ? setViewing(result) : onPlayDaily(mode))}
+                {...a11yButton(dailyModeLabel(mode, language), {
+                  hint: done
+                    ? tr(language, 'Voir votre résultat', 'View your result')
+                    : tr(language, 'Démarrer ce mode', 'Start this mode'),
+                })}
                 style={[
                   styles.countryCard,
                   !isDarkMode && styles.countryCardLight,
@@ -242,7 +261,8 @@ export default function DailyHub({ user, isDarkMode, language, onPlayDaily, onBa
                   <TouchableOpacity
                     onPress={() => setLeaderboardMode(mode)}
                     style={{ padding: 8 }}
-                    accessibilityLabel={tr(language, 'Classement', 'Leaderboard')}
+                    hitSlop={ICON_HIT_SLOP}
+                    {...a11yButton(tr(language, 'Classement', 'Leaderboard'))}
                   >
                     <BarChart3 color={c.textMuted} size={18} />
                   </TouchableOpacity>
@@ -251,7 +271,8 @@ export default function DailyHub({ user, isDarkMode, language, onPlayDaily, onBa
                       <TouchableOpacity
                         onPress={() => shareResult(result)}
                         style={{ padding: 8 }}
-                        accessibilityLabel={tr(language, 'Partager', 'Share')}
+                        hitSlop={ICON_HIT_SLOP}
+                        {...a11yButton(tr(language, 'Partager', 'Share'))}
                       >
                         <Share2 color={c.textMuted} size={18} />
                       </TouchableOpacity>
@@ -282,16 +303,12 @@ export default function DailyHub({ user, isDarkMode, language, onPlayDaily, onBa
         result={viewing}
         streak={streak}
         todayCount={todayCount}
-        isDarkMode={isDarkMode}
-        language={language}
         onShare={() => viewing && shareResult(viewing)}
         onClose={() => setViewing(null)}
       />
       <DailyLeaderboardModal
         mode={leaderboardMode}
         accent={leaderboardMode ? MODE_META[leaderboardMode].accent : c.accent}
-        isDarkMode={isDarkMode}
-        language={language}
         currentUserId={user?.id ?? null}
         onClose={() => setLeaderboardMode(null)}
         onOpenPlayer={onOpenPlayer}

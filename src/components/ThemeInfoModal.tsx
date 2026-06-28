@@ -1,20 +1,24 @@
 import { Modal, Text, TouchableOpacity, View } from 'react-native';
 import { ArrowLeftRight, X } from 'lucide-react-native';
 
-import type { Language, Theme } from '../types';
+import type { Theme } from '../types';
+import { ThemeIcon } from './themeIcons';
 import { pickLabel, tr } from '../i18n';
 import { getThemeDescription } from '../i18n/themeDescriptions';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
+import { a11yButton, a11yImage } from '../lib/a11y';
 
 interface ThemeInfoModalProps {
   theme: Theme | null;
-  isDarkMode: boolean;
-  language: Language;
   onClose: () => void;
 }
 
-export function ThemeInfoModal({ theme, isDarkMode, language, onClose }: ThemeInfoModalProps) {
+export function ThemeInfoModal({ theme, onClose }: ThemeInfoModalProps) {
+  const { isDarkMode } = useTheme();
+  const { language } = useLanguage();
   const c = getColors(isDarkMode);
   return (
     <Modal visible={!!theme} animationType="fade" transparent onRequestClose={onClose}>
@@ -42,7 +46,9 @@ export function ThemeInfoModal({ theme, isDarkMode, language, onClose }: ThemeIn
             }}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <Text style={{ fontSize: 32 }}>{theme?.emoji}</Text>
+              <View {...a11yImage(theme ? pickLabel(theme.label, language) : '')}>
+                {theme && <ThemeIcon id={theme.id} color={c.accent} size={30} />}
+              </View>
               <Text
                 style={{
                   fontSize: 18, fontFamily: FONTS.headingBlack,
@@ -103,6 +109,7 @@ export function ThemeInfoModal({ theme, isDarkMode, language, onClose }: ThemeIn
               paddingVertical: 14, borderRadius: 14,
               alignItems: 'center', marginTop: 20,
             }}
+            {...a11yButton('OK')}
           >
             <Text style={{ color: '#fff', fontFamily: FONTS.monoBold }}>OK</Text>
           </TouchableOpacity>

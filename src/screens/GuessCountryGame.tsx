@@ -14,6 +14,24 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Home, Search, XCircle, RefreshCcw, Wifi, Flag, Share2 } from 'lucide-react-native';
+import {
+  AtlasWin,
+  AtlasLose,
+  AtlasCheck,
+  AtlasCross,
+  AtlasGlobe,
+  AtlasCompass,
+  AtlasDistance,
+  AtlasPopulation,
+  AtlasArea,
+  AtlasCoin,
+  AtlasCoastline,
+  AtlasLifeExp,
+  AtlasBorders,
+  AtlasTarget,
+  type AtlasIconProps,
+} from '../components/AtlasIcons';
+import type { ComponentType } from 'react';
 import Fuse from 'fuse.js';
 import type { User } from '@supabase/supabase-js';
 
@@ -30,12 +48,47 @@ import {
   type CatId,
   type CellResult,
 } from '../lib/gameLogic';
-import type { Language, Match } from '../types';
+import type { Match } from '../types';
 import { FONTS } from '../theme/typography';
+import { PALETTE } from '../theme/colors';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
+import { tr } from '../i18n';
+import { a11yButton, announce, a11yImage, a11yHidden, ICON_HIT_SLOP } from '../lib/a11y';
+
+/** Atlas line-icon per comparison category (rendered white on the colored tile). */
+const CAT_ICONS: Record<CatId, ComponentType<AtlasIconProps>> = {
+  continent: AtlasGlobe,
+  direction: AtlasCompass,
+  distance: AtlasDistance,
+  population: AtlasPopulation,
+  area: AtlasArea,
+  gdp: AtlasCoin,
+  coastline: AtlasCoastline,
+  life_exp: AtlasLifeExp,
+  borders: AtlasBorders,
+};
+
+/** Renders a comparison hint: ✓/✗ as Atlas icons, ▲/▼ glyphs and words as text. */
+function TileHint({ hint }: { hint: string }) {
+  if (hint === '✓') return <AtlasCheck color="#fff" size={13} />;
+  if (hint.startsWith('✗')) {
+    const rest = hint.slice(1).trim();
+    return (
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+        <AtlasCross color="#fff" size={12} />
+        {rest ? <Text style={styles.tileHint}>{rest}</Text> : null}
+      </View>
+    );
+  }
+  return (
+    <Text style={styles.tileHint} numberOfLines={1}>
+      {hint}
+    </Text>
+  );
+}
 
 interface Props {
-  isDarkMode: boolean;
-  language?: Language;
   onBackToMenu: () => void;
   user?: User | null;
   matchData?: Match | null;
@@ -77,8 +130,6 @@ function pickSeeded(seed: number): { country: any; stats: any } {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function GuessCountryGame({
-  isDarkMode,
-  language = 'fr',
   onBackToMenu,
   user,
   matchData,
@@ -88,6 +139,8 @@ export default function GuessCountryGame({
   isDaily,
   onShare,
 }: Props) {
+  const { isDarkMode } = useTheme();
+  const { language } = useLanguage();
   const isOnline = !!matchData;
   const isPlayer1 = matchData?.player1_id === user?.id;
   const { width } = useWindowDimensions();
@@ -163,6 +216,13 @@ export default function GuessCountryGame({
       setMyScore(score);
       setWon(true);
       setSubmitted(true);
+      announce(
+        tr(
+          language,
+          `Bravo ! C'était ${countryName(target.country)}, en ${newGuessCount} ${newGuessCount === 1 ? 'essai' : 'essais'}, ${score} points`,
+          `Well done! It was ${countryName(target.country)}, in ${newGuessCount} ${newGuessCount === 1 ? 'try' : 'tries'}, ${score} points`,
+        ),
+      );
       if (isDaily) {
         // Wordle-style: one square per attempt — wrong tries then the find.
         const grid = '🟥'.repeat(newGuessCount - 1) + '🟩';
@@ -171,6 +231,14 @@ export default function GuessCountryGame({
         if (!matchData) track('game_completed', { mode: 'guess', score });
         if (onRoundComplete) onRoundComplete(score);
       }
+    } else {
+      announce(
+        tr(
+          language,
+          `Faux. ${countryName(guessedCountry)}. Essai numéro ${newGuessCount}`,
+          `Wrong. ${countryName(guessedCountry)}. Guess number ${newGuessCount}`,
+        ),
+      );
     }
     setSearch('');
     setSuggestions([]);
@@ -180,6 +248,13 @@ export default function GuessCountryGame({
     if (submitted) return;
     setSubmitted(true);
     setMyScore(0);
+    announce(
+      tr(
+        language,
+        `Abandonné. C'était ${countryName(target.country)}`,
+        `Given up. It was ${countryName(target.country)}`,
+      ),
+    );
     if (onRoundComplete) onRoundComplete(0);
   };
 
@@ -227,6 +302,8 @@ export default function GuessCountryGame({
         <TouchableOpacity
           onPress={onBackToMenu}
           style={[styles.iconBtn, { backgroundColor: dark ? '#1a2d50' : '#f8f2e3', borderWidth: 1, borderColor: border }]}
+          hitSlop={ICON_HIT_SLOP}
+          {...a11yButton(tr(language, 'Menu', 'Menu'))}
         >
           <Home color={textPri} size={22} />
         </TouchableOpacity>
@@ -235,7 +312,7 @@ export default function GuessCountryGame({
         </Text>
         {isOnline ? (
           <View style={styles.onlineScoreRow}>
-            <Wifi size={12} color="#10b981" />
+            <Wifi size={12} color="#2a6e3f" />
             <Text style={[styles.onlineMyScore, { color: accentColor }]}>{myScore}</Text>
             <Text style={[styles.onlineVs, { color: textSec }]}>vs</Text>
             <Text style={[styles.onlineOppScore, { color: textSec }]}>{opponentScore}</Text>
@@ -273,7 +350,12 @@ export default function GuessCountryGame({
                   autoCapitalize="none"
                 />
                 {search.length > 0 && (
-                  <TouchableOpacity onPress={() => handleSearch('')} style={{ padding: 14 }}>
+                  <TouchableOpacity
+                    onPress={() => handleSearch('')}
+                    style={{ padding: 14 }}
+                    hitSlop={ICON_HIT_SLOP}
+                    {...a11yButton(tr(language, 'Effacer la recherche', 'Clear search'))}
+                  >
                     <XCircle color={textSec} size={20} />
                   </TouchableOpacity>
                 )}
@@ -289,6 +371,9 @@ export default function GuessCountryGame({
                         i < suggestions.length - 1 && { borderBottomWidth: 1, borderBottomColor: border },
                       ]}
                       onPress={() => handleGuess(c)}
+                      {...a11yButton(countryName(c), {
+                        hint: tr(language, 'Proposer ce pays', 'Guess this country'),
+                      })}
                     >
                       <Image source={{ uri: getFlagUrl(c.cca3) }} style={styles.suggFlag} />
                       <Text style={[styles.suggName, { color: textPri }]}>{countryName(c)}</Text>
@@ -297,12 +382,22 @@ export default function GuessCountryGame({
                 </View>
               )}
 
+              {/* No-match feedback so the field doesn't just sit there silently. */}
+              {search.trim().length > 0 && suggestions.length === 0 && (
+                <View style={[styles.suggestions, { backgroundColor: inputBg, borderColor: border }]}>
+                  <Text style={[styles.suggName, { color: textSec, padding: 14 }]}>
+                    {tr(language, 'Aucun pays trouvé', 'No country found')}
+                  </Text>
+                </View>
+              )}
+
               {isOnline && guesses.length > 0 && (
                 <TouchableOpacity
                   style={[styles.giveUpBtn, { borderColor: border }]}
                   onPress={handleGiveUp}
+                  {...a11yButton(tr(language, 'Abandonner, 0 point', 'Give up, 0 points'))}
                 >
-                  <Flag size={14} color="#ef4444" />
+                  <Flag size={14} color="#8b1a1a" />
                   <Text style={styles.giveUpText}>
                     {language === 'fr' ? 'Abandonner (0 pt)' : 'Give up (0 pt)'}
                   </Text>
@@ -314,7 +409,9 @@ export default function GuessCountryGame({
           {/* ── Waiting / give-up card ── */}
           {submitted && !won && (
             <View style={[styles.winCard, { backgroundColor: cardBg, borderColor: '#8b1a1a' }]}>
-              <Text style={styles.winEmoji}>😔</Text>
+              <View style={styles.winEmoji} {...a11yImage(tr(language, 'Déçu', 'Disappointed'))}>
+                <AtlasLose color={PALETTE.dangerRed} size={44} />
+              </View>
               <Text style={[styles.winTitle, { color: textPri }]}>
                 {language === 'fr' ? 'Abandonné' : 'Given up'}
               </Text>
@@ -328,8 +425,10 @@ export default function GuessCountryGame({
 
           {/* ── Win card ── */}
           {won && (
-            <View style={[styles.winCard, { backgroundColor: cardBg, borderColor: '#10B981' }]}>
-              <Text style={styles.winEmoji}>🎉</Text>
+            <View style={[styles.winCard, { backgroundColor: cardBg, borderColor: PALETTE.success }]}>
+              <View style={styles.winEmoji} {...a11yImage(tr(language, 'Gagné', 'Won'))}>
+                <AtlasWin color={PALETTE.success} size={44} />
+              </View>
               <Text style={[styles.winTitle, { color: textPri }]}>
                 {language === 'fr' ? 'Bravo !' : 'Well done!'}
               </Text>
@@ -351,12 +450,20 @@ export default function GuessCountryGame({
                   {language === 'fr' ? "En attente de l'adversaire…" : 'Waiting for opponent…'}
                 </Text>
               ) : isDaily ? (
-                <TouchableOpacity style={styles.replayBtn} onPress={onShare}>
+                <TouchableOpacity
+                  style={styles.replayBtn}
+                  onPress={onShare}
+                  {...a11yButton(tr(language, 'Partager', 'Share'))}
+                >
                   <Share2 color="#fff" size={18} />
                   <Text style={styles.replayText}>{language === 'fr' ? 'Partager' : 'Share'}</Text>
                 </TouchableOpacity>
               ) : (
-                <TouchableOpacity style={styles.replayBtn} onPress={reset}>
+                <TouchableOpacity
+                  style={styles.replayBtn}
+                  onPress={reset}
+                  {...a11yButton(tr(language, 'Rejouer', 'Play again'))}
+                >
                   <RefreshCcw color="#fff" size={18} />
                   <Text style={styles.replayText}>{language === 'fr' ? 'Rejouer' : 'Play Again'}</Text>
                 </TouchableOpacity>
@@ -387,7 +494,7 @@ export default function GuessCountryGame({
                   styles.guessCard,
                   {
                     backgroundColor: cardBg,
-                    borderColor: g.isCorrect ? '#10B981' : border,
+                    borderColor: g.isCorrect ? PALETTE.success : border,
                     marginBottom: 12,
                   },
                 ]}
@@ -402,8 +509,8 @@ export default function GuessCountryGame({
                     {countryName(g.country)}
                   </Text>
                   {g.isCorrect && (
-                    <View style={styles.correctBadge}>
-                      <Text style={styles.correctBadgeText}>✓</Text>
+                    <View style={styles.correctBadge} {...a11yImage(tr(language, 'Correct', 'Correct'))}>
+                      <AtlasCheck color="#fff" size={16} />
                     </View>
                   )}
                 </View>
@@ -412,6 +519,7 @@ export default function GuessCountryGame({
                 <View style={styles.tileGrid}>
                   {CATEGORIES.map((cat) => {
                     const cell = g.comparison[cat.id];
+                    const Icon = CAT_ICONS[cat.id];
                     return (
                       <View
                         key={cat.id}
@@ -423,18 +531,20 @@ export default function GuessCountryGame({
                           },
                         ]}
                       >
-                        <Text style={styles.tileEmoji}>{cat.emoji}</Text>
+                        <View style={styles.tileEmoji} {...a11yHidden}>
+                          <Icon color="#fff" size={20} />
+                        </View>
                         <Text style={styles.tileLabel} numberOfLines={1}>
                           {language === 'fr' ? cat.fr : cat.en}
                         </Text>
-                        <Text style={styles.tileValue} numberOfLines={1} adjustsFontSizeToFit>
-                          {cell?.value ?? '?'}
-                        </Text>
-                        {cell?.hint && (
-                          <Text style={styles.tileHint} numberOfLines={1}>
-                            {cell.hint}
+                        {cell?.value === '🎯' ? (
+                          <AtlasTarget color="#fff" size={16} />
+                        ) : (
+                          <Text style={styles.tileValue} numberOfLines={1} adjustsFontSizeToFit>
+                            {cell?.value ?? '?'}
                           </Text>
                         )}
+                        {cell?.hint && <TileHint hint={cell.hint} />}
                       </View>
                     );
                   })}
@@ -522,7 +632,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     gap: 10,
   },
-  winEmoji: { fontSize: 44 },
+  winEmoji: { alignItems: 'center', justifyContent: 'center' },
   winTitle: { fontSize: 26, fontFamily: FONTS.headingBlack },
   winFlag: { width: 130, height: 87, borderRadius: 8, marginVertical: 6 },
   winCountry: { fontSize: 20, fontFamily: FONTS.heading },
@@ -566,14 +676,13 @@ const styles = StyleSheet.create({
   guessFlag: { width: 40, height: 27, borderRadius: 4 },
   guessName: { flex: 1, fontFamily: FONTS.heading, fontSize: 15 },
   correctBadge: {
-    backgroundColor: '#10B981',
+    backgroundColor: PALETTE.success,
     borderRadius: 20,
     width: 26,
     height: 26,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  correctBadgeText: { color: '#fff', fontFamily: FONTS.monoBold, fontSize: 14 },
 
   // ── 3×3 tile grid ──
   tileGrid: {
@@ -591,7 +700,7 @@ const styles = StyleSheet.create({
     gap: 2,
     minHeight: 92,
   },
-  tileEmoji: { fontSize: 20 },
+  tileEmoji: { height: 22, alignItems: 'center', justifyContent: 'center' },
   tileLabel: {
     color: 'rgba(255,255,255,0.8)',
     fontFamily: FONTS.mono,

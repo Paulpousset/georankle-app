@@ -12,17 +12,26 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { Trophy, RefreshCcw, Moon, Sun, Heart, TrendingUp, Home, Share2 } from 'lucide-react-native';
+import { Trophy, RefreshCcw, Moon, Sun, Heart, TrendingUp, Home, Share2, Coins } from 'lucide-react-native';
+import { ThemeIcon } from '../components/themeIcons';
 import type { User } from '@supabase/supabase-js';
 
 import { gameData } from '../data/gameData';
 import { createSeededRng, seededShuffle } from '../lib/rng';
 import { track } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
+import { log } from '../lib/log';
+import { awardSoloCoins } from '../lib/coins';
+import { useToast } from '../components/ToastProvider';
 import { getFlagUrl, prefetchFlags } from '../lib/flags';
-import type { GameMode, Language, Match } from '../types';
+import type { GameMode, Match } from '../types';
 import { getColors } from '../theme/colors';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { FONTS } from '../theme/typography';
+import { tr } from '../i18n';
+import { a11yButton, announce, a11yHidden, ICON_HIT_SLOP } from '../lib/a11y';
+import { ScoreText } from '../components/ScoreText';
 
 const isMobile = Platform.OS === 'ios' || Platform.OS === 'android';
 
@@ -39,11 +48,7 @@ interface ThemeOption {
 }
 
 interface StreakGameProps {
-  isDarkMode: boolean;
-  setIsDarkMode: React.Dispatch<React.SetStateAction<boolean>>;
   setGameMode: (mode: GameMode) => void;
-  language?: Language;
-  setLanguage: React.Dispatch<React.SetStateAction<Language>>;
   user: User | null;
   matchData?: Match | null;
   onRoundComplete?: (score: number) => void;
@@ -60,11 +65,7 @@ interface StreakGameProps {
 }
 
 export default function StreakGame({
-  isDarkMode,
-  setIsDarkMode,
   setGameMode,
-  language = 'fr',
-  setLanguage,
   user,
   matchData,
   onRoundComplete,
@@ -74,12 +75,21 @@ export default function StreakGame({
   onShare,
   onDailyScoreChange,
 }: StreakGameProps) {
+  const { isDarkMode, setIsDarkMode } = useTheme();
+  const { language, setLanguage } = useLanguage();
+  const toast = useToast();
   const c = getColors(isDarkMode);
   const [currentCountry, setCurrentCountry] = useState<any>(null);
   const [options, setOptions] = useState<ThemeOption[]>([]);
   const [bestStreak, setBestStreak] = useState<number>(0);
   const [score, setScore] = useState<number>(0);
   const [gameOver, setGameOver] = useState<boolean>(false);
+  /** Solo coins credited for this run (null until the server replies). */
+  const [coinsEarned, setCoinsEarned] = useState<number | null>(null);
+  /** True when today's per-mode coin cap was already hit (no coins this run). */
+  const [coinsCapped, setCoinsCapped] = useState(false);
+  /** True when the coin award couldn't reach the server (queued for retry). */
+  const [coinsSyncFailed, setCoinsSyncFailed] = useState(false);
   const [lastAnswerCorrect, setLastAnswerCorrect] = useState<boolean | null>(null);
   const [revealedRanks, setRevealedRanks] = useState<Record<string, number>>({});
   const rngRef = useRef<(() => number) | null>(null);
@@ -164,12 +174,20 @@ export default function StreakGame({
 
     if (isCorrect) {
       setLastAnswerCorrect(true);
+      announce(tr(language, `Correct ! Streak ${score + 1}`, `Correct! Streak ${score + 1}`));
       setScore((prev) => prev + 1);
       revealTimerRef.current = setTimeout(() => {
         initRound();
       }, 1500);
     } else {
       setLastAnswerCorrect(false);
+      announce(
+        tr(
+          language,
+          `Faux ! Perdu. Votre score : ${score}`,
+          `Wrong! Game over. Your score: ${score}`,
+        ),
+      );
       if (score > bestStreak) setBestStreak(score);
 
       // Daily run: record the result, skip the normal score/coins path (daily
@@ -183,7 +201,7 @@ export default function StreakGame({
             .insert({ user_id: user.id, game_mode: 'streak', score })
             .then(({ error }) => {
               if (error) {
-                console.log('Error saving streak score:', error);
+                log.error('Error saving streak score:', error);
                 Alert.alert(
                   language === 'fr' ? 'Erreur' : 'Error',
                   language === 'fr' ? "Impossible d'enregistrer ton score." : 'Could not save your score.',
@@ -191,9 +209,21 @@ export default function StreakGame({
               }
             });
           // Solo coins (server-side daily cap, score-independent). Skip in matches.
+          // Failures are queued for retry on reconnect and surfaced to the player.
           if (!matchData) {
-            supabase.rpc('award_solo_coins', { p_game_mode: 'streak' }).then(({ error }) => {
-              if (error) console.log('award_solo_coins error:', error);
+            awardSoloCoins('streak').then((res) => {
+              setCoinsEarned(res.coinsAwarded);
+              setCoinsCapped(res.capped);
+              setCoinsSyncFailed(!res.synced);
+              if (!res.synced) {
+                toast.info(
+                  tr(
+                    language,
+                    'Pièces non synchronisées — réessai à la reconnexion.',
+                    'Coins not synced — will retry when you reconnect.',
+                  ),
+                );
+              }
             });
           }
         }
@@ -212,6 +242,8 @@ export default function StreakGame({
 
   const resetGame = () => {
     setScore(0);
+    setCoinsEarned(null);
+    setCoinsCapped(false);
     initRound();
   };
 
@@ -243,6 +275,8 @@ export default function StreakGame({
               <TouchableOpacity
                 onPress={() => setGameMode('menu')}
                 style={[themeStyles.iconBtn, { marginRight: 10 }]}
+                hitSlop={ICON_HIT_SLOP}
+                {...a11yButton(tr(language, 'Menu', 'Menu'))}
               >
                 <Home color={c.accent} size={20} />
               </TouchableOpacity>
@@ -263,6 +297,8 @@ export default function StreakGame({
                 <TouchableOpacity
                   onPress={() => setLanguage(language === 'fr' ? 'en' : 'fr')}
                   style={[themeStyles.iconBtn, { minWidth: 40, alignItems: 'center' }]}
+                  hitSlop={ICON_HIT_SLOP}
+                  {...a11yButton(tr(language, 'Changer de langue', 'Change language'))}
                 >
                   <Text style={{ fontFamily: FONTS.monoBold, color: c.text, fontSize: 11 }}>
                     {language.toUpperCase()}
@@ -271,6 +307,12 @@ export default function StreakGame({
                 <TouchableOpacity
                   onPress={() => setIsDarkMode(!isDarkMode)}
                   style={themeStyles.iconBtn}
+                  hitSlop={ICON_HIT_SLOP}
+                  {...a11yButton(
+                    isDarkMode
+                      ? tr(language, 'Mode clair', 'Light mode')
+                      : tr(language, 'Mode sombre', 'Dark mode'),
+                  )}
                 >
                   {isDarkMode ? (
                     <Sun color={c.accent} size={20} />
@@ -286,6 +328,8 @@ export default function StreakGame({
                 <TouchableOpacity
                   onPress={() => setGameMode('menu')}
                   style={[themeStyles.iconBtn, { marginRight: 8 }]}
+                  hitSlop={ICON_HIT_SLOP}
+                  {...a11yButton(tr(language, 'Menu', 'Menu'))}
                 >
                   <Home color={c.accent} size={18} />
                 </TouchableOpacity>
@@ -315,6 +359,8 @@ export default function StreakGame({
                 <TouchableOpacity
                   onPress={() => setLanguage(language === 'fr' ? 'en' : 'fr')}
                   style={[themeStyles.iconBtn, { minWidth: 40, alignItems: 'center' }]}
+                  hitSlop={ICON_HIT_SLOP}
+                  {...a11yButton(tr(language, 'Changer de langue', 'Change language'))}
                 >
                   <Text style={{ fontFamily: FONTS.monoBold, color: c.text, fontSize: 11 }}>
                     {language.toUpperCase()}
@@ -323,6 +369,12 @@ export default function StreakGame({
                 <TouchableOpacity
                   onPress={() => setIsDarkMode(!isDarkMode)}
                   style={themeStyles.iconBtn}
+                  hitSlop={ICON_HIT_SLOP}
+                  {...a11yButton(
+                    isDarkMode
+                      ? tr(language, 'Mode clair', 'Light mode')
+                      : tr(language, 'Mode sombre', 'Dark mode'),
+                  )}
                 >
                   {isDarkMode ? (
                     <Sun color={c.accent} size={18} />
@@ -365,11 +417,11 @@ export default function StreakGame({
               </View>
               <View style={themeStyles.card}>
                 <Image source={{ uri: getFlagUrl(currentCountry.cca3) }} style={styles.flag} />
-                <Text style={[styles.countryName, !isDarkMode && { color: c.text }]}>
+                <ScoreText style={[styles.countryName, !isDarkMode && { color: c.text }]}>
                   {language === 'fr'
                     ? currentCountry.name
                     : currentCountry.name_en || currentCountry.name}
-                </Text>
+                </ScoreText>
                 <Text style={[styles.instruction, { color: c.textMuted }]}>
                   {language === 'fr'
                     ? 'Quel est son meilleur classement ?'
@@ -440,8 +492,17 @@ export default function StreakGame({
                 style={themeStyles.themeBtn(theme.id)}
                 onPress={() => handleChoice(theme.id)}
                 disabled={revealedRanks[theme.id] !== undefined}
+                {...a11yButton(
+                  language === 'fr' ? theme.label.fr : theme.label.en || theme.label.fr,
+                  {
+                    disabled: revealedRanks[theme.id] !== undefined,
+                    hint: tr(language, 'Choisir ce thème', 'Pick this theme'),
+                  },
+                )}
               >
-                <Text style={styles.emoji}>{theme.emoji}</Text>
+                <View style={styles.emoji} {...a11yHidden}>
+                  <ThemeIcon id={theme.id} color={c.accent} size={20} />
+                </View>
                 <Text
                   style={[styles.themeLabel, !isDarkMode && { color: c.text }]}
                   numberOfLines={2}
@@ -462,20 +523,69 @@ export default function StreakGame({
                 { backgroundColor: isDarkMode ? 'rgba(10,22,40,0.96)' : 'rgba(242,232,208,0.97)' },
               ]}
             >
-              <Text style={styles.gameOverTitle}>{language === 'fr' ? 'PERDU !' : 'LOST!'}</Text>
+              <ScoreText style={styles.gameOverTitle}>{language === 'fr' ? 'PERDU !' : 'LOST!'}</ScoreText>
               <Text style={[styles.gameOverScore, { color: c.text }]}>
                 {language === 'fr' ? 'Votre score : ' : 'Your score: '}
                 {score}
               </Text>
+              {/* Coins earned for this run (solo only, server-credited). */}
+              {coinsEarned != null && (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 8,
+                    marginBottom: 24,
+                    backgroundColor: c.surface,
+                    borderRadius: 14,
+                    borderWidth: 1,
+                    borderColor: coinsEarned > 0 ? '#ffd700' : coinsSyncFailed ? '#c0392b' : c.border,
+                    paddingVertical: 10,
+                    paddingHorizontal: 16,
+                  }}
+                >
+                  <Coins color="#ffd700" size={20} />
+                  {coinsEarned > 0 ? (
+                    <>
+                      <Text style={{ color: '#ffd700', fontSize: 22, fontFamily: FONTS.headingBlack }}>
+                        {`+${coinsEarned}`}
+                      </Text>
+                      <Text style={{ color: c.textMuted, fontSize: 13, fontFamily: FONTS.mono }}>
+                        {language === 'fr' ? 'pièces gagnées' : 'coins earned'}
+                      </Text>
+                    </>
+                  ) : coinsSyncFailed ? (
+                    <Text style={{ color: '#c0392b', fontSize: 13, fontFamily: FONTS.mono, textAlign: 'center' }}>
+                      {language === 'fr'
+                        ? 'Pièces non synchronisées — réessai à la reconnexion'
+                        : 'Coins not synced — will retry on reconnect'}
+                    </Text>
+                  ) : (
+                    <Text style={{ color: c.textMuted, fontSize: 13, fontFamily: FONTS.mono }}>
+                      {coinsCapped
+                        ? (language === 'fr' ? 'Plafond quotidien atteint' : 'Daily coin cap reached')
+                        : (language === 'fr' ? 'Aucune pièce cette fois' : 'No coins this time')}
+                    </Text>
+                  )}
+                </View>
+              )}
               {isDaily ? (
-                <TouchableOpacity style={styles.resetBtn} onPress={onShare}>
+                <TouchableOpacity
+                  style={styles.resetBtn}
+                  onPress={onShare}
+                  {...a11yButton(tr(language, 'Partager', 'Share'))}
+                >
                   <Share2 color="#fff" size={20} />
                   <Text style={styles.resetBtnText}>
                     {language === 'fr' ? 'PARTAGER' : 'SHARE'}
                   </Text>
                 </TouchableOpacity>
               ) : (
-                <TouchableOpacity style={styles.resetBtn} onPress={resetGame}>
+                <TouchableOpacity
+                  style={styles.resetBtn}
+                  onPress={resetGame}
+                  {...a11yButton(tr(language, 'Recommencer', 'Retry'))}
+                >
                   <RefreshCcw color="#fff" size={20} />
                   <Text style={styles.resetBtnText}>
                     {language === 'fr' ? 'RECOMMENCER' : 'RETRY'}

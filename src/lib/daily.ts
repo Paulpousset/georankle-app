@@ -20,7 +20,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { GameMode, Language } from '../types';
 import { supabase } from './supabase';
+import { enqueue } from './syncQueue';
 import { tr } from '../i18n';
+
+/** Shape of the `complete_daily` RPC payload (returned as JSONB). */
+interface CompleteDailyResult {
+  streak?: number;
+  best_streak?: number;
+}
 
 /** The solo modes that have a daily challenge (mirrors MainMenu's solo list). */
 export const DAILY_MODES: GameMode[] = [
@@ -200,11 +207,22 @@ async function recordLocal(result: DailyResult): Promise<StoredState> {
 /**
  * Record a daily completion. Always updates the local cache; when signed in,
  * also calls the server-authoritative RPC and adopts its streak values. Never
- * throws — a network failure leaves the local state intact.
+ * throws — a network failure leaves the local state intact and queues the
+ * completion for retry on reconnect.
+ *
+ * The returned `synced` flag lets the UI tell the player whether their result
+ * actually reached the server (vs. being saved locally only), instead of the
+ * old behaviour of silently swallowing the failure.
  */
-export async function completeDaily(user: User | null, result: DailyResult): Promise<DailyState> {
+export async function completeDaily(
+  user: User | null,
+  result: DailyResult,
+): Promise<DailyState & { synced: boolean }> {
   const stored = await recordLocal(result);
   const today = getTodayUTC();
+
+  // Logged-out runs are local-only by design, so there's nothing to "sync".
+  let synced = true;
 
   if (user) {
     try {
@@ -212,20 +230,31 @@ export async function completeDaily(user: User | null, result: DailyResult): Pro
         p_date: result.date,
         p_mode: result.mode,
         p_score: result.score,
-        p_grid: result.grid ?? null,
+        p_grid: result.grid ?? '',
       });
-      if (!error && data) {
-        stored.streak = data.streak ?? stored.streak;
-        stored.best = data.best_streak ?? stored.best;
+      if (error) throw error;
+      if (data) {
+        const d = data as CompleteDailyResult;
+        stored.streak = d.streak ?? stored.streak;
+        stored.best = d.best_streak ?? stored.best;
         stored.lastDate = today;
         await writeStored(stored);
       }
     } catch {
-      // Keep the optimistic local result; server will reconcile on next sync.
+      // Keep the optimistic local result and queue a retry; the RPC is
+      // idempotent per (user, date, mode), so replaying it later is safe.
+      synced = false;
+      await enqueue({
+        type: 'daily',
+        date: result.date,
+        mode: result.mode,
+        score: result.score,
+        grid: result.grid ?? null,
+      });
     }
   }
 
-  return toState(stored, today);
+  return { ...toState(stored, today), synced };
 }
 
 /**
@@ -246,11 +275,12 @@ export async function syncOnLogin(_user: User): Promise<void> {
         p_date: r.date,
         p_mode: r.mode,
         p_score: r.score,
-        p_grid: r.grid ?? null,
+        p_grid: r.grid ?? '',
       });
       if (!error && data) {
-        serverStreak = data.streak ?? serverStreak;
-        serverBest = data.best_streak ?? serverBest;
+        const d = data as CompleteDailyResult;
+        serverStreak = d.streak ?? serverStreak;
+        serverBest = d.best_streak ?? serverBest;
       }
     }
 

@@ -12,6 +12,8 @@ export const PALETTE = {
   sand: '#c4872a',
   dangerRed: '#8b1a1a',
   chartBlue: '#4a9eff',
+  // Emerald "correct/success" accent (used for right answers in the guess games).
+  success: '#10B981',
   // Parchment tones
   parchment: '#f2e8d0',
   parchmentDark: '#e8d9b8',

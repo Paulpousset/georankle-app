@@ -2,15 +2,17 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
-import type { Language } from '../types';
+import { formatMatchScore } from '../lib/match';
+import { a11yButton, announce } from '../lib/a11y';
+import { ScoreText } from './ScoreText';
 
 interface WaitingOpponentProps {
   myScore: number;
   gameMode: string;
-  isDarkMode: boolean;
-  language: Language;
   /** Called when the player chooses to abandon while waiting. */
   onLeave?: () => void;
 }
@@ -19,7 +21,9 @@ interface WaitingOpponentProps {
 // never stuck forever if the opponent disconnected.
 const LEAVE_BUTTON_DELAY_MS = 30_000;
 
-export function WaitingOpponent({ myScore, gameMode, isDarkMode, language, onLeave }: WaitingOpponentProps) {
+export function WaitingOpponent({ myScore, gameMode, onLeave }: WaitingOpponentProps) {
+  const { isDarkMode } = useTheme();
+  const { language } = useLanguage();
   const c = getColors(isDarkMode);
   const [canLeave, setCanLeave] = useState(false);
 
@@ -29,12 +33,24 @@ export function WaitingOpponent({ myScore, gameMode, isDarkMode, language, onLea
     return () => clearTimeout(t);
   }, [onLeave]);
 
+  // Let screen-reader users know the round is over and we're waiting on the
+  // opponent (this screen otherwise has no focusable element to convey it).
+  useEffect(() => {
+    announce(language === 'fr' ? "En attente de l'adversaire" : 'Waiting for opponent');
+  }, [language]);
+
+  // Label and value must both follow the mode actually being played. Only
+  // `classic` is scored as efficiency; `streak` is a count; everything else is
+  // points. Formatting the value goes through the shared `formatMatchScore` so
+  // the unit can never drift from the other match screens.
   const scoreLabel =
     gameMode === 'streak'
       ? language === 'fr' ? 'Série' : 'Streak'
-      : language === 'fr' ? 'Efficacité' : 'Efficiency';
+      : gameMode === 'classic'
+        ? language === 'fr' ? 'Efficacité' : 'Efficiency'
+        : language === 'fr' ? 'Points' : 'Points';
 
-  const scoreDisplay = gameMode === 'streak' ? `${myScore}` : `${myScore}%`;
+  const scoreDisplay = formatMatchScore(gameMode, myScore);
 
   const confirmLeave = () => {
     Alert.alert(
@@ -54,12 +70,12 @@ export function WaitingOpponent({ myScore, gameMode, isDarkMode, language, onLea
       <StatusBar style={isDarkMode ? 'light' : 'dark'} />
 
       <View style={{ alignItems: 'center', gap: 12 }}>
-        <Text
+        <ScoreText
           accessibilityLabel={language === 'fr' ? `Ton score : ${scoreDisplay}` : `Your score: ${scoreDisplay}`}
           style={{ fontSize: 48, fontFamily: FONTS.headingBlack, color: '#2a6e3f' }}
         >
           {scoreDisplay}
-        </Text>
+        </ScoreText>
         <Text style={{ color: c.textMuted, fontSize: 14, fontFamily: FONTS.mono }}>{scoreLabel}</Text>
       </View>
 
@@ -73,8 +89,7 @@ export function WaitingOpponent({ myScore, gameMode, isDarkMode, language, onLea
       {onLeave && canLeave && (
         <TouchableOpacity
           onPress={confirmLeave}
-          accessibilityRole="button"
-          accessibilityLabel={language === 'fr' ? 'Quitter la partie' : 'Leave the match'}
+          {...a11yButton(language === 'fr' ? 'Quitter la partie' : 'Leave the match')}
           style={{
             paddingHorizontal: 24,
             paddingVertical: 12,

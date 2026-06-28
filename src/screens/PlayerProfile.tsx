@@ -23,15 +23,17 @@ import { Avatar } from '../components/Avatar';
 import { WorldAvatar } from '../components/WorldAvatar';
 import { deriveDefaultConfigFromSeed, normalizeConfig } from '../data/cosmetics';
 import { tr } from '../i18n';
-import type { AvatarConfig, Language } from '../types';
+import { a11yButton, ICON_HIT_SLOP } from '../lib/a11y';
+import { ScoreText } from '../components/ScoreText';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
+import type { AvatarConfig } from '../types';
 
 interface PlayerProfileProps {
   userId: string;
   /** Username already known by the caller — shown instantly while the snapshot loads. */
   initialUsername?: string | null;
   currentUserId: string;
-  isDarkMode: boolean;
-  language: Language;
   onBack: () => void;
 }
 
@@ -58,10 +60,10 @@ export default function PlayerProfile({
   userId,
   initialUsername,
   currentUserId,
-  isDarkMode,
-  language,
   onBack,
 }: PlayerProfileProps) {
+  const { isDarkMode } = useTheme();
+  const { language } = useLanguage();
   const c = getColors(isDarkMode);
 
   const fetchPublic = useCallback(async (): Promise<PublicSnapshot> => {
@@ -105,7 +107,7 @@ export default function PlayerProfile({
     return {
       username: profile?.username ?? '',
       avatarUrl: profile?.avatar_url ?? null,
-      avatarConfig: profile?.avatar_config ? normalizeConfig(profile.avatar_config as AvatarConfig) : null,
+      avatarConfig: profile?.avatar_config ? normalizeConfig(profile.avatar_config as unknown as AvatarConfig) : null,
       showRank: profile?.show_rank ?? true,
       elo: rating?.elo ?? 1000,
       wins: rating?.wins ?? 0,
@@ -239,6 +241,7 @@ export default function PlayerProfile({
           onPress={removeFriend}
           disabled={acting}
           style={[styles.friendBtn, { backgroundColor: c.card, borderColor: '#2a6e3f' }]}
+          {...a11yButton(tr(language, 'Supprimer cet ami', 'Remove this friend'), { disabled: acting })}
         >
           <Users color="#2a6e3f" size={18} />
           <Text style={[styles.friendBtnText, { color: '#2a6e3f' }]}>{tr(language, 'Amis', 'Friends')}</Text>
@@ -259,6 +262,7 @@ export default function PlayerProfile({
           onPress={acceptFriend}
           disabled={acting}
           style={[styles.friendBtn, { backgroundColor: '#2a6e3f', borderColor: '#2a6e3f' }]}
+          {...a11yButton(tr(language, 'Accepter la demande', 'Accept request'), { disabled: acting, busy: acting })}
         >
           {acting ? <ActivityIndicator size="small" color="#fff" /> : <Check color="#fff" size={18} />}
           <Text style={[styles.friendBtnText, { color: '#fff' }]}>{tr(language, 'Accepter', 'Accept')}</Text>
@@ -270,6 +274,7 @@ export default function PlayerProfile({
         onPress={addFriend}
         disabled={acting}
         style={[styles.friendBtn, { backgroundColor: c.accent, borderColor: c.accent }]}
+        {...a11yButton(tr(language, 'Ajouter en ami', 'Add friend'), { disabled: acting, busy: acting })}
       >
         {acting ? <ActivityIndicator size="small" color="#fff" /> : <UserPlus color="#fff" size={18} />}
         <Text style={[styles.friendBtnText, { color: '#fff' }]}>{tr(language, 'Ajouter', 'Add friend')}</Text>
@@ -285,7 +290,12 @@ export default function PlayerProfile({
 
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: c.border }]}>
-        <TouchableOpacity onPress={onBack} style={[styles.iconBtn, { backgroundColor: c.card, borderColor: c.border }]}>
+        <TouchableOpacity
+          onPress={onBack}
+          style={[styles.iconBtn, { backgroundColor: c.card, borderColor: c.border }]}
+          hitSlop={ICON_HIT_SLOP}
+          {...a11yButton(tr(language, 'Retour', 'Back'))}
+        >
           <ArrowLeft color={c.text} size={20} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: c.text }]} numberOfLines={1}>
@@ -368,7 +378,7 @@ export default function PlayerProfile({
             {h2hPlayed > 0 ? (
               <View style={styles.h2hRow}>
                 <View style={styles.h2hCol}>
-                  <Text style={[styles.h2hValue, { color: '#2a6e3f' }]}>{snapshot?.h2hMine ?? 0}</Text>
+                  <ScoreText style={[styles.h2hValue, { color: '#2a6e3f' }]}>{snapshot?.h2hMine ?? 0}</ScoreText>
                   <Text style={[styles.h2hLabel, { color: c.textFaint }]}>{tr(language, 'Vous', 'You')}</Text>
                 </View>
                 <View style={styles.h2hCenter}>
@@ -378,7 +388,7 @@ export default function PlayerProfile({
                   </Text>
                 </View>
                 <View style={styles.h2hCol}>
-                  <Text style={[styles.h2hValue, { color: '#8b1a1a' }]}>{snapshot?.h2hTheirs ?? 0}</Text>
+                  <ScoreText style={[styles.h2hValue, { color: '#8b1a1a' }]}>{snapshot?.h2hTheirs ?? 0}</ScoreText>
                   <Text style={[styles.h2hLabel, { color: c.textFaint }]} numberOfLines={1}>{username}</Text>
                 </View>
               </View>

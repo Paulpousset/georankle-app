@@ -23,6 +23,7 @@ import {
   Send,
   Trash2,
   Users,
+  X,
 } from 'lucide-react-native';
 
 import { track } from '../lib/analytics';
@@ -43,12 +44,13 @@ import {
   type LogEntry,
   type Segment,
 } from '../lib/admin';
-import type { Language, MatchMode } from '../types';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
+import { a11yButton, ICON_HIT_SLOP } from '../lib/a11y';
+import type { MatchMode } from '../types';
 
 interface AdminNotificationsProps {
-  session: { user: { id: string } | null };
-  isDarkMode: boolean;
-  language: Language;
   onBack: () => void;
 }
 
@@ -61,12 +63,12 @@ const WEEKDAYS_FR = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
 const WEEKDAYS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export default function AdminNotifications({
-  session,
-  isDarkMode,
-  language,
   onBack,
 }: AdminNotificationsProps) {
-  const userId = session.user?.id ?? '';
+  const { user } = useAuth();
+  const { isDarkMode } = useTheme();
+  const { language } = useLanguage();
+  const userId = user?.id ?? '';
   const c = getColors(isDarkMode);
   const t = (fr: string, en: string) => tr(language, fr, en);
 
@@ -350,6 +352,7 @@ export default function AdminNotifications({
                     styles.chip,
                     { borderColor: active ? c.accent : c.border, backgroundColor: active ? c.accent : c.background },
                   ]}
+                  {...a11yButton(o.label, { selected: active })}
                 >
                   <Text style={[styles.chipText, { color: active ? '#fff' : c.textMuted }]}>{o.label}</Text>
                 </TouchableOpacity>
@@ -384,6 +387,7 @@ export default function AdminNotifications({
                       styles.chip,
                       { borderColor: active ? c.accent : c.border, backgroundColor: active ? c.accent : c.background },
                     ]}
+                    {...a11yButton(modeLabel(m, language), { selected: active })}
                   >
                     <Text style={[styles.chipText, { color: active ? '#fff' : c.textMuted }]}>{modeLabel(m, language)}</Text>
                   </TouchableOpacity>
@@ -406,7 +410,11 @@ export default function AdminNotifications({
                   returnKeyType="search"
                   autoCapitalize="none"
                 />
-                <TouchableOpacity onPress={runSearch} style={[styles.searchBtn, { backgroundColor: c.accent }]}>
+                <TouchableOpacity
+                  onPress={runSearch}
+                  style={[styles.searchBtn, { backgroundColor: c.accent }]}
+                  {...a11yButton(t('Rechercher', 'Search'), { busy: searching })}
+                >
                   {searching ? <ActivityIndicator size="small" color="#fff" /> : <Search color="#fff" size={18} />}
                 </TouchableOpacity>
               </View>
@@ -418,9 +426,10 @@ export default function AdminNotifications({
                       key={u.id}
                       onPress={() => toggleUser(u)}
                       style={[styles.chip, { borderColor: c.accent, backgroundColor: c.accent, flexDirection: 'row', gap: 4 }]}
+                      {...a11yButton(t(`Retirer ${u.username}`, `Remove ${u.username}`))}
                     >
                       <Text style={[styles.chipText, { color: '#fff' }]}>{u.username}</Text>
-                      <Text style={[styles.chipText, { color: '#fff' }]}>✕</Text>
+                      <X color="#fff" size={13} />
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -433,6 +442,7 @@ export default function AdminNotifications({
                     key={u.id}
                     onPress={() => toggleUser(u)}
                     style={[styles.resultRow, { borderColor: c.border, backgroundColor: c.background }]}
+                    {...a11yButton(u.username, { selected: picked })}
                   >
                     <Text style={[styles.resultName, { color: c.text }]}>{u.username}</Text>
                     {picked && <Check color={c.accent} size={16} />}
@@ -447,6 +457,7 @@ export default function AdminNotifications({
             onPress={doPreview}
             disabled={previewing}
             style={[styles.previewBtn, { borderColor: c.border, backgroundColor: c.background }]}
+            {...a11yButton(t('Aperçu du nombre de destinataires', 'Preview recipient count'), { disabled: previewing, busy: previewing })}
           >
             <Users color={c.textMuted} size={16} />
             {previewing ? (
@@ -462,7 +473,12 @@ export default function AdminNotifications({
         </View>
 
         {/* ── Send now ─────────────────────────────────────────────────────── */}
-        <TouchableOpacity style={[styles.sendBtn, { backgroundColor: c.accent }]} onPress={doSend} disabled={sending}>
+        <TouchableOpacity
+          style={[styles.sendBtn, { backgroundColor: c.accent }]}
+          onPress={doSend}
+          disabled={sending}
+          {...a11yButton(t('Envoyer maintenant', 'Send now'), { disabled: sending, busy: sending })}
+        >
           {sending ? (
             <ActivityIndicator color="#fff" />
           ) : (
@@ -477,6 +493,7 @@ export default function AdminNotifications({
         <TouchableOpacity
           style={[styles.scheduleToggle, { borderColor: c.border }]}
           onPress={() => setScheduleOpen((v) => !v)}
+          {...a11yButton(t('Programmer une campagne récurrente', 'Schedule a recurring campaign'), { expanded: scheduleOpen })}
         >
           <Clock color={c.textMuted} size={16} />
           <Text style={[styles.scheduleToggleText, { color: c.textMuted }]}>
@@ -499,6 +516,7 @@ export default function AdminNotifications({
                       key={s}
                       onPress={() => setSchedule(s)}
                       style={[styles.chip, { borderColor: active ? c.accent : c.border, backgroundColor: active ? c.accent : c.background }]}
+                      {...a11yButton(s === 'daily' ? t('Chaque jour', 'Daily') : t('Chaque semaine', 'Weekly'), { selected: active })}
                     >
                       <Text style={[styles.chipText, { color: active ? '#fff' : c.textMuted }]}>
                         {s === 'daily' ? t('Chaque jour', 'Daily') : t('Chaque semaine', 'Weekly')}
@@ -515,6 +533,7 @@ export default function AdminNotifications({
                 <TouchableOpacity
                   onPress={() => setWeekday((w) => (w + 1) % 7)}
                   style={[styles.stepperBtn, { borderColor: c.border, backgroundColor: c.background }]}
+                  {...a11yButton(t(`Jour : ${weekdays[weekday]}`, `Day: ${weekdays[weekday]}`), { hint: t('Appuyer pour changer de jour', 'Tap to change the day') })}
                 >
                   <Text style={{ fontFamily: FONTS.monoBold, color: c.text }}>{weekdays[weekday]}</Text>
                 </TouchableOpacity>
@@ -526,12 +545,18 @@ export default function AdminNotifications({
               <TouchableOpacity
                 onPress={() => setHour((h) => (h + 1) % 24)}
                 style={[styles.stepperBtn, { borderColor: c.border, backgroundColor: c.background }]}
+                {...a11yButton(t(`Heure : ${hour}h UTC`, `Hour: ${hour}:00 UTC`), { hint: t('Appuyer pour changer l\'heure', 'Tap to change the hour') })}
               >
                 <Text style={{ fontFamily: FONTS.monoBold, color: c.text }}>{`${hour}:00`}</Text>
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity style={[styles.sendBtn, { backgroundColor: '#2a6e3f', marginTop: 4 }]} onPress={doSaveCampaign} disabled={savingCampaign}>
+            <TouchableOpacity
+              style={[styles.sendBtn, { backgroundColor: '#2a6e3f', marginTop: 4 }]}
+              onPress={doSaveCampaign}
+              disabled={savingCampaign}
+              {...a11yButton(t('Enregistrer la campagne', 'Save campaign'), { disabled: savingCampaign, busy: savingCampaign })}
+            >
               {savingCampaign ? (
                 <ActivityIndicator color="#fff" />
               ) : (
@@ -562,8 +587,15 @@ export default function AdminNotifications({
                     onValueChange={(v) => setCampaignEnabled(cp.id, v).then(refreshLists).catch(() => {})}
                     trackColor={{ false: c.border, true: c.accent }}
                     thumbColor="#fff"
+                    accessibilityLabel={t(`Activer la campagne ${cp.title}`, `Enable campaign ${cp.title}`)}
+                    accessibilityState={{ selected: cp.enabled }}
                   />
-                  <TouchableOpacity onPress={() => confirmDeleteCampaign(cp)} style={{ padding: 6 }}>
+                  <TouchableOpacity
+                    onPress={() => confirmDeleteCampaign(cp)}
+                    style={{ padding: 6 }}
+                    hitSlop={ICON_HIT_SLOP}
+                    {...a11yButton(t(`Supprimer la campagne ${cp.title}`, `Delete campaign ${cp.title}`))}
+                  >
                     <Trash2 color="#8b1a1a" size={18} />
                   </TouchableOpacity>
                 </View>

@@ -96,7 +96,13 @@ module.exports = [
         beforeAll: 'readonly',
         afterAll: 'readonly',
         jest: 'readonly',
+        require: 'readonly',
       },
+    },
+    rules: {
+      // `jest.mock(...)` factories are hoisted above imports, so they must use
+      // `require()` to pull in mocks — they cannot reference ESM imports.
+      '@typescript-eslint/no-require-imports': 'off',
     },
   },
   {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Image,
@@ -7,19 +7,25 @@ import {
   Text,
   TouchableOpacity,
   View,
-  type GestureResponderEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { Home, Info, Moon, RefreshCcw, Share2, Sun, Trophy } from 'lucide-react-native';
+import { Coins, Home, Info, Moon, RefreshCcw, Share2, Sun, Trophy } from 'lucide-react-native';
+import { ThemeIcon } from '../components/themeIcons';
 import type { User } from '@supabase/supabase-js';
 
-import type { Language, Match, Selection, SelectionMap, Theme } from '../types';
+import type { Match, Selection, SelectionMap, Theme } from '../types';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { gameData } from '../data/gameData';
 import { createSeededRng, seededShuffle } from '../lib/rng';
 import { MISSING_RANK, SESSION_SIZE, solveOptimal } from '../lib/gameLogic';
 import { track } from '../lib/analytics';
+import { log } from '../lib/log';
 import { supabase } from '../lib/supabase';
+import { awardSoloCoins } from '../lib/coins';
+import { useToast } from '../components/ToastProvider';
+import { useCachedData } from '../lib/cache';
 import { getFlagUrl, prefetchFlags } from '../lib/flags';
 import { getEfficiencyColor, getRankColor } from '../lib/ranks';
 import { pickLabel, tr } from '../i18n';
@@ -27,18 +33,16 @@ import { commonStyles as styles } from '../theme/commonStyles';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { ThemeInfoModal } from '../components/ThemeInfoModal';
+import { a11yButton, announce, a11yHidden, ICON_HIT_SLOP } from '../lib/a11y';
+import { ScoreText } from '../components/ScoreText';
 
 const isMobile = Platform.OS === 'ios' || Platform.OS === 'android';
 
 interface ClassicGameProps {
-  isDarkMode: boolean;
-  language: Language;
   user: User | null;
   matchData?: Match | null;
   onRoundComplete?: (score: number) => void;
   onExit: () => void;
-  onToggleTheme: () => void;
-  onToggleLanguage: () => void;
   /** Daily challenge: deterministic seed for today's puzzle (overrides random). */
   dailySeed?: number;
   /** Daily challenge: fired once at game-over with the score + emoji share grid. */
@@ -62,26 +66,32 @@ function gridCell(mineRank: number, optimalRank: number): string {
  * then compare your total against the optimal assignment.
  */
 export function ClassicGame({
-  isDarkMode,
-  language,
   user,
   matchData,
   onRoundComplete,
   onExit,
-  onToggleTheme,
-  onToggleLanguage,
   dailySeed,
   onDailyComplete,
   isDaily,
   onShare,
 }: ClassicGameProps) {
+  const { isDarkMode, toggleTheme } = useTheme();
+  const { language, toggleLanguage } = useLanguage();
+  const toast = useToast();
   const c = getColors(isDarkMode);
   const [sessionThemes, setSessionThemes] = useState<Theme[]>([]);
   const [rounds, setRounds] = useState<typeof gameData.countries>([]);
   const [currentRoundIndex, setCurrentRoundIndex] = useState(0);
   const [totalScore, setTotalScore] = useState(0);
-  const [bestScore, setBestScore] = useState<number | null>(null);
+  /** Optimistic best-score bump from the game just finished this session. */
+  const [sessionBest, setSessionBest] = useState<number | null>(null);
   const [gameOver, setGameOver] = useState(false);
+  /** Solo coins credited for this session (null until the server replies). */
+  const [coinsEarned, setCoinsEarned] = useState<number | null>(null);
+  /** True when today's per-mode coin cap was already hit (no coins this time). */
+  const [coinsCapped, setCoinsCapped] = useState(false);
+  /** True when the coin award couldn't reach the server (queued for retry). */
+  const [coinsSyncFailed, setCoinsSyncFailed] = useState(false);
   const [usedThemeIds, setUsedThemeIds] = useState<string[]>([]);
   const [selections, setSelections] = useState<SelectionMap>({});
   const [optimalSelections, setOptimalSelections] = useState<SelectionMap>({});
@@ -101,24 +111,35 @@ export function ClassicGame({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    if (user) fetchUserBestScores(user.id);
-    else setBestScore(null);
-  }, [user]);
-
-  const fetchUserBestScores = async (userId: string) => {
+  const fetchUserBestScores = useCallback(async (): Promise<number | null> => {
+    if (!user) return null;
     const { data: scores } = await supabase
       .from('scores')
       .select('score')
-      .eq('user_id', userId)
+      .eq('user_id', user.id)
       .eq('game_mode', 'classic');
 
     if (scores && scores.length > 0) {
       // Older rows stored total ranks (usually > 100); keep only efficiency (%).
       const validScores = scores.map((s) => s.score).filter((s: number) => s <= 100);
-      setBestScore(validScores.length > 0 ? Math.max(...validScores) : null);
+      return validScores.length > 0 ? Math.max(...validScores) : null;
     }
-  };
+    return null;
+  }, [user]);
+
+  // Cached best score (stale-while-revalidate): hydrate instantly and refetch in the
+  // background at most once per TTL instead of hitting the network on every mount.
+  const { data: cachedBest } = useCachedData<number | null>(
+    `classic-best:${user?.id ?? 'anon'}`,
+    fetchUserBestScores,
+    { enabled: !!user },
+  );
+  const bestScore = (() => {
+    const vals: number[] = [];
+    if (cachedBest != null) vals.push(cachedBest);
+    if (sessionBest != null) vals.push(sessionBest);
+    return vals.length ? Math.max(...vals) : null;
+  })();
 
   const initGame = () => {
     const roundNumber = matchData?.current_round ?? 1;
@@ -167,6 +188,8 @@ export function ClassicGame({
     setCurrentRoundIndex(0);
     setTotalScore(0);
     setGameOver(false);
+    setCoinsEarned(null);
+    setCoinsCapped(false);
     setUsedThemeIds([]);
     setSelections({});
     setOptimalSelections(solveOptimal(selectedThemes, selectedCountries, language));
@@ -203,7 +226,15 @@ export function ClassicGame({
         );
         const gameEfficiency = Math.round((gameOptimalTotal / Math.max(finalScore, 1)) * 100);
 
-        setBestScore((prev) => (prev === null || gameEfficiency > prev ? gameEfficiency : prev));
+        setSessionBest((prev) => (prev === null || gameEfficiency > prev ? gameEfficiency : prev));
+
+        announce(
+          tr(
+            language,
+            `Session terminée. Score total ${finalScore}, efficacité ${gameEfficiency}%.`,
+            `Session finished. Total score ${finalScore}, efficiency ${gameEfficiency}%.`,
+          ),
+        );
 
         // Daily run: record the result + emoji grid; skip the normal score/coins
         // path (daily results live in their own table). Build the grid from the
@@ -227,14 +258,27 @@ export function ClassicGame({
             .insert({ user_id: user.id, game_mode: 'classic', score: gameEfficiency })
             .then(({ error }) => {
               if (error) {
-                console.error('Error saving classic efficiency:', error);
+                log.error('Error saving classic efficiency:', error);
                 Alert.alert(tr(language, 'Erreur', 'Error'), tr(language, "Impossible d'enregistrer ton score.", 'Could not save your score.'));
               }
             });
           // Solo coins (server-side daily cap, score-independent). Skip in matches.
+          // Failures are queued for retry on reconnect and surfaced to the player
+          // instead of being swallowed by a console.log.
           if (!matchData) {
-            supabase.rpc('award_solo_coins', { p_game_mode: 'classic' }).then(({ error }) => {
-              if (error) console.log('award_solo_coins error:', error);
+            awardSoloCoins('classic').then((res) => {
+              setCoinsEarned(res.coinsAwarded);
+              setCoinsCapped(res.capped);
+              setCoinsSyncFailed(!res.synced);
+              if (!res.synced) {
+                toast.info(
+                  tr(
+                    language,
+                    'Pièces non synchronisées — réessai à la reconnexion.',
+                    'Coins not synced — will retry when you reconnect.',
+                  ),
+                );
+              }
             });
           }
         }
@@ -304,6 +348,8 @@ export function ClassicGame({
             <>
               <TouchableOpacity
                 onPress={onExit}
+                hitSlop={ICON_HIT_SLOP}
+                {...a11yButton(tr(language, 'Menu', 'Menu'))}
                 style={[
                   styles.refreshBtn,
                   !isDarkMode && styles.refreshBtnLight,
@@ -325,7 +371,7 @@ export function ClassicGame({
                 >
                   <View style={{ alignItems: 'center' }}>
                     <Text style={themeStyles.statLabel}>SCORE</Text>
-                    <Text
+                    <ScoreText
                       style={[
                         themeStyles.statValue,
                         {
@@ -335,7 +381,7 @@ export function ClassicGame({
                       ]}
                     >
                       {totalScore}
-                    </Text>
+                    </ScoreText>
                   </View>
                   <View
                     style={{
@@ -349,14 +395,14 @@ export function ClassicGame({
                     <Text style={themeStyles.statLabel}>
                       {tr(language, 'EFFICACITÉ', 'EFFICIENCY')}
                     </Text>
-                    <Text
+                    <ScoreText
                       style={[
                         themeStyles.statValue,
                         { fontSize: 32, color: getEfficiencyColor(currentEfficiency) },
                       ]}
                     >
                       {currentEfficiency}%
-                    </Text>
+                    </ScoreText>
                   </View>
                 </View>
               </View>
@@ -400,7 +446,13 @@ export function ClassicGame({
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <TouchableOpacity
-                    onPress={onToggleTheme}
+                    onPress={toggleTheme}
+                    hitSlop={ICON_HIT_SLOP}
+                    {...a11yButton(
+                      isDarkMode
+                        ? tr(language, 'Passer en thème clair', 'Switch to light theme')
+                        : tr(language, 'Passer en thème sombre', 'Switch to dark theme'),
+                    )}
                     style={[
                       styles.refreshBtn,
                       !isDarkMode && styles.refreshBtnLight,
@@ -414,7 +466,9 @@ export function ClassicGame({
                     )}
                   </TouchableOpacity>
                   <TouchableOpacity
-                    onPress={onToggleLanguage}
+                    onPress={toggleLanguage}
+                    hitSlop={ICON_HIT_SLOP}
+                    {...a11yButton(tr(language, 'Changer de langue', 'Change language'))}
                     style={[
                       styles.refreshBtn,
                       !isDarkMode && styles.refreshBtnLight,
@@ -444,6 +498,8 @@ export function ClassicGame({
               <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                 <TouchableOpacity
                   onPress={onExit}
+                  hitSlop={ICON_HIT_SLOP}
+                  {...a11yButton(tr(language, 'Menu', 'Menu'))}
                   style={[
                     styles.refreshBtn,
                     !isDarkMode && styles.refreshBtnLight,
@@ -506,7 +562,13 @@ export function ClassicGame({
                 </View>
 
                 <TouchableOpacity
-                  onPress={onToggleTheme}
+                  onPress={toggleTheme}
+                  hitSlop={ICON_HIT_SLOP}
+                  {...a11yButton(
+                    isDarkMode
+                      ? tr(language, 'Passer en thème clair', 'Switch to light theme')
+                      : tr(language, 'Passer en thème sombre', 'Switch to dark theme'),
+                  )}
                   style={[styles.refreshBtn, !isDarkMode && styles.refreshBtnLight, { padding: 6 }]}
                 >
                   {isDarkMode ? (
@@ -516,7 +578,9 @@ export function ClassicGame({
                   )}
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={onToggleLanguage}
+                  onPress={toggleLanguage}
+                  hitSlop={ICON_HIT_SLOP}
+                  {...a11yButton(tr(language, 'Changer de langue', 'Change language'))}
                   style={[
                     styles.refreshBtn,
                     !isDarkMode && styles.refreshBtnLight,
@@ -640,9 +704,10 @@ export function ClassicGame({
                 {sessionThemes.map((theme) => {
                   const selection: Selection | undefined = selections[theme.id];
                   const isUsed = !!selection;
+                  const themeName = pickLabel(theme.label, language);
 
                   return (
-                    <TouchableOpacity
+                    <View
                       key={theme.id}
                       style={[
                         themeStyles.themeCard(isUsed),
@@ -656,24 +721,52 @@ export function ClassicGame({
                             : c.border,
                         },
                       ]}
-                      onPress={() => selectTheme(theme.id)}
-                      disabled={isUsed}
                     >
-                      <Text style={[styles.emoji, { fontSize: 20, marginRight: 10 }]}>
-                        {theme.emoji}
-                      </Text>
-                      <Text
-                        style={[themeStyles.themeLabel, { fontSize: 14, flex: 1 }]}
-                        numberOfLines={1}
+                      {/* Theme-select tap target. Kept a sibling of the info
+                          button (not its parent) so neither renders as a
+                          <button> nested inside another <button> on web. */}
+                      <TouchableOpacity
+                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
+                        onPress={() => selectTheme(theme.id)}
+                        disabled={isUsed}
+                        {...a11yButton(
+                          isUsed
+                            ? tr(
+                                language,
+                                `${themeName}, attribué à ${selection.countryName}, rang ${selection.rank}`,
+                                `${themeName}, assigned to ${selection.countryName}, rank ${selection.rank}`,
+                              )
+                            : themeName,
+                          {
+                            selected: isUsed,
+                            disabled: isUsed,
+                            hint: isUsed
+                              ? undefined
+                              : tr(
+                                  language,
+                                  'Attribuer le pays actuel à ce thème',
+                                  'Assign the current country to this theme',
+                                ),
+                          },
+                        )}
                       >
-                        {pickLabel(theme.label, language)}
-                      </Text>
+                        <View style={{ marginRight: 10 }}>
+                          <ThemeIcon id={theme.id} color={c.accent} size={20} />
+                        </View>
+                        <Text
+                          style={[themeStyles.themeLabel, { fontSize: 14, flex: 1 }]}
+                          numberOfLines={1}
+                        >
+                          {pickLabel(theme.label, language)}
+                        </Text>
+                      </TouchableOpacity>
 
                       <TouchableOpacity
-                        onPress={(e: GestureResponderEvent) => {
-                          e.stopPropagation();
-                          setShowThemeInfo(theme);
-                        }}
+                        onPress={() => setShowThemeInfo(theme)}
+                        hitSlop={ICON_HIT_SLOP}
+                        {...a11yButton(
+                          tr(language, `Infos sur le thème ${themeName}`, `Info about ${themeName} theme`),
+                        )}
                         style={{ padding: 5 }}
                       >
                         <Info
@@ -700,7 +793,7 @@ export function ClassicGame({
                           </Text>
                         </View>
                       )}
-                    </TouchableOpacity>
+                    </View>
                   );
                 })}
               </View>
@@ -725,12 +818,12 @@ export function ClassicGame({
                   showsVerticalScrollIndicator={false}
                 >
                   <View style={{ alignItems: 'center', marginBottom: 18 }}>
-                    <Trophy color={c.accent} size={44} />
-                    <Text
+                    <Trophy color={c.accent} size={44} {...a11yHidden} />
+                    <ScoreText
                       style={[themeStyles.winTitle, { fontSize: 28, marginTop: 8, marginBottom: 16 }]}
                     >
                       {tr(language, 'SESSION TERMINÉE', 'SESSION FINISHED')}
-                    </Text>
+                    </ScoreText>
 
                     <View
                       style={{
@@ -750,14 +843,14 @@ export function ClassicGame({
                         <Text style={[themeStyles.statLabel, { fontSize: 11 }]}>
                           {tr(language, 'SCORE TOTAL', 'TOTAL SCORE')}
                         </Text>
-                        <Text
+                        <ScoreText
                           style={[
                             themeStyles.statValue,
                             { fontSize: 44, lineHeight: 48, color: getRankColor(totalScore / 8) },
                           ]}
                         >
                           {totalScore}
-                        </Text>
+                        </ScoreText>
                         <Text style={{ fontFamily: FONTS.mono, fontSize: 10, color: c.textMuted }}>
                           {tr(language, 'Optimal : ', 'Optimal: ')}
                           <Text style={{ fontFamily: FONTS.monoBold }}>{optimalTotalValue}</Text>
@@ -770,19 +863,61 @@ export function ClassicGame({
                         <Text style={[themeStyles.statLabel, { fontSize: 11 }]}>
                           {tr(language, 'EFFICACITÉ', 'EFFICIENCY')}
                         </Text>
-                        <Text
+                        <ScoreText
                           style={[
                             themeStyles.statValue,
                             { fontSize: 44, lineHeight: 48, color: getEfficiencyColor(efficiency) },
                           ]}
                         >
                           {efficiency}%
-                        </Text>
+                        </ScoreText>
                         <Text style={{ fontFamily: FONTS.mono, fontSize: 10, color: c.textMuted }}>
                           {tr(language, 'Indice de perf', 'Perf index')}
                         </Text>
                       </View>
                     </View>
+
+                    {/* Coins earned for this session (solo only, server-credited). */}
+                    {coinsEarned != null && (
+                      <View
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 8,
+                          alignSelf: 'stretch',
+                          justifyContent: 'center',
+                          marginTop: 12,
+                          backgroundColor: c.surface,
+                          borderRadius: 16,
+                          borderWidth: 1,
+                          borderColor: coinsEarned > 0 ? '#ffd700' : coinsSyncFailed ? '#c0392b' : c.border,
+                          paddingVertical: 12,
+                          paddingHorizontal: 16,
+                        }}
+                      >
+                        <Coins color="#ffd700" size={22} />
+                        {coinsEarned > 0 ? (
+                          <>
+                            <Text style={{ color: '#ffd700', fontSize: 24, fontFamily: FONTS.headingBlack }}>
+                              {`+${coinsEarned}`}
+                            </Text>
+                            <Text style={{ color: c.textMuted, fontSize: 13, fontFamily: FONTS.mono }}>
+                              {tr(language, 'pièces gagnées', 'coins earned')}
+                            </Text>
+                          </>
+                        ) : coinsSyncFailed ? (
+                          <Text style={{ color: '#c0392b', fontSize: 13, fontFamily: FONTS.mono, textAlign: 'center' }}>
+                            {tr(language, 'Pièces non synchronisées — réessai à la reconnexion', 'Coins not synced — will retry on reconnect')}
+                          </Text>
+                        ) : (
+                          <Text style={{ color: c.textMuted, fontSize: 13, fontFamily: FONTS.mono, textAlign: 'center' }}>
+                            {coinsCapped
+                              ? tr(language, 'Plafond quotidien atteint', 'Daily coin cap reached')
+                              : tr(language, 'Aucune pièce cette fois', 'No coins this time')}
+                          </Text>
+                        )}
+                      </View>
+                    )}
                   </View>
 
                   <Text
@@ -822,7 +957,7 @@ export function ClassicGame({
                               marginBottom: 10,
                             }}
                           >
-                            <Text style={{ fontSize: 18 }}>{theme.emoji}</Text>
+                            <ThemeIcon id={theme.id} color={c.accent} size={18} />
                             <Text
                               style={[themeStyles.rowThemeLabel, { fontSize: 15, flex: 1 }]}
                               numberOfLines={1}
@@ -925,8 +1060,9 @@ export function ClassicGame({
                     <TouchableOpacity
                       style={[styles.playAgainBtn, { flex: 2, paddingVertical: 14, marginTop: 0 }]}
                       onPress={onShare}
+                      {...a11yButton(tr(language, 'Partager', 'Share'))}
                     >
-                      <Share2 color="#fff" size={20} />
+                      <Share2 color="#fff" size={20} {...a11yHidden} />
                       <Text style={[styles.playAgainText, { fontSize: 16 }]}>
                         {tr(language, 'PARTAGER', 'SHARE')}
                       </Text>
@@ -935,8 +1071,9 @@ export function ClassicGame({
                     <TouchableOpacity
                       style={[styles.playAgainBtn, { flex: 2, paddingVertical: 14, marginTop: 0 }]}
                       onPress={initGame}
+                      {...a11yButton(tr(language, 'Rejouer', 'Play again'))}
                     >
-                      <RefreshCcw color="#fff" size={20} />
+                      <RefreshCcw color="#fff" size={20} {...a11yHidden} />
                       <Text style={[styles.playAgainText, { fontSize: 16 }]}>
                         {tr(language, 'REJOUER', 'PLAY AGAIN')}
                       </Text>
@@ -954,8 +1091,9 @@ export function ClassicGame({
                       },
                     ]}
                     onPress={onExit}
+                    {...a11yButton(tr(language, 'Menu', 'Menu'))}
                   >
-                    <Home color="#fff" size={20} />
+                    <Home color="#fff" size={20} {...a11yHidden} />
                     <Text style={[styles.playAgainText, { fontSize: 16 }]}>MENU</Text>
                   </TouchableOpacity>
                 </View>
@@ -966,8 +1104,6 @@ export function ClassicGame({
 
         <ThemeInfoModal
           theme={showThemeInfo}
-          isDarkMode={isDarkMode}
-          language={language}
           onClose={() => setShowThemeInfo(null)}
         />
     </SafeAreaView>

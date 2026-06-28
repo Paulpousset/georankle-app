@@ -24,15 +24,21 @@ import {
   Wifi,
   Zap,
 } from 'lucide-react-native';
+import { AtlasFlame } from '../components/AtlasIcons';
 import type { ComponentType } from 'react';
 
-import type { GameMode, Language, MatchMode } from '../types';
+import type { GameMode, MatchMode } from '../types';
 import { commonStyles as styles } from '../theme/commonStyles';
 import { PALETTE, getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { CompassRose, CoordLabel } from '../theme/decorative';
 import { tr } from '../i18n';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { getLocalState } from '../lib/daily';
+import { a11yButton, a11yImage, ICON_HIT_SLOP } from '../lib/a11y';
+import { ScoreText } from '../components/ScoreText';
+import { NotificationDot } from '../components/NotificationDot';
 
 export type PlayType = 'solo' | 'local' | 'online';
 
@@ -48,10 +54,14 @@ interface ModeCardProps {
   isDarkMode: boolean;
   onPress: () => void;
   onLeaderboard?: () => void;
+  /** Show a notification dot on the card (e.g. a pending invite for this mode). */
+  notify?: boolean;
 }
 
-function ModeCard({ icon: Icon, accent, tint, title, subtitle, isDarkMode, onPress, onLeaderboard }: ModeCardProps) {
+function ModeCard({ icon: Icon, accent, tint, title, subtitle, isDarkMode, onPress, onLeaderboard, notify = false }: ModeCardProps) {
   const c = getColors(isDarkMode);
+  const { language } = useLanguage();
+  const startHint = tr(language, 'Démarrer ce mode', 'Start this mode');
   const cardStyle = [
     styles.countryCard,
     !isDarkMode && styles.countryCardLight,
@@ -87,16 +97,18 @@ function ModeCard({ icon: Icon, accent, tint, title, subtitle, isDarkMode, onPre
 
   if (!onLeaderboard) {
     return (
-      <TouchableOpacity onPress={onPress} style={cardStyle}>
+      <TouchableOpacity onPress={onPress} style={cardStyle} {...a11yButton(title, { hint: startHint })}>
         {inner}
+        <NotificationDot show={notify} />
       </TouchableOpacity>
     );
   }
 
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-      <TouchableOpacity onPress={onPress} style={[...cardStyle, { flex: 1 }]}>
+      <TouchableOpacity onPress={onPress} style={[...cardStyle, { flex: 1 }]} {...a11yButton(title, { hint: startHint })}>
         {inner}
+        <NotificationDot show={notify} />
       </TouchableOpacity>
       <TouchableOpacity
         onPress={onLeaderboard}
@@ -109,6 +121,7 @@ function ModeCard({ icon: Icon, accent, tint, title, subtitle, isDarkMode, onPre
           alignItems: 'center',
           justifyContent: 'center',
         }}
+        {...a11yButton(tr(language, `Classement ${title}`, `${title} leaderboard`))}
       >
         <Trophy color={accent} size={20} />
       </TouchableOpacity>
@@ -124,10 +137,13 @@ interface PlayTypeCardProps {
   subtitle: string;
   isDarkMode: boolean;
   onPress: () => void;
+  /** Show a notification dot on the card (e.g. a pending online invite). */
+  notify?: boolean;
 }
 
-function PlayTypeCard({ icon: Icon, accent, tint, title, subtitle, isDarkMode, onPress }: PlayTypeCardProps) {
+function PlayTypeCard({ icon: Icon, accent, tint, title, subtitle, isDarkMode, onPress, notify = false }: PlayTypeCardProps) {
   const c = getColors(isDarkMode);
+  const { language } = useLanguage();
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -142,7 +158,9 @@ function PlayTypeCard({ icon: Icon, accent, tint, title, subtitle, isDarkMode, o
           borderBottomColor: accent,
         },
       ]}
+      {...a11yButton(title, { hint: tr(language, 'Choisir ce mode de jeu', 'Choose this play mode') })}
     >
+      <NotificationDot show={notify} />
       <View style={{ backgroundColor: tint, padding: 16, borderRadius: 16 }}>
         <Icon color={accent} size={32} />
       </View>
@@ -161,11 +179,7 @@ function PlayTypeCard({ icon: Icon, accent, tint, title, subtitle, isDarkMode, o
 }
 
 interface MainMenuProps {
-  isDarkMode: boolean;
-  language: Language;
   isAuthenticated: boolean;
-  onToggleTheme: () => void;
-  onToggleLanguage: () => void;
   onOpenAuth: () => void;
   onOpenShop: () => void;
   onOpenFriends: () => void;
@@ -179,14 +193,14 @@ interface MainMenuProps {
    *  App so it survives launching a game — returning lands on the same list. */
   playType: PlayType | null;
   onChangePlayType: (playType: PlayType | null) => void;
+  /** Incoming friend-request count — shown as a dot on the Friends icon. */
+  pendingFriendCount?: number;
+  /** Mode of a pending game invite — dots the Online card and that mode. */
+  incomingInviteMode?: MatchMode | null;
 }
 
 export function MainMenu({
-  isDarkMode,
-  language,
   isAuthenticated,
-  onToggleTheme,
-  onToggleLanguage,
   onOpenAuth,
   onOpenShop,
   onOpenFriends,
@@ -198,7 +212,11 @@ export function MainMenu({
   onOpenDaily,
   playType,
   onChangePlayType: setPlayType,
+  pendingFriendCount = 0,
+  incomingInviteMode = null,
 }: MainMenuProps) {
+  const { isDarkMode, toggleTheme } = useTheme();
+  const { language, toggleLanguage } = useLanguage();
   const c = getColors(isDarkMode);
   const iconColor = c.text;
   const accent = c.accent;
@@ -235,6 +253,8 @@ export function MainMenu({
               !isDarkMode && styles.refreshBtnLight,
               { padding: 10, flexDirection: 'row', alignItems: 'center', gap: 6 },
             ]}
+            hitSlop={ICON_HIT_SLOP}
+            {...a11yButton(tr(language, 'Retour', 'Back'))}
           >
             <ArrowLeft color={iconColor} size={18} />
             <Text style={{ fontFamily: FONTS.mono, color: iconColor, fontSize: 11 }}>
@@ -249,6 +269,9 @@ export function MainMenu({
               !isDarkMode && styles.refreshBtnLight,
               { padding: 10, flexDirection: 'row', alignItems: 'center', gap: 8 },
             ]}
+            {...a11yButton(
+              isAuthenticated ? tr(language, 'Profil', 'Profile') : tr(language, 'Connexion', 'Login'),
+            )}
           >
             {isAuthenticated ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -281,12 +304,14 @@ export function MainMenu({
 
         <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
           <TouchableOpacity
-            onPress={onToggleLanguage}
+            onPress={toggleLanguage}
             style={[
               styles.refreshBtn,
               !isDarkMode && styles.refreshBtnLight,
               { padding: 8, minWidth: 42, alignItems: 'center' },
             ]}
+            hitSlop={ICON_HIT_SLOP}
+            {...a11yButton(tr(language, 'Changer de langue', 'Change language'))}
           >
             <Text style={{ fontFamily: FONTS.monoBold, color: iconColor, fontSize: 11 }}>
               {language.toUpperCase()}
@@ -296,6 +321,8 @@ export function MainMenu({
             <TouchableOpacity
               onPress={onOpenShop}
               style={[styles.refreshBtn, !isDarkMode && styles.refreshBtnLight, { padding: 10 }]}
+              hitSlop={ICON_HIT_SLOP}
+              {...a11yButton(tr(language, 'Boutique', 'Shop'))}
             >
               <ShoppingBag color={iconColor} size={22} />
             </TouchableOpacity>
@@ -304,19 +331,38 @@ export function MainMenu({
             <TouchableOpacity
               onPress={onOpenFriends}
               style={[styles.refreshBtn, !isDarkMode && styles.refreshBtnLight, { padding: 10 }]}
+              hitSlop={ICON_HIT_SLOP}
+              {...a11yButton(
+                pendingFriendCount > 0
+                  ? tr(
+                      language,
+                      `Amis, ${pendingFriendCount} demande${pendingFriendCount > 1 ? 's' : ''} en attente`,
+                      `Friends, ${pendingFriendCount} pending request${pendingFriendCount > 1 ? 's' : ''}`,
+                    )
+                  : tr(language, 'Amis', 'Friends'),
+              )}
             >
               <Users color={iconColor} size={22} />
+              <NotificationDot count={pendingFriendCount} />
             </TouchableOpacity>
           )}
           <TouchableOpacity
-            onPress={onToggleTheme}
+            onPress={toggleTheme}
             style={[styles.refreshBtn, !isDarkMode && styles.refreshBtnLight, { padding: 10 }]}
+            hitSlop={ICON_HIT_SLOP}
+            {...a11yButton(
+              isDarkMode
+                ? tr(language, 'Passer en thème clair', 'Switch to light theme')
+                : tr(language, 'Passer en thème sombre', 'Switch to dark theme'),
+            )}
           >
             {isDarkMode ? <Sun color={PALETTE.sand} size={22} /> : <Moon color={c.textMuted} size={22} />}
           </TouchableOpacity>
           <TouchableOpacity
             onPress={onOpenLeaderboard}
             style={[styles.refreshBtn, !isDarkMode && styles.refreshBtnLight, { padding: 10 }]}
+            hitSlop={ICON_HIT_SLOP}
+            {...a11yButton(tr(language, 'Classement', 'Leaderboard'))}
           >
             <BarChart3 color={iconColor} size={22} />
           </TouchableOpacity>
@@ -337,7 +383,7 @@ export function MainMenu({
           <View style={{ position: 'absolute', right: -50, top: 0, opacity: 0.5 }}>
             <CompassRose size={44} color={c.border} />
           </View>
-          <Text
+          <ScoreText
             style={{
               fontFamily: FONTS.headingBlack,
               fontSize: 52,
@@ -346,7 +392,7 @@ export function MainMenu({
             }}
           >
             GeoGames
-          </Text>
+          </ScoreText>
           <CoordLabel lat="48°N" lng="2°E" color={c.textFaint} size={10} />
         </View>
 
@@ -371,6 +417,9 @@ export function MainMenu({
               backgroundColor: isDarkMode ? 'rgba(232,119,46,0.12)' : 'rgba(232,119,46,0.10)',
             },
           ]}
+          {...a11yButton(tr(language, 'Défi du Jour', 'Daily Challenge'), {
+            hint: tr(language, 'Ouvrir le défi du jour', 'Open the daily challenge'),
+          })}
         >
           <View style={{ backgroundColor: isDarkMode ? 'rgba(232,119,46,0.22)' : 'rgba(232,119,46,0.16)', padding: 12, borderRadius: 12 }}>
             <CalendarDays color={DAILY_FLAME} size={28} />
@@ -379,14 +428,25 @@ export function MainMenu({
             <Text style={[styles.countryName, !isDarkMode && styles.countryNameLight, { fontSize: 17, textAlign: 'left', marginBottom: 3, color: DAILY_FLAME }]}>
               {tr(language, 'Défi du Jour', 'Daily Challenge')}
             </Text>
-            <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 10 }}>
-              {dailyStreak > 0
-                ? tr(language, `🔥 Série de ${dailyStreak} · 8 modes`, `🔥 ${dailyStreak}-day streak · 8 modes`)
-                : tr(language, 'Un puzzle par mode, chaque jour', 'One puzzle per mode, every day')}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              {dailyStreak > 0 && <AtlasFlame color={DAILY_FLAME} size={11} />}
+              <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 10 }}>
+                {dailyStreak > 0
+                  ? tr(language, `Série de ${dailyStreak} · 8 modes`, `${dailyStreak}-day streak · 8 modes`)
+                  : tr(language, 'Un puzzle par mode, chaque jour', 'One puzzle per mode, every day')}
+              </Text>
+            </View>
           </View>
           {dailyStreak > 0 ? (
-            <Text style={{ fontFamily: FONTS.headingBlack, color: DAILY_FLAME, fontSize: 20 }}>🔥{dailyStreak}</Text>
+            <View
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}
+              {...a11yImage(tr(language, `Série de ${dailyStreak} jours`, `${dailyStreak}-day streak`))}
+            >
+              <AtlasFlame color={DAILY_FLAME} size={18} />
+              <ScoreText style={{ fontFamily: FONTS.headingBlack, color: DAILY_FLAME, fontSize: 20 }}>
+                {dailyStreak}
+              </ScoreText>
+            </View>
           ) : (
             <View style={{ backgroundColor: DAILY_FLAME, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 }}>
               <Text style={{ fontFamily: FONTS.monoBold, color: '#fff', fontSize: 9 }}>
@@ -428,6 +488,7 @@ export function MainMenu({
                 subtitle={tr(language, 'Affrontez des joueurs du monde entier', 'Face players from around the world')}
                 isDarkMode={isDarkMode}
                 onPress={() => (isAuthenticated ? setPlayType('online') : onOpenAuth())}
+                notify={!!incomingInviteMode}
               />
             </View>
           </>
@@ -466,8 +527,8 @@ export function MainMenu({
               />
               <ModeCard
                 icon={Globe}
-                accent={isDarkMode ? PALETTE.chartBlue : PALETTE.oceanBlue}
-                tint={isDarkMode ? 'rgba(74,158,255,0.12)' : 'rgba(26,74,122,0.10)'}
+                accent={isDarkMode ? PALETTE.sand : PALETTE.vermilion}
+                tint={isDarkMode ? 'rgba(196,135,42,0.14)' : 'rgba(192,74,26,0.10)'}
                 title={tr(language, 'Globe Géo', 'Geo Globe')}
                 subtitle={tr(language, 'Trouvez les pays sur le globe', 'Find countries on the globe')}
                 isDarkMode={isDarkMode}
@@ -475,8 +536,8 @@ export function MainMenu({
               />
               <ModeCard
                 icon={Map}
-                accent={isDarkMode ? PALETTE.chartBlue : PALETTE.oceanBlue}
-                tint={isDarkMode ? 'rgba(74,158,255,0.12)' : 'rgba(26,74,122,0.10)'}
+                accent={isDarkMode ? PALETTE.sand : PALETTE.vermilion}
+                tint={isDarkMode ? 'rgba(196,135,42,0.14)' : 'rgba(192,74,26,0.10)'}
                 title={tr(language, 'Régions Géo', 'Geo Regions')}
                 subtitle={tr(language, "Placez les régions d'un pays", "Place a country's regions")}
                 isDarkMode={isDarkMode}
@@ -559,6 +620,9 @@ export function MainMenu({
                     backgroundColor: isDarkMode ? 'rgba(196,135,42,0.12)' : 'rgba(196,135,42,0.10)',
                   },
                 ]}
+                {...a11yButton(tr(language, 'Mode Classé', 'Ranked Mode'), {
+                  hint: tr(language, 'Démarrer ce mode', 'Start this mode'),
+                })}
               >
                 <View style={{ backgroundColor: isDarkMode ? 'rgba(196,135,42,0.25)' : 'rgba(196,135,42,0.18)', padding: 12, borderRadius: 12 }}>
                   <Swords color="#c4872a" size={28} />
@@ -585,6 +649,7 @@ export function MainMenu({
                 isDarkMode={isDarkMode}
                 onPress={() => onPlayOnline('classic')}
                 onLeaderboard={() => onOpenOnlineModeLeaderboard('classic', PALETTE.forestGreen)}
+                notify={incomingInviteMode === 'classic'}
               />
               <ModeCard
                 icon={Zap}
@@ -595,6 +660,7 @@ export function MainMenu({
                 isDarkMode={isDarkMode}
                 onPress={() => onPlayOnline('streak')}
                 onLeaderboard={() => onOpenOnlineModeLeaderboard('streak', PALETTE.sand)}
+                notify={incomingInviteMode === 'streak'}
               />
               <ModeCard
                 icon={Users}
@@ -605,16 +671,18 @@ export function MainMenu({
                 isDarkMode={isDarkMode}
                 onPress={() => onPlayOnline('versus')}
                 onLeaderboard={() => onOpenOnlineModeLeaderboard('versus', isDarkMode ? PALETTE.chartBlue : PALETTE.vermilion)}
+                notify={incomingInviteMode === 'versus'}
               />
               <ModeCard
                 icon={Globe}
-                accent={isDarkMode ? PALETTE.chartBlue : PALETTE.oceanBlue}
-                tint={isDarkMode ? 'rgba(74,158,255,0.12)' : 'rgba(26,74,122,0.10)'}
+                accent={isDarkMode ? PALETTE.sand : PALETTE.vermilion}
+                tint={isDarkMode ? 'rgba(196,135,42,0.14)' : 'rgba(192,74,26,0.10)'}
                 title={tr(language, 'Globe Géo', 'Geo Globe')}
                 subtitle={tr(language, 'Trouvez les pays sur le globe', 'Find countries on the globe')}
                 isDarkMode={isDarkMode}
                 onPress={() => onPlayOnline('globe')}
-                onLeaderboard={() => onOpenOnlineModeLeaderboard('globe', isDarkMode ? PALETTE.chartBlue : PALETTE.oceanBlue)}
+                onLeaderboard={() => onOpenOnlineModeLeaderboard('globe', isDarkMode ? PALETTE.sand : PALETTE.vermilion)}
+                notify={incomingInviteMode === 'globe'}
               />
               <ModeCard
                 icon={Info}
@@ -625,6 +693,7 @@ export function MainMenu({
                 isDarkMode={isDarkMode}
                 onPress={() => onPlayOnline('guess')}
                 onLeaderboard={() => onOpenOnlineModeLeaderboard('guess', isDarkMode ? PALETTE.chartBlue : PALETTE.vermilion)}
+                notify={incomingInviteMode === 'guess'}
               />
             </View>
           </>

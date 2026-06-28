@@ -100,7 +100,7 @@ export async function listCampaigns(): Promise<Campaign[]> {
     .from('notification_campaigns')
     .select('*')
     .order('created_at', { ascending: false });
-  return (data ?? []) as Campaign[];
+  return (data ?? []) as unknown as Campaign[];
 }
 
 export async function saveCampaign(

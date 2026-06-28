@@ -15,11 +15,17 @@ import { StatusBar } from 'expo-status-bar';
 import { track } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
 import { FONTS } from '../theme/typography';
+import { getColors, PALETTE, type ThemeColors } from '../theme/colors';
 import { ArrowLeft, Plus, RefreshCw, Users, Globe, Trophy, ChevronRight } from 'lucide-react-native';
-import type { User } from '@supabase/supabase-js';
+import { AtlasCapital, AtlasFlag, AtlasMix } from '../components/AtlasIcons';
 import type { MatchMode, Language, Match, AvatarConfig } from '../types';
 import { gameData as gd } from '../data/gameData';
 import { Avatar } from '../components/Avatar';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
+import { tr } from '../i18n';
+import { a11yButton, announce, ICON_HIT_SLOP } from '../lib/a11y';
 
 const SESSION_SIZE = 8;
 
@@ -87,18 +93,15 @@ interface PlayerStats {
 }
 
 interface MatchmakingProps {
-  session: { user: User | null };
   gameMode: MatchMode;
   onBack: () => void;
   onStartMatch: (match: Match) => void;
-  isDarkMode: boolean;
-  language: Language;
 }
 
 const QUESTION_TYPES = [
-  { id: 'CAPITAL', labelFr: 'Capitales', labelEn: 'Capitals', emoji: '🏛️' },
-  { id: 'FLAG', labelFr: 'Drapeaux', labelEn: 'Flags', emoji: '🚩' },
-  { id: 'MIX', labelFr: 'Mixte', labelEn: 'Mixed', emoji: '🎲' },
+  { id: 'CAPITAL', labelFr: 'Capitales', labelEn: 'Capitals', icon: AtlasCapital },
+  { id: 'FLAG', labelFr: 'Drapeaux', labelEn: 'Flags', icon: AtlasFlag },
+  { id: 'MIX', labelFr: 'Mixte', labelEn: 'Mixed', icon: AtlasMix },
 ];
 
 function modeName(mode: MatchMode, lang: Language): string {
@@ -112,15 +115,101 @@ function formatBestOf(bo: number, lang: Language): string {
   return lang === 'fr' ? `BO${bo}` : `BO${bo}`;
 }
 
+// Stable references so FlatList rows aren't re-created on every parent render.
+const matchKeyExtractor = (item: { id: string }) => item.id;
+const RowSeparator = () => <View style={{ height: 8 }} />;
+
+const PublicMatchRow = React.memo(function PublicMatchRow({
+  item,
+  colors,
+  language,
+  gameMode,
+  onJoin,
+}: {
+  item: PublicMatchItem;
+  colors: ThemeColors;
+  language: Language;
+  gameMode: MatchMode;
+  onJoin: (item: PublicMatchItem) => void;
+}) {
+  const gdata = item.game_data ?? {};
+  return (
+    <View style={[styles.matchRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <Avatar
+        config={item.creator_avatar_config}
+        photoUrl={item.creator_avatar_url}
+        username={item.creator_username}
+        size={40}
+      />
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.matchCreator, { color: colors.text }]}>
+          {item.creator_username ?? (language === 'fr' ? 'Joueur' : 'Player')}
+        </Text>
+        <Text style={[styles.matchSub, { color: colors.textMuted }]}>
+          {formatBestOf(item.best_of, language)}
+          {gameMode === 'versus' && gdata.questionType ? ` · ${gdata.questionType}` : ''}
+          {gameMode === 'versus' && gdata.roundsPerSet ? ` · ${gdata.roundsPerSet} rounds` : ''}
+        </Text>
+      </View>
+      <TouchableOpacity
+        style={styles.joinBtn}
+        onPress={() => onJoin(item)}
+        {...a11yButton(
+          tr(language, `Rejoindre la partie de ${item.creator_username ?? 'Joueur'}`, `Join ${item.creator_username ?? 'Player'}'s match`),
+        )}
+      >
+        <Text style={styles.joinBtnText}>{language === 'fr' ? 'Rejoindre' : 'Join'}</Text>
+        <ChevronRight size={14} color="#fff" />
+      </TouchableOpacity>
+    </View>
+  );
+});
+
+const FriendRow = React.memo(function FriendRow({
+  item,
+  userId,
+  colors,
+  language,
+  onInvite,
+}: {
+  item: any;
+  userId: string;
+  colors: ThemeColors;
+  language: Language;
+  onInvite: (friendId: string) => void;
+}) {
+  const isUser1 = item.user_id1 === userId;
+  const friend = isUser1 ? item.user2 : item.user1;
+  if (!friend) return null;
+  return (
+    <View style={[styles.matchRow, { backgroundColor: colors.card, borderColor: colors.border, marginBottom: 8 }]}>
+      <Avatar
+        config={friend.avatar_config ?? null}
+        photoUrl={friend.avatar_url ?? null}
+        username={friend.username}
+        size={40}
+      />
+      <Text style={[styles.matchCreator, { color: colors.text, flex: 1 }]}>{friend.username}</Text>
+      <TouchableOpacity
+        style={styles.joinBtn}
+        onPress={() => onInvite(friend.id)}
+        {...a11yButton(tr(language, `Inviter ${friend.username}`, `Invite ${friend.username}`))}
+      >
+        <Text style={styles.joinBtnText}>{language === 'fr' ? 'Inviter' : 'Invite'}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+});
+
 export default function Matchmaking({
-  session,
   gameMode,
   onBack,
   onStartMatch,
-  isDarkMode,
-  language,
 }: MatchmakingProps) {
-  const userId = session.user?.id ?? '';
+  const { user } = useAuth();
+  const { isDarkMode } = useTheme();
+  const { language } = useLanguage();
+  const userId = user?.id ?? '';
 
   const [view, setView] = useState<MatchmakingView>('lobby');
   const [playerStats, setPlayerStats] = useState<PlayerStats>({ username: null, avatar_url: null, avatar_config: null, wins: 0, total: 0 });
@@ -164,7 +253,7 @@ export default function Matchmaking({
     setPlayerStats({
       username: profile?.username ?? null,
       avatar_url: profile?.avatar_url ?? null,
-      avatar_config: (profile?.avatar_config as AvatarConfig) ?? null,
+      avatar_config: (profile?.avatar_config as unknown as AvatarConfig) ?? null,
       wins,
       total,
     });
@@ -236,6 +325,7 @@ export default function Matchmaking({
           const newMatch = payload.new;
           setMatchState(newMatch);
           if (newMatch.status === 'in_progress') {
+            announce(tr(language, 'Adversaire trouvé, la partie commence', 'Opponent found, match starting'));
             const { data: fullMatch } = await supabase
               .from('matches').select('*').eq('id', newMatch.id).single();
             onStartMatch((fullMatch ?? newMatch) as Match);
@@ -248,7 +338,7 @@ export default function Matchmaking({
 
   // ─── Actions ─────────────────────────────────────────────────────────────────
 
-  const joinMatch = async (match: PublicMatchItem) => {
+  const joinMatch = useCallback(async (match: PublicMatchItem) => {
     const { data: updated, error } = await supabase
       .from('matches')
       .update({ player2_id: userId, status: 'in_progress' })
@@ -263,9 +353,9 @@ export default function Matchmaking({
       Alert.alert(language === 'fr' ? 'Erreur' : 'Error',
         language === 'fr' ? 'Impossible de rejoindre la partie' : 'Could not join match');
     }
-  };
+  }, [userId, gameMode, language, onStartMatch]);
 
-  const createMatch = async (friendId?: string) => {
+  const createMatch = useCallback(async (friendId?: string) => {
     setCreating(true);
     const seed = Math.floor(Math.random() * 2147483647);
     const gameData: any = { seed, rounds: bestOf };
@@ -309,7 +399,7 @@ export default function Matchmaking({
       Alert.alert(language === 'fr' ? 'Erreur' : 'Error',
         language === 'fr' ? 'Impossible de créer la partie' : 'Could not create match');
     }
-  };
+  }, [userId, gameMode, isPublic, bestOf, questionType, roundsPerSet, language]);
 
   const doCancelMatch = async () => {
     if (matchState) {
@@ -332,11 +422,14 @@ export default function Matchmaking({
 
   // ─── Theme helpers ────────────────────────────────────────────────────────────
 
-  const bg = isDarkMode ? '#0a1628' : '#f2e8d0';
-  const cardBg = isDarkMode ? '#132040' : '#e8d9b8';
-  const cardBorder = isDarkMode ? '#2d4a70' : '#c4a87a';
-  const textPrimary = isDarkMode ? '#d8e8f4' : '#2c1810';
-  const textSecondary = isDarkMode ? '#7aa0c4' : '#7a5c38';
+  // Theme palette comes straight from the shared atlas theme (stable object refs).
+  const c = getColors(isDarkMode);
+  const accent = PALETTE.forestGreen;
+  const bg = c.background;
+  const cardBg = c.card;
+  const cardBorder = c.border;
+  const textPrimary = c.text;
+  const textSecondary = c.textMuted;
 
   // ─── Subviews ─────────────────────────────────────────────────────────────────
 
@@ -362,7 +455,7 @@ export default function Matchmaking({
         </Text>
       </View>
       <View style={styles.winBadge}>
-        <Trophy size={14} color="#fbbf24" />
+        <Trophy size={14} color={PALETTE.sand} />
         <Text style={styles.winRate}>
           {winRate !== null ? `${winRate}%` : '--'}
         </Text>
@@ -373,33 +466,23 @@ export default function Matchmaking({
     </View>
   );
 
-  const renderPublicMatch = ({ item }: { item: PublicMatchItem }) => {
-    const gd = item.game_data ?? {};
-    return (
-      <View style={[styles.matchRow, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-        <Avatar
-          config={item.creator_avatar_config}
-          photoUrl={item.creator_avatar_url}
-          username={item.creator_username}
-          size={40}
-        />
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.matchCreator, { color: textPrimary }]}>
-            {item.creator_username ?? (language === 'fr' ? 'Joueur' : 'Player')}
-          </Text>
-          <Text style={[styles.matchSub, { color: textSecondary }]}>
-            {formatBestOf(item.best_of, language)}
-            {gameMode === 'versus' && gd.questionType ? ` · ${gd.questionType}` : ''}
-            {gameMode === 'versus' && gd.roundsPerSet ? ` · ${gd.roundsPerSet} rounds` : ''}
-          </Text>
-        </View>
-        <TouchableOpacity style={styles.joinBtn} onPress={() => joinMatch(item)}>
-          <Text style={styles.joinBtnText}>{language === 'fr' ? 'Rejoindre' : 'Join'}</Text>
-          <ChevronRight size={14} color="#fff" />
-        </TouchableOpacity>
-      </View>
-    );
-  };
+  // Plain renderItems: the row components are React.memo'd and the handlers/colors are
+  // stable (useCallback / module-level theme objects), so rows still skip re-renders.
+  // (Wrapping these in useCallback trips the React Compiler's preserve-manual-memoization
+  // rule because they depend on createMatch, which mutates a local object.)
+  const renderPublicMatch = ({ item }: { item: PublicMatchItem }) => (
+    <PublicMatchRow
+      item={item}
+      colors={c}
+      language={language}
+      gameMode={gameMode}
+      onJoin={joinMatch}
+    />
+  );
+
+  const renderFriendItem = ({ item }: { item: any }) => (
+    <FriendRow item={item} userId={userId} colors={c} language={language} onInvite={createMatch} />
+  );
 
   // ─── LOBBY ────────────────────────────────────────────────────────────────────
 
@@ -411,7 +494,7 @@ export default function Matchmaking({
         <RefreshControl
           refreshing={loadingMatches}
           onRefresh={fetchPublicMatches}
-          tintColor="#2a6e3f"
+          tintColor={accent}
         />
       }
     >
@@ -429,12 +512,12 @@ export default function Matchmaking({
           accessibilityLabel={language === 'fr' ? 'Rafraîchir la liste' : 'Refresh list'}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <RefreshCw size={16} color="#2a6e3f" />
+          <RefreshCw size={16} color={accent} />
         </TouchableOpacity>
       </View>
 
       {loadingMatches ? (
-        <ActivityIndicator color="#2a6e3f" style={{ marginVertical: 20 }} />
+        <ActivityIndicator color={accent} style={{ marginVertical: 20 }} />
       ) : publicMatches.length === 0 ? (
         <View style={[styles.emptyCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
           <Text style={[styles.emptyText, { color: textSecondary }]}>
@@ -444,16 +527,17 @@ export default function Matchmaking({
       ) : (
         <FlatList
           data={publicMatches}
-          keyExtractor={(item) => item.id}
+          keyExtractor={matchKeyExtractor}
           renderItem={renderPublicMatch}
           scrollEnabled={false}
-          ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+          ItemSeparatorComponent={RowSeparator}
         />
       )}
 
       <TouchableOpacity
         style={styles.createBtn}
         onPress={() => setView('create')}
+        {...a11yButton(tr(language, 'Créer une partie', 'Create a match'))}
       >
         <Plus size={20} color="#fff" />
         <Text style={styles.createBtnText}>
@@ -480,8 +564,9 @@ export default function Matchmaking({
               bestOf === bo && styles.optBtnActive,
             ]}
             onPress={() => setBestOf(bo)}
+            {...a11yButton(tr(language, `Format BO${bo}`, `Best of ${bo}`), { selected: bestOf === bo })}
           >
-            <Text style={[styles.optBtnText, { color: bestOf === bo ? '#2a6e3f' : textSecondary }]}>
+            <Text style={[styles.optBtnText, { color: bestOf === bo ? accent : textSecondary }]}>
               BO{bo}
             </Text>
           </TouchableOpacity>
@@ -494,7 +579,9 @@ export default function Matchmaking({
             {language === 'fr' ? 'Type de questions' : 'Question type'}
           </Text>
           <View style={styles.optRow}>
-            {QUESTION_TYPES.map((qt) => (
+            {QUESTION_TYPES.map((qt) => {
+              const Icon = qt.icon;
+              return (
               <TouchableOpacity
                 key={qt.id}
                 style={[
@@ -503,13 +590,15 @@ export default function Matchmaking({
                   questionType === qt.id && styles.optBtnActive,
                 ]}
                 onPress={() => setQuestionType(qt.id)}
+                {...a11yButton(language === 'fr' ? qt.labelFr : qt.labelEn, { selected: questionType === qt.id })}
               >
-                <Text style={{ fontSize: 18 }}>{qt.emoji}</Text>
-                <Text style={[styles.optBtnText, { color: questionType === qt.id ? '#2a6e3f' : textSecondary, fontSize: 12 }]}>
+                <Icon color={questionType === qt.id ? accent : textSecondary} size={20} />
+                <Text style={[styles.optBtnText, { color: questionType === qt.id ? accent : textSecondary, fontSize: 12 }]}>
                   {language === 'fr' ? qt.labelFr : qt.labelEn}
                 </Text>
               </TouchableOpacity>
-            ))}
+              );
+            })}
           </View>
 
           <Text style={[styles.formTitle, { color: textPrimary }]}>
@@ -525,8 +614,9 @@ export default function Matchmaking({
                   roundsPerSet === r && styles.optBtnActive,
                 ]}
                 onPress={() => setRoundsPerSet(r)}
+                {...a11yButton(tr(language, `${r} rounds par manche`, `${r} rounds per set`), { selected: roundsPerSet === r })}
               >
-                <Text style={[styles.optBtnText, { color: roundsPerSet === r ? '#2a6e3f' : textSecondary }]}>
+                <Text style={[styles.optBtnText, { color: roundsPerSet === r ? accent : textSecondary }]}>
                   {r}
                 </Text>
               </TouchableOpacity>
@@ -546,9 +636,10 @@ export default function Matchmaking({
             isPublic && styles.optBtnActive,
           ]}
           onPress={() => setIsPublic(true)}
+          {...a11yButton(tr(language, 'Publique, visible par tous', 'Public, open to everyone'), { selected: isPublic })}
         >
-          <Globe size={18} color={isPublic ? '#2a6e3f' : textSecondary} />
-          <Text style={[styles.visBtnText, { color: isPublic ? '#2a6e3f' : textSecondary }]}>
+          <Globe size={18} color={isPublic ? accent : textSecondary} />
+          <Text style={[styles.visBtnText, { color: isPublic ? accent : textSecondary }]}>
             {language === 'fr' ? 'Publique' : 'Public'}
           </Text>
           <Text style={[styles.visDesc, { color: textSecondary }]}>
@@ -562,9 +653,10 @@ export default function Matchmaking({
             !isPublic && styles.optBtnActive,
           ]}
           onPress={() => { setIsPublic(false); loadFriends(); setView('friends'); }}
+          {...a11yButton(tr(language, 'Privée, inviter un ami', 'Private, invite a friend'), { selected: !isPublic })}
         >
-          <Users size={18} color={!isPublic ? '#2a6e3f' : textSecondary} />
-          <Text style={[styles.visBtnText, { color: !isPublic ? '#2a6e3f' : textSecondary }]}>
+          <Users size={18} color={!isPublic ? accent : textSecondary} />
+          <Text style={[styles.visBtnText, { color: !isPublic ? accent : textSecondary }]}>
             {language === 'fr' ? 'Privée' : 'Private'}
           </Text>
           <Text style={[styles.visDesc, { color: textSecondary }]}>
@@ -577,6 +669,7 @@ export default function Matchmaking({
         style={[styles.createBtn, creating && { opacity: 0.6 }]}
         onPress={() => createMatch()}
         disabled={creating}
+        {...a11yButton(tr(language, 'Créer la partie', 'Create match'), { disabled: creating, busy: creating })}
       >
         {creating ? (
           <ActivityIndicator color="#fff" size="small" />
@@ -599,7 +692,7 @@ export default function Matchmaking({
       style={{ flex: 1 }}
       contentContainerStyle={styles.scrollContent}
       data={friends}
-      keyExtractor={(item) => item.id}
+      keyExtractor={matchKeyExtractor}
       ListEmptyComponent={
         <View style={[styles.emptyCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
           <Text style={[styles.emptyText, { color: textSecondary }]}>
@@ -607,25 +700,7 @@ export default function Matchmaking({
           </Text>
         </View>
       }
-      renderItem={({ item }) => {
-        const isUser1 = item.user_id1 === userId;
-        const friend = isUser1 ? item.user2 : item.user1;
-        if (!friend) return null;
-        return (
-          <View style={[styles.matchRow, { backgroundColor: cardBg, borderColor: cardBorder, marginBottom: 8 }]}>
-            <Avatar
-              config={friend.avatar_config ?? null}
-              photoUrl={friend.avatar_url ?? null}
-              username={friend.username}
-              size={40}
-            />
-            <Text style={[styles.matchCreator, { color: textPrimary, flex: 1 }]}>{friend.username}</Text>
-            <TouchableOpacity style={styles.joinBtn} onPress={() => createMatch(friend.id)}>
-              <Text style={styles.joinBtnText}>{language === 'fr' ? 'Inviter' : 'Invite'}</Text>
-            </TouchableOpacity>
-          </View>
-        );
-      }}
+      renderItem={renderFriendItem}
     />
   );
 
@@ -633,14 +708,18 @@ export default function Matchmaking({
 
   const renderWaiting = () => (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-      <ActivityIndicator size="large" color="#2a6e3f" />
+      <ActivityIndicator size="large" color={accent} />
       <Text style={[styles.waitingTitle, { color: textPrimary }]}>
         {matchState?.is_public
           ? (language === 'fr' ? "Recherche d'un adversaire..." : 'Finding an opponent...')
           : (language === 'fr' ? "En attente de l'ami..." : 'Waiting for your friend...')}
       </Text>
       {renderPlayerCard()}
-      <TouchableOpacity style={styles.cancelBtn} onPress={cancelMatch}>
+      <TouchableOpacity
+        style={styles.cancelBtn}
+        onPress={cancelMatch}
+        {...a11yButton(tr(language, 'Annuler la partie', 'Cancel match'))}
+      >
         <Text style={styles.cancelBtnText}>{language === 'fr' ? 'Annuler' : 'Cancel'}</Text>
       </TouchableOpacity>
     </View>
@@ -670,9 +749,11 @@ export default function Matchmaking({
         <View style={[styles.header, { backgroundColor: bg, borderBottomColor: cardBorder }]}>
           <TouchableOpacity
             onPress={handleBack}
-            style={[styles.backBtn, { backgroundColor: isDarkMode ? 'rgba(16,185,129,0.1)' : 'rgba(16,185,129,0.05)' }]}
+            style={[styles.backBtn, { backgroundColor: isDarkMode ? 'rgba(42,110,63,0.1)' : 'rgba(42,110,63,0.05)' }]}
+            hitSlop={ICON_HIT_SLOP}
+            {...a11yButton(tr(language, 'Retour', 'Back'))}
           >
-            <ArrowLeft color="#2a6e3f" size={20} />
+            <ArrowLeft color={accent} size={20} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: textPrimary }]}>{headerTitle()}</Text>
           <View style={{ width: 44 }} />
@@ -729,7 +810,7 @@ const styles = StyleSheet.create({
   playerName: { fontSize: 18, fontFamily: FONTS.heading },
   playerSub: { fontSize: 13, fontFamily: FONTS.mono, marginTop: 2 },
   winBadge: { alignItems: 'center', gap: 2 },
-  winRate: { color: '#c4872a', fontSize: 20, fontFamily: FONTS.headingBlack },
+  winRate: { color: PALETTE.sand, fontSize: 20, fontFamily: FONTS.headingBlack },
   winLabel: { fontSize: 11, fontFamily: FONTS.mono },
 
   // Section
@@ -762,7 +843,7 @@ const styles = StyleSheet.create({
   matchCreator: { fontSize: 15, fontFamily: FONTS.heading },
   matchSub: { fontSize: 12, fontFamily: FONTS.mono, marginTop: 2 },
   joinBtn: {
-    backgroundColor: '#2a6e3f',
+    backgroundColor: PALETTE.forestGreen,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 10,
@@ -782,7 +863,7 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 14, textAlign: 'center', fontFamily: FONTS.mono },
 
   createBtn: {
-    backgroundColor: '#c04a1a',
+    backgroundColor: PALETTE.vermilion,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -805,7 +886,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 4,
   },
-  optBtnActive: { borderColor: '#2a6e3f', backgroundColor: 'rgba(42,110,63,0.10)' },
+  optBtnActive: { borderColor: PALETTE.forestGreen, backgroundColor: 'rgba(42,110,63,0.10)' },
   optBtnText: { fontSize: 15, fontFamily: FONTS.monoBold },
   visBtn: {
     flex: 1,
@@ -823,7 +904,7 @@ const styles = StyleSheet.create({
   waitingTitle: { fontSize: 18, fontFamily: FONTS.heading, marginTop: 24, marginBottom: 24, textAlign: 'center' },
   cancelBtn: {
     marginTop: 24,
-    backgroundColor: '#8b1a1a',
+    backgroundColor: PALETTE.dangerRed,
     paddingVertical: 14,
     paddingHorizontal: 40,
     borderRadius: 14,

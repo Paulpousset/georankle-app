@@ -3,28 +3,26 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Home, Moon, Sun } from 'lucide-react-native';
 
 import Leaderboard from '../screens/Leaderboard';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
-import type { Language } from '../types';
 import { tr } from '../i18n';
+import { a11yButton, ICON_HIT_SLOP } from '../lib/a11y';
 
 interface LeaderboardModalProps {
   visible: boolean;
-  isDarkMode: boolean;
-  language: Language;
   onClose: () => void;
-  onToggleTheme: () => void;
   onOpenPlayer?: (userId: string, username?: string | null) => void;
 }
 
 export function LeaderboardModal({
   visible,
-  isDarkMode,
-  language,
   onClose,
-  onToggleTheme,
   onOpenPlayer,
 }: LeaderboardModalProps) {
+  const { isDarkMode, toggleTheme } = useTheme();
+  const { language } = useLanguage();
   const c = getColors(isDarkMode);
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
@@ -42,6 +40,8 @@ export function LeaderboardModal({
               <TouchableOpacity
                 onPress={onClose}
                 style={{ padding: 8, marginRight: 10, backgroundColor: c.surface, borderRadius: 10 }}
+                hitSlop={ICON_HIT_SLOP}
+                {...a11yButton(tr(language, 'Fermer', 'Close'))}
               >
                 <Home color={c.accent} size={20} />
               </TouchableOpacity>
@@ -51,13 +51,19 @@ export function LeaderboardModal({
             </View>
 
             <TouchableOpacity
-              onPress={onToggleTheme}
+              onPress={toggleTheme}
               style={{ padding: 8, backgroundColor: c.surface, borderRadius: 10 }}
+              hitSlop={ICON_HIT_SLOP}
+              {...a11yButton(
+                isDarkMode
+                  ? tr(language, 'Mode clair', 'Light mode')
+                  : tr(language, 'Mode sombre', 'Dark mode'),
+              )}
             >
               {isDarkMode ? <Sun color="#c4872a" size={20} /> : <Moon color="#4a6a88" size={20} />}
             </TouchableOpacity>
           </View>
-          <Leaderboard language={language} isDarkMode={isDarkMode} onOpenPlayer={onOpenPlayer} />
+          <Leaderboard onOpenPlayer={onOpenPlayer} />
         </SafeAreaView>
       </View>
       </SafeAreaProvider>

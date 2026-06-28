@@ -32,7 +32,11 @@ import { getColors } from '../theme/colors';
 import { PALETTE } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { tr } from '../i18n';
-import type { GameMode, Language, Match, MatchMode } from '../types';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
+import { a11yButton, announce, a11yImage, a11yHidden, ICON_HIT_SLOP } from '../lib/a11y';
+import { ScoreText } from '../components/ScoreText';
+import type { GameMode, Match, MatchMode } from '../types';
 
 import VersusCapitals from './VersusCapitals';
 import StreakGame from './StreakGame';
@@ -144,12 +148,6 @@ type Step =
   | { phase: 'results' };
 
 interface LocalParcoursProps {
-  isDarkMode: boolean;
-  setIsDarkMode: React.Dispatch<React.SetStateAction<boolean>>;
-  language: Language;
-  setLanguage: React.Dispatch<React.SetStateAction<Language>>;
-  onToggleTheme: () => void;
-  onToggleLanguage: () => void;
   onExit: () => void;
 }
 
@@ -159,14 +157,10 @@ const newMancheId = () => `m${mancheCounter++}`;
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function LocalParcours({
-  isDarkMode,
-  setIsDarkMode,
-  language,
-  setLanguage,
-  onToggleTheme,
-  onToggleLanguage,
   onExit,
 }: LocalParcoursProps) {
+  const { isDarkMode } = useTheme();
+  const { language } = useLanguage();
   const insets = useSafeAreaInsets();
   const c = getColors(isDarkMode);
 
@@ -234,9 +228,15 @@ export default function LocalParcours({
 
   const launch = () => {
     if (manches.length === 0) return;
-    track('local_parcours_started', { modes: manches.length, players: names.length });
+    // Trim names and fall back to "Player N" for any left blank, so standings
+    // never show an empty label.
+    const cleaned = names.map((n, i) =>
+      n.trim() ? n.trim() : `${tr(language, 'Joueur', 'Player')} ${i + 1}`,
+    );
+    setNames(cleaned);
+    track('local_parcours_started', { modes: manches.length, players: cleaned.length });
     setSeeds(manches.map(() => Math.floor(Math.random() * 2_000_000_000)));
-    setScores(manches.map(() => names.map(() => 0)));
+    setScores(manches.map(() => cleaned.map(() => 0)));
     handledKey.current = '';
     setStep({ phase: 'pass', mancheIdx: 0, questionIdx: 0, playerIdx: 0 });
   };
@@ -278,6 +278,13 @@ export default function LocalParcours({
 
   const startPlayerTurn = (mancheIdx: number, questionIdx: number, playerIdx: number) => {
     handledKey.current = '';
+    announce(
+      tr(
+        language,
+        `Au tour de ${names[playerIdx]}`,
+        `${names[playerIdx]}'s turn`,
+      ),
+    );
     setStep({ phase: 'play', mancheIdx, questionIdx, playerIdx });
   };
 
@@ -285,6 +292,16 @@ export default function LocalParcours({
     if (mancheIdx + 1 < manches.length) {
       setStep({ phase: 'pass', mancheIdx: mancheIdx + 1, questionIdx: 0, playerIdx: 0 });
     } else {
+      const winner = computeStandings()[0];
+      if (winner) {
+        announce(
+          tr(
+            language,
+            `Partie terminée. ${winner.name} gagne avec ${winner.total} points.`,
+            `Game over. ${winner.name} wins with ${winner.total} points.`,
+          ),
+        );
+      }
       setStep({ phase: 'results' });
     }
   };
@@ -328,10 +345,7 @@ export default function LocalParcours({
         return (
           <VersusCapitals
             key={key}
-            isDarkMode={isDarkMode}
-            setIsDarkMode={setIsDarkMode}
             setGameMode={quit as (m: GameMode) => void}
-            language={language}
             matchData={match}
             onRoundComplete={handleRoundComplete}
             onExit={quit}
@@ -347,11 +361,7 @@ export default function LocalParcours({
         return (
           <StreakGame
             key={key}
-            isDarkMode={isDarkMode}
-            setIsDarkMode={setIsDarkMode}
             setGameMode={quit as (m: GameMode) => void}
-            language={language}
-            setLanguage={setLanguage}
             user={null}
             matchData={match}
             onRoundComplete={handleRoundComplete}
@@ -361,8 +371,6 @@ export default function LocalParcours({
         return (
           <GuessCountryGame
             key={key}
-            isDarkMode={isDarkMode}
-            language={language}
             onBackToMenu={quit}
             user={null}
             matchData={match}
@@ -373,8 +381,6 @@ export default function LocalParcours({
         return (
           <FindCountryGame
             key={key}
-            isDarkMode={isDarkMode}
-            language={language}
             setGameMode={quit as (m: GameMode) => void}
             user={null}
             matchData={match}
@@ -386,8 +392,6 @@ export default function LocalParcours({
         return (
           <FindRegionGame
             key={key}
-            isDarkMode={isDarkMode}
-            language={language}
             setGameMode={quit as (m: GameMode) => void}
             country={{
               cca3: manche.region.cca3,
@@ -405,14 +409,10 @@ export default function LocalParcours({
         return (
           <ClassicGame
             key={key}
-            isDarkMode={isDarkMode}
-            language={language}
             user={null}
             matchData={match}
             onRoundComplete={handleRoundComplete}
             onExit={quit}
-            onToggleTheme={onToggleTheme}
-            onToggleLanguage={onToggleLanguage}
           />
         );
     }
@@ -425,8 +425,6 @@ export default function LocalParcours({
   if (pickingRegion) {
     return (
       <RegionCountryPicker
-        isDarkMode={isDarkMode}
-        language={language}
         onPick={addRegionManche}
         onBack={() => setPickingRegion(false)}
         title={tr(language, 'Pays de la manche', 'Round country')}
@@ -444,7 +442,12 @@ export default function LocalParcours({
     return (
       <ParcoursScreen isDarkMode={isDarkMode} background={c.background}>
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 }}>
-          <TouchableOpacity onPress={onExit} style={{ padding: 8 }}>
+          <TouchableOpacity
+            onPress={onExit}
+            hitSlop={ICON_HIT_SLOP}
+            {...a11yButton(tr(language, 'Retour', 'Back'))}
+            style={{ padding: 8 }}
+          >
             <ArrowLeft color={c.text} size={22} />
           </TouchableOpacity>
           <Text style={{ flex: 1, fontFamily: FONTS.headingBlack, color: c.text, fontSize: 22, textAlign: 'center' }}>
@@ -457,12 +460,12 @@ export default function LocalParcours({
           {/* Players */}
           <Text style={sectionLabel(c)}>{tr(language, 'JOUEURS', 'PLAYERS')}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: c.card, borderRadius: 14, padding: 6, alignSelf: 'flex-start', marginBottom: 12 }}>
-            <Stepper onPress={() => setPlayerCount(numPlayers - 1)} disabled={numPlayers <= 2} icon={Minus} c={c} />
+            <Stepper onPress={() => setPlayerCount(numPlayers - 1)} disabled={numPlayers <= 2} icon={Minus} c={c} label={tr(language, 'Retirer un joueur', 'Remove a player')} />
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 18 }}>
-              <Users color={c.text} size={20} />
-              <Text style={{ fontFamily: FONTS.monoBold, color: c.text, fontSize: 20 }}>{numPlayers}</Text>
+              <Users color={c.text} size={20} {...a11yHidden} />
+              <Text style={{ fontFamily: FONTS.monoBold, color: c.text, fontSize: 20 }} accessibilityLabel={tr(language, `${numPlayers} joueurs`, `${numPlayers} players`)}>{numPlayers}</Text>
             </View>
-            <Stepper onPress={() => setPlayerCount(numPlayers + 1)} disabled={numPlayers >= 8} icon={Plus} c={c} />
+            <Stepper onPress={() => setPlayerCount(numPlayers + 1)} disabled={numPlayers >= 8} icon={Plus} c={c} label={tr(language, 'Ajouter un joueur', 'Add a player')} />
           </View>
 
           <View style={{ gap: 8, marginBottom: 24 }}>
@@ -476,6 +479,9 @@ export default function LocalParcours({
                   onChangeText={(v) => renamePlayer(i, v)}
                   placeholder={`${tr(language, 'Joueur', 'Player')} ${i + 1}`}
                   placeholderTextColor={c.textFaint}
+                  autoCapitalize="words"
+                  maxLength={16}
+                  returnKeyType="done"
                   style={{ flex: 1, backgroundColor: c.card, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, color: c.text, fontFamily: FONTS.mono, fontSize: 14 }}
                 />
               </View>
@@ -504,24 +510,41 @@ export default function LocalParcours({
                       {tr(language, def.fr, def.en)}
                       {m.region ? ` · ${language === 'fr' ? m.region.name : m.region.name_en}` : ''}
                     </Text>
-                    <TouchableOpacity onPress={() => moveManche(i, -1)} disabled={i === 0} style={{ padding: 4, opacity: i === 0 ? 0.3 : 1 }}>
+                    <TouchableOpacity
+                      onPress={() => moveManche(i, -1)}
+                      disabled={i === 0}
+                      hitSlop={ICON_HIT_SLOP}
+                      {...a11yButton(tr(language, 'Monter la manche', 'Move round up'), { disabled: i === 0 })}
+                      style={{ padding: 4, opacity: i === 0 ? 0.3 : 1 }}
+                    >
                       <ChevronUp color={c.text} size={18} />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => moveManche(i, 1)} disabled={i === manches.length - 1} style={{ padding: 4, opacity: i === manches.length - 1 ? 0.3 : 1 }}>
+                    <TouchableOpacity
+                      onPress={() => moveManche(i, 1)}
+                      disabled={i === manches.length - 1}
+                      hitSlop={ICON_HIT_SLOP}
+                      {...a11yButton(tr(language, 'Descendre la manche', 'Move round down'), { disabled: i === manches.length - 1 })}
+                      style={{ padding: 4, opacity: i === manches.length - 1 ? 0.3 : 1 }}
+                    >
                       <ChevronDown color={c.text} size={18} />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => removeManche(i)} style={{ padding: 4 }}>
+                    <TouchableOpacity
+                      onPress={() => removeManche(i)}
+                      hitSlop={ICON_HIT_SLOP}
+                      {...a11yButton(tr(language, 'Supprimer la manche', 'Remove round'))}
+                      style={{ padding: 4 }}
+                    >
                       <X color={PALETTE.vermilion} size={18} />
                     </TouchableOpacity>
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, marginLeft: 32 }}>
                     {def.rounds === 'config' ? (
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                        <Stepper onPress={() => changeRounds(i, -1)} disabled={m.rounds <= 1} icon={Minus} c={c} small />
+                        <Stepper onPress={() => changeRounds(i, -1)} disabled={m.rounds <= 1} icon={Minus} c={c} small label={tr(language, 'Réduire le nombre', 'Decrease count')} />
                         <Text style={{ fontFamily: FONTS.monoBold, color: c.text, fontSize: 14, minWidth: 60 }}>
                           {m.rounds} {tr(language, def.unitFr, def.unitEn)}
                         </Text>
-                        <Stepper onPress={() => changeRounds(i, 1)} disabled={m.rounds >= 20} icon={Plus} c={c} small />
+                        <Stepper onPress={() => changeRounds(i, 1)} disabled={m.rounds >= 20} icon={Plus} c={c} small label={tr(language, 'Augmenter le nombre', 'Increase count')} />
                       </View>
                     ) : (
                       <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 12 }}>
@@ -544,11 +567,14 @@ export default function LocalParcours({
                 <TouchableOpacity
                   key={key}
                   onPress={() => addManche(key)}
+                  {...a11yButton(tr(language, def.fr, def.en), {
+                    hint: tr(language, 'Ajouter cette manche', 'Add this round'),
+                  })}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.card, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 9, borderWidth: 1, borderColor: c.border }}
                 >
-                  <Icon color={def.accent} size={15} />
+                  <Icon color={def.accent} size={15} {...a11yHidden} />
                   <Text style={{ fontFamily: FONTS.monoBold, color: c.text, fontSize: 12 }}>{tr(language, def.fr, def.en)}</Text>
-                  <Plus color={c.textFaint} size={13} />
+                  <Plus color={c.textFaint} size={13} {...a11yHidden} />
                 </TouchableOpacity>
               );
             })}
@@ -560,9 +586,10 @@ export default function LocalParcours({
           <TouchableOpacity
             onPress={launch}
             disabled={manches.length === 0}
+            {...a11yButton(tr(language, 'Lancer la partie', 'Start the game'), { disabled: manches.length === 0 })}
             style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: manches.length === 0 ? c.border : PALETTE.forestGreen, borderRadius: 16, paddingVertical: 16 }}
           >
-            <Play color="#fff" size={20} />
+            <Play color="#fff" size={20} {...a11yHidden} />
             <Text style={{ fontFamily: FONTS.monoBold, color: '#fff', fontSize: 16 }}>
               {tr(language, 'LANCER LA PARTIE', 'START THE GAME')}
             </Text>
@@ -598,8 +625,8 @@ export default function LocalParcours({
             </Text>
           )}
 
-          <View style={{ width: 76, height: 76, borderRadius: 38, backgroundColor: PLAYER_COLORS[step.playerIdx % PLAYER_COLORS.length], alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-            <Text style={{ color: '#fff', fontFamily: FONTS.headingBlack, fontSize: 32 }}>{step.playerIdx + 1}</Text>
+          <View style={{ width: 76, height: 76, borderRadius: 38, backgroundColor: PLAYER_COLORS[step.playerIdx % PLAYER_COLORS.length], alignItems: 'center', justifyContent: 'center', marginBottom: 16 }} {...a11yHidden}>
+            <ScoreText style={{ color: '#fff', fontFamily: FONTS.headingBlack, fontSize: 32 }}>{step.playerIdx + 1}</ScoreText>
           </View>
           <Text style={{ fontFamily: FONTS.mono, color: c.textMuted, fontSize: 14, marginBottom: 4 }}>
             {tr(language, 'Passe le téléphone à', 'Pass the phone to')}
@@ -610,9 +637,12 @@ export default function LocalParcours({
 
           <TouchableOpacity
             onPress={() => startPlayerTurn(step.mancheIdx, step.questionIdx, step.playerIdx)}
+            {...a11yButton(
+              tr(language, `Commencer le tour de ${names[step.playerIdx]}`, `Start ${names[step.playerIdx]}'s turn`),
+            )}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: def.accent, borderRadius: 16, paddingVertical: 15, paddingHorizontal: 44 }}
           >
-            <Play color="#fff" size={20} />
+            <Play color="#fff" size={20} {...a11yHidden} />
             <Text style={{ fontFamily: FONTS.monoBold, color: '#fff', fontSize: 16 }}>{tr(language, 'COMMENCER', 'START')}</Text>
           </TouchableOpacity>
 
@@ -665,7 +695,7 @@ export default function LocalParcours({
                     <Text style={{ color: '#fff', fontFamily: FONTS.monoBold, fontSize: 12 }}>{r.p + 1}</Text>
                   </View>
                   <Text style={{ flex: 1, fontFamily: FONTS.monoBold, color: c.text, fontSize: 15 }}>{r.name}</Text>
-                  {isWinner && <Crown color={PALETTE.sand} size={18} />}
+                  {isWinner && <Crown color={PALETTE.sand} size={18} {...a11yImage(tr(language, 'Gagnant de la manche', 'Round winner'))} />}
                   <Text style={{ fontFamily: FONTS.monoBold, color: c.text, fontSize: 18 }}>{r.score}</Text>
                 </View>
               );
@@ -674,6 +704,9 @@ export default function LocalParcours({
 
           <TouchableOpacity
             onPress={() => nextAfterSummary(step.mancheIdx)}
+            {...a11yButton(
+              isLast ? tr(language, 'Voir les résultats', 'See results') : tr(language, 'Manche suivante', 'Next round'),
+            )}
             style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: PALETTE.forestGreen, borderRadius: 16, paddingVertical: 16 }}
           >
             <Text style={{ fontFamily: FONTS.monoBold, color: '#fff', fontSize: 16 }}>
@@ -693,14 +726,20 @@ export default function LocalParcours({
     <ParcoursScreen isDarkMode={isDarkMode} background={c.background}>
       <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 40 }}>
         <View style={{ alignItems: 'center', marginBottom: 28, marginTop: 12 }}>
-          <Trophy color={PALETTE.sand} size={48} />
+          <Trophy color={PALETTE.sand} size={48} {...a11yHidden} />
           <Text style={{ fontFamily: FONTS.headingBlack, color: c.text, fontSize: 26, marginTop: 10 }}>
             {tr(language, 'Partie terminée', 'Game over')}
           </Text>
           {standings[0] && (
-            <Text style={{ fontFamily: FONTS.monoBold, color: PALETTE.sand, fontSize: 16, marginTop: 4 }}>
-              🏆 {standings[0].name}
-            </Text>
+            <View
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}
+              accessibilityLabel={tr(language, `Gagnant : ${standings[0].name}`, `Winner: ${standings[0].name}`)}
+            >
+              <Trophy color={PALETTE.sand} size={16} {...a11yHidden} />
+              <Text style={{ fontFamily: FONTS.monoBold, color: PALETTE.sand, fontSize: 16 }}>
+                {standings[0].name}
+              </Text>
+            </View>
           )}
         </View>
 
@@ -717,7 +756,7 @@ export default function LocalParcours({
                   {row.won} {tr(language, 'manche(s) gagnée(s)', 'round(s) won')} · {row.total} {tr(language, 'pts cumulés', 'total pts')}
                 </Text>
               </View>
-              {idx === 0 && <Crown color={PALETTE.sand} size={22} />}
+              {idx === 0 && <Crown color={PALETTE.sand} size={22} {...a11yHidden} />}
             </View>
           ))}
         </View>
@@ -747,13 +786,25 @@ export default function LocalParcours({
         </View>
 
         <View style={{ gap: 10 }}>
-          <TouchableOpacity onPress={restartSameParcours} style={{ backgroundColor: PALETTE.forestGreen, borderRadius: 16, paddingVertical: 15, alignItems: 'center' }}>
+          <TouchableOpacity
+            onPress={restartSameParcours}
+            {...a11yButton(tr(language, 'Rejouer le même parcours', 'Replay same game'))}
+            style={{ backgroundColor: PALETTE.forestGreen, borderRadius: 16, paddingVertical: 15, alignItems: 'center' }}
+          >
             <Text style={{ fontFamily: FONTS.monoBold, color: '#fff', fontSize: 15 }}>{tr(language, 'REJOUER LE MÊME PARCOURS', 'REPLAY SAME GAME')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setStep({ phase: 'builder' })} style={{ backgroundColor: c.card, borderRadius: 16, paddingVertical: 15, alignItems: 'center', borderWidth: 1, borderColor: c.border }}>
+          <TouchableOpacity
+            onPress={() => setStep({ phase: 'builder' })}
+            {...a11yButton(tr(language, 'Modifier le parcours', 'Edit the game'))}
+            style={{ backgroundColor: c.card, borderRadius: 16, paddingVertical: 15, alignItems: 'center', borderWidth: 1, borderColor: c.border }}
+          >
             <Text style={{ fontFamily: FONTS.monoBold, color: c.text, fontSize: 15 }}>{tr(language, 'MODIFIER LE PARCOURS', 'EDIT THE GAME')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={onExit} style={{ paddingVertical: 14, alignItems: 'center' }}>
+          <TouchableOpacity
+            onPress={onExit}
+            {...a11yButton(tr(language, 'Retour au menu', 'Back to menu'))}
+            style={{ paddingVertical: 14, alignItems: 'center' }}
+          >
             <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 13 }}>{tr(language, 'Retour au menu', 'Back to menu')}</Text>
           </TouchableOpacity>
         </View>
@@ -783,15 +834,17 @@ const sectionLabel = (c: ReturnType<typeof getColors>) => ({
   marginBottom: 10,
 });
 
-function Stepper({ onPress, disabled, icon: Icon, c, small }: { onPress: () => void; disabled?: boolean; icon: any; c: ReturnType<typeof getColors>; small?: boolean }) {
+function Stepper({ onPress, disabled, icon: Icon, c, small, label }: { onPress: () => void; disabled?: boolean; icon: any; c: ReturnType<typeof getColors>; small?: boolean; label?: string }) {
   const size = small ? 30 : 38;
   return (
     <TouchableOpacity
       onPress={onPress}
       disabled={disabled}
+      hitSlop={ICON_HIT_SLOP}
+      {...(label ? a11yButton(label, { disabled }) : {})}
       style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: c.surface, alignItems: 'center', justifyContent: 'center', opacity: disabled ? 0.35 : 1 }}
     >
-      <Icon color={c.text} size={small ? 15 : 18} />
+      <Icon color={c.text} size={small ? 15 : 18} {...a11yHidden} />
     </TouchableOpacity>
   );
 }

@@ -11,10 +11,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { ArrowLeft, Swords, Shield } from 'lucide-react-native';
-import type { User } from '@supabase/supabase-js';
 
 import { track } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
+import { log } from '../lib/log';
 import { FONTS } from '../theme/typography';
 import { getColors } from '../theme/colors';
 import { tr } from '../i18n';
@@ -28,7 +28,13 @@ import {
 } from '../lib/ranked';
 import { RankGlobe } from '../components/RankGlobe';
 import { gameData as gd } from '../data/gameData';
-import type { Language, Match, MatchMode } from '../types';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
+import { a11yButton, announce, ICON_HIT_SLOP } from '../lib/a11y';
+import { ScoreText } from '../components/ScoreText';
+import type { Match, MatchMode } from '../types';
+import type { Json } from '../types/database';
 
 const SESSION_SIZE = 8;
 
@@ -76,21 +82,18 @@ function buildClassicSessions(seed: number, numRounds: number) {
 }
 
 interface RankedMatchmakingProps {
-  session: { user: User | null };
   onBack: () => void;
   onStartMatch: (match: Match) => void;
-  isDarkMode: boolean;
-  language: Language;
 }
 
 export default function RankedMatchmaking({
-  session,
   onBack,
   onStartMatch,
-  isDarkMode,
-  language,
 }: RankedMatchmakingProps) {
-  const userId = session.user?.id ?? '';
+  const { user } = useAuth();
+  const { isDarkMode } = useTheme();
+  const { language } = useLanguage();
+  const userId = user?.id ?? '';
   const c = getColors(isDarkMode);
 
   const [elo, setElo] = useState(1000);
@@ -144,6 +147,7 @@ export default function RankedMatchmaking({
           const newMatch = payload.new;
           setMatchState(newMatch);
           if (newMatch.status === 'in_progress') {
+            announce(tr(language, 'Adversaire trouvé, la partie classée commence', 'Opponent found, ranked match starting'));
             const { data: fullMatch } = await supabase
               .from('matches')
               .select('*')
@@ -237,7 +241,7 @@ export default function RankedMatchmaking({
         is_ranked: true,
         status: 'waiting',
         best_of: bestOf,
-        game_data: gameData,
+        game_data: gameData as Json,
       }])
       .select()
       .single();
@@ -245,7 +249,7 @@ export default function RankedMatchmaking({
     if (!createError && newMatch) {
       setMatchState(newMatch);
     } else {
-      console.error('Ranked matchmaking error:', createError);
+      log.error('Ranked matchmaking error:', createError);
       setSearching(false);
       Alert.alert(
         tr(language, 'Erreur', 'Error'),
@@ -269,7 +273,9 @@ export default function RankedMatchmaking({
       <View style={[styles.header, { borderBottomColor: cardBorder }]}>
         <TouchableOpacity
           onPress={searching ? cancelSearch : onBack}
-          style={[styles.backBtn, { backgroundColor: isDarkMode ? 'rgba(16,185,129,0.1)' : 'rgba(16,185,129,0.05)' }]}
+          style={[styles.backBtn, { backgroundColor: isDarkMode ? 'rgba(42,110,63,0.1)' : 'rgba(42,110,63,0.05)' }]}
+          hitSlop={ICON_HIT_SLOP}
+          {...a11yButton(searching ? tr(language, 'Annuler la recherche', 'Cancel search') : tr(language, 'Retour', 'Back'))}
         >
           <ArrowLeft color="#2a6e3f" size={20} />
         </TouchableOpacity>
@@ -289,9 +295,9 @@ export default function RankedMatchmaking({
             <Text style={[styles.username, { color: textPrimary }]}>
               {username ?? tr(language, 'Joueur', 'Player')}
             </Text>
-            <Text style={[styles.eloText, { color: rank.color }]}>
+            <ScoreText style={[styles.eloText, { color: rank.color }]}>
               {elo} <Text style={{ color: textSecondary, fontSize: 13 }}>ELO</Text>
-            </Text>
+            </ScoreText>
 
             {/* Progress bar */}
             <View style={[styles.progressTrack, { backgroundColor: cardBorder }]}>
@@ -361,7 +367,11 @@ export default function RankedMatchmaking({
             <Text style={[styles.searchingText, { color: textPrimary }]}>
               {tr(language, 'Recherche d\'un adversaire...', 'Finding an opponent...')}
             </Text>
-            <TouchableOpacity style={styles.cancelBtn} onPress={cancelSearch}>
+            <TouchableOpacity
+              style={styles.cancelBtn}
+              onPress={cancelSearch}
+              {...a11yButton(tr(language, 'Annuler la recherche', 'Cancel search'))}
+            >
               <Text style={styles.cancelBtnText}>
                 {tr(language, 'Annuler', 'Cancel')}
               </Text>
