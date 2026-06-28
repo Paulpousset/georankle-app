@@ -17,7 +17,7 @@ import { supabase } from '../lib/supabase';
 import { FONTS } from '../theme/typography';
 import { getColors, PALETTE, type ThemeColors } from '../theme/colors';
 import { ArrowLeft, Plus, RefreshCw, Users, Globe, Trophy, ChevronRight } from 'lucide-react-native';
-import { AtlasCapital, AtlasFlag, AtlasMix } from '../components/AtlasIcons';
+import { AtlasCapital, AtlasFlag } from '../components/AtlasIcons';
 import type { MatchMode, Language, Match, AvatarConfig } from '../types';
 import { gameData as gd } from '../data/gameData';
 import { Avatar } from '../components/Avatar';
@@ -101,7 +101,6 @@ interface MatchmakingProps {
 const QUESTION_TYPES = [
   { id: 'CAPITAL', labelFr: 'Capitales', labelEn: 'Capitals', icon: AtlasCapital },
   { id: 'FLAG', labelFr: 'Drapeaux', labelEn: 'Flags', icon: AtlasFlag },
-  { id: 'MIX', labelFr: 'Mixte', labelEn: 'Mixed', icon: AtlasMix },
 ];
 
 function modeName(mode: MatchMode, lang: Language): string {
@@ -220,7 +219,7 @@ export default function Matchmaking({
 
   // Create-form state
   const [bestOf, setBestOf] = useState(1);
-  const [questionType, setQuestionType] = useState('MIX');
+  const [questionType, setQuestionType] = useState('CAPITAL');
   const [roundsPerSet, setRoundsPerSet] = useState(5);
   const [isPublic, setIsPublic] = useState(true);
   const [creating, setCreating] = useState(false);

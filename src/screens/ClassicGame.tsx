@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { Coins, Home, Info, Moon, RefreshCcw, Share2, Sun, Trophy } from 'lucide-react-native';
+import { ArrowLeft, Coins, Home, Info, Moon, RefreshCcw, Share2, Sun, Trophy } from 'lucide-react-native';
 import { ThemeIcon } from '../components/themeIcons';
 import type { User } from '@supabase/supabase-js';
 
@@ -35,8 +35,21 @@ import { FONTS } from '../theme/typography';
 import { ThemeInfoModal } from '../components/ThemeInfoModal';
 import { a11yButton, announce, a11yHidden, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
+import { TopInsetBar } from '../components/TopInsetBar';
 
 const isMobile = Platform.OS === 'ios' || Platform.OS === 'android';
+
+/**
+ * A finished classic session, captured so it can be reviewed read-only later
+ * (e.g. the local-parcours "ideal game" review per player).
+ */
+export interface ClassicSessionResult {
+  sessionThemes: Theme[];
+  rounds: typeof gameData.countries;
+  selections: SelectionMap;
+  optimalSelections: SelectionMap;
+  totalScore: number;
+}
 
 interface ClassicGameProps {
   user: User | null;
@@ -51,6 +64,10 @@ interface ClassicGameProps {
   isDaily?: boolean;
   /** Daily challenge: invoked by the "Share" button on the win screen. */
   onShare?: () => void;
+  /** Parcours: capture this session's full result for later review. */
+  onSessionData?: (data: ClassicSessionResult) => void;
+  /** Review mode: render a finished session read-only (no live game, no saving). */
+  reviewData?: ClassicSessionResult | null;
 }
 
 /** Emoji cell for the share grid: how close a pick was to the optimal rank. */
@@ -74,18 +91,22 @@ export function ClassicGame({
   onDailyComplete,
   isDaily,
   onShare,
+  onSessionData,
+  reviewData,
 }: ClassicGameProps) {
   const { isDarkMode, toggleTheme } = useTheme();
   const { language, toggleLanguage } = useLanguage();
   const toast = useToast();
   const c = getColors(isDarkMode);
-  const [sessionThemes, setSessionThemes] = useState<Theme[]>([]);
-  const [rounds, setRounds] = useState<typeof gameData.countries>([]);
+  // In review mode the relevant state is seeded from the captured session so the
+  // results screen renders read-only without any live-game setup (see effect below).
+  const [sessionThemes, setSessionThemes] = useState<Theme[]>(() => reviewData?.sessionThemes ?? []);
+  const [rounds, setRounds] = useState<typeof gameData.countries>(() => reviewData?.rounds ?? []);
   const [currentRoundIndex, setCurrentRoundIndex] = useState(0);
-  const [totalScore, setTotalScore] = useState(0);
+  const [totalScore, setTotalScore] = useState(() => reviewData?.totalScore ?? 0);
   /** Optimistic best-score bump from the game just finished this session. */
   const [sessionBest, setSessionBest] = useState<number | null>(null);
-  const [gameOver, setGameOver] = useState(false);
+  const [gameOver, setGameOver] = useState(() => !!reviewData);
   /** Solo coins credited for this session (null until the server replies). */
   const [coinsEarned, setCoinsEarned] = useState<number | null>(null);
   /** True when today's per-mode coin cap was already hit (no coins this time). */
@@ -93,13 +114,15 @@ export function ClassicGame({
   /** True when the coin award couldn't reach the server (queued for retry). */
   const [coinsSyncFailed, setCoinsSyncFailed] = useState(false);
   const [usedThemeIds, setUsedThemeIds] = useState<string[]>([]);
-  const [selections, setSelections] = useState<SelectionMap>({});
-  const [optimalSelections, setOptimalSelections] = useState<SelectionMap>({});
+  const [selections, setSelections] = useState<SelectionMap>(() => reviewData?.selections ?? {});
+  const [optimalSelections, setOptimalSelections] = useState<SelectionMap>(() => reviewData?.optimalSelections ?? {});
   const [showThemeInfo, setShowThemeInfo] = useState<Theme | null>(null);
 
   const rngRef = useRef<(() => number) | null>(null);
 
   useEffect(() => {
+    // Review mode: state is already seeded from reviewData; skip the live game.
+    if (reviewData) return;
     if (dailySeed != null) {
       rngRef.current = createSeededRng(dailySeed);
     } else if (matchData?.game_data?.seed) {
@@ -284,6 +307,23 @@ export function ClassicGame({
         }
 
         if (matchData && onRoundComplete) {
+          // Capture the full session (incl. the just-made pick — state hasn't
+          // flushed yet) so the parcours can offer an "ideal game" review later.
+          const fullSelections: SelectionMap = {
+            ...selections,
+            [themeId]: {
+              countryName: language === 'fr' ? country.name : country.name_en || country.name,
+              rank,
+              cca3: country.cca3,
+            },
+          };
+          onSessionData?.({
+            sessionThemes,
+            rounds,
+            selections: fullSelections,
+            optimalSelections,
+            totalScore: finalScore,
+          });
           onRoundComplete(gameEfficiency);
         }
       }, 500);
@@ -340,8 +380,9 @@ export function ClassicGame({
   const efficiency = gameOver ? Math.round((optimalTotalValue / Math.max(totalScore, 1)) * 100) : 0;
 
   return (
-    <SafeAreaView style={themeStyles.container}>
+    <SafeAreaView style={themeStyles.container} edges={['left', 'right', 'bottom']}>
         <StatusBar style={isDarkMode ? 'light' : 'dark'} />
+        <TopInsetBar color={isDarkMode ? c.background : c.card} />
 
         <View style={themeStyles.header}>
           {!isMobile ? (
@@ -1056,7 +1097,7 @@ export function ClassicGame({
                     borderTopColor: c.border,
                   }}
                 >
-                  {isDaily ? (
+                  {!reviewData && (isDaily ? (
                     <TouchableOpacity
                       style={[styles.playAgainBtn, { flex: 2, paddingVertical: 14, marginTop: 0 }]}
                       onPress={onShare}
@@ -1078,7 +1119,7 @@ export function ClassicGame({
                         {tr(language, 'REJOUER', 'PLAY AGAIN')}
                       </Text>
                     </TouchableOpacity>
-                  )}
+                  ))}
                   <TouchableOpacity
                     style={[
                       styles.playAgainBtn,
@@ -1091,10 +1132,16 @@ export function ClassicGame({
                       },
                     ]}
                     onPress={onExit}
-                    {...a11yButton(tr(language, 'Menu', 'Menu'))}
+                    {...a11yButton(reviewData ? tr(language, 'Retour', 'Back') : tr(language, 'Menu', 'Menu'))}
                   >
-                    <Home color="#fff" size={20} {...a11yHidden} />
-                    <Text style={[styles.playAgainText, { fontSize: 16 }]}>MENU</Text>
+                    {reviewData ? (
+                      <ArrowLeft color="#fff" size={20} {...a11yHidden} />
+                    ) : (
+                      <Home color="#fff" size={20} {...a11yHidden} />
+                    )}
+                    <Text style={[styles.playAgainText, { fontSize: 16 }]}>
+                      {reviewData ? tr(language, 'RETOUR', 'BACK') : 'MENU'}
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>

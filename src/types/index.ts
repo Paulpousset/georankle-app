@@ -57,7 +57,7 @@ export interface Selection {
 /** Map of theme id -> selection. */
 export type SelectionMap = Record<string, Selection>;
 
-export type GameMode = 'menu' | 'classic' | 'streak' | 'versus' | 'guess' | 'globe' | 'regions' | 'quiz-capital' | 'quiz-flag' | 'quiz-mix' | 'local-builder';
+export type GameMode = 'menu' | 'classic' | 'streak' | 'versus' | 'guess' | 'globe' | 'regions' | 'quiz-capital' | 'quiz-flag' | 'local-builder';
 export type MatchMode = 'classic' | 'streak' | 'versus' | 'globe' | 'guess';
 export type MatchStatus = 'waiting' | 'in_progress' | 'completed' | 'cancelled';
 

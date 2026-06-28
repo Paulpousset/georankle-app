@@ -228,7 +228,7 @@ export default function RankedMatchmaking({
       is_ranked: true,
       ranked_modes: rankedModes,
       sessions: buildClassicSessions(seed, bestOf),
-      questionType: 'MIX',
+      questionType: 'CAPITAL',
       roundsPerSet: 5,
     };
 

@@ -32,6 +32,7 @@ import { FONTS } from '../theme/typography';
 import { tr } from '../i18n';
 import { a11yButton, announce, a11yHidden, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
+import { TopInsetBar } from '../components/TopInsetBar';
 
 const isMobile = Platform.OS === 'ios' || Platform.OS === 'android';
 
@@ -266,8 +267,9 @@ export default function StreakGame({
   };
 
   return (
-    <SafeAreaView style={themeStyles.container}>
+    <SafeAreaView style={themeStyles.container} edges={['left', 'right', 'bottom']}>
         <StatusBar style={isDarkMode ? 'light' : 'dark'} />
+        <TopInsetBar color={isDarkMode ? c.background : c.card} />
 
         <View style={themeStyles.header}>
           {!isMobile ? (
@@ -501,7 +503,7 @@ export default function StreakGame({
                 )}
               >
                 <View style={styles.emoji} {...a11yHidden}>
-                  <ThemeIcon id={theme.id} color={c.accent} size={20} />
+                  <ThemeIcon id={theme.id} color={c.accent} size={24} />
                 </View>
                 <Text
                   style={[styles.themeLabel, !isDarkMode && { color: c.text }]}

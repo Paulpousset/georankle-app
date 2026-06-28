@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -15,7 +15,6 @@ import {
   Monitor,
   Moon,
   ShoppingBag,
-  Sliders,
   Sun,
   Swords,
   Trophy,
@@ -39,6 +38,8 @@ import { getLocalState } from '../lib/daily';
 import { a11yButton, a11yImage, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
 import { NotificationDot } from '../components/NotificationDot';
+import { OnboardingTutorial, ONBOARDING_STEPS, type TutorialRect } from '../components/OnboardingTutorial';
+import { getHasSeenTutorial, setHasSeenTutorial } from '../lib/tutorial';
 
 export type PlayType = 'solo' | 'local' | 'online';
 
@@ -227,6 +228,64 @@ export function MainMenu({
     getLocalState().then((s) => setDailyStreak(s.streak));
   }, []);
 
+  // ----- First-launch onboarding tour -----
+  // Refs on the elements the tour spotlights. `any` keeps the union of View /
+  // TouchableOpacity instance types simple; we only touch `measureInWindow`.
+  const modesRef = useRef<any>(null);
+  const dailyRef = useRef<any>(null);
+  const profileRef = useRef<any>(null);
+  const shopRef = useRef<any>(null);
+  const friendsRef = useRef<any>(null);
+
+  const [showTutorial, setShowTutorial] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    getHasSeenTutorial().then((seen) => {
+      if (cancelled || seen) return;
+      // Small delay so the menu has fully laid out before we measure targets.
+      timer = setTimeout(() => {
+        if (!cancelled) setShowTutorial(true);
+      }, 450);
+    });
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, []);
+
+  const finishTutorial = useCallback(() => {
+    setShowTutorial(false);
+    setHasSeenTutorial(true);
+  }, []);
+
+  // Measure a spotlight target in window coordinates (matches the Modal frame).
+  // Resolves null when the element isn't mounted (e.g. Shop/Friends are hidden
+  // for logged-out users) so the step falls back to a centered card.
+  const measureTarget = useCallback(
+    (id: string) =>
+      new Promise<TutorialRect | null>((resolve) => {
+        const node = { modes: modesRef, daily: dailyRef, profile: profileRef, shop: shopRef, friends: friendsRef }[id]?.current;
+        if (!node || typeof node.measureInWindow !== 'function') {
+          resolve(null);
+          return;
+        }
+        let settled = false;
+        const settle = (r: TutorialRect | null) => {
+          if (!settled) {
+            settled = true;
+            resolve(r);
+          }
+        };
+        node.measureInWindow((x: number, y: number, width: number, height: number) => {
+          settle(width > 0 && height > 0 ? { x, y, width, height } : null);
+        });
+        // measureInWindow can silently never fire if the node is detached.
+        setTimeout(() => settle(null), 300);
+      }),
+    [],
+  );
+
   return (
     <SafeAreaView
       style={[styles.container, !isDarkMode && styles.containerLight, { flex: 1 }]}
@@ -263,6 +322,7 @@ export function MainMenu({
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
+            ref={profileRef}
             onPress={onOpenAuth}
             style={[
               styles.refreshBtn,
@@ -319,6 +379,7 @@ export function MainMenu({
           </TouchableOpacity>
           {isAuthenticated && (
             <TouchableOpacity
+              ref={shopRef}
               onPress={onOpenShop}
               style={[styles.refreshBtn, !isDarkMode && styles.refreshBtnLight, { padding: 10 }]}
               hitSlop={ICON_HIT_SLOP}
@@ -329,6 +390,7 @@ export function MainMenu({
           )}
           {isAuthenticated && (
             <TouchableOpacity
+              ref={friendsRef}
               onPress={onOpenFriends}
               style={[styles.refreshBtn, !isDarkMode && styles.refreshBtnLight, { padding: 10 }]}
               hitSlop={ICON_HIT_SLOP}
@@ -400,6 +462,7 @@ export function MainMenu({
 
         {/* Daily challenge hero — always visible, the first thing players see. */}
         <TouchableOpacity
+          ref={dailyRef}
           onPress={onOpenDaily}
           style={[
             styles.countryCard,
@@ -461,7 +524,7 @@ export function MainMenu({
             <Text style={{ fontFamily: FONTS.mono, color: c.textMuted, fontSize: 11, marginBottom: 28, textAlign: 'center' }}>
               {tr(language, 'Comment souhaitez-vous jouer ?', 'How do you want to play?')}
             </Text>
-            <View style={{ gap: 14, width: '100%', maxWidth: 400 }}>
+            <View ref={modesRef} style={{ gap: 14, width: '100%', maxWidth: 400 }}>
               <PlayTypeCard
                 icon={User}
                 accent={isDarkMode ? PALETTE.forestGreen : PALETTE.forestGreen}
@@ -478,7 +541,7 @@ export function MainMenu({
                 title="Local"
                 subtitle={tr(language, 'Défiez des amis sur le même appareil', 'Challenge friends on the same device')}
                 isDarkMode={isDarkMode}
-                onPress={() => setPlayType('local')}
+                onPress={() => onPlay('local-builder')}
               />
               <PlayTypeCard
                 icon={Wifi}
@@ -560,41 +623,6 @@ export function MainMenu({
                 subtitle={tr(language, 'Identifiez les drapeaux des pays', 'Identify country flags')}
                 isDarkMode={isDarkMode}
                 onPress={() => onPlay('quiz-flag')}
-              />
-              <ModeCard
-                icon={Flag}
-                accent={isDarkMode ? PALETTE.nightMuted : PALETTE.brown}
-                tint={isDarkMode ? 'rgba(122,160,196,0.12)' : 'rgba(122,92,56,0.10)'}
-                title="Mix"
-                subtitle={tr(language, 'Capitales et drapeaux mélangés', 'Capitals and flags mixed')}
-                isDarkMode={isDarkMode}
-                onPress={() => onPlay('quiz-mix')}
-              />
-            </View>
-          </>
-        ) : playType === 'local' ? (
-          <>
-            <Text style={{ fontFamily: FONTS.mono, color: c.textMuted, fontSize: 11, marginBottom: 28, textAlign: 'center' }}>
-              {tr(language, 'Choisissez votre mode de jeu', 'Choose your game mode')}
-            </Text>
-            <View style={{ gap: 12, width: '100%', maxWidth: 400 }}>
-              <ModeCard
-                icon={Sliders}
-                accent={PALETTE.forestGreen}
-                tint={isDarkMode ? 'rgba(42,110,63,0.15)' : 'rgba(42,110,63,0.10)'}
-                title={tr(language, 'Partie personnalisée', 'Custom Game')}
-                subtitle={tr(language, 'Enchaînez les modes, à plusieurs', 'Chain any modes, multiplayer')}
-                isDarkMode={isDarkMode}
-                onPress={() => onPlay('local-builder')}
-              />
-              <ModeCard
-                icon={Users}
-                accent={isDarkMode ? PALETTE.chartBlue : PALETTE.oceanBlue}
-                tint={isDarkMode ? 'rgba(74,158,255,0.12)' : 'rgba(26,74,122,0.10)'}
-                title={tr(language, 'Mode Versus', 'Versus Mode')}
-                subtitle={tr(language, 'Défiez un ami sur cet appareil', 'Challenge a friend on this device')}
-                isDarkMode={isDarkMode}
-                onPress={() => onPlay('versus')}
               />
             </View>
           </>
@@ -704,6 +732,16 @@ export function MainMenu({
           GEOG · v2.0
         </Text>
       </ScrollView>
+
+      {/* First-launch guided tour — spotlights the menu's key features. The key
+          remounts it fresh each time it opens so it always starts at step 1. */}
+      <OnboardingTutorial
+        key={showTutorial ? 'tour-open' : 'tour-closed'}
+        visible={showTutorial}
+        steps={ONBOARDING_STEPS}
+        measureTarget={measureTarget}
+        onFinish={finishTutorial}
+      />
     </SafeAreaView>
   );
 }

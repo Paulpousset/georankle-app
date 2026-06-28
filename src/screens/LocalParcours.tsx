@@ -10,15 +10,18 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar';
 import {
   ArrowLeft,
+  Check,
   ChevronDown,
   ChevronUp,
   Crown,
+  Eye,
   Flag,
   Globe,
   Info,
   LayoutGrid,
   Map,
   Minus,
+  Pencil,
   Play,
   Plus,
   Trophy,
@@ -44,11 +47,11 @@ import GuessCountryGame from './GuessCountryGame';
 import FindCountryGame from './FindCountryGame';
 import FindRegionGame from './FindRegionGame';
 import RegionCountryPicker, { type RegionPick } from './RegionCountryPicker';
-import { ClassicGame } from './ClassicGame';
+import { ClassicGame, type ClassicSessionResult } from './ClassicGame';
 
 // ─── Mode catalogue ───────────────────────────────────────────────────────────
 
-type ModeKey = 'capital' | 'flag' | 'mix' | 'classic' | 'streak' | 'guess' | 'globe' | 'regions';
+type ModeKey = 'capital' | 'flag' | 'classic' | 'streak' | 'guess' | 'globe' | 'regions';
 
 interface ModeDef {
   key: ModeKey;
@@ -67,7 +70,6 @@ interface ModeDef {
 const MODES: Record<ModeKey, ModeDef> = {
   capital: { key: 'capital', fr: 'Capitales', en: 'Capitals', icon: Flag, accent: PALETTE.sand, rounds: 'config', defaultRounds: 5, unitFr: 'questions', unitEn: 'questions' },
   flag: { key: 'flag', fr: 'Drapeaux', en: 'Flags', icon: Flag, accent: PALETTE.vermilion, rounds: 'config', defaultRounds: 5, unitFr: 'questions', unitEn: 'questions' },
-  mix: { key: 'mix', fr: 'Mix Capitales/Drapeaux', en: 'Mix Capitals/Flags', icon: Flag, accent: PALETTE.brown, rounds: 'config', defaultRounds: 5, unitFr: 'questions', unitEn: 'questions' },
   guess: { key: 'guess', fr: 'Devine le Pays', en: 'Guess Country', icon: Info, accent: PALETTE.vermilion, rounds: 'config', defaultRounds: 3, unitFr: 'pays', unitEn: 'countries' },
   classic: { key: 'classic', fr: 'Rankle', en: 'Rankle', icon: LayoutGrid, accent: PALETTE.forestGreen, rounds: 'fixed', defaultRounds: 1, unitFr: '8 thèmes', unitEn: '8 themes' },
   streak: { key: 'streak', fr: 'Streak', en: 'Streak', icon: Zap, accent: PALETTE.sand, rounds: 'fixed', defaultRounds: 1, unitFr: "jusqu'à l'erreur", unitEn: 'until a miss' },
@@ -75,13 +77,13 @@ const MODES: Record<ModeKey, ModeDef> = {
   regions: { key: 'regions', fr: 'Régions Géo', en: 'Geo Regions', icon: Map, accent: PALETTE.oceanBlue, rounds: 'config', defaultRounds: 5, unitFr: 'rounds', unitEn: 'rounds' },
 };
 
-const MODE_ORDER: ModeKey[] = ['capital', 'flag', 'mix', 'guess', 'classic', 'streak', 'globe', 'regions'];
+const MODE_ORDER: ModeKey[] = ['capital', 'flag', 'guess', 'classic', 'streak', 'globe', 'regions'];
 
 /**
  * Modes that play one round at a time, so players alternate round by round.
  * streak is atomic (no fixed round count).
  */
-const QUESTION_MODES: ModeKey[] = ['capital', 'flag', 'mix', 'guess', 'classic'];
+const QUESTION_MODES: ModeKey[] = ['capital', 'flag', 'guess', 'classic'];
 const isPerQuestion = (mode: ModeKey) => QUESTION_MODES.includes(mode);
 
 function toMatchMode(mode: ModeKey): MatchMode {
@@ -97,7 +99,6 @@ function toMatchMode(mode: ModeKey): MatchMode {
 function versusType(mode: ModeKey): string | undefined {
   if (mode === 'capital') return 'CAPITAL';
   if (mode === 'flag') return 'FLAG';
-  if (mode === 'mix') return 'MIX';
   return undefined;
 }
 
@@ -168,6 +169,14 @@ export default function LocalParcours({
   const [manches, setManches] = useState<Manche[]>([
     { id: newMancheId(), mode: 'capital', rounds: MODES.capital.defaultRounds },
   ]);
+  // true  → "Une partie chacun" : chaque joueur joue toute la manche avec les
+  //          mêmes questions (seed partagé), on passe le téléphone une fois par joueur.
+  // false → "Tour par tour" : les joueurs alternent question par question, chacun
+  //          avec ses propres questions.
+  const [sameGame, setSameGame] = useState(true);
+
+  // Which player's name is being edited inline (null = none).
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
 
   const [seeds, setSeeds] = useState<number[]>([]);
   // scores[mancheIdx][playerIdx]
@@ -175,12 +184,21 @@ export default function LocalParcours({
   const [step, setStep] = useState<Step>({ phase: 'builder' });
   const [pickingRegion, setPickingRegion] = useState(false);
   const handledKey = useRef<string>('');
+  // Captured Rankle (classic) sessions, keyed `${mancheIdx}-${playerIdx}`, so a
+  // player's "ideal game" can be reviewed from the end screens.
+  const [classicResults, setClassicResults] = useState<Record<string, ClassicSessionResult>>({});
+  const [review, setReview] = useState<{ mancheIdx: number; playerIdx: number } | null>(null);
+
+  const classicKey = (mancheIdx: number, playerIdx: number) => `${mancheIdx}-${playerIdx}`;
+  const canReviewClassic = (mancheIdx: number, playerIdx: number) =>
+    manches[mancheIdx]?.mode === 'classic' && !!classicResults[classicKey(mancheIdx, playerIdx)];
 
   const numPlayers = names.length;
 
   // ── Builder mutators ────────────────────────────────────────────────────────
 
   const setPlayerCount = (n: number) => {
+    setEditingIdx(null);
     const clamped = Math.max(2, Math.min(8, n));
     setNames((prev) => {
       if (clamped === prev.length) return prev;
@@ -234,9 +252,11 @@ export default function LocalParcours({
       n.trim() ? n.trim() : `${tr(language, 'Joueur', 'Player')} ${i + 1}`,
     );
     setNames(cleaned);
-    track('local_parcours_started', { modes: manches.length, players: cleaned.length });
+    track('local_parcours_started', { modes: manches.length, players: cleaned.length, same_game: sameGame });
     setSeeds(manches.map(() => Math.floor(Math.random() * 2_000_000_000)));
     setScores(manches.map(() => cleaned.map(() => 0)));
+    setClassicResults({});
+    setReview(null);
     handledKey.current = '';
     setStep({ phase: 'pass', mancheIdx: 0, questionIdx: 0, playerIdx: 0 });
   };
@@ -244,6 +264,8 @@ export default function LocalParcours({
   const restartSameParcours = () => {
     setSeeds(manches.map(() => Math.floor(Math.random() * 2_000_000_000)));
     setScores(manches.map(() => names.map(() => 0)));
+    setClassicResults({});
+    setReview(null);
     handledKey.current = '';
     setStep({ phase: 'pass', mancheIdx: 0, questionIdx: 0, playerIdx: 0 });
   };
@@ -266,13 +288,28 @@ export default function LocalParcours({
     const manche = manches[step.mancheIdx];
     const questionCount = questionCountOf(manche);
 
-    // Advance: player by player within a question, then to the next question.
-    if (step.playerIdx + 1 < numPlayers) {
-      setStep({ phase: 'pass', mancheIdx: step.mancheIdx, questionIdx: step.questionIdx, playerIdx: step.playerIdx + 1 });
-    } else if (step.questionIdx + 1 < questionCount) {
-      setStep({ phase: 'pass', mancheIdx: step.mancheIdx, questionIdx: step.questionIdx + 1, playerIdx: 0 });
+    if (sameGame) {
+      // "Une partie chacun" : un joueur enchaîne toutes ses questions (sans écran
+      // de passage), puis on passe le téléphone au joueur suivant.
+      if (step.questionIdx + 1 < questionCount) {
+        // Même joueur, question suivante — pas d'écran de passage.
+        handledKey.current = '';
+        setStep({ phase: 'play', mancheIdx: step.mancheIdx, questionIdx: step.questionIdx + 1, playerIdx: step.playerIdx });
+      } else if (step.playerIdx + 1 < numPlayers) {
+        setStep({ phase: 'pass', mancheIdx: step.mancheIdx, questionIdx: 0, playerIdx: step.playerIdx + 1 });
+      } else {
+        setStep({ phase: 'mancheSummary', mancheIdx: step.mancheIdx });
+      }
     } else {
-      setStep({ phase: 'mancheSummary', mancheIdx: step.mancheIdx });
+      // "Tour par tour" : joueur par joueur sur une même question, puis question
+      // suivante (chacun ayant ses propres questions).
+      if (step.playerIdx + 1 < numPlayers) {
+        setStep({ phase: 'pass', mancheIdx: step.mancheIdx, questionIdx: step.questionIdx, playerIdx: step.playerIdx + 1 });
+      } else if (step.questionIdx + 1 < questionCount) {
+        setStep({ phase: 'pass', mancheIdx: step.mancheIdx, questionIdx: step.questionIdx + 1, playerIdx: 0 });
+      } else {
+        setStep({ phase: 'mancheSummary', mancheIdx: step.mancheIdx });
+      }
     }
   };
 
@@ -328,9 +365,12 @@ export default function LocalParcours({
   const renderActiveMode = (s: Extract<Step, { phase: 'play' }>) => {
     const manche = manches[s.mancheIdx];
     const perQuestion = isPerQuestion(manche.mode);
-    // Distinct seed per (player, question) so nobody gets the same questions.
+    // "Une partie chacun" : seed indépendant du joueur → mêmes questions pour tous.
+    // "Tour par tour" : seed distinct par (joueur, question) → questions différentes.
     const baseSeed = seeds[s.mancheIdx] ?? 1;
-    const turnSeed = (baseSeed + s.playerIdx * 100003 + s.questionIdx * 1009) | 0;
+    const turnSeed = sameGame
+      ? (baseSeed + s.questionIdx * 1009) | 0
+      : (baseSeed + s.playerIdx * 100003 + s.questionIdx * 1009) | 0;
     // Per-question modes run a single question per turn; atomic modes run their
     // whole session in one turn.
     const roundsParam = perQuestion ? 1 : manche.rounds;
@@ -341,7 +381,6 @@ export default function LocalParcours({
     switch (manche.mode) {
       case 'capital':
       case 'flag':
-      case 'mix':
         return (
           <VersusCapitals
             key={key}
@@ -354,6 +393,8 @@ export default function LocalParcours({
               baseScores: scores[s.mancheIdx] ?? names.map(() => 0),
               currentIdx: s.playerIdx,
               colors: names.map((_, i) => PLAYER_COLORS[i % PLAYER_COLORS.length]),
+              // "Une partie chacun" : on cache les scores des autres jusqu'à la fin.
+              revealAll: !sameGame,
             }}
           />
         );
@@ -412,6 +453,9 @@ export default function LocalParcours({
             user={null}
             matchData={match}
             onRoundComplete={handleRoundComplete}
+            onSessionData={(data) =>
+              setClassicResults((prev) => ({ ...prev, [classicKey(s.mancheIdx, s.playerIdx)]: data }))
+            }
             onExit={quit}
           />
         );
@@ -430,6 +474,21 @@ export default function LocalParcours({
         title={tr(language, 'Pays de la manche', 'Round country')}
       />
     );
+  }
+
+  // Reviewing a player's finished Rankle session (the "ideal game" they could
+  // have played) — same end screen as solo, read-only.
+  if (review) {
+    const data = classicResults[classicKey(review.mancheIdx, review.playerIdx)];
+    if (data) {
+      return (
+        <ClassicGame
+          user={null}
+          reviewData={data}
+          onExit={() => setReview(null)}
+        />
+      );
+    }
   }
 
   if (step.phase === 'play') {
@@ -469,23 +528,97 @@ export default function LocalParcours({
           </View>
 
           <View style={{ gap: 8, marginBottom: 24 }}>
-            {names.map((name, i) => (
-              <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: PLAYER_COLORS[i % PLAYER_COLORS.length], alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ color: '#fff', fontFamily: FONTS.monoBold, fontSize: 12 }}>{i + 1}</Text>
-                </View>
-                <TextInput
-                  value={name}
-                  onChangeText={(v) => renamePlayer(i, v)}
-                  placeholder={`${tr(language, 'Joueur', 'Player')} ${i + 1}`}
-                  placeholderTextColor={c.textFaint}
-                  autoCapitalize="words"
-                  maxLength={16}
-                  returnKeyType="done"
-                  style={{ flex: 1, backgroundColor: c.card, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, color: c.text, fontFamily: FONTS.mono, fontSize: 14 }}
-                />
-              </View>
-            ))}
+            {names.map((name, i) => {
+              const color = PLAYER_COLORS[i % PLAYER_COLORS.length];
+              const placeholder = `${tr(language, 'Joueur', 'Player')} ${i + 1}`;
+              const hasName = name.trim().length > 0;
+              const editAccent = isDarkMode ? PALETTE.chartBlue : PALETTE.forestGreen;
+              const editTint = isDarkMode ? 'rgba(74,158,255,0.15)' : 'rgba(42,110,63,0.13)';
+
+              // Inline editing: a focused text field + a confirm chip.
+              if (editingIdx === i) {
+                return (
+                  <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: c.card, borderRadius: 14, padding: 11, borderWidth: 2, borderColor: editAccent }}>
+                    <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: color, alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ color: '#fff', fontFamily: FONTS.monoBold, fontSize: 12 }}>{i + 1}</Text>
+                    </View>
+                    <TextInput
+                      value={name}
+                      onChangeText={(v) => renamePlayer(i, v)}
+                      placeholder={placeholder}
+                      placeholderTextColor={c.textFaint}
+                      autoCapitalize="words"
+                      autoFocus
+                      maxLength={16}
+                      returnKeyType="done"
+                      onSubmitEditing={() => setEditingIdx(null)}
+                      onBlur={() => setEditingIdx(null)}
+                      accessibilityLabel={tr(language, `Nom du joueur ${i + 1}`, `Player ${i + 1} name`)}
+                      style={{ flex: 1, color: c.text, fontFamily: FONTS.monoBold, fontSize: 15, padding: 0 }}
+                    />
+                    <TouchableOpacity
+                      onPress={() => setEditingIdx(null)}
+                      hitSlop={ICON_HIT_SLOP}
+                      {...a11yButton(tr(language, 'Valider le nom', 'Confirm name'))}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: editTint, borderRadius: 20, paddingHorizontal: 11, paddingVertical: 6 }}
+                    >
+                      <Check color={editAccent} size={14} {...a11yHidden} />
+                      <Text style={{ fontFamily: FONTS.monoBold, color: editAccent, fontSize: 11 }}>OK</Text>
+                    </TouchableOpacity>
+                  </View>
+                );
+              }
+
+              // Resting state: a card that reads as "tap to rename".
+              return (
+                <TouchableOpacity
+                  key={i}
+                  onPress={() => setEditingIdx(i)}
+                  {...a11yButton(
+                    tr(language, `Renommer ${hasName ? name : placeholder}`, `Rename ${hasName ? name : placeholder}`),
+                    { hint: tr(language, 'Touchez pour modifier le nom', 'Tap to edit the name') },
+                  )}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: c.card, borderRadius: 14, padding: 11 }}
+                >
+                  <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: color, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ color: '#fff', fontFamily: FONTS.monoBold, fontSize: 12 }}>{i + 1}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text numberOfLines={1} style={{ fontFamily: FONTS.monoBold, color: hasName ? c.text : c.textFaint, fontSize: 15 }}>
+                      {hasName ? name : placeholder}
+                    </Text>
+                    <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 10, marginTop: 1 }}>
+                      {tr(language, 'Touchez pour renommer', 'Tap to rename')}
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: editTint, borderRadius: 20, paddingHorizontal: 11, paddingVertical: 6 }} {...a11yHidden}>
+                    <Pencil color={editAccent} size={13} />
+                    <Text style={{ fontFamily: FONTS.monoBold, color: editAccent, fontSize: 11 }}>{tr(language, 'Modifier', 'Edit')}</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Format : mêmes questions pour tous, ou alternance tour par tour */}
+          <Text style={sectionLabel(c)}>{tr(language, 'DÉROULÉ', 'FORMAT')}</Text>
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 24 }}>
+            <FormatOption
+              active={sameGame}
+              onPress={() => setSameGame(true)}
+              icon={Trophy}
+              title={tr(language, 'Une partie chacun', 'One game each')}
+              subtitle={tr(language, 'Mêmes questions pour tous', 'Same questions for everyone')}
+              c={c}
+            />
+            <FormatOption
+              active={!sameGame}
+              onPress={() => setSameGame(false)}
+              icon={Users}
+              title={tr(language, 'Tour par tour', 'Turn by turn')}
+              subtitle={tr(language, 'Questions différentes à chacun', 'Different questions each')}
+              c={c}
+            />
           </View>
 
           {/* Manches */}
@@ -608,6 +741,10 @@ export default function LocalParcours({
     const standings = computeStandings();
     const perQuestion = isPerQuestion(manche.mode);
     const questionCount = questionCountOf(manche);
+    // "Tour par tour" : on annonce la question en cours. "Une partie chacun" : le
+    // joueur enchaîne toute la manche, on annonce juste le nombre de questions.
+    const showQuestionLine = perQuestion && !sameGame;
+    const showCountHint = perQuestion && sameGame && questionCount > 1;
     const showStandings = step.mancheIdx > 0 || step.questionIdx > 0 || step.playerIdx > 0;
     return (
       <ParcoursScreen isDarkMode={isDarkMode} background={c.background}>
@@ -615,13 +752,18 @@ export default function LocalParcours({
           <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 12, letterSpacing: 2, marginBottom: 8 }}>
             {tr(language, 'MANCHE', 'ROUND')} {step.mancheIdx + 1}/{manches.length}
           </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: perQuestion ? 12 : 28 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: showQuestionLine || showCountHint ? 12 : 28 }}>
             <Icon color={def.accent} size={26} />
             <Text style={{ fontFamily: FONTS.headingBlack, color: c.text, fontSize: 24 }}>{tr(language, def.fr, def.en)}</Text>
           </View>
-          {perQuestion && (
+          {showQuestionLine && (
             <Text style={{ fontFamily: FONTS.monoBold, color: def.accent, fontSize: 14, letterSpacing: 1, marginBottom: 24 }}>
               {tr(language, 'QUESTION', 'QUESTION')} {step.questionIdx + 1}/{questionCount}
+            </Text>
+          )}
+          {showCountHint && (
+            <Text style={{ fontFamily: FONTS.monoBold, color: def.accent, fontSize: 14, letterSpacing: 1, marginBottom: 24 }}>
+              {questionCount} {tr(language, def.unitFr, def.unitEn)}
             </Text>
           )}
 
@@ -688,13 +830,30 @@ export default function LocalParcours({
           <View style={{ gap: 10, marginBottom: 36 }}>
             {ranked.map((r, idx) => {
               const isWinner = r.score === max && max > 0;
+              const reviewable = canReviewClassic(step.mancheIdx, r.p);
               return (
                 <View key={r.p} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: c.card, borderRadius: 14, padding: 14, borderWidth: isWinner ? 2 : 0, borderColor: PALETTE.sand }}>
                   <Text style={{ fontFamily: FONTS.monoBold, color: c.textFaint, fontSize: 16, width: 22 }}>{idx + 1}</Text>
                   <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: PLAYER_COLORS[r.p % PLAYER_COLORS.length], alignItems: 'center', justifyContent: 'center' }}>
                     <Text style={{ color: '#fff', fontFamily: FONTS.monoBold, fontSize: 12 }}>{r.p + 1}</Text>
                   </View>
-                  <Text style={{ flex: 1, fontFamily: FONTS.monoBold, color: c.text, fontSize: 15 }}>{r.name}</Text>
+                  {reviewable ? (
+                    <TouchableOpacity
+                      style={{ flex: 1 }}
+                      onPress={() => setReview({ mancheIdx: step.mancheIdx, playerIdx: r.p })}
+                      {...a11yButton(tr(language, `Voir la partie idéale de ${r.name}`, `View ${r.name}'s ideal game`))}
+                    >
+                      <Text style={{ fontFamily: FONTS.monoBold, color: c.text, fontSize: 15 }}>{r.name}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                        <Eye color={c.accent} size={11} {...a11yHidden} />
+                        <Text style={{ fontFamily: FONTS.mono, color: c.accent, fontSize: 10 }}>
+                          {tr(language, 'Voir la partie idéale', 'View ideal game')}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  ) : (
+                    <Text style={{ flex: 1, fontFamily: FONTS.monoBold, color: c.text, fontSize: 15 }}>{r.name}</Text>
+                  )}
                   {isWinner && <Crown color={PALETTE.sand} size={18} {...a11yImage(tr(language, 'Gagnant de la manche', 'Round winner'))} />}
                   <Text style={{ fontFamily: FONTS.monoBold, color: c.text, fontSize: 18 }}>{r.score}</Text>
                 </View>
@@ -763,6 +922,14 @@ export default function LocalParcours({
 
         {/* Per-manche breakdown */}
         <Text style={sectionLabel(c)}>{tr(language, 'DÉTAIL PAR MANCHE', 'PER-ROUND BREAKDOWN')}</Text>
+        {manches.some((m, mi) => names.some((_, p) => canReviewClassic(mi, p))) && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 10, marginTop: -4 }}>
+            <Eye color={c.textFaint} size={12} {...a11yHidden} />
+            <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 11 }}>
+              {tr(language, 'Touchez un nom Rankle pour voir la partie idéale', 'Tap a Rankle name to view the ideal game')}
+            </Text>
+          </View>
+        )}
         <View style={{ gap: 6, marginBottom: 28 }}>
           {manches.map((m, mi) => {
             const def = MODES[m.mode];
@@ -774,11 +941,28 @@ export default function LocalParcours({
                   {mi + 1}. {tr(language, def.fr, def.en)}
                 </Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-                  {names.map((name, p) => (
-                    <Text key={p} style={{ fontFamily: FONTS.mono, color: row[p] === max && max > 0 ? PALETTE.sand : c.textMuted, fontSize: 12 }}>
-                      {name}: {row[p] ?? 0}
-                    </Text>
-                  ))}
+                  {names.map((name, p) => {
+                    const isMax = row[p] === max && max > 0;
+                    const reviewable = canReviewClassic(mi, p);
+                    const label = (
+                      <Text style={{ fontFamily: FONTS.mono, fontSize: 12, color: isMax ? PALETTE.sand : reviewable ? c.accent : c.textMuted, textDecorationLine: reviewable ? 'underline' : 'none' }}>
+                        {name}: {row[p] ?? 0}
+                      </Text>
+                    );
+                    return reviewable ? (
+                      <TouchableOpacity
+                        key={p}
+                        onPress={() => setReview({ mancheIdx: mi, playerIdx: p })}
+                        {...a11yButton(tr(language, `Voir la partie idéale de ${name}`, `View ${name}'s ideal game`))}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}
+                      >
+                        <Eye color={c.accent} size={11} {...a11yHidden} />
+                        {label}
+                      </TouchableOpacity>
+                    ) : (
+                      <View key={p}>{label}</View>
+                    );
+                  })}
                 </View>
               </View>
             );
@@ -833,6 +1017,41 @@ const sectionLabel = (c: ReturnType<typeof getColors>) => ({
   letterSpacing: 1.5,
   marginBottom: 10,
 });
+
+function FormatOption({
+  active,
+  onPress,
+  icon: Icon,
+  title,
+  subtitle,
+  c,
+}: {
+  active: boolean;
+  onPress: () => void;
+  icon: any;
+  title: string;
+  subtitle: string;
+  c: ReturnType<typeof getColors>;
+}) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      {...a11yButton(title, { hint: subtitle, selected: active })}
+      style={{
+        flex: 1,
+        backgroundColor: active ? `${PALETTE.forestGreen}22` : c.card,
+        borderRadius: 14,
+        padding: 12,
+        borderWidth: 2,
+        borderColor: active ? PALETTE.forestGreen : c.border,
+      }}
+    >
+      <Icon color={active ? PALETTE.forestGreen : c.textMuted} size={20} {...a11yHidden} />
+      <Text style={{ fontFamily: FONTS.monoBold, color: c.text, fontSize: 13, marginTop: 8 }}>{title}</Text>
+      <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 11, marginTop: 2 }}>{subtitle}</Text>
+    </TouchableOpacity>
+  );
+}
 
 function Stepper({ onPress, disabled, icon: Icon, c, small, label }: { onPress: () => void; disabled?: boolean; icon: any; c: ReturnType<typeof getColors>; small?: boolean; label?: string }) {
   const size = small ? 30 : 38;

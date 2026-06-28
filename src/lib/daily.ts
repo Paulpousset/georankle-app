@@ -38,7 +38,6 @@ export const DAILY_MODES: GameMode[] = [
   'regions',
   'quiz-capital',
   'quiz-flag',
-  'quiz-mix',
 ];
 
 /** Day index 0 maps to this UTC date — only affects the displayed "#N". */
@@ -312,8 +311,6 @@ export function dailyModeLabel(mode: GameMode, language: Language): string {
       return tr(language, 'Capitales', 'Capitals');
     case 'quiz-flag':
       return tr(language, 'Drapeaux', 'Flags');
-    case 'quiz-mix':
-      return 'Mix';
     default:
       return mode;
   }

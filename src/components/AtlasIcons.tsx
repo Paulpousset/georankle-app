@@ -162,20 +162,6 @@ export function AtlasFlag({ color = '#000', size = 24 }: AtlasIconProps) {
   );
 }
 
-/** 🎲 mixte — dé */
-export function AtlasMix({ color = '#000', size = 24 }: AtlasIconProps) {
-  return (
-    <Base size={size}>
-      <Rect x={4.5} y={4.5} width={15} height={15} rx={3} {...line(color)} />
-      <Circle cx={9} cy={9} r={1.1} fill={color} />
-      <Circle cx={15} cy={9} r={1.1} fill={color} />
-      <Circle cx={12} cy={12} r={1.1} fill={color} />
-      <Circle cx={9} cy={15} r={1.1} fill={color} />
-      <Circle cx={15} cy={15} r={1.1} fill={color} />
-    </Base>
-  );
-}
-
 // ── Ranked ─────────────────────────────────────────────────────────────────
 
 /** ⬆ promotion */

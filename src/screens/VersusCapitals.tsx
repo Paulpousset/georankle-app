@@ -36,6 +36,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { tr } from '../i18n';
 import { a11yButton, announce, a11yImage, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
+import { TopInsetBar } from '../components/TopInsetBar';
 
 const PLAYER_COLORS = ['#4a9eff', '#8b1a1a', '#2a6e3f', '#c4872a'];
 import countriesStats from '../../assets/countries_stats.json';
@@ -77,6 +78,12 @@ interface VersusCapitalsProps {
     baseScores: number[];
     currentIdx: number;
     colors: string[];
+    /**
+     * Show every player's running score (default). When false, only the current
+     * player's chip is shown — used by the "Une partie chacun" parcours format so
+     * a player can't see rivals' scores until the manche/results reveal.
+     */
+    revealAll?: boolean;
   };
 }
 
@@ -173,18 +180,13 @@ export default function VersusCapitals({
   const rngRef = useRef<(() => number) | null>(null);
 
   // Analytics mode string for solo play, derived from the chosen quiz type.
-  const soloAnalyticsMode =
-    initialGameType === 'FLAG'
-      ? 'quiz-flag'
-      : initialGameType === 'MIX'
-        ? 'quiz-mix'
-        : 'quiz-capital';
+  const soloAnalyticsMode = initialGameType === 'FLAG' ? 'quiz-flag' : 'quiz-capital';
 
   const [numPlayers, setNumPlayers] = useState<number | null>(
     isOnline || isDaily ? 1 : null,
   );
   const [gameType, setGameType] = useState<string>(
-    isOnline ? ((matchData?.game_data?.questionType as string) ?? 'MIX') : (initialGameType ?? 'CAPITAL'),
+    isOnline ? ((matchData?.game_data?.questionType as string) ?? 'CAPITAL') : (initialGameType ?? 'CAPITAL'),
   );
   const [currentQuestionType, setCurrentQuestionType] = useState<string>('CAPITAL');
   const [totalRounds, setTotalRounds] = useState<number>(
@@ -255,11 +257,7 @@ export default function VersusCapitals({
 
     const rng = rngRef.current ?? Math.random;
 
-    let activeType = gameType;
-    if (gameType === 'MIX') {
-      const setsPlayed = matchScores[1] + matchScores[2] + matchScores[3];
-      activeType = setsPlayed % 2 === 0 ? 'CAPITAL' : 'FLAG';
-    }
+    const activeType = gameType;
     setCurrentQuestionType(activeType);
 
     // Pick a random country not used in this game
@@ -511,7 +509,10 @@ export default function VersusCapitals({
   // internal P1/P2 board so each turn no longer looks like "Player 1".
   const renderLocalBanner = () => {
     if (!localBanner) return null;
-    const { names: pnames, baseScores, currentIdx, colors } = localBanner;
+    const { names: pnames, baseScores, currentIdx, colors, revealAll = true } = localBanner;
+    // "Une partie chacun" hides rivals' scores until the reveal — show only the
+    // current player's chip; "Tour par tour" shows the full live standings strip.
+    const shown = revealAll ? pnames.map((_, p) => p) : [currentIdx];
     return (
       <ScrollView
         horizontal
@@ -519,7 +520,8 @@ export default function VersusCapitals({
         style={{ flex: 1 }}
         contentContainerStyle={{ alignItems: 'center', gap: 6, paddingRight: 8 }}
       >
-        {pnames.map((nm, p) => {
+        {shown.map((p) => {
+          const nm = pnames[p];
           const isCur = p === currentIdx;
           const total = (baseScores[p] ?? 0) + (isCur ? scores[1] : 0);
           const color = colors[p % colors.length];
@@ -631,9 +633,7 @@ export default function VersusCapitals({
               {soloMode
                 ? gameType === 'CAPITAL'
                   ? language === 'fr' ? 'CAPITALES' : 'CAPITALS'
-                  : gameType === 'FLAG'
-                    ? language === 'fr' ? 'DRAPEAUX' : 'FLAGS'
-                    : 'MIX'
+                  : language === 'fr' ? 'DRAPEAUX' : 'FLAGS'
                 : language === 'fr' ? 'VERSUS' : 'VERSUS'}
             </Text>
 
@@ -679,23 +679,6 @@ export default function VersusCapitals({
                   }}
                 >
                   {language === 'fr' ? 'DRAPEAUX' : 'FLAGS'}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12 },
-                  gameType === 'MIX' && { backgroundColor: '#4a9eff' },
-                ]}
-                onPress={() => setGameType('MIX')}
-                {...a11yButton('MIX', { selected: gameType === 'MIX' })}
-              >
-                <Text
-                  style={{
-                    color: gameType === 'MIX' ? '#fff' : c.textMuted,
-                    fontWeight: '900',
-                  }}
-                >
-                  MIX
                 </Text>
               </TouchableOpacity>
             </View>}
@@ -846,8 +829,9 @@ export default function VersusCapitals({
   if (!question) return null;
 
   return (
-    <SafeAreaView style={[styles.container, !isDarkMode && styles.containerLight]}>
+    <SafeAreaView style={[styles.container, !isDarkMode && styles.containerLight]} edges={['left', 'right', 'bottom']}>
         <StatusBar style={isDarkMode ? 'light' : 'dark'} />
+        <TopInsetBar color={isDarkMode ? c.background : c.card} />
 
         {/* Header */}
         <View style={[styles.header, !isDarkMode && styles.headerLight]}>

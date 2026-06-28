@@ -53,7 +53,6 @@ const MODE_META: Record<string, { icon: ComponentType<{ color: string; size: num
   regions: { icon: Map, accent: PALETTE.oceanBlue },
   'quiz-capital': { icon: Flag, accent: PALETTE.sand },
   'quiz-flag': { icon: Flag, accent: PALETTE.vermilion },
-  'quiz-mix': { icon: Flag, accent: PALETTE.brown },
 };
 
 interface DailyHubProps {

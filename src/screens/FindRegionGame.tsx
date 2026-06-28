@@ -30,6 +30,7 @@ import { supabase } from '../lib/supabase';
 import { getRegionFile, type Region } from '../../assets/regions';
 import { a11yButton, announce, a11yImage, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
+import { TopInsetBar } from '../components/TopInsetBar';
 
 const DEFAULT_ROUNDS = 5;
 
@@ -631,8 +632,9 @@ export default function FindRegionGame({
 
   // ── Main game screen ─────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['left', 'right', 'bottom']}>
       <StatusBar style={isDarkMode ? 'light' : 'dark'} />
+      <TopInsetBar color={colors.card} />
 
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>

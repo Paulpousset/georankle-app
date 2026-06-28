@@ -294,9 +294,8 @@ export function Router({
     );
   }
 
-  if (gameMode === 'quiz-capital' || gameMode === 'quiz-flag' || gameMode === 'quiz-mix') {
-    const initialGameType =
-      gameMode === 'quiz-capital' ? 'CAPITAL' : gameMode === 'quiz-flag' ? 'FLAG' : 'MIX';
+  if (gameMode === 'quiz-capital' || gameMode === 'quiz-flag') {
+    const initialGameType = gameMode === 'quiz-capital' ? 'CAPITAL' : 'FLAG';
     return (
       <SafeAreaProvider>
         <VersusCapitals

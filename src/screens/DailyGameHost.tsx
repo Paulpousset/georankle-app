@@ -169,8 +169,8 @@ export default function DailyGameHost({
         {...common}
       />
     );
-  } else if (mode === 'quiz-capital' || mode === 'quiz-flag' || mode === 'quiz-mix') {
-    const initialGameType = mode === 'quiz-capital' ? 'CAPITAL' : mode === 'quiz-flag' ? 'FLAG' : 'MIX';
+  } else if (mode === 'quiz-capital' || mode === 'quiz-flag') {
+    const initialGameType = mode === 'quiz-capital' ? 'CAPITAL' : 'FLAG';
     screen = (
       <VersusCapitals
         setGameMode={exitOnMenu}

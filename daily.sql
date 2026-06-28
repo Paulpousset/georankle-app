@@ -65,7 +65,7 @@ DECLARE
   cnt         int;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'not authenticated'; END IF;
-  IF p_mode NOT IN ('classic','streak','guess','globe','regions','quiz-capital','quiz-flag','quiz-mix') THEN
+  IF p_mode NOT IN ('classic','streak','guess','globe','regions','quiz-capital','quiz-flag') THEN
     RAISE EXCEPTION 'bad game mode';
   END IF;
 

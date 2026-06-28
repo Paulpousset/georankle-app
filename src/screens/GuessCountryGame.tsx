@@ -31,6 +31,7 @@ import {
   AtlasTarget,
   type AtlasIconProps,
 } from '../components/AtlasIcons';
+import { TopInsetBar } from '../components/TopInsetBar';
 import type { ComponentType } from 'react';
 import Fuse from 'fuse.js';
 import type { User } from '@supabase/supabase-js';
@@ -294,8 +295,9 @@ export default function GuessCountryGame({
   // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <SafeAreaView style={[styles.root, { backgroundColor: bg }]}>
+    <SafeAreaView style={[styles.root, { backgroundColor: bg }]} edges={['left', 'right', 'bottom']}>
       <StatusBar style={dark ? 'light' : 'dark'} />
+      <TopInsetBar color={cardBg} />
 
       {/* ── Header ── */}
       <View style={[styles.header, { backgroundColor: cardBg, borderBottomColor: border }]}>
@@ -471,17 +473,44 @@ export default function GuessCountryGame({
             </View>
           )}
 
-          {/* ── Intro hint ── */}
+          {/* ── Intro hint + category preview ── */}
           {guesses.length === 0 && !won && !submitted && (
-            <Text style={[styles.hint, { color: textSec }]}>
-              {language === 'fr'
-                ? isOnline
-                  ? 'Même pays pour les deux joueurs — moins d\'essais = plus de points (max 1000).'
-                  : 'Tentatives illimitées — chaque réponse compare vos stats avec celles du pays mystère.'
-                : isOnline
-                  ? 'Same country for both players — fewer guesses = more points (max 1000).'
-                  : 'Unlimited tries — each guess compares its stats to the mystery country.'}
-            </Text>
+            <>
+              <Text style={[styles.hint, { color: textSec }]}>
+                {language === 'fr'
+                  ? isOnline
+                    ? 'Même pays pour les deux joueurs — moins d\'essais = plus de points (max 1000).'
+                    : 'Tentatives illimitées — chaque réponse compare vos stats avec celles du pays mystère.'
+                  : isOnline
+                    ? 'Same country for both players — fewer guesses = more points (max 1000).'
+                    : 'Unlimited tries — each guess compares its stats to the mystery country.'}
+              </Text>
+
+              <Text style={[styles.previewTitle, { color: textSec }]}>
+                {language === 'fr' ? 'Ce que vous allez comparer' : "What you'll compare"}
+              </Text>
+              <View style={[styles.previewCard, { backgroundColor: cardBg, borderColor: border }]}>
+                <View style={styles.tileGrid}>
+                  {CATEGORIES.map((cat) => {
+                    const Icon = CAT_ICONS[cat.id];
+                    return (
+                      <View
+                        key={cat.id}
+                        style={[styles.tile, styles.tilePreview, { width: tileW }]}
+                      >
+                        <View style={styles.tileEmoji} {...a11yHidden}>
+                          <Icon color="#fff" size={24} />
+                        </View>
+                        <Text style={styles.tileLabel} numberOfLines={1}>
+                          {language === 'fr' ? cat.fr : cat.en}
+                        </Text>
+                        <Text style={styles.tileValue}>?</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            </>
           )}
 
           {/* ── Guess cards ── */}
@@ -532,7 +561,7 @@ export default function GuessCountryGame({
                         ]}
                       >
                         <View style={styles.tileEmoji} {...a11yHidden}>
-                          <Icon color="#fff" size={20} />
+                          <Icon color="#fff" size={24} />
                         </View>
                         <Text style={styles.tileLabel} numberOfLines={1}>
                           {language === 'fr' ? cat.fr : cat.en}
@@ -653,6 +682,26 @@ const styles = StyleSheet.create({
 
   hint: { textAlign: 'center', fontFamily: FONTS.mono, fontSize: 12, marginBottom: 16, lineHeight: 20 },
 
+  // ── Intro category preview ──
+  previewTitle: {
+    textAlign: 'center',
+    fontFamily: FONTS.monoBold,
+    fontSize: 11,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    marginBottom: 10,
+    opacity: 0.8,
+  },
+  previewCard: {
+    borderRadius: 16,
+    borderWidth: 1.5,
+    overflow: 'hidden',
+  },
+  tilePreview: {
+    backgroundColor: '#94A3B8',
+    minHeight: 78,
+  },
+
   // ── Guess card ──
   guessCard: {
     borderRadius: 16,
@@ -700,7 +749,7 @@ const styles = StyleSheet.create({
     gap: 2,
     minHeight: 92,
   },
-  tileEmoji: { height: 22, alignItems: 'center', justifyContent: 'center' },
+  tileEmoji: { height: 26, alignItems: 'center', justifyContent: 'center' },
   tileLabel: {
     color: 'rgba(255,255,255,0.8)',
     fontFamily: FONTS.mono,
