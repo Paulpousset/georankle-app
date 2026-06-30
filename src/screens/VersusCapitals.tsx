@@ -27,7 +27,9 @@ import { AtlasStar, AtlasTrophy, AtlasCross } from '../components/AtlasIcons';
 
 import * as Haptics from 'expo-haptics';
 import { track } from '../lib/analytics';
+import { normalizeRoundScore } from '../lib/score';
 import { getFlagUrl } from '../lib/flags';
+import { isAnswerClose, COUNTRY_ALIASES } from '../lib/answerMatch';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import type { GameMode, Match } from '../types';
@@ -107,47 +109,6 @@ interface Feedback {
 
 type ScoreMap = { [key: number]: number };
 
-// Normalise une chaîne : minuscules, sans accents, sans espaces/ponctuation superflus
-const normalizeAnswer = (s: string): string =>
-  s
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '') // retire les accents
-    .replace(/[^a-z0-9]/g, '') // retire espaces, tirets, apostrophes…
-    .trim();
-
-// Distance de Levenshtein entre deux chaînes
-const levenshtein = (a: string, b: string): number => {
-  const m = a.length;
-  const n = b.length;
-  if (m === 0) return n;
-  if (n === 0) return m;
-  let prev = Array.from({ length: n + 1 }, (_, i) => i);
-  let curr = new Array(n + 1);
-  for (let i = 1; i <= m; i++) {
-    curr[0] = i;
-    for (let j = 1; j <= n; j++) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      curr[j] = Math.min(curr[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost);
-    }
-    [prev, curr] = [curr, prev];
-  }
-  return prev[n];
-};
-
-// Vérifie si la réponse de l'utilisateur est suffisamment proche de la bonne réponse.
-// Tolérance proportionnelle à la longueur : 1 faute jusqu'à 8 lettres, 2 au-delà.
-const isAnswerClose = (input: string, answer: string): boolean => {
-  const a = normalizeAnswer(input);
-  const b = normalizeAnswer(answer);
-  if (!a || !b) return false;
-  if (a === b) return true;
-  // La réponse doit avoir une longueur comparable (évite qu'une lettre valide tout)
-  if (Math.abs(a.length - b.length) > 2) return false;
-  const tolerance = b.length <= 8 ? 1 : 2;
-  return levenshtein(a, b) <= tolerance;
-};
-
 /** Inline "star + set-score" pill used in the live scoreboard. */
 function StarScore({ color, value, size = 10 }: { color: string; value: number; size?: number }) {
   return (
@@ -185,12 +146,19 @@ export default function VersusCapitals({
   const [numPlayers, setNumPlayers] = useState<number | null>(
     isOnline || isDaily ? 1 : null,
   );
+  // Custom matches carry per-round config in game_data.rounds (each round can be
+  // a different mode/length). Fall back to the flat config used by single-mode
+  // and ranked matches. The component remounts each round, so reading the round's
+  // config at mount-time is enough.
+  const roundCfg = matchData?.game_data?.rounds?.[(matchData?.current_round ?? 1) - 1];
   const [gameType, setGameType] = useState<string>(
-    isOnline ? ((matchData?.game_data?.questionType as string) ?? 'CAPITAL') : (initialGameType ?? 'CAPITAL'),
+    isOnline
+      ? ((roundCfg?.questionType ?? (matchData?.game_data?.questionType as string)) ?? 'CAPITAL')
+      : (initialGameType ?? 'CAPITAL'),
   );
   const [currentQuestionType, setCurrentQuestionType] = useState<string>('CAPITAL');
   const [totalRounds, setTotalRounds] = useState<number>(
-    isOnline ? ((matchData?.game_data?.roundsPerSet as number) ?? 5) : 5,
+    isOnline ? ((roundCfg?.count ?? (matchData?.game_data?.roundsPerSet as number)) ?? 5) : 5,
   );
   const [matchFormat, setMatchFormat] = useState<number>(1);
   const [matchScores, setMatchScores] = useState<ScoreMap>({ 1: 0, 2: 0, 3: 0, 4: 0 }); // Global sets won
@@ -260,13 +228,21 @@ export default function VersusCapitals({
     const activeType = gameType;
     setCurrentQuestionType(activeType);
 
-    // Pick a random country not used in this game
-    const availableCountries = countriesStats.filter(
-      (c: any) => !usedCountries.has(c.cca3) && c.capital !== 'N/A',
-    );
-
-    const sourceList = availableCountries.length > 0 ? availableCountries : countriesStats;
-    const country = sourceList[Math.floor(rng() * sourceList.length)];
+    // Prefer the match's deduplicated per-round assignment (no answer country
+    // repeats across modes); the current question index is `currentRound - 1`.
+    // Fall back to a random country not yet used in this set.
+    const matchRound = matchData?.current_round ?? 1;
+    const assignedCca3 = matchData?.game_data?.roundCountries?.[matchRound]?.[currentRound - 1];
+    let country: any = assignedCca3
+      ? countriesStats.find((c: any) => c.cca3 === assignedCca3)
+      : undefined;
+    if (!country) {
+      const availableCountries = countriesStats.filter(
+        (c: any) => !usedCountries.has(c.cca3) && c.capital !== 'N/A',
+      );
+      const sourceList = availableCountries.length > 0 ? availableCountries : countriesStats;
+      country = sourceList[Math.floor(rng() * sourceList.length)];
+    }
 
     setUsedCountries((prev) => new Set([...prev, country.cca3]));
 
@@ -355,7 +331,10 @@ export default function VersusCapitals({
           ? question.name
           : question.name_en || question.name;
 
-    const isCorrect = isAnswerClose(cashInput, correctAnswer);
+    // FLAG questions expect a country name → accept alternate spellings (aliases).
+    const aliases =
+      currentQuestionType === 'FLAG' ? COUNTRY_ALIASES[question.cca3] : undefined;
+    const isCorrect = isAnswerClose(cashInput, correctAnswer, aliases);
 
     setFeedback({ correct: isCorrect, mode: 'CASH', answer: correctAnswer, points: points });
 
@@ -412,7 +391,12 @@ export default function VersusCapitals({
   useEffect(() => {
     if (gameOver && !matchOver) {
       if (isOnline && onRoundComplete) {
-        onRoundComplete(scores[1]);
+        onRoundComplete(
+          normalizeRoundScore('versus', scores[1], {
+            numQuestions: totalRounds,
+            maxPointsPerQuestion: 5,
+          }),
+        );
         return;
       }
 

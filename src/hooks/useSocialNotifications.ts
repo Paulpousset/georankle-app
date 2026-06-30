@@ -99,7 +99,11 @@ export function useSocialNotifications() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, refreshFriendCount, lookupUsername, toast]);
+    // `refreshFriendCount`/`lookupUsername`/`toast` are stable for a given user;
+    // key on the user id so the channel is set up once per session, not on every
+    // render. `langRef` keeps the toast text localized without re-subscribing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   return { pendingFriendCount, refreshFriendCount };
 }

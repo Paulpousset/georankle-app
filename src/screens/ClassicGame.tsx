@@ -20,6 +20,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { gameData } from '../data/gameData';
 import { createSeededRng, seededShuffle } from '../lib/rng';
 import { MISSING_RANK, SESSION_SIZE, solveOptimal } from '../lib/gameLogic';
+import { normalizeRoundScore } from '../lib/score';
 import { track } from '../lib/analytics';
 import { log } from '../lib/log';
 import { supabase } from '../lib/supabase';
@@ -324,7 +325,7 @@ export function ClassicGame({
             optimalSelections,
             totalScore: finalScore,
           });
-          onRoundComplete(gameEfficiency);
+          onRoundComplete(normalizeRoundScore('classic', gameEfficiency));
         }
       }, 500);
     }

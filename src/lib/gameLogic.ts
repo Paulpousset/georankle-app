@@ -86,7 +86,7 @@ export const CATEGORIES = [
   { id: 'gdp',        emoji: '💰', fr: 'PIB/hab',     en: 'GDP/cap'    },
   { id: 'coastline',  emoji: '🏖️', fr: 'Côtes',       en: 'Coastline'  },
   { id: 'life_exp',   emoji: '❤️', fr: 'Espérance',   en: 'Life Exp.'  },
-  { id: 'borders',    emoji: '🗺️', fr: 'Frontières',  en: 'Borders'    },
+  { id: 'borders',    emoji: '🗺️', fr: 'Frontière terrestre',  en: 'Land border'    },
 ] as const;
 
 export type CatId = (typeof CATEGORIES)[number]['id'];

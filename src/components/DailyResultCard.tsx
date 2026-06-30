@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Modal, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Share2, X } from 'lucide-react-native';
 import { AtlasFlame } from './AtlasIcons';
 
@@ -58,6 +59,7 @@ export function DailyResultCard({
   const { isDarkMode } = useTheme();
   const { language } = useLanguage();
   const c = getColors(isDarkMode);
+  const insets = useSafeAreaInsets();
   const [countdown, setCountdown] = useState(() => msUntilNextPuzzle());
 
   useEffect(() => {
@@ -77,7 +79,9 @@ export function DailyResultCard({
           flex: 1,
           backgroundColor: 'rgba(0,0,0,0.6)',
           justifyContent: 'center',
-          padding: 24,
+          paddingHorizontal: 24,
+          paddingTop: 24 + insets.top,
+          paddingBottom: 24 + insets.bottom,
         }}
       >
         <View
@@ -99,16 +103,22 @@ export function DailyResultCard({
             <X color={c.textMuted} size={22} />
           </TouchableOpacity>
 
-          <Text style={{ fontFamily: FONTS.mono, color: c.textMuted, fontSize: 11, letterSpacing: 1 }}>
+          <Text
+            style={{ fontFamily: FONTS.mono, color: c.textMuted, fontSize: 11, letterSpacing: 1, textAlign: 'center' }}
+            numberOfLines={1}
+          >
             {dailyModeLabel(result.mode, language).toUpperCase()} #{puzzle}
           </Text>
 
           <ScoreText
+            numberOfLines={1}
+            adjustsFontSizeToFit
             style={{
               fontFamily: FONTS.headingBlack,
               color: c.text,
               fontSize: 40,
               marginTop: 6,
+              textAlign: 'center',
             }}
           >
             {scoreText(result, language)}

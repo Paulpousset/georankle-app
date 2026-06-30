@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   BarChart3,
   CalendarDays,
+  ChevronRight,
   Flag,
   Globe,
   Info,
@@ -15,6 +16,7 @@ import {
   Monitor,
   Moon,
   ShoppingBag,
+  SlidersHorizontal,
   Sun,
   Swords,
   Trophy,
@@ -188,6 +190,7 @@ interface MainMenuProps {
   onOpenOnlineModeLeaderboard: (mode: MatchMode, accent: string) => void;
   onPlay: (mode: GameMode) => void;
   onPlayOnline: (mode: MatchMode) => void;
+  onPlayCustomOnline: () => void;
   onPlayRanked: () => void;
   onOpenDaily: () => void;
   /** Which play-type sub-list is open (null = the play-type chooser). Lifted to
@@ -209,6 +212,7 @@ export function MainMenu({
   onOpenOnlineModeLeaderboard,
   onPlay,
   onPlayOnline,
+  onPlayCustomOnline,
   onPlayRanked,
   onOpenDaily,
   playType,
@@ -601,8 +605,8 @@ export function MainMenu({
                 icon={Map}
                 accent={isDarkMode ? PALETTE.sand : PALETTE.vermilion}
                 tint={isDarkMode ? 'rgba(196,135,42,0.14)' : 'rgba(192,74,26,0.10)'}
-                title={tr(language, 'Régions Géo', 'Geo Regions')}
-                subtitle={tr(language, "Placez les régions d'un pays", "Place a country's regions")}
+                title={tr(language, 'Défis Pays', 'Country Challenges')}
+                subtitle={tr(language, 'Des jeux variés pour un pays', 'Diverse games for one country')}
                 isDarkMode={isDarkMode}
                 onPress={() => onPlay('regions')}
               />
@@ -666,6 +670,40 @@ export function MainMenu({
                 <Trophy color="#c4872a" size={20} />
               </TouchableOpacity>
 
+              {/* Custom game — build your own mode sequence vs a friend or stranger */}
+              <TouchableOpacity
+                onPress={onPlayCustomOnline}
+                style={[
+                  styles.countryCard,
+                  !isDarkMode && styles.countryCardLight,
+                  {
+                    padding: 18,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 15,
+                    borderWidth: 2,
+                    borderColor: PALETTE.forestGreen,
+                    backgroundColor: isDarkMode ? 'rgba(42,110,63,0.12)' : 'rgba(42,110,63,0.10)',
+                  },
+                ]}
+                {...a11yButton(tr(language, 'Partie personnalisée', 'Custom game'), {
+                  hint: tr(language, 'Construire une suite de modes', 'Build a sequence of modes'),
+                })}
+              >
+                <View style={{ backgroundColor: isDarkMode ? 'rgba(42,110,63,0.25)' : 'rgba(42,110,63,0.16)', padding: 12, borderRadius: 12 }}>
+                  <SlidersHorizontal color={PALETTE.forestGreen} size={28} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.countryName, !isDarkMode && styles.countryNameLight, { fontSize: 17, textAlign: 'left', marginBottom: 3, color: PALETTE.forestGreen }]}>
+                    {tr(language, 'Partie personnalisée', 'Custom game')}
+                  </Text>
+                  <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 10 }}>
+                    {tr(language, 'Enchaîne les modes de ton choix', 'Chain the modes you pick')}
+                  </Text>
+                </View>
+                <ChevronRight color={PALETTE.forestGreen} size={20} />
+              </TouchableOpacity>
+
               <View style={{ height: 1, backgroundColor: c.border, opacity: 0.5, marginVertical: 2 }} />
 
               <ModeCard
@@ -722,6 +760,17 @@ export function MainMenu({
                 onPress={() => onPlayOnline('guess')}
                 onLeaderboard={() => onOpenOnlineModeLeaderboard('guess', isDarkMode ? PALETTE.chartBlue : PALETTE.vermilion)}
                 notify={incomingInviteMode === 'guess'}
+              />
+              <ModeCard
+                icon={Map}
+                accent={isDarkMode ? PALETTE.sand : PALETTE.oceanBlue}
+                tint={isDarkMode ? 'rgba(196,135,42,0.14)' : 'rgba(26,74,122,0.10)'}
+                title={tr(language, 'Défis Pays', 'Country Challenges')}
+                subtitle={tr(language, "Placez les régions d'un pays, à 2", "Place a country's regions, head-to-head")}
+                isDarkMode={isDarkMode}
+                onPress={() => onPlayOnline('regions')}
+                onLeaderboard={() => onOpenOnlineModeLeaderboard('regions', isDarkMode ? PALETTE.sand : PALETTE.oceanBlue)}
+                notify={incomingInviteMode === 'regions'}
               />
             </View>
           </>

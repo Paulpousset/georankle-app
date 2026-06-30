@@ -4,14 +4,16 @@ import type { User } from '@supabase/supabase-js';
 import type { GameMode } from '../types';
 import { createSeededRng } from '../lib/rng';
 import { REGION_MANIFEST } from '../../assets/regions';
-import { useTheme } from '../contexts/ThemeContext';
-import { useLanguage } from '../contexts/LanguageContext';
+import type { Challenge } from '../data/challenges';
 import FindRegionGame, { type RegionLevelKey } from './FindRegionGame';
 import RegionCountryPicker, { type RegionPick } from './RegionCountryPicker';
+import ChallengeQuiz from './ChallengeQuiz';
 
 interface RegionGameFlowProps {
   setGameMode: (mode: GameMode) => void;
   user?: User | null;
+  /** Launch a quiz online (1v1) instead of solo — opens challenge matchmaking. */
+  onPlayChallengeOnline?: (challengeId: string) => void;
   /** Daily challenge: deterministic seed → auto-picks the country, skips the picker. */
   dailySeed?: number;
   onDailyComplete?: (score: number, grid?: string) => void;
@@ -33,24 +35,31 @@ function pickDailyCountry(seed: number): RegionPick {
 export default function RegionGameFlow({
   setGameMode,
   user,
+  onPlayChallengeOnline,
   dailySeed,
   onDailyComplete,
   isDaily,
   onShare,
   onDailyScoreChange,
 }: RegionGameFlowProps) {
-  const { isDarkMode } = useTheme();
-  const { language } = useLanguage();
-  // Daily run: a fixed country for the day, played straight away (no picker).
-  const [pick, setPick] = useState<RegionPick | null>(() =>
-    isDaily && dailySeed != null ? pickDailyCountry(dailySeed) : null,
+  // Daily run: a fixed single country for the day, played straight away (no picker).
+  const [picks, setPicks] = useState<RegionPick[] | null>(() =>
+    isDaily && dailySeed != null ? [pickDailyCountry(dailySeed)] : null,
   );
+  // A country-specific quiz chosen from the picker (solo only).
+  const [quiz, setQuiz] = useState<Challenge | null>(null);
 
-  if (!pick) {
+  if (quiz) {
+    return <ChallengeQuiz challenge={quiz} onExit={() => setQuiz(null)} />;
+  }
+
+  if (!picks || picks.length === 0) {
     return (
       <RegionCountryPicker
-        onPick={setPick}
+        onPick={setPicks}
         onBack={() => setGameMode('menu')}
+        onPickChallenge={isDaily ? undefined : setQuiz}
+        onPickChallengeOnline={isDaily ? undefined : onPlayChallengeOnline ? (ch) => onPlayChallengeOnline(ch.id) : undefined}
       />
     );
   }
@@ -58,10 +67,9 @@ export default function RegionGameFlow({
   return (
     <FindRegionGame
       setGameMode={setGameMode}
-      country={{ cca3: pick.cca3, name: pick.name, name_en: pick.name_en, unit: pick.unit }}
-      level={pick.level}
+      picks={picks}
       user={user}
-      onBack={isDaily ? () => setGameMode('menu') : () => setPick(null)}
+      onBack={isDaily ? () => setGameMode('menu') : () => setPicks(null)}
       dailySeed={dailySeed}
       onDailyComplete={onDailyComplete}
       isDaily={isDaily}

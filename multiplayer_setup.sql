@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS public.matches (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     player1_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
     player2_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
-    game_mode TEXT CHECK (game_mode IN ('classic', 'streak', 'versus', 'globe', 'guess')) NOT NULL,
+    game_mode TEXT CHECK (game_mode IN ('classic', 'streak', 'versus', 'globe', 'guess', 'regions')) NOT NULL,
     is_public BOOLEAN DEFAULT false,
     status TEXT CHECK (status IN ('waiting', 'in_progress', 'completed', 'cancelled')) DEFAULT 'waiting',
     best_of INTEGER DEFAULT 1,

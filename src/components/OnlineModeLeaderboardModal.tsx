@@ -17,6 +17,8 @@ const MODE_LABELS: Record<MatchMode, [string, string]> = {
   versus: ['Mode Versus', 'Versus Mode'],
   globe: ['Globe Géo', 'Geo Globe'],
   guess: ['Devine le Pays', 'Guess Country'],
+  regions: ['Défis Pays', 'Country Challenges'],
+  challenge: ['Quiz Pays', 'Country Quiz'],
 };
 
 interface Props {
@@ -48,7 +50,7 @@ export function OnlineModeLeaderboardModal({ mode, accent, onClose, onOpenPlayer
                 borderBottomColor: c.border,
               }}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 10 }}>
                 <TouchableOpacity
                   onPress={onClose}
                   style={{ padding: 8, marginRight: 10, backgroundColor: c.surface, borderRadius: 10 }}
@@ -57,11 +59,17 @@ export function OnlineModeLeaderboardModal({ mode, accent, onClose, onOpenPlayer
                 >
                   <Home color={accent} size={20} />
                 </TouchableOpacity>
-                <View>
-                  <Text style={{ fontSize: 20, fontFamily: FONTS.headingBlack, color: c.text }}>
+                <View style={{ flexShrink: 1 }}>
+                  <Text
+                    style={{ fontSize: 20, fontFamily: FONTS.headingBlack, color: c.text }}
+                    numberOfLines={1}
+                  >
                     {tr(language, labels[0], labels[1])}
                   </Text>
-                  <Text style={{ fontSize: 10, fontFamily: FONTS.mono, color: c.textFaint }}>
+                  <Text
+                    style={{ fontSize: 10, fontFamily: FONTS.mono, color: c.textFaint }}
+                    numberOfLines={1}
+                  >
                     {tr(language, '% de victoires en ligne', 'online win rate')}
                   </Text>
                 </View>

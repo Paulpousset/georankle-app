@@ -74,7 +74,7 @@ const MODES: Record<ModeKey, ModeDef> = {
   classic: { key: 'classic', fr: 'Rankle', en: 'Rankle', icon: LayoutGrid, accent: PALETTE.forestGreen, rounds: 'fixed', defaultRounds: 1, unitFr: '8 thèmes', unitEn: '8 themes' },
   streak: { key: 'streak', fr: 'Streak', en: 'Streak', icon: Zap, accent: PALETTE.sand, rounds: 'fixed', defaultRounds: 1, unitFr: "jusqu'à l'erreur", unitEn: 'until a miss' },
   globe: { key: 'globe', fr: 'Globe Géo', en: 'Geo Globe', icon: Globe, accent: PALETTE.oceanBlue, rounds: 'config', defaultRounds: 5, unitFr: 'rounds', unitEn: 'rounds' },
-  regions: { key: 'regions', fr: 'Régions Géo', en: 'Geo Regions', icon: Map, accent: PALETTE.oceanBlue, rounds: 'config', defaultRounds: 5, unitFr: 'rounds', unitEn: 'rounds' },
+  regions: { key: 'regions', fr: 'Défis Pays', en: 'Country Challenges', icon: Map, accent: PALETTE.oceanBlue, rounds: 'config', defaultRounds: 5, unitFr: 'rounds', unitEn: 'rounds' },
 };
 
 const MODE_ORDER: ModeKey[] = ['capital', 'flag', 'guess', 'classic', 'streak', 'globe', 'regions'];
@@ -134,8 +134,8 @@ interface Manche {
   id: string;
   mode: ModeKey;
   rounds: number;
-  /** For the 'regions' mode: the country + division level chosen at build time. */
-  region?: RegionPick;
+  /** For the 'regions' mode: one or more countries/levels (a mix) chosen at build time. */
+  region?: RegionPick[];
 }
 
 /** How many turns-per-player a manche has (1 for atomic modes). */
@@ -218,8 +218,9 @@ export default function LocalParcours({
     setManches((prev) => [...prev, { id: newMancheId(), mode, rounds: MODES[mode].defaultRounds }]);
   };
 
-  const addRegionManche = (region: RegionPick) => {
+  const addRegionManche = (region: RegionPick[]) => {
     setPickingRegion(false);
+    if (region.length === 0) return;
     setManches((prev) => [...prev, { id: newMancheId(), mode: 'regions', rounds: MODES.regions.defaultRounds, region }]);
   };
 
@@ -429,18 +430,12 @@ export default function LocalParcours({
           />
         );
       case 'regions':
-        if (!manche.region) return null;
+        if (!manche.region || manche.region.length === 0) return null;
         return (
           <FindRegionGame
             key={key}
             setGameMode={quit as (m: GameMode) => void}
-            country={{
-              cca3: manche.region.cca3,
-              name: manche.region.name,
-              name_en: manche.region.name_en,
-              unit: manche.region.unit,
-            }}
-            level={manche.region.level}
+            picks={manche.region}
             user={null}
             matchData={match}
             onRoundComplete={handleRoundComplete}
@@ -641,7 +636,9 @@ export default function LocalParcours({
                     <Icon color={def.accent} size={20} />
                     <Text style={{ flex: 1, fontFamily: FONTS.monoBold, color: c.text, fontSize: 14 }}>
                       {tr(language, def.fr, def.en)}
-                      {m.region ? ` · ${language === 'fr' ? m.region.name : m.region.name_en}` : ''}
+                      {m.region?.length
+                        ? ` · ${m.region.map((p) => (language === 'fr' ? p.name : (p.name_en ?? p.name))).join(', ')}`
+                        : ''}
                     </Text>
                     <TouchableOpacity
                       onPress={() => moveManche(i, -1)}

@@ -24,43 +24,30 @@ import {
   getBestOfForRank,
   generateRankedModes,
   modeLabel,
+  pickRankedRegion,
   RANKS,
+  type RankedRegionPick,
 } from '../lib/ranked';
+import { pickRoundCountries } from '../lib/matchCountries';
 import { RankGlobe } from '../components/RankGlobe';
+import BotMatch from './BotMatch';
+import { makeBotProfile, type BotProfile } from '../lib/bot';
 import { gameData as gd } from '../data/gameData';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { a11yButton, announce, ICON_HIT_SLOP } from '../lib/a11y';
+import { createSeededRng, seededShuffle } from '../lib/rng';
 import { ScoreText } from '../components/ScoreText';
 import type { Match, MatchMode } from '../types';
 import type { Json } from '../types/database';
 
 const SESSION_SIZE = 8;
 
-function mkRng(seed: number) {
-  let s = seed;
-  return () => {
-    s = (s + 0x6d2b79f5) | 0;
-    let t = Math.imul(s ^ (s >>> 15), s | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function seededShuffle<T>(arr: T[], rand: () => number): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(rand() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
 function buildClassicSessions(seed: number, numRounds: number) {
   const sessions: Record<number, { themeIds: string[]; countryCca3s: string[] }> = {};
   for (let r = 1; r <= numRounds; r++) {
-    const rand = mkRng(seed + (r - 1) * 997);
+    const rand = createSeededRng(seed + (r - 1) * 997);
     const allThemeIds = Object.keys(gd.themes).filter(
       (id) => gd.countries.filter((c) => c.ranks?.[id] !== undefined).length > 10,
     );
@@ -79,6 +66,37 @@ function buildClassicSessions(seed: number, numRounds: number) {
     sessions[r] = { themeIds, countryCca3s };
   }
   return sessions;
+}
+
+/**
+ * Deduplicated answer countries per round so no country repeats across the
+ * ranked mode sequence. Each classic session's 8 countries are reserved up front.
+ * globe/versus use roundsPerSet (5) questions; guess a single country.
+ */
+function buildRankedRoundCountries(
+  seed: number,
+  rankedModes: MatchMode[],
+  sessions: Record<number, { countryCca3s: string[] }>,
+  roundsPerSet: number,
+): Record<number, string[]> {
+  const perRoundCounts: Record<number, number> = {};
+  rankedModes.forEach((m, i) => {
+    perRoundCounts[i + 1] = m === 'globe' || m === 'versus' ? roundsPerSet : 1;
+  });
+  const preUsed = Object.values(sessions).flatMap((s) => s.countryCca3s);
+  return pickRoundCountries(seed, rankedModes, { perRoundCounts, preUsed });
+}
+
+/** Seeded country + level for every `regions` round in a ranked sequence. */
+function buildRankedRegionRounds(
+  seed: number,
+  rankedModes: MatchMode[],
+): Record<number, RankedRegionPick> {
+  const out: Record<number, RankedRegionPick> = {};
+  rankedModes.forEach((m, i) => {
+    if (m === 'regions') out[i + 1] = pickRankedRegion(seed, i + 1);
+  });
+  return out;
 }
 
 interface RankedMatchmakingProps {
@@ -102,6 +120,11 @@ export default function RankedMatchmaking({
   const [username, setUsername] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
   const [matchState, setMatchState] = useState<any>(null);
+  // When no human appears in time, matchmaking quietly drops in a stand-in
+  // opponent. It is presented exactly like a real ranked match (the player is
+  // never told it is a bot) and the result counts toward their ELO.
+  const [botMatchData, setBotMatchData] = useState<Match | null>(null);
+  const [botProfile, setBotProfile] = useState<BotProfile | null>(null);
 
   const rank = getRankFromElo(elo);
   const progress = getRankProgress(elo);
@@ -172,6 +195,77 @@ export default function RankedMatchmaking({
     setSearching(false);
   };
 
+  // Spin up the disguised opponent: a believable profile + a real ranked
+  // `matches` row it owns (player2 NULL, flagged is_bot in game_data). The
+  // series is played out on-device in BotMatch and finalised server-side by
+  // apply_bot_ranked_result, which applies the ELO change like any ranked game.
+  const launchBotOpponent = async () => {
+    const waitingId = matchState?.id;
+    const profile = makeBotProfile(elo);
+    const seed = Math.floor(Math.random() * 2147483647);
+    const rankedModes = generateRankedModes(bestOf, seed);
+    const firstMode: MatchMode = rankedModes[0];
+
+    const botSessions = buildClassicSessions(seed, bestOf);
+    const gameData: Record<string, unknown> = {
+      seed,
+      is_ranked: true,
+      is_bot: true,
+      bot: { name: profile.name, rating: profile.rating, avatar_config: profile.avatarConfig },
+      ranked_modes: rankedModes,
+      sessions: botSessions,
+      roundCountries: buildRankedRoundCountries(seed, rankedModes, botSessions, 5),
+      regionRounds: buildRankedRegionRounds(seed, rankedModes),
+      questionType: 'CAPITAL',
+      roundsPerSet: 5,
+    };
+
+    const { data: created, error } = await supabase
+      .from('matches')
+      .insert([{
+        player1_id: userId,
+        game_mode: firstMode,
+        is_public: false,
+        is_ranked: true,
+        status: 'in_progress',
+        best_of: bestOf,
+        game_data: gameData as Json,
+      }])
+      .select()
+      .single();
+
+    if (error || !created) {
+      log.error('Bot match create error:', error);
+      return; // keep searching; the timer may retry or the user can cancel.
+    }
+
+    // Tear down the abandoned real-matchmaking row and leave the queue.
+    if (waitingId) {
+      await supabase.from('matches').update({ status: 'cancelled' }).eq('id', waitingId);
+    }
+    setMatchState(null);
+    setSearching(false);
+    track('bot_match_started', { best_of: bestOf });
+    setBotProfile(profile);
+    setBotMatchData(created as Match);
+  };
+
+  const exitBotMatch = () => {
+    setBotMatchData(null);
+    setBotProfile(null);
+  };
+
+  // If no human joins within a natural-feeling window, drop in a stand-in
+  // opponent so the player isn't left waiting. Randomised so it reads like a
+  // real queue rather than a fixed timer.
+  useEffect(() => {
+    if (!(searching && matchState)) return;
+    const delay = 7000 + Math.floor(Math.random() * 8000); // 7–15s
+    const t = setTimeout(() => { launchBotOpponent(); }, delay);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searching, matchState?.id]);
+
   const cancelSearch = () => {
     Alert.alert(
       tr(language, 'Annuler la recherche ?', 'Cancel search?'),
@@ -223,11 +317,14 @@ export default function RankedMatchmaking({
     const rankedModes = generateRankedModes(bestOf, seed);
     const firstMode: MatchMode = rankedModes[0];
 
+    const sessions = buildClassicSessions(seed, bestOf);
     const gameData: Record<string, unknown> = {
       seed,
       is_ranked: true,
       ranked_modes: rankedModes,
-      sessions: buildClassicSessions(seed, bestOf),
+      sessions,
+      roundCountries: buildRankedRoundCountries(seed, rankedModes, sessions, 5),
+      regionRounds: buildRankedRegionRounds(seed, rankedModes),
       questionType: 'CAPITAL',
       roundsPerSet: 5,
     };
@@ -264,6 +361,11 @@ export default function RankedMatchmaking({
   const textSecondary = c.textMuted;
 
   const eloToNextRank = nextRank ? nextRank.minElo - elo : 0;
+
+  // Stand-in opponent: presented as a normal ranked match; counts toward ELO.
+  if (botMatchData && botProfile) {
+    return <BotMatch user={user} match={botMatchData} bot={botProfile} onExit={exitBotMatch} />;
+  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: c.background }]}>
@@ -350,7 +452,7 @@ export default function RankedMatchmaking({
             </Text>
           </View>
           <View style={[styles.modePillsRow]}>
-            {['classic', 'streak', 'versus', 'globe', 'guess'].map((m) => (
+            {['classic', 'streak', 'versus', 'globe', 'guess', 'regions'].map((m) => (
               <View key={m} style={[styles.modePill, { borderColor: cardBorder, backgroundColor: c.background }]}>
                 <Text style={[styles.modePillText, { color: textSecondary }]}>
                   {modeLabel(m as MatchMode, language)}
@@ -420,7 +522,7 @@ export default function RankedMatchmaking({
                     </Text>
                   </View>
                   <Text style={[styles.rankRowBo, { color: textSecondary }]}>
-                    {getBestOfForRank(r) === 3 ? 'BO3' : 'BO5'}
+                    {`BO${getBestOfForRank(r)}`}
                   </Text>
                 </View>
               </View>

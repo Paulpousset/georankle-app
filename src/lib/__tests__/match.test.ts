@@ -18,18 +18,34 @@ describe('computeMatchOutcome', () => {
     expect(computeMatchOutcome(3, 2, 1).iWon).toBe(true);
   });
 
-  it('detects a draw on equal rounds', () => {
+  it('detects a draw on equal rounds when no points given', () => {
     expect(computeMatchOutcome(3, 1, 1).isDraw).toBe(true);
     expect(computeMatchOutcome(5, 2, 3).isDraw).toBe(false);
+  });
+
+  it('breaks a rounds tie with cumulative points', () => {
+    expect(computeMatchOutcome(4, 2, 2, 1500, 1200).iWon).toBe(true);
+    expect(computeMatchOutcome(4, 2, 2, 1500, 1200).isDraw).toBe(false);
+    expect(computeMatchOutcome(4, 2, 2, 1200, 1500).iWon).toBe(false);
+    expect(computeMatchOutcome(4, 2, 2, 1200, 1500).isDraw).toBe(false);
+  });
+
+  it('is a true draw only when rounds and points are equal', () => {
+    expect(computeMatchOutcome(4, 2, 2, 1500, 1500).isDraw).toBe(true);
+    expect(computeMatchOutcome(4, 2, 2, 1500, 1500).iWon).toBe(false);
+  });
+
+  it('points never override a rounds-won lead', () => {
+    expect(computeMatchOutcome(5, 3, 2, 100, 5000).iWon).toBe(true);
   });
 });
 
 describe('formatMatchScore', () => {
-  it('formats by game mode', () => {
-    expect(formatMatchScore('classic', 95)).toBe('95%');
-    expect(formatMatchScore('streak', 12)).toBe('12');
-    expect(formatMatchScore('versus', 47)).toBe('47 pts');
-    expect(formatMatchScore('globe', 30)).toBe('30 pts');
-    expect(formatMatchScore('guess', 800)).toBe('800 pts');
+  it('shows every mode on the unified 0–1000 scale', () => {
+    expect(formatMatchScore('classic', 950)).toBe('950 / 1000');
+    expect(formatMatchScore('streak', 500)).toBe('500 / 1000');
+    expect(formatMatchScore('versus', 1000)).toBe('1000 / 1000');
+    expect(formatMatchScore('globe', 600)).toBe('600 / 1000');
+    expect(formatMatchScore('guess', 800)).toBe('800 / 1000');
   });
 });

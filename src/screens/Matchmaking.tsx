@@ -14,44 +14,28 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { track } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
+import { pickRoundCountries } from '../lib/matchCountries';
 import { FONTS } from '../theme/typography';
 import { getColors, PALETTE, type ThemeColors } from '../theme/colors';
-import { ArrowLeft, Plus, RefreshCw, Users, Globe, Trophy, ChevronRight } from 'lucide-react-native';
+import { ArrowLeft, Plus, RefreshCw, Users, Globe, Map as MapIcon, Trophy, ChevronRight } from 'lucide-react-native';
 import { AtlasCapital, AtlasFlag } from '../components/AtlasIcons';
 import type { MatchMode, Language, Match, AvatarConfig } from '../types';
 import { gameData as gd } from '../data/gameData';
 import { Avatar } from '../components/Avatar';
+import RegionCountryPicker, { type RegionPick } from './RegionCountryPicker';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { tr } from '../i18n';
 import { a11yButton, announce, ICON_HIT_SLOP } from '../lib/a11y';
+import { createSeededRng, seededShuffle } from '../lib/rng';
 
 const SESSION_SIZE = 8;
-
-function mkRng(seed: number) {
-  let s = seed;
-  return () => {
-    s = (s + 0x6d2b79f5) | 0;
-    let t = Math.imul(s ^ (s >>> 15), s | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function seededShuffle<T>(arr: T[], rand: () => number): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(rand() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
 
 function buildClassicSessions(seed: number, numRounds: number) {
   const sessions: Record<number, { themeIds: string[]; countryCca3s: string[] }> = {};
   for (let r = 1; r <= numRounds; r++) {
-    const rand = mkRng(seed + (r - 1) * 997);
+    const rand = createSeededRng(seed + (r - 1) * 997);
     const allThemeIds = Object.keys(gd.themes).filter(
       (id) => gd.countries.filter((c) => c.ranks?.[id] !== undefined).length > 10,
     );
@@ -70,7 +54,13 @@ function buildClassicSessions(seed: number, numRounds: number) {
   return sessions;
 }
 
-type MatchmakingView = 'lobby' | 'create' | 'waiting' | 'friends';
+type MatchmakingView = 'lobby' | 'create' | 'waiting' | 'friends' | 'region-picker';
+
+/** Short level label for the lobby rows / summaries. */
+function regionLevelLabel(level: string | undefined, lang: Language): string {
+  if (level === 'departments') return lang === 'fr' ? 'Départements' : 'Departments';
+  return lang === 'fr' ? 'Régions' : 'Regions';
+}
 
 interface PublicMatchItem {
   id: string;
@@ -107,6 +97,9 @@ function modeName(mode: MatchMode, lang: Language): string {
   if (mode === 'classic') return 'Rankle';
   if (mode === 'streak') return 'Streak';
   if (mode === 'globe') return lang === 'fr' ? 'Globe Géo' : 'Geo Globe';
+  if (mode === 'guess') return lang === 'fr' ? 'Devine le Pays' : 'Guess Country';
+  if (mode === 'regions') return lang === 'fr' ? 'Défis Pays' : 'Country Challenges';
+  if (mode === 'challenge') return lang === 'fr' ? 'Quiz Pays' : 'Country Quiz';
   return 'Versus';
 }
 
@@ -144,10 +137,12 @@ const PublicMatchRow = React.memo(function PublicMatchRow({
         <Text style={[styles.matchCreator, { color: colors.text }]}>
           {item.creator_username ?? (language === 'fr' ? 'Joueur' : 'Player')}
         </Text>
-        <Text style={[styles.matchSub, { color: colors.textMuted }]}>
+        <Text style={[styles.matchSub, { color: colors.textMuted }]} numberOfLines={1}>
           {formatBestOf(item.best_of, language)}
           {gameMode === 'versus' && gdata.questionType ? ` · ${gdata.questionType}` : ''}
           {gameMode === 'versus' && gdata.roundsPerSet ? ` · ${gdata.roundsPerSet} rounds` : ''}
+          {gameMode === 'regions' && gdata.country ? ` · ${language === 'fr' ? gdata.country.name : (gdata.country.name_en ?? gdata.country.name)}` : ''}
+          {gameMode === 'regions' && gdata.level ? ` · ${regionLevelLabel(gdata.level, language)}` : ''}
         </Text>
       </View>
       <TouchableOpacity
@@ -223,6 +218,8 @@ export default function Matchmaking({
   const [roundsPerSet, setRoundsPerSet] = useState(5);
   const [isPublic, setIsPublic] = useState(true);
   const [creating, setCreating] = useState(false);
+  // Regions mode: the country(ies) + division level(s) both players will play (a mix).
+  const [regionPicks, setRegionPicks] = useState<RegionPick[]>([]);
 
   // ─── Data fetching ───────────────────────────────────────────────────────────
 
@@ -365,6 +362,35 @@ export default function Matchmaking({
     if (gameMode === 'classic') {
       gameData.sessions = buildClassicSessions(seed, bestOf);
     }
+    // Single-mode guess/globe/versus: dedup the answer country across the BO
+    // rounds (the same mode replayed each round must not repeat a country).
+    if (gameMode === 'guess' || gameMode === 'globe' || gameMode === 'versus') {
+      const modes = Array.from({ length: bestOf }, () => gameMode as MatchMode);
+      const perRoundCounts: Record<number, number> = {};
+      modes.forEach((_, i) => {
+        perRoundCounts[i + 1] = gameMode === 'guess' ? 1 : roundsPerSet;
+      });
+      gameData.roundCountries = pickRoundCountries(seed, modes, { perRoundCounts });
+    }
+    if (gameMode === 'regions') {
+      if (regionPicks.length === 0) {
+        setCreating(false);
+        Alert.alert(
+          language === 'fr' ? 'Choisis un pays' : 'Pick a country',
+          language === 'fr' ? "Sélectionne d'abord un pays et un niveau." : 'Select a country and level first.',
+        );
+        return;
+      }
+      // Both players play the same mix (shared seed) → store the full list in
+      // game_data.countries. Keep `country`/`level` as a back-compat fallback for
+      // older clients / the lobby summary line.
+      gameData.countries = regionPicks.map((p) => ({
+        cca3: p.cca3, name: p.name, name_en: p.name_en, unit: p.unit, level: p.level,
+      }));
+      gameData.country = { cca3: regionPicks[0].cca3, name: regionPicks[0].name, name_en: regionPicks[0].name_en, unit: regionPicks[0].unit };
+      gameData.level = regionPicks[0].level;
+      gameData.roundsPerSet = roundsPerSet;
+    }
     const { data: newMatch, error } = await supabase
       .from('matches')
       .insert([{
@@ -398,7 +424,7 @@ export default function Matchmaking({
       Alert.alert(language === 'fr' ? 'Erreur' : 'Error',
         language === 'fr' ? 'Impossible de créer la partie' : 'Could not create match');
     }
-  }, [userId, gameMode, isPublic, bestOf, questionType, roundsPerSet, language]);
+  }, [userId, gameMode, isPublic, bestOf, questionType, roundsPerSet, regionPicks, language]);
 
   const doCancelMatch = async () => {
     if (matchState) {
@@ -624,6 +650,66 @@ export default function Matchmaking({
         </>
       )}
 
+      {gameMode === 'regions' && (
+        <>
+          <Text style={[styles.formTitle, { color: textPrimary }]}>
+            {language === 'fr' ? 'Pays & niveau' : 'Country & level'}
+          </Text>
+          <TouchableOpacity
+            style={[styles.regionPickBtn, { backgroundColor: cardBg, borderColor: regionPicks.length ? accent : cardBorder }]}
+            onPress={() => setView('region-picker')}
+            {...a11yButton(
+              regionPicks.length
+                ? tr(language, `${regionPicks.length} pays choisi(s), changer`, `${regionPicks.length} countries chosen, change`)
+                : tr(language, 'Choisir un ou plusieurs pays', 'Choose one or more countries'),
+            )}
+          >
+            <MapIcon size={18} color={regionPicks.length ? accent : textSecondary} />
+            <View style={{ flex: 1 }}>
+              {regionPicks.length ? (
+                <>
+                  <Text style={[styles.regionPickName, { color: textPrimary }]} numberOfLines={1}>
+                    {regionPicks.map((p) => (language === 'fr' ? p.name : (p.name_en ?? p.name))).join(', ')}
+                  </Text>
+                  <Text style={[styles.regionPickSub, { color: textSecondary }]}>
+                    {regionPicks.length === 1
+                      ? regionLevelLabel(regionPicks[0].level, language)
+                      : tr(language, `Mix · ${regionPicks.length} pays`, `Mix · ${regionPicks.length} countries`)}
+                  </Text>
+                </>
+              ) : (
+                <Text style={[styles.regionPickName, { color: textSecondary }]}>
+                  {language === 'fr' ? 'Choisir un ou plusieurs pays…' : 'Choose one or more countries…'}
+                </Text>
+              )}
+            </View>
+            <ChevronRight size={16} color={textSecondary} />
+          </TouchableOpacity>
+
+          <Text style={[styles.formTitle, { color: textPrimary }]}>
+            {language === 'fr' ? 'Régions par manche' : 'Regions per round'}
+          </Text>
+          <View style={styles.optRow}>
+            {[3, 5, 10].map((r) => (
+              <TouchableOpacity
+                key={r}
+                style={[
+                  styles.optBtn,
+                  { backgroundColor: cardBg, borderColor: cardBorder },
+                  roundsPerSet === r && styles.optBtnActive,
+                ]}
+                onPress={() => setRoundsPerSet(r)}
+                {...a11yButton(tr(language, `${r} régions par manche`, `${r} regions per round`), { selected: roundsPerSet === r })}
+              >
+                <Text style={[styles.optBtnText, { color: roundsPerSet === r ? accent : textSecondary }]}>
+                  {r}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </>
+      )}
+
       <Text style={[styles.formTitle, { color: textPrimary }]}>
         {language === 'fr' ? 'Visibilité' : 'Visibility'}
       </Text>
@@ -651,7 +737,16 @@ export default function Matchmaking({
             { backgroundColor: cardBg, borderColor: cardBorder },
             !isPublic && styles.optBtnActive,
           ]}
-          onPress={() => { setIsPublic(false); loadFriends(); setView('friends'); }}
+          onPress={() => {
+            if (gameMode === 'regions' && regionPicks.length === 0) {
+              Alert.alert(
+                language === 'fr' ? 'Choisis un pays' : 'Pick a country',
+                language === 'fr' ? "Sélectionne d'abord un pays et un niveau." : 'Select a country and level first.',
+              );
+              return;
+            }
+            setIsPublic(false); loadFriends(); setView('friends');
+          }}
           {...a11yButton(tr(language, 'Privée, inviter un ami', 'Private, invite a friend'), { selected: !isPublic })}
         >
           <Users size={18} color={!isPublic ? accent : textSecondary} />
@@ -665,10 +760,10 @@ export default function Matchmaking({
       </View>
 
       <TouchableOpacity
-        style={[styles.createBtn, creating && { opacity: 0.6 }]}
+        style={[styles.createBtn, (creating || (gameMode === 'regions' && regionPicks.length === 0)) && { opacity: 0.6 }]}
         onPress={() => createMatch()}
-        disabled={creating}
-        {...a11yButton(tr(language, 'Créer la partie', 'Create match'), { disabled: creating, busy: creating })}
+        disabled={creating || (gameMode === 'regions' && regionPicks.length === 0)}
+        {...a11yButton(tr(language, 'Créer la partie', 'Create match'), { disabled: creating || (gameMode === 'regions' && regionPicks.length === 0), busy: creating })}
       >
         {creating ? (
           <ActivityIndicator color="#fff" size="small" />
@@ -740,6 +835,17 @@ export default function Matchmaking({
   };
 
   // ─── Render ───────────────────────────────────────────────────────────────────
+
+  // The region picker is a full-screen flow with its own header.
+  if (view === 'region-picker') {
+    return (
+      <RegionCountryPicker
+        title={tr(language, 'Pays de la partie', 'Match country')}
+        onPick={(picks) => { setRegionPicks(picks); setView('create'); }}
+        onBack={() => setView('create')}
+      />
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: bg }]}>
@@ -898,6 +1004,19 @@ const styles = StyleSheet.create({
   },
   visBtnText: { fontSize: 14, fontFamily: FONTS.monoBold },
   visDesc: { fontSize: 11, textAlign: 'center', fontFamily: FONTS.mono },
+
+  // Region country/level chooser (regions mode)
+  regionPickBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 2,
+  },
+  regionPickName: { fontSize: 15, fontFamily: FONTS.monoBold },
+  regionPickSub: { fontSize: 11, fontFamily: FONTS.mono, marginTop: 2 },
 
   // Waiting
   waitingTitle: { fontSize: 18, fontFamily: FONTS.heading, marginTop: 24, marginBottom: 24, textAlign: 'center' },

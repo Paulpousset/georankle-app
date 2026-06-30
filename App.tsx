@@ -20,7 +20,9 @@ import { useMatchEngine } from './src/hooks/useMatchEngine';
 import { useNavigationStack } from './src/hooks/useNavigationStack';
 import { useSocialNotifications } from './src/hooks/useSocialNotifications';
 import { Router } from './src/Router';
+import { ScreenErrorBoundary } from './src/components/ScreenErrorBoundary';
 import { SwipeBack } from './src/components/SwipeBack';
+import { ModeIntroGate } from './src/components/ModeIntroModal';
 
 // Start crash reporting as early as possible so startup errors are captured.
 initSentry();
@@ -133,28 +135,57 @@ function AppContent() {
     performBack.current();
   };
 
+  // The mode whose "how to play" intro may be due: the daily challenge's mode,
+  // or the solo/online game on screen — but not while a lobby, the waiting
+  // screen or a round/match summary is up (those aren't the playable screen).
+  const inLobbyOrSummary =
+    match.showPreGameLobby ||
+    match.matchPhase === 'waiting_opponent' ||
+    match.matchPhase === 'round_summary' ||
+    match.matchPhase === 'match_over';
+  const introMode: GameMode | null = daily
+    ? daily.mode
+    : !inLobbyOrSummary && gameMode !== 'menu'
+      ? gameMode
+      : null;
+
   // Wrap the whole app so an edge swipe-right goes back, mirroring the in-app
   // back button. Disabled when there's nowhere to go (menu, or a live match).
+  // Identity of the screen currently routed, so the per-screen error boundary
+  // auto-clears when the user navigates elsewhere.
+  const screenKey = `${nav.currentPage?.name ?? 'none'}:${gameMode}:${match.matchPhase ?? 'none'}:${match.matchData ? 'm' : 'x'}:${daily ? 'd' : 'x'}`;
+  // Recovery action when a screen crashes: drop back to a clean menu.
+  const recoverToMenu = () => {
+    setDaily(null);
+    match.resetMatchState();
+    nav.clearPages();
+    setGameMode('menu');
+  };
+
   const tree = (
     <View style={{ flex: 1 }}>
       <SwipeBack enabled={canGoBack} onBack={goBack}>
-        <Router
-          nav={nav}
-          matchEngine={match}
-          gameMode={gameMode}
-          setGameMode={setGameMode}
-          daily={daily}
-          setDaily={setDaily}
-          showAuthModal={showAuthModal}
-          setShowAuthModal={setShowAuthModal}
-          showLeaderboard={showLeaderboard}
-          setShowLeaderboard={setShowLeaderboard}
-          onlineLeaderboard={onlineLeaderboard}
-          setOnlineLeaderboard={setOnlineLeaderboard}
-          pendingFriendCount={social.pendingFriendCount}
-          refreshFriendCount={social.refreshFriendCount}
-        />
+        <ScreenErrorBoundary resetKey={screenKey} onReset={recoverToMenu}>
+          <Router
+            nav={nav}
+            matchEngine={match}
+            gameMode={gameMode}
+            setGameMode={setGameMode}
+            daily={daily}
+            setDaily={setDaily}
+            showAuthModal={showAuthModal}
+            setShowAuthModal={setShowAuthModal}
+            showLeaderboard={showLeaderboard}
+            setShowLeaderboard={setShowLeaderboard}
+            onlineLeaderboard={onlineLeaderboard}
+            setOnlineLeaderboard={setOnlineLeaderboard}
+            pendingFriendCount={social.pendingFriendCount}
+            refreshFriendCount={social.refreshFriendCount}
+          />
+        </ScreenErrorBoundary>
       </SwipeBack>
+      {/* First-play "how to play" popup for whichever mode is on screen. */}
+      <ModeIntroGate mode={introMode} />
       {/* Floats above every screen: offline / not-synced indicator. */}
       <OfflineBanner />
     </View>

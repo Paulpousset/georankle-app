@@ -36,7 +36,7 @@ export function LeaderboardModal({
               borderBottomWidth: 1, borderBottomColor: c.border,
             }}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 10 }}>
               <TouchableOpacity
                 onPress={onClose}
                 style={{ padding: 8, marginRight: 10, backgroundColor: c.surface, borderRadius: 10 }}
@@ -45,7 +45,10 @@ export function LeaderboardModal({
               >
                 <Home color={c.accent} size={20} />
               </TouchableOpacity>
-              <Text style={{ fontSize: 24, fontFamily: FONTS.headingBlack, color: c.text }}>
+              <Text
+                style={{ fontSize: 24, fontFamily: FONTS.headingBlack, color: c.text, flexShrink: 1 }}
+                numberOfLines={1}
+              >
                 {tr(language, 'Classement', 'Leaderboard')}
               </Text>
             </View>

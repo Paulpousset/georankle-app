@@ -343,18 +343,18 @@ export default function PlayerProfile({
               <View style={styles.rankRow}>
                 <RankGlobe rank={rank} size={72} showName={false} language={language} spin />
                 <View style={{ flex: 1, marginLeft: 14 }}>
-                  <Text style={[styles.rankName, { color: rank.color }]}>
+                  <Text style={[styles.rankName, { color: rank.color }]} numberOfLines={1}>
                     {language === 'fr' ? rank.nameFr : rank.name}
                   </Text>
-                  <Text style={[styles.eloText, { color: c.text }]}>
+                  <ScoreText style={[styles.eloText, { color: c.text }]} numberOfLines={1}>
                     {elo} <Text style={{ color: c.textFaint, fontSize: 12 }}>ELO</Text>
-                  </Text>
+                  </ScoreText>
                   <View style={styles.wlRow}>
                     <Text style={[styles.wlStat, { color: '#2a6e3f' }]}>{wins}V</Text>
                     <Text style={{ color: c.textFaint }}> · </Text>
                     <Text style={[styles.wlStat, { color: '#8b1a1a' }]}>{losses}D</Text>
                     <Text style={{ color: c.textFaint }}> · </Text>
-                    <Text style={[styles.wlStat, { color: c.textMuted }]}>
+                    <Text style={[styles.wlStat, { color: c.textMuted, flexShrink: 1 }]} numberOfLines={1}>
                       {winRate}% {tr(language, 'victoires', 'win rate')}
                     </Text>
                   </View>

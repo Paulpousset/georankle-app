@@ -32,6 +32,11 @@ interface AsyncStateProps {
   children?: ReactNode;
   /** Fills its parent and centres the placeholder (default true). */
   fill?: boolean;
+  /**
+   * Custom element rendered while `loading` (e.g. a skeleton list) instead of
+   * the default centred spinner. Lets a screen preview its layout shape.
+   */
+  loadingContent?: ReactNode;
 }
 
 export function AsyncState({
@@ -43,6 +48,7 @@ export function AsyncState({
   errorLabel,
   children,
   fill = true,
+  loadingContent,
 }: AsyncStateProps) {
   const { isDarkMode } = useTheme();
   const { language } = useLanguage();
@@ -53,6 +59,7 @@ export function AsyncState({
   const wrap = [styles.center, fill && styles.fill];
 
   if (loading) {
+    if (loadingContent) return <>{loadingContent}</>;
     return (
       <View style={wrap}>
         <ActivityIndicator size="large" color={c.accent} />

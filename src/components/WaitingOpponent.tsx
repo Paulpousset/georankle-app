@@ -71,6 +71,8 @@ export function WaitingOpponent({ myScore, gameMode, onLeave }: WaitingOpponentP
 
       <View style={{ alignItems: 'center', gap: 12 }}>
         <ScoreText
+          numberOfLines={1}
+          adjustsFontSizeToFit
           accessibilityLabel={language === 'fr' ? `Ton score : ${scoreDisplay}` : `Your score: ${scoreDisplay}`}
           style={{ fontSize: 48, fontFamily: FONTS.headingBlack, color: '#2a6e3f' }}
         >

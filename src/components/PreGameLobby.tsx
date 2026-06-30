@@ -64,12 +64,18 @@ export function PreGameLobby({
     return () => clearTimeout(t);
   }, [countdown, onReady, language]);
 
-  const modeLabel =
-    matchData.game_mode === 'classic'
-      ? 'Rankle'
-      : matchData.game_mode === 'streak'
-        ? 'Mode Streak'
-        : 'Mode Versus';
+  const MODE_LABELS: Record<string, string> = {
+    classic: 'Rankle',
+    streak: 'Mode Streak',
+    versus: 'Mode Versus',
+    globe: language === 'fr' ? 'Globe Géo' : 'Geo Globe',
+    guess: language === 'fr' ? 'Devine le Pays' : 'Guess Country',
+    regions: language === 'fr' ? 'Défis Pays' : 'Country Challenges',
+    challenge: language === 'fr' ? 'Quiz Pays' : 'Country Quiz',
+  };
+  const modeLabel = matchData.game_data?.is_custom
+    ? (language === 'fr' ? 'Partie perso' : 'Custom game')
+    : MODE_LABELS[matchData.game_mode] ?? 'Mode Versus';
 
   const renderAvatar = (profile: PlayerProfile | null, isCurrentUser: boolean) => {
     const name = profile?.username ?? (language === 'fr' ? 'Joueur' : 'Player');

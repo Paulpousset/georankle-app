@@ -1,4 +1,4 @@
-import { type Dispatch, type SetStateAction } from 'react';
+import { useState, type Dispatch, type SetStateAction } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { getTodayUTC } from './lib/daily';
@@ -17,11 +17,18 @@ import VersusCapitals from './screens/VersusCapitals';
 import GuessCountryGame from './screens/GuessCountryGame';
 import FindCountryGame from './screens/FindCountryGame';
 import RegionGameFlow from './screens/RegionGameFlow';
+import FindRegionGame, { type RegionLevelKey } from './screens/FindRegionGame';
+import ChallengeQuiz from './screens/ChallengeQuiz';
+import ChallengeMatchmaking from './screens/ChallengeMatchmaking';
+import { getChallenge } from './data/challenges';
 import LocalParcours from './screens/LocalParcours';
 import Friends from './screens/Friends';
 import Profile from './screens/Profile';
 import PlayerProfile from './screens/PlayerProfile';
 import Matchmaking from './screens/Matchmaking';
+import CustomMatchmaking from './screens/CustomMatchmaking';
+import FfaMatch from './screens/FfaMatch';
+import { ResumeMatchBanner } from './components/ResumeMatchBanner';
 import RankedMatchmaking from './screens/RankedMatchmaking';
 import AvatarEditor from './screens/AvatarEditor';
 import Shop from './screens/Shop';
@@ -95,6 +102,16 @@ export function Router({
     continueToNextRound,
     dismissPreGameLobby,
   } = matchEngine;
+
+  // Resuming a free-for-all match takes over the screen (it has its own engine).
+  const [resumeFfa, setResumeFfa] = useState<Match | null>(null);
+  if (resumeFfa && user) {
+    return (
+      <SafeAreaProvider>
+        <FfaMatch match={resumeFfa} user={user} onExit={() => setResumeFfa(null)} />
+      </SafeAreaProvider>
+    );
+  }
 
   // A daily challenge in progress overlays everything (it has its own seed +
   // completion flow); leaving it returns to the daily hub page underneath.
@@ -217,6 +234,29 @@ export function Router({
     );
   }
 
+  if (currentPage?.name === 'custom-matchmaking' && user) {
+    return (
+      <SafeAreaProvider>
+        <CustomMatchmaking
+          onBack={popPage}
+          onStartMatch={(match: Match) => startMatch(match)}
+        />
+      </SafeAreaProvider>
+    );
+  }
+
+  if (currentPage?.name === 'challenge-matchmaking' && user) {
+    return (
+      <SafeAreaProvider>
+        <ChallengeMatchmaking
+          challengeId={currentPage.challengeId}
+          onBack={popPage}
+          onStartMatch={(match: Match) => startMatch(match)}
+        />
+      </SafeAreaProvider>
+    );
+  }
+
   if (matchData && matchPhase === 'waiting_opponent') {
     return (
       <SafeAreaProvider>
@@ -249,6 +289,8 @@ export function Router({
           myRoundsWon={roundSummaryData.myRoundsWon}
           opponentRoundsWon={roundSummaryData.opponentRoundsWon}
           bestOf={roundSummaryData.bestOf}
+          myTotalScore={roundSummaryData.myTotalScore}
+          opponentTotalScore={roundSummaryData.opponentTotalScore}
           gameMode={matchData.game_mode}
           isRanked={matchData.is_ranked ?? false}
           rankResult={rankResult}
@@ -334,14 +376,78 @@ export function Router({
   }
 
   if (gameMode === 'regions') {
+    // Online regions match: both players play the country + level stored in
+    // game_data, so skip the solo picker and mount FindRegionGame directly.
+    if (matchData) {
+      type RegionPickData = { cca3: string; name: string; name_en?: string; unit?: string | null; level?: RegionLevelKey };
+      const gdAny = matchData.game_data as {
+        countries?: RegionPickData[];
+        country?: { cca3: string; name: string; name_en?: string; unit?: string | null };
+        level?: RegionLevelKey;
+        /** Custom matches: each round's own region pick (rounds[i] = round i+1). */
+        rounds?: { region?: RegionPickData }[];
+        /** Ranked matches: per-round region pick, keyed by 1-based round number. */
+        regionRounds?: Record<number, RegionPickData>;
+      } | null;
+      const normalizePick = (pc: RegionPickData) => ({
+        cca3: pc.cca3,
+        name: pc.name,
+        name_en: pc.name_en ?? pc.name,
+        unit: pc.unit ?? null,
+        level: (pc.level ?? 'regions') as RegionLevelKey,
+      });
+      // A multi-mode match (custom / ranked) picks the country for THIS round from
+      // its per-round config; a single-mode regions match uses the match-level mix.
+      const currentRound = matchData.current_round ?? 1;
+      const perRoundRegion =
+        gdAny?.rounds?.[currentRound - 1]?.region ?? gdAny?.regionRounds?.[currentRound];
+      const picks =
+        perRoundRegion
+          ? [normalizePick(perRoundRegion)]
+          : gdAny?.countries && gdAny.countries.length > 0
+            ? gdAny.countries.map(normalizePick)
+            : gdAny?.country
+              ? [normalizePick({ ...gdAny.country, level: gdAny.level })]
+              : [];
+      return (
+        <SafeAreaProvider>
+          <FindRegionGame
+            setGameMode={(mode) => { resetMatchState(); setGameMode(mode); }}
+            picks={picks}
+            user={user}
+            matchData={matchData}
+            onRoundComplete={handleRoundComplete}
+          />
+        </SafeAreaProvider>
+      );
+    }
     return (
       <SafeAreaProvider>
         <RegionGameFlow
           setGameMode={(mode) => { resetMatchState(); setGameMode(mode); }}
           user={user}
+          onPlayChallengeOnline={
+            user ? (challengeId) => pushPage({ name: 'challenge-matchmaking', challengeId }) : undefined
+          }
         />
       </SafeAreaProvider>
     );
+  }
+
+  if (gameMode === 'challenge' && matchData) {
+    const challenge = getChallenge((matchData.game_data?.challengeId as string) ?? '');
+    if (challenge) {
+      return (
+        <SafeAreaProvider>
+          <ChallengeQuiz
+            challenge={challenge}
+            matchData={matchData}
+            onRoundComplete={handleRoundComplete}
+            onExit={resetMatchState}
+          />
+        </SafeAreaProvider>
+      );
+    }
   }
 
   if (gameMode === 'versus') {
@@ -387,12 +493,21 @@ export function Router({
         }}
         onPlay={setGameMode}
         onPlayOnline={(mode) => pushPage({ name: 'matchmaking', mode })}
+        onPlayCustomOnline={() => (user ? pushPage({ name: 'custom-matchmaking' }) : setShowAuthModal(true))}
         onPlayRanked={() => (user ? pushPage({ name: 'ranked' }) : setShowAuthModal(true))}
         onOpenDaily={() => pushPage({ name: 'daily' })}
         playType={playType}
         onChangePlayType={setPlayType}
         pendingFriendCount={pendingFriendCount}
         incomingInviteMode={incomingInvite?.game_mode ?? null}
+      />
+
+      <ResumeMatchBanner
+        user={user}
+        onResume={(m) => {
+          if ((m.max_players ?? 2) > 2) setResumeFfa(m);
+          else startMatch(m);
+        }}
       />
 
       <AuthModal

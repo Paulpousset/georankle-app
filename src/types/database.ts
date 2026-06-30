@@ -191,6 +191,54 @@ export type Database = {
           },
         ]
       }
+      match_players: {
+        Row: {
+          current_score: number
+          finished_round: boolean
+          joined_at: string
+          match_id: string
+          player_id: string
+          rounds_won: number
+          slot: number
+          total_score: number
+        }
+        Insert: {
+          current_score?: number
+          finished_round?: boolean
+          joined_at?: string
+          match_id: string
+          player_id: string
+          rounds_won?: number
+          slot: number
+          total_score?: number
+        }
+        Update: {
+          current_score?: number
+          finished_round?: boolean
+          joined_at?: string
+          match_id?: string
+          player_id?: string
+          rounds_won?: number
+          slot?: number
+          total_score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_players_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_players_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       matches: {
         Row: {
           best_of: number | null
@@ -202,6 +250,8 @@ export type Database = {
           id: string
           is_public: boolean | null
           is_ranked: boolean | null
+          last_activity_at: string
+          max_players: number
           p1_current_score: number | null
           p1_finished_round: boolean | null
           p1_rounds_won: number | null
@@ -224,6 +274,8 @@ export type Database = {
           id?: string
           is_public?: boolean | null
           is_ranked?: boolean | null
+          last_activity_at?: string
+          max_players?: number
           p1_current_score?: number | null
           p1_finished_round?: boolean | null
           p1_rounds_won?: number | null
@@ -246,6 +298,8 @@ export type Database = {
           id?: string
           is_public?: boolean | null
           is_ranked?: boolean | null
+          last_activity_at?: string
+          max_players?: number
           p1_current_score?: number | null
           p1_finished_round?: boolean | null
           p1_rounds_won?: number | null
@@ -536,6 +590,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_bot_ranked_result: {
+        Args: {
+          p_match_id: string
+          p_player_rounds_won: number
+          p_bot_rounds_won: number
+        }
+        Returns: Json
+      }
+      apply_ffa_result: { Args: { p_match_id: string }; Returns: Json }
       apply_online_result: { Args: { p_match_id: string }; Returns: Json }
       apply_ranked_result: { Args: { p_match_id: string }; Returns: Json }
       award_solo_coins: { Args: { p_game_mode: string }; Returns: Json }
@@ -549,11 +612,21 @@ export type Database = {
         Returns: Json
       }
       delete_user_account: { Args: never; Returns: undefined }
+      elo_k_factor: { Args: { p_elo: number; p_won: boolean }; Returns: number }
       equip_cosmetics: { Args: { p_config: Json }; Returns: Json }
       finalize_round: { Args: { p_match_id: string }; Returns: Json }
+      finalize_round_ffa: { Args: { p_match_id: string }; Returns: Json }
+      forfeit_match: {
+        Args: { p_match_id: string; p_window_seconds?: number }
+        Returns: Json
+      }
+      host_ffa_match: { Args: { p_match_id: string }; Returns: Json }
       is_admin: { Args: never; Returns: boolean }
+      join_ffa_match: { Args: { p_match_id: string }; Returns: Json }
       purchase_cosmetic: { Args: { p_item_id: string }; Returns: Json }
+      rank_tier_from_elo: { Args: { p_elo: number }; Returns: string }
       touch_last_seen: { Args: never; Returns: undefined }
+      touch_match: { Args: { p_match_id: string }; Returns: undefined }
     }
     Enums: {
       [_ in never]: never

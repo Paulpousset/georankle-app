@@ -18,6 +18,7 @@ import type { User } from '@supabase/supabase-js';
 
 import { gameData } from '../data/gameData';
 import { createSeededRng, seededShuffle } from '../lib/rng';
+import { normalizeRoundScore } from '../lib/score';
 import { track } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
 import { log } from '../lib/log';
@@ -235,7 +236,7 @@ export default function StreakGame({
       // or the match advances to the next round.
       revealTimerRef.current = setTimeout(() => {
         setGameOver(true);
-        if (matchData && onRoundComplete) onRoundComplete(score);
+        if (matchData && onRoundComplete) onRoundComplete(normalizeRoundScore('streak', score));
         if (isDaily) onDailyComplete?.(score);
       }, GAME_OVER_DELAY);
     }

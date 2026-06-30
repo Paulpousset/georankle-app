@@ -70,9 +70,35 @@ DROP POLICY IF EXISTS "read own solo log" ON public.solo_coin_log;
 CREATE POLICY "read own solo log" ON public.solo_coin_log
   FOR SELECT USING (auth.uid() = user_id);
 
+-- ── Asymmetric ELO helpers (mirror ELO_K / RANKS in src/lib/ranked.ts) ────────
+-- See ranked_points_v2.sql for the rationale (easy climb low / sticky high).
+CREATE OR REPLACE FUNCTION public.rank_tier_from_elo(p_elo int)
+RETURNS text LANGUAGE sql IMMUTABLE SET search_path = public AS $$
+  SELECT CASE
+    WHEN p_elo >= 2400 THEN 'master'
+    WHEN p_elo >= 2100 THEN 'diamond'
+    WHEN p_elo >= 1800 THEN 'platinum'
+    WHEN p_elo >= 1500 THEN 'gold'
+    WHEN p_elo >= 1200 THEN 'silver'
+    ELSE 'bronze'
+  END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.elo_k_factor(p_elo int, p_won boolean)
+RETURNS int LANGUAGE sql IMMUTABLE SET search_path = public AS $$
+  SELECT CASE public.rank_tier_from_elo(p_elo)
+    WHEN 'bronze'   THEN CASE WHEN p_won THEN 40 ELSE 16 END
+    WHEN 'silver'   THEN CASE WHEN p_won THEN 36 ELSE 22 END
+    WHEN 'gold'     THEN CASE WHEN p_won THEN 32 ELSE 28 END
+    WHEN 'platinum' THEN CASE WHEN p_won THEN 28 ELSE 32 END
+    WHEN 'diamond'  THEN CASE WHEN p_won THEN 24 ELSE 36 END
+    ELSE                 CASE WHEN p_won THEN 20 ELSE 40 END
+  END;
+$$;
+
 -- ── Ranked result + coins (replaces server_authoritative.sql version) ─────────
--- Same ELO logic as before, plus coin awards in the SAME rating_applied-guarded
--- transaction so coins can never be double-granted.
+-- Asymmetric ELO (each player's own-tier K) + coin awards in the SAME
+-- rating_applied-guarded transaction so coins can never be double-granted.
 CREATE OR REPLACE FUNCTION public.apply_ranked_result(p_match_id uuid)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -82,7 +108,6 @@ AS $$
 DECLARE
   m              public.matches%ROWTYPE;
   caller         uuid := auth.uid();
-  k              constant int := 32;
   win_reward     constant int := 20;
   loss_reward    constant int := 8;
   needed         int;
@@ -136,8 +161,9 @@ BEGIN
 
   exp1 := 1.0 / (1.0 + power(10.0, (p2_elo - p1_elo) / 400.0));
   s1   := CASE WHEN p1_won THEN 1 ELSE 0 END;
-  d1   := round(k * (s1 - exp1));
-  d2   := round(k * ((1 - s1) - (1 - exp1)));
+  -- Each player uses the gain/loss K of their own tier.
+  d1   := round(public.elo_k_factor(p1_elo, p1_won)     * (s1 - exp1));
+  d2   := round(public.elo_k_factor(p2_elo, NOT p1_won) * ((1 - s1) - (1 - exp1)));
   new1 := greatest(0, p1_elo + d1);
   new2 := greatest(0, p2_elo + d2);
 

@@ -11,32 +11,41 @@ export interface MatchOutcome {
   isDraw: boolean;
 }
 
-/** Computes the series outcome for a best-of-`bestOf` match. */
+/**
+ * Computes the series outcome for a best-of-`bestOf` match. When `myTotalScore`
+ * and `opponentTotalScore` are provided, a rounds-won tie is broken by cumulative
+ * points ("en cas d'égalité, les points priment"); only when those are also equal
+ * is it a true draw. Mirrors the server's apply_ranked_result tiebreaker.
+ */
 export function computeMatchOutcome(
   bestOf: number,
   myRoundsWon: number,
   opponentRoundsWon: number,
+  myTotalScore?: number,
+  opponentTotalScore?: number,
 ): MatchOutcome {
   const neededToWin = Math.ceil(bestOf / 2);
-  return {
-    neededToWin,
-    iWon: myRoundsWon >= neededToWin,
-    isDraw: myRoundsWon === opponentRoundsWon,
-  };
+  const roundsTied = myRoundsWon === opponentRoundsWon;
+  const hasTotals = myTotalScore !== undefined && opponentTotalScore !== undefined;
+  const iWon =
+    myRoundsWon > opponentRoundsWon ||
+    (roundsTied && hasTotals && (myTotalScore as number) > (opponentTotalScore as number));
+  const isDraw =
+    roundsTied && (!hasTotals || (myTotalScore as number) === (opponentTotalScore as number));
+  return { neededToWin, iWon, isDraw };
 }
 
 /**
- * Formats a round score for display according to the game mode, so the unit
- * matches how that mode actually scores. Single source of truth shared by the
- * round summary and match result screens.
+ * Formats a round score for display. Every mode now reports on the same unified
+ * 0–1000 scale (see `normalizeRoundScore` in lib/score.ts), so a single format is
+ * used everywhere — the numbers are directly comparable across modes and serve as
+ * the match tiebreaker. Single source of truth shared by the round summary and
+ * match result screens.
  *
- * - `classic`: efficiency percentage (0-100)        → "95%"
- * - `streak`:  count of consecutive correct answers → "12"
- * - everything else (`versus`, `globe`, `guess`):
- *              raw points                            → "47 pts"
+ * The `gameMode` parameter is kept for call-site compatibility (and in case a
+ * mode ever needs a bespoke unit again) but no longer changes the unit.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function formatMatchScore(gameMode: string, score: number): string {
-  if (gameMode === 'classic') return `${score}%`;
-  if (gameMode === 'streak') return `${score}`;
-  return `${score} pts`;
+  return `${score} / 1000`;
 }

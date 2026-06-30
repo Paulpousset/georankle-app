@@ -39,6 +39,8 @@ import type { User } from '@supabase/supabase-js';
 import gameData from '../../assets/game_data.json';
 import countriesStats from '../../assets/countries_stats.json';
 import { getFlagUrl } from '../lib/flags';
+import { COUNTRY_ALIASES } from '../lib/answerMatch';
+import { normalizeRoundScore } from '../lib/score';
 import { track } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
 import { createSeededRng } from '../lib/rng';
@@ -128,6 +130,15 @@ function pickSeeded(seed: number): { country: any; stats: any } {
   return { country, stats };
 }
 
+/** Resolves a specific country by cca3 (the match's precomputed assignment). */
+function pickByCca3(cca3: string): { country: any; stats: any } | null {
+  const countries = (gameData as any).countries as any[];
+  const country = countries.find((c) => c.cca3 === cca3);
+  if (!country) return null;
+  const stats = (countriesStats as any[]).find((c: any) => c.cca3 === country.cca3) ?? {};
+  return { country, stats };
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function GuessCountryGame({
@@ -151,6 +162,12 @@ export default function GuessCountryGame({
       return pickSeeded(dailySeed);
     }
     if (matchData?.game_data?.seed != null) {
+      // Prefer the match's deduplicated per-round assignment (no country repeats
+      // across modes); fall back to the legacy seeded pick for older matches.
+      const round = matchData.current_round ?? 1;
+      const assignedCca3 = matchData.game_data.roundCountries?.[round]?.[0];
+      const assigned = assignedCca3 ? pickByCca3(assignedCca3) : null;
+      if (assigned) return assigned;
       const seed = (matchData.game_data.seed as number) + (matchData.current_round ?? 0) * 997;
       return pickSeeded(seed);
     }
@@ -187,7 +204,14 @@ export default function GuessCountryGame({
   }, [matchData?.id, user?.id]);
 
   const fuse = useMemo(
-    () => new Fuse((gameData as any).countries, { keys: ['name', 'name_en'], threshold: 0.3 }),
+    () =>
+      new Fuse(
+        (gameData as any).countries.map((c: any) => ({
+          ...c,
+          _aliases: (COUNTRY_ALIASES[c.cca3] ?? []).join(' '),
+        })),
+        { keys: ['name', 'name_en', '_aliases'], threshold: 0.3 },
+      ),
     [],
   );
 
@@ -230,7 +254,7 @@ export default function GuessCountryGame({
         onDailyComplete?.(score, grid);
       } else {
         if (!matchData) track('game_completed', { mode: 'guess', score });
-        if (onRoundComplete) onRoundComplete(score);
+        if (onRoundComplete) onRoundComplete(normalizeRoundScore('guess', score));
       }
     } else {
       announce(
@@ -256,7 +280,7 @@ export default function GuessCountryGame({
         `Given up. It was ${countryName(target.country)}`,
       ),
     );
-    if (onRoundComplete) onRoundComplete(0);
+    if (onRoundComplete) onRoundComplete(normalizeRoundScore('guess', 0));
   };
 
   const reset = () => {
@@ -501,7 +525,12 @@ export default function GuessCountryGame({
                         <View style={styles.tileEmoji} {...a11yHidden}>
                           <Icon color="#fff" size={24} />
                         </View>
-                        <Text style={styles.tileLabel} numberOfLines={1}>
+                        <Text
+                          style={styles.tileLabel}
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                          minimumFontScale={0.7}
+                        >
                           {language === 'fr' ? cat.fr : cat.en}
                         </Text>
                         <Text style={styles.tileValue}>?</Text>
@@ -563,7 +592,12 @@ export default function GuessCountryGame({
                         <View style={styles.tileEmoji} {...a11yHidden}>
                           <Icon color="#fff" size={24} />
                         </View>
-                        <Text style={styles.tileLabel} numberOfLines={1}>
+                        <Text
+                          style={styles.tileLabel}
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                          minimumFontScale={0.7}
+                        >
                           {language === 'fr' ? cat.fr : cat.en}
                         </Text>
                         {cell?.value === '🎯' ? (

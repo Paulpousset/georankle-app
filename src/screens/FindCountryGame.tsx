@@ -23,6 +23,7 @@ import { getMapPalette } from '../theme/mapPalette';
 import { FONTS } from '../theme/typography';
 import { getFlagUrl, prefetchFlags } from '../lib/flags';
 import { createSeededRng } from '../lib/rng';
+import { normalizeRoundScore } from '../lib/score';
 import { tr } from '../i18n';
 import { track } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
@@ -114,7 +115,9 @@ var canvas=document.getElementById('c');
 var ctx=canvas.getContext('2d');
 var W,H,cx,cy,R,Rb;
 var rotLon=0,rotLat=0,zoom=1;
+var ZMIN=0.9,ZMAX=16;
 var sel=null,locked=false,hov=null;
+var resultMode=false,resultCorrect=null,resultPicked=null;
 
 function postMsg(obj){
   var j=JSON.stringify(obj);
@@ -139,7 +142,9 @@ function unproject(sx,sy){
   var c=Math.sqrt(1-r2),cLat=rotLat*Math.PI/180,cLon=rotLon*Math.PI/180;
   var lat=Math.asin(c*Math.sin(cLat)+y*Math.cos(cLat));
   var lon=cLon+Math.atan2(x,c*Math.cos(cLat)-y*Math.sin(cLat));
-  return{lat:lat*180/Math.PI,lng:lon*180/Math.PI};
+  var lng=lon*180/Math.PI;
+  lng=((lng+180)%360+360)%360-180; // pan accumulates rotLon unbounded; wrap to [-180,180]
+  return{lat:lat*180/Math.PI,lng:lng};
 }
 
 function angDist(la1,lo1,la2,lo2){
@@ -168,8 +173,35 @@ function pathPolygon(rings){
   }
 }
 
-var polyMap={};
-POLYGONS.forEach(function(p,i){polyMap[p.id]=i;});
+function ringArea(ring){
+  var a=0;
+  for(var i=0,j=ring.length-1;i<ring.length;j=i++){
+    a+=(ring[j][0]+ring[i][0])*(ring[j][1]-ring[i][1]);
+  }
+  return Math.abs(a/2);
+}
+var polyMap={},polyArea={};
+POLYGONS.forEach(function(p,i){
+  polyMap[p.id]=i;
+  var area=0;
+  for(var ri=0;ri<p.r.length;ri++)area+=ringArea(p.r[ri]);
+  polyArea[p.id]=area;
+});
+
+// Returns the SMALLEST-area polygon containing the point, so enclaves/exclaves
+// (Lesotho inside South Africa, San Marino/Vatican inside Italy) win over the
+// big country whose outer ring also covers them (holes are dropped in the data).
+function hitTest(coords){
+  var best=null,bestA=Infinity;
+  for(var pi=0;pi<POLYGONS.length;pi++){
+    var poly=POLYGONS[pi],inside=false;
+    for(var ri=0;ri<poly.r.length&&!inside;ri++){
+      if(pointInRing(coords.lng,coords.lat,poly.r[ri]))inside=true;
+    }
+    if(inside&&polyArea[poly.id]<bestA){bestA=polyArea[poly.id];best=poly.id;}
+  }
+  return best;
+}
 
 function drawGlobe(resultMode,correct,picked){
   ctx.clearRect(0,0,W,H);
@@ -238,7 +270,10 @@ function drawGlobe(resultMode,correct,picked){
   }
 }
 
-function render(){drawGlobe(false,null,null);}
+function render(){
+  if(resultMode)drawGlobe(true,resultCorrect,resultPicked);
+  else drawGlobe(false,null,null);
+}
 
 var drag=null;
 function onStart(x,y){drag={x:x,y:y,lon:rotLon,lat:rotLat,moved:false};}
@@ -260,7 +295,7 @@ function pinchStart(t1,t2){
 function pinchMove(t1,t2){
   if(pinchD===null)return;
   var d=Math.hypot(t2.clientX-t1.clientX,t2.clientY-t1.clientY);
-  zoom=Math.max(0.9,Math.min(8,pinchZ*d/pinchD));
+  zoom=Math.max(ZMIN,Math.min(ZMAX,pinchZ*d/pinchD));
   R=Rb*zoom;render();
 }
 
@@ -282,39 +317,30 @@ canvas.addEventListener('mousemove',function(e){
   if(drag){onMove(e.clientX,e.clientY);return;}
   if(locked)return;
   var coords=unproject(e.clientX,e.clientY);
-  var hit=null;
-  if(coords){
-    for(var pi=0;pi<POLYGONS.length&&!hit;pi++){
-      var poly=POLYGONS[pi];
-      for(var ri=0;ri<poly.r.length;ri++){
-        if(pointInRing(coords.lng,coords.lat,poly.r[ri])){hit=poly.id;break;}
-      }
-    }
-  }
+  var hit=coords?hitTest(coords):null;
   if(hit!==hov){hov=hit;canvas.style.cursor=hit?'pointer':'default';render();}
 });
 canvas.addEventListener('mouseup',function(e){onEnd(e.clientX,e.clientY);});
 canvas.addEventListener('wheel',function(e){
   e.preventDefault();
-  zoom=Math.max(0.9,Math.min(8,zoom*(e.deltaY>0?0.9:1.1)));
+  zoom=Math.max(ZMIN,Math.min(ZMAX,zoom*(e.deltaY>0?0.9:1.1)));
   R=Rb*zoom;render();
 },{passive:false});
 
 function handleTap(tx,ty){
   if(locked)return;
   var coords=unproject(tx,ty);if(!coords)return;
-  var hit=null;
-  for(var pi=0;pi<POLYGONS.length&&!hit;pi++){
-    var poly=POLYGONS[pi];
-    for(var ri=0;ri<poly.r.length;ri++){
-      if(pointInRing(coords.lng,coords.lat,poly.r[ri])){hit=poly.id;break;}
-    }
-  }
+  var hit=hitTest(coords);
   if(!hit){
-    var best=null,bestD=18;
+    // Polygon miss: snap to the nearest dot-rendered country, but only if its
+    // on-screen position is within ~26px of the tap. Screen-space distance is
+    // naturally zoom-aware, so a zoomed-in tap on a big landmass can no longer
+    // grab a far-away island (previous fixed 18° threshold did exactly that).
+    var best=null,bestD=26;
     COUNTRIES.forEach(function(c){
       if(polyMap[c.cca3]!==undefined)return;
-      var d=angDist(coords.lat,coords.lng,c.lat,c.lng);
+      var p=project(c.lat,c.lng);if(!p)return;
+      var d=Math.hypot(p.sx-tx,p.sy-ty);
       if(d<bestD){bestD=d;best=c;}
     });
     if(best)hit=best.cca3;
@@ -324,12 +350,13 @@ function handleTap(tx,ty){
   postMsg({type:'COUNTRY_SELECTED',cca3:hit});
 }
 
-window.resetRound=function(){sel=null;locked=false;hov=null;canvas.style.cursor='default';render();};
+window.resetRound=function(){sel=null;locked=false;hov=null;resultMode=false;resultCorrect=null;resultPicked=null;canvas.style.cursor='default';render();};
 window.showResult=function(correct,picked){
   locked=true;hov=null;canvas.style.cursor='default';
+  resultMode=true;resultCorrect=correct;resultPicked=picked;
   var t=COUNTRIES.find(function(c){return c.cca3===correct;});
   if(t){rotLon=t.lng;rotLat=Math.max(-60,Math.min(60,t.lat));}
-  drawGlobe(true,correct,picked);
+  render();
 };
 
 function setup(){
@@ -363,16 +390,29 @@ export default function FindCountryGame({
   const colors = getColors(isDarkMode);
   const isOnline = !!matchData;
   const isPlayer1 = matchData?.player1_id === user?.id;
-  const totalRounds = (matchData?.game_data?.roundsPerSet as number) ?? DEFAULT_ROUNDS;
+  // Custom matches set the round length per-round in game_data.rounds; fall back
+  // to the flat roundsPerSet used by single-mode / ranked matches.
+  const roundCfg = matchData?.game_data?.rounds?.[(matchData?.current_round ?? 1) - 1];
+  const totalRounds = (roundCfg?.count ?? (matchData?.game_data?.roundsPerSet as number)) ?? DEFAULT_ROUNDS;
 
   const [rounds, setRounds] = useState<CountryStat[]>(() => {
+    const all = rawCountriesStats as unknown as CountryStat[];
+    // Prefer the match's deduplicated per-round assignment (no country repeats
+    // across modes); fall back to the legacy seeded sample for older matches.
+    const round = matchData?.current_round ?? 1;
+    const assigned = matchData?.game_data?.roundCountries?.[round];
+    if (assigned?.length) {
+      const byId = new Map(all.map((co) => [co.cca3, co]));
+      const picked = assigned.map((id) => byId.get(id)).filter(Boolean) as CountryStat[];
+      if (picked.length === assigned.length) return picked;
+    }
     let seed: number | undefined;
     if (dailySeed != null) {
       seed = dailySeed;
     } else if (matchData?.game_data?.seed != null) {
       seed = (matchData.game_data.seed as number) + (matchData.current_round ?? 0) * 997;
     }
-    return sampleRounds(rawCountriesStats as unknown as CountryStat[], totalRounds, seed);
+    return sampleRounds(all, totalRounds, seed);
   });
   // Per-round correctness, in play order — drives the daily emoji share grid.
   const roundResults = useRef<boolean[]>([]);
@@ -479,7 +519,7 @@ export default function FindCountryGame({
       if (onRoundComplete) {
         if (submitted.current) return;
         submitted.current = true;
-        onRoundComplete(score);
+        onRoundComplete(normalizeRoundScore('globe', score, { numQuestions: totalRounds }));
         return;
       }
       if (isDaily) {

@@ -57,9 +57,34 @@ export interface Selection {
 /** Map of theme id -> selection. */
 export type SelectionMap = Record<string, Selection>;
 
-export type GameMode = 'menu' | 'classic' | 'streak' | 'versus' | 'guess' | 'globe' | 'regions' | 'quiz-capital' | 'quiz-flag' | 'local-builder';
-export type MatchMode = 'classic' | 'streak' | 'versus' | 'globe' | 'guess';
+export type GameMode = 'menu' | 'classic' | 'streak' | 'versus' | 'guess' | 'globe' | 'regions' | 'challenge' | 'quiz-capital' | 'quiz-flag' | 'local-builder';
+export type MatchMode = 'classic' | 'streak' | 'versus' | 'globe' | 'guess' | 'regions' | 'challenge';
 export type MatchStatus = 'waiting' | 'in_progress' | 'completed' | 'cancelled';
+
+/**
+ * The `game_data` JSONB payload carried by a match. It seeds both clients
+ * identically and stores the per-round config. Known fields are typed; the
+ * index signature keeps mode-specific extras (e.g. region picks, challenge id,
+ * bot profile) accessible without an `any` cast at every call site. Import this
+ * type instead of re-declaring inline `as { ... }` shapes in screens.
+ */
+export interface MatchGameData {
+  seed: number;
+  is_ranked?: boolean;
+  ranked_modes?: MatchMode[];
+  /** Custom matches: a user-built mode sequence (length === best_of). */
+  is_custom?: boolean;
+  modes?: MatchMode[];
+  /** Per-round config for custom matches (rounds[i] = round i+1). */
+  rounds?: { mode: MatchMode; questionType?: 'CAPITAL' | 'FLAG'; count?: number }[];
+  /**
+   * Deduplicated answer countries per round (1-based round number → ordered
+   * cca3 list, length = that round's question count). Precomputed at match
+   * creation so no country repeats across modes. Absent for daily/solo.
+   */
+  roundCountries?: Record<number, string[]>;
+  [key: string]: unknown;
+}
 
 /** A multiplayer match row from the `matches` table. */
 export interface Match {
@@ -71,19 +96,21 @@ export interface Match {
   is_public: boolean;
   is_ranked: boolean;
   best_of: number;
+  /** Free-for-all seat count (2 = classic 1v1). */
+  max_players?: number;
+  /** Bumped on round progress; drives the reconnect/forfeit window. */
+  last_activity_at?: string;
   p1_rounds_won: number;
   p2_rounds_won: number;
   p1_current_score: number;
   p2_current_score: number;
+  /** Cumulative normalized points across the match (server-authoritative tiebreaker). */
+  p1_total_score?: number;
+  p2_total_score?: number;
   current_round: number;
   p1_finished_round: boolean;
   p2_finished_round: boolean;
-  game_data: {
-    seed: number;
-    is_ranked?: boolean;
-    ranked_modes?: MatchMode[];
-    [key: string]: unknown;
-  } | null;
+  game_data: MatchGameData | null;
   [key: string]: unknown;
 }
 

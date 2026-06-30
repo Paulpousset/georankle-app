@@ -65,4 +65,19 @@ describe('awardSoloCoins', () => {
     expect(result).toEqual({ coinsAwarded: 0, capped: false, synced: false });
     expect(enqueueMock).toHaveBeenCalledWith({ type: 'coins', gameMode: 'streak' });
   });
+
+  it('queues the award (and never hangs) when the RPC never resolves', async () => {
+    jest.useFakeTimers();
+    // A request that never settles — the old code would hang the results screen.
+    sb.rpc.mockReturnValue(new Promise(() => {}));
+
+    const pending = awardSoloCoins('globe');
+    // Advance past the 8s timeout; the race resolves to the timeout branch.
+    await jest.advanceTimersByTimeAsync(8000);
+    const result = await pending;
+
+    expect(result).toEqual({ coinsAwarded: 0, capped: false, synced: false });
+    expect(enqueueMock).toHaveBeenCalledWith({ type: 'coins', gameMode: 'globe' });
+    jest.useRealTimers();
+  });
 });

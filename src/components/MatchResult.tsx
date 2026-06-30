@@ -28,6 +28,8 @@ interface MatchResultProps {
   opponentRoundsWon: number;
   bestOf: number;
   gameMode: string;
+  myTotalScore?: number;
+  opponentTotalScore?: number;
   isRanked?: boolean;
   rankResult?: RankResult | null;
   coinsAwarded?: number | null;
@@ -40,6 +42,8 @@ export function MatchResult({
   opponentRoundsWon,
   bestOf,
   gameMode,
+  myTotalScore,
+  opponentTotalScore,
   isRanked = false,
   rankResult = null,
   coinsAwarded = null,
@@ -49,7 +53,19 @@ export function MatchResult({
   const { language } = useLanguage();
   const c = getColors(isDarkMode);
 
-  const { iWon, isDraw } = computeMatchOutcome(bestOf, myRoundsWon, opponentRoundsWon);
+  const { iWon, isDraw } = computeMatchOutcome(
+    bestOf,
+    myRoundsWon,
+    opponentRoundsWon,
+    myTotalScore,
+    opponentTotalScore,
+  );
+  // Whether the series was decided on cumulative points (rounds were level).
+  const decidedOnPoints =
+    myRoundsWon === opponentRoundsWon &&
+    myTotalScore !== undefined &&
+    opponentTotalScore !== undefined &&
+    myTotalScore !== opponentTotalScore;
 
   const resultColor = isDraw ? '#c4872a' : iWon ? '#2a6e3f' : '#8b1a1a';
   const resultText = isDraw
@@ -90,15 +106,33 @@ export function MatchResult({
       <ScrollView contentContainerStyle={{ alignItems: 'center', padding: 24, gap: 24 }}>
         <View style={{ alignItems: 'center', gap: 12, marginTop: 16 }}>
           <Trophy size={56} color={resultColor} />
-          <ScoreText style={{ color: resultColor, fontSize: 36, fontFamily: FONTS.headingBlack, letterSpacing: 1 }}>
+          <ScoreText
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            style={{ color: resultColor, fontSize: 36, fontFamily: FONTS.headingBlack, letterSpacing: 1, textAlign: 'center' }}
+          >
             {resultText}
           </ScoreText>
-          <ScoreText style={{ color: c.text, fontSize: 48, fontFamily: FONTS.headingBlack }}>
+          <ScoreText
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            style={{ color: c.text, fontSize: 48, fontFamily: FONTS.headingBlack }}
+          >
             {myRoundsWon} – {opponentRoundsWon}
           </ScoreText>
           <Text style={{ color: c.textMuted, fontSize: 14, fontFamily: FONTS.mono }}>
             {`BO${bestOf} · ${language === 'fr' ? 'Série terminée' : 'Series over'}`}
           </Text>
+          {myTotalScore !== undefined && opponentTotalScore !== undefined && (
+            <Text style={{ color: c.textFaint, fontSize: 13, fontFamily: FONTS.mono }}>
+              {`${language === 'fr' ? 'Points' : 'Points'} ${myTotalScore} – ${opponentTotalScore}`}
+            </Text>
+          )}
+          {decidedOnPoints && (
+            <Text style={{ color: resultColor, fontSize: 12, fontFamily: FONTS.monoBold, letterSpacing: 0.5 }}>
+              {language === 'fr' ? 'Départagé aux points' : 'Decided on points'}
+            </Text>
+          )}
           {coinsAwarded != null && coinsAwarded > 0 && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
               <Coins size={18} color="#ffd700" />
@@ -199,12 +233,12 @@ export function MatchResult({
                 <Text style={{ color: c.textFaint, fontSize: 12, fontFamily: FONTS.monoBold }}>
                   {`ROUND ${round.roundNumber}`}
                 </Text>
-                <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
-                  <Text style={{ color: roundWinner === 'me' ? '#2a6e3f' : c.text, fontFamily: FONTS.headingBlack, fontSize: 18 }}>
+                <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center', flexShrink: 1, marginHorizontal: 8 }}>
+                  <Text numberOfLines={1} style={{ color: roundWinner === 'me' ? '#2a6e3f' : c.text, fontFamily: FONTS.headingBlack, fontSize: 18 }}>
                     {scoreLabel(round.gameMode ?? gameMode, round.myScore)}
                   </Text>
                   <Text style={{ color: c.textFaint, fontFamily: FONTS.mono }}>vs</Text>
-                  <Text style={{ color: roundWinner === 'opponent' ? '#8b1a1a' : c.text, fontFamily: FONTS.headingBlack, fontSize: 18 }}>
+                  <Text numberOfLines={1} style={{ color: roundWinner === 'opponent' ? '#8b1a1a' : c.text, fontFamily: FONTS.headingBlack, fontSize: 18 }}>
                     {scoreLabel(round.gameMode ?? gameMode, round.opponentScore)}
                   </Text>
                 </View>

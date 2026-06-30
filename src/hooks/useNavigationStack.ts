@@ -13,7 +13,9 @@ export type Page =
   | { name: 'shop' }
   | { name: 'daily' }
   | { name: 'admin-notifications' }
-  | { name: 'matchmaking'; mode: MatchMode };
+  | { name: 'matchmaking'; mode: MatchMode }
+  | { name: 'custom-matchmaking' }
+  | { name: 'challenge-matchmaking'; challengeId: string };
 
 /**
  * The home-grown page navigation: a stack of full-screen "pages" (everything

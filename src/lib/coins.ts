@@ -17,9 +17,37 @@ export interface CoinAwardResult {
   synced: boolean;
 }
 
+/** How long to wait for the award RPC before giving up and queueing it. */
+const AWARD_TIMEOUT_MS = 8000;
+
+const TIMEOUT = Symbol('timeout');
+
+/**
+ * Race a promise against a timeout. We deliberately do NOT retry the RPC inline:
+ * `award_solo_coins` is guarded by a daily cap rather than being binary
+ * idempotent, so a blind retry after a lost response could burn a cap slot. A
+ * timeout instead prevents an indefinitely-pending request from hanging the
+ * results screen; the award is then queued and replayed once on reconnect.
+ */
+function withTimeout<T>(p: PromiseLike<T>): Promise<T | typeof TIMEOUT> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<typeof TIMEOUT>((resolve) => {
+    timer = setTimeout(() => resolve(TIMEOUT), AWARD_TIMEOUT_MS);
+  });
+  // Clear the timer once the race settles so it never dangles (which would keep
+  // a test worker — or the JS timer queue — alive needlessly).
+  return Promise.race([Promise.resolve(p), timeout]).finally(() => clearTimeout(timer));
+}
+
 export async function awardSoloCoins(gameMode: string): Promise<CoinAwardResult> {
   try {
-    const { data, error } = await supabase.rpc('award_solo_coins', { p_game_mode: gameMode });
+    const result = await withTimeout(supabase.rpc('award_solo_coins', { p_game_mode: gameMode }));
+    if (result === TIMEOUT) {
+      // The request never resolved in time — queue it instead of hanging.
+      await enqueue({ type: 'coins', gameMode });
+      return { coinsAwarded: 0, capped: false, synced: false };
+    }
+    const { data, error } = result;
     if (error) {
       await enqueue({ type: 'coins', gameMode });
       return { coinsAwarded: 0, capped: false, synced: false };

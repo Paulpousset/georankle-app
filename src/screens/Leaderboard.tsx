@@ -12,6 +12,8 @@ import { FONTS } from '../theme/typography';
 import { tr } from '../i18n';
 import { a11yButton, a11yImage, ICON_HIT_SLOP } from '../lib/a11y';
 import { AsyncState } from '../components/AsyncState';
+import { SkeletonRows } from '../components/Skeleton';
+import { TruncatedText } from '../components/TruncatedText';
 
 type Tab = 'classic' | 'streak';
 
@@ -102,7 +104,7 @@ const Leaderboard = ({ onOpenPlayer }: LeaderboardProps) => {
         </View>
 
         <View style={styles.userInfo}>
-          <Text style={[styles.username, { color: c.text }]}>{name}</Text>
+          <TruncatedText style={[styles.username, { color: c.text }]}>{name}</TruncatedText>
         </View>
 
         <View style={styles.scoreContainer}>
@@ -153,6 +155,7 @@ const Leaderboard = ({ onOpenPlayer }: LeaderboardProps) => {
         loading={loading}
         error={error}
         onRetry={refetch}
+        loadingContent={<SkeletonRows />}
         errorLabel={
           language === 'fr'
             ? 'Impossible de charger le classement.'

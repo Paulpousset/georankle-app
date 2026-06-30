@@ -36,6 +36,9 @@ export type AnalyticsEvent =
   | 'game_started'
   | 'game_completed'
   | 'local_parcours_started'
+  | 'mode_intro_seen'
+  | 'challenge_started'
+  | 'challenge_completed'
   // Daily challenge
   | 'daily_opened'
   | 'daily_completed'
@@ -49,6 +52,8 @@ export type AnalyticsEvent =
   | 'match_started'
   | 'round_completed'
   | 'match_completed'
+  | 'bot_match_started'
+  | 'bot_match_completed'
   // Economy
   | 'shop_opened'
   | 'cosmetic_purchased'

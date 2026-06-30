@@ -23,6 +23,7 @@ import { getMapPalette } from '../theme/mapPalette';
 import { FONTS } from '../theme/typography';
 import { getFlagUrl } from '../lib/flags';
 import { createSeededRng } from '../lib/rng';
+import { normalizeRoundScore } from '../lib/score';
 import { computeView, type RegionView } from '../lib/regionView';
 import { tr } from '../i18n';
 import { track } from '../lib/analytics';
@@ -45,8 +46,17 @@ export type RegionLevelKey = 'regions' | 'departments';
 
 interface FindRegionGameProps {
   setGameMode: (mode: GameMode) => void;
-  country: RegionCountrySel;
-  level: RegionLevelKey;
+  /**
+   * Single-country API (daily, online single, fallback). Ignored when `picks`
+   * has entries.
+   */
+  country?: RegionCountrySel;
+  level?: RegionLevelKey;
+  /**
+   * Optional multi-country "mix": when set with 1+ entries the game pools regions
+   * from every selected country (the map reloads when the country changes).
+   */
+  picks?: RegionMixPick[];
   user?: User | null;
   matchData?: Match | null;
   onRoundComplete?: (score: number) => void;
@@ -72,14 +82,59 @@ interface RegionMessage {
   msg?: string;
 }
 
-function sampleRounds(all: Region[], n: number, seed?: number): Region[] {
-  const rng = seed != null ? createSeededRng(seed) : Math.random;
-  const arr = [...all];
+/** One country choice in a (possibly mixed) region game. */
+export interface RegionMixPick extends RegionCountrySel {
+  level: RegionLevelKey;
+}
+
+/** A sampled region tagged with which selected country it belongs to. */
+interface TaggedRegion {
+  region: Region;
+  pickIndex: number;
+}
+
+function shuffleInPlace<T>(arr: T[], rng: () => number): T[] {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
-  return arr.slice(0, Math.min(n, arr.length));
+  return arr;
+}
+
+function sampleRoundsRng(all: Region[], n: number, rng: () => number): Region[] {
+  return shuffleInPlace([...all], rng).slice(0, Math.max(0, Math.min(n, all.length)));
+}
+
+/** Spread `total` rounds across countries as evenly as possible, capped per country. */
+function allocate(total: number, capacities: number[]): number[] {
+  const alloc = new Array(capacities.length).fill(0);
+  let remaining = total;
+  let progressed = true;
+  while (remaining > 0 && progressed) {
+    progressed = false;
+    for (let i = 0; i < capacities.length && remaining > 0; i++) {
+      if (alloc[i] < capacities[i]) { alloc[i]++; remaining--; progressed = true; }
+    }
+  }
+  return alloc;
+}
+
+/**
+ * Build the play order for a (possibly mixed) region game. Rounds are grouped by
+ * country — shuffled within each country and in country order — so the map only
+ * reloads once per country rather than on every question. Deterministic when a
+ * seed is given (online opponents share the same order).
+ */
+function buildMixRounds(regionsByPick: Region[][], total: number, seed?: number): TaggedRegion[] {
+  const rng = seed != null ? createSeededRng(seed) : Math.random;
+  const alloc = allocate(total, regionsByPick.map((r) => r.length));
+  const groups: TaggedRegion[][] = regionsByPick.map((regions, pickIndex) =>
+    sampleRoundsRng(regions, alloc[pickIndex], rng).map((region) => ({ region, pickIndex })),
+  );
+  const order = shuffleInPlace(groups.map((_, i) => i), rng);
+  const out: TaggedRegion[] = [];
+  for (const i of order) out.push(...groups[i]);
+  return out;
 }
 
 /** Localized "Find this <unit>:" prompt, picking the right word for the division type. */
@@ -123,6 +178,7 @@ var ctx=canvas.getContext('2d');
 var W,H,cx,cy,R,Rb;
 var rotLon=CLON,rotLat=Math.max(-85,Math.min(85,CLAT)),zoom=1,ZMIN=0.6,ZMAX=8;
 var sel=null,locked=false,hov=null;
+var resultMode=false,resultCorrect=null,resultPicked=null;
 
 function postMsg(obj){
   var j=JSON.stringify(obj);
@@ -251,7 +307,10 @@ function drawMap(resultMode,correct,picked){
   }
 }
 
-function render(){drawMap(false,null,null);}
+function render(){
+  if(resultMode)drawMap(true,resultCorrect,resultPicked);
+  else drawMap(false,null,null);
+}
 
 var drag=null;
 function onStart(x,y){drag={x:x,y:y,lon:rotLon,lat:rotLat,moved:false};}
@@ -339,12 +398,13 @@ function handleTap(tx,ty){
   postMsg({type:'REGION_SELECTED',id:hit});
 }
 
-window.resetRound=function(){sel=null;locked=false;hov=null;canvas.style.cursor='default';render();};
+window.resetRound=function(){sel=null;locked=false;hov=null;resultMode=false;resultCorrect=null;resultPicked=null;canvas.style.cursor='default';render();};
 window.showResult=function(correct,picked){
   locked=true;hov=null;canvas.style.cursor='default';
+  resultMode=true;resultCorrect=correct;resultPicked=picked;
   var t=DOTS.find(function(c){return c.id===correct;});
   if(t){rotLon=t.lng;rotLat=Math.max(-85,Math.min(85,t.lat));}
-  drawMap(true,correct,picked);
+  render();
 };
 
 function setup(){
@@ -356,7 +416,7 @@ function setup(){
   var ang=Math.min(80,MAXANG*1.12+1.5)*Math.PI/180;
   var rNeeded=(0.84*Math.min(W,H)/2)/Math.max(0.02,Math.sin(ang));
   zoom=Math.max(0.5,rNeeded/Rb);
-  ZMAX=Math.max(8,zoom*4);ZMIN=Math.min(0.6,zoom*0.4);
+  ZMAX=Math.max(16,zoom*6);ZMIN=Math.min(0.6,zoom*0.4);
   R=Rb*zoom;
   canvas.width=W*dpr;canvas.height=H*dpr;
   canvas.style.width=W+'px';canvas.style.height=H+'px';
@@ -373,6 +433,7 @@ export default function FindRegionGame({
   setGameMode,
   country,
   level,
+  picks,
   user,
   matchData,
   onRoundComplete,
@@ -388,38 +449,72 @@ export default function FindRegionGame({
   const colors = getColors(isDarkMode);
   const isOnline = !!matchData;
   const isPlayer1 = matchData?.player1_id === user?.id;
-  const totalRoundsCfg = (matchData?.game_data?.roundsPerSet as number) ?? DEFAULT_ROUNDS;
+  // Custom matches store the region count per round (game_data.rounds[i].count);
+  // ranked / single-mode matches use the flat roundsPerSet. Prefer the per-round
+  // value so a custom "Défis Pays" round honours its own configured length.
+  const gdata = matchData?.game_data as
+    | { roundsPerSet?: number; rounds?: { count?: number }[] }
+    | null
+    | undefined;
+  const cfgRoundIdx = (matchData?.current_round ?? 1) - 1;
+  const totalRoundsCfg =
+    gdata?.rounds?.[cfgRoundIdx]?.count ?? gdata?.roundsPerSet ?? DEFAULT_ROUNDS;
 
-  const file = useMemo(() => getRegionFile(country.cca3, level), [country.cca3, level]);
-  const allRegions = useMemo(() => file?.regions ?? [], [file]);
-  const totalRounds = Math.min(totalRoundsCfg, allRegions.length || totalRoundsCfg);
-  const view = useMemo(() => computeView(allRegions), [allRegions]);
-  const html = useMemo(
-    () => buildRegionMapHtml(allRegions, isDarkMode, view),
-    [allRegions, isDarkMode, view],
-  );
+  // Normalise to a list of country picks; the single-country API (country/level)
+  // is just a 1-entry mix.
+  const selection: RegionMixPick[] = useMemo(() => {
+    if (picks && picks.length > 0) return picks;
+    if (country) return [{ ...country, level: level ?? 'regions' }];
+    return [];
+  }, [picks, country, level]);
 
-  const [rounds, setRounds] = useState<Region[]>(() => {
+  // Per-country region data, in selection order; countries with no data drop out.
+  const loaded = useMemo(() => {
+    const out: { pick: RegionMixPick; regions: Region[] }[] = [];
+    for (const p of selection) {
+      const f = getRegionFile(p.cca3, p.level);
+      if (f && f.regions.length > 0) out.push({ pick: p, regions: f.regions });
+    }
+    return out;
+  }, [selection]);
+  const regionsByPick = useMemo(() => loaded.map((l) => l.regions), [loaded]);
+  const hasData = loaded.length > 0;
+  const totalAvailable = regionsByPick.reduce((s, r) => s + r.length, 0);
+  const totalRounds = Math.min(totalRoundsCfg, totalAvailable || totalRoundsCfg);
+
+  const [rounds, setRounds] = useState<TaggedRegion[]>(() => {
     let seed: number | undefined;
     if (dailySeed != null) {
       seed = dailySeed;
     } else if (matchData?.game_data?.seed != null) {
       seed = (matchData.game_data.seed as number) + (matchData.current_round ?? 0) * 997;
     }
-    return sampleRounds(allRegions, totalRounds, seed);
+    return buildMixRounds(regionsByPick, totalRounds, seed);
   });
   // Per-round correctness, in play order — drives the daily emoji share grid.
   const roundResults = useRef<boolean[]>([]);
   const [index, setIndex] = useState(0);
   const [score, setScore] = useState(0);
-  const [phase, setPhase] = useState<Phase>(file ? 'playing' : 'loading');
+  const [phase, setPhase] = useState<Phase>(hasData ? 'playing' : 'loading');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // The current round's country drives the map; it reloads when the country
+  // changes between rounds (single-country games never trigger a reload).
+  const curTagged = rounds[index];
+  const curPickIndex = curTagged?.pickIndex ?? 0;
+  const curPick = loaded[curPickIndex]?.pick ?? selection[0];
+  const curRegions = regionsByPick[curPickIndex] ?? [];
+  const view = useMemo(() => computeView(curRegions), [curRegions]);
+  const html = useMemo(
+    () => buildRegionMapHtml(curRegions, isDarkMode, view),
+    [curRegions, isDarkMode, view],
+  );
 
   // Surface the running score so the daily host can lock it in on a mid-game quit.
   useEffect(() => {
     if (isDaily) onDailyScoreChange?.(score);
   }, [isDaily, score, onDailyScoreChange]);
-  const [errorMsg, setErrorMsg] = useState<string | null>(file ? null : 'No region data');
+  const [errorMsg, setErrorMsg] = useState<string | null>(hasData ? null : 'No region data');
 
   const [opponentScore, setOpponentScore] = useState(0);
   const submitted = useRef(false);
@@ -447,9 +542,14 @@ export default function FindRegionGame({
   }, [matchData?.id, user?.id]);
 
   const goBack = onBack ?? (() => setGameMode('menu'));
-  const current = rounds[index];
+  const current = curTagged?.region;
   const isCorrect = current != null && selectedId === current.id;
-  const regionName = (r: Region) => (language === 'fr' ? r.name : (r.name_en ?? r.name));
+  const regionName = (r: Region) => {
+    const base = language === 'fr' ? r.name : (r.name_en ?? r.name);
+    // French departments: append the official code (01..95, 2A, 2B) from the id.
+    const m = r.id.match(/^FR-D-(.+)$/);
+    return m ? `${base} (${m[1]})` : base;
+  };
 
   // Announce each find result (correct/wrong + the target name) for screen readers.
   useEffect(() => {
@@ -513,7 +613,7 @@ export default function FindRegionGame({
       if (onRoundComplete) {
         if (submitted.current) return;
         submitted.current = true;
-        onRoundComplete(score);
+        onRoundComplete(normalizeRoundScore('regions', score, { numQuestions: totalRounds }));
         return;
       }
       if (isDaily) {
@@ -529,25 +629,37 @@ export default function FindRegionGame({
       setPhase('finished');
       return;
     }
-    setIndex((i) => i + 1);
+    const nextIdx = index + 1;
+    const sameCountry = rounds[nextIdx]?.pickIndex === curPickIndex;
+    setIndex(nextIdx);
     setSelectedId(null);
-    setPhase('playing');
-    webViewRef.current?.injectJavaScript(`window.resetRound();true;`);
+    if (sameCountry) {
+      setPhase('playing');
+      webViewRef.current?.injectJavaScript(`window.resetRound();true;`);
+    } else {
+      // Different country → the map html changes and the WebView reloads; MAP_READY
+      // flips the phase back to 'playing'.
+      setPhase('loading');
+    }
   };
 
   const handleReplay = () => {
-    setRounds(sampleRounds(allRegions, totalRounds));
+    const fresh = buildMixRounds(regionsByPick, totalRounds);
+    roundResults.current = [];
+    setRounds(fresh);
     setIndex(0);
     setScore(0);
     setSelectedId(null);
-    setPhase('playing');
+    // If replay starts on a different country the WebView reloads on its own;
+    // otherwise reset the current map in place.
+    setPhase(fresh[0]?.pickIndex === curPickIndex ? 'playing' : 'loading');
     webViewRef.current?.injectJavaScript(`window.resetRound();true;`);
   };
 
-  const countryLabel = language === 'fr' ? country.name : (country.name_en ?? country.name);
+  const countryLabel = language === 'fr' ? curPick.name : (curPick.name_en ?? curPick.name);
 
   // ── No data guard ────────────────────────────────────────────────────────
-  if (!file || allRegions.length === 0) {
+  if (!hasData) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <StatusBar style={isDarkMode ? 'light' : 'dark'} />
@@ -666,9 +778,9 @@ export default function FindRegionGame({
       {/* Region name prompt */}
       <View style={[styles.prompt, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={styles.promptContextRow}>
-          <Image source={{ uri: getFlagUrl(country.cca3) }} style={styles.promptFlagSmall} />
+          <Image source={{ uri: getFlagUrl(curPick.cca3) }} style={styles.promptFlagSmall} />
           <Text style={[styles.promptContext, { color: colors.textMuted }]}>
-            {findPrompt(level, country.unit, language)} {countryLabel}
+            {findPrompt(curPick.level, curPick.unit, language)} {countryLabel}
           </Text>
         </View>
         <Text style={[styles.promptName, { color: colors.text }]}>

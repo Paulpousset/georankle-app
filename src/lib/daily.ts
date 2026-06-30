@@ -306,7 +306,7 @@ export function dailyModeLabel(mode: GameMode, language: Language): string {
     case 'globe':
       return tr(language, 'Globe Géo', 'Geo Globe');
     case 'regions':
-      return tr(language, 'Régions Géo', 'Geo Regions');
+      return tr(language, 'Défis Pays', 'Country Challenges');
     case 'quiz-capital':
       return tr(language, 'Capitales', 'Capitals');
     case 'quiz-flag':

@@ -20,3 +20,21 @@ export const RADII = {
   xl: 16,
   pill: 999,
 } as const;
+
+/**
+ * Width breakpoints (in px) for responsive layout decisions. Keep these few and
+ * coarse — most layouts should flex/shrink rather than branch on width.
+ *
+ * Usage:
+ * ```tsx
+ * const { width } = useWindowDimensions();
+ * const small = isSmallScreen(width);
+ * ```
+ */
+export const BREAKPOINTS = {
+  /** Tight phones (e.g. iPhone SE 1st gen, small Androids). */
+  small: 340,
+} as const;
+
+/** True on narrow devices where fixed paddings/sizes need to shrink. */
+export const isSmallScreen = (width: number): boolean => width < BREAKPOINTS.small;

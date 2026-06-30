@@ -12,6 +12,8 @@ import { FONTS } from '../theme/typography';
 import { tr } from '../i18n';
 import { a11yButton, a11yImage } from '../lib/a11y';
 import { AsyncState } from '../components/AsyncState';
+import { SkeletonRows } from '../components/Skeleton';
+import { TruncatedText } from '../components/TruncatedText';
 import type { MatchMode } from '../types';
 
 interface WinEntry {
@@ -135,12 +137,14 @@ export function OnlineModeLeaderboard({ mode, accent, onOpenPlayer }: Props) {
             )}
           </View>
           <View style={{ flex: 1, paddingLeft: 10 }}>
-            <Text style={{ fontFamily: FONTS.heading, color: c.text }}>{item.username}</Text>
+            <TruncatedText style={{ fontFamily: FONTS.heading, color: c.text }}>
+              {item.username}
+            </TruncatedText>
             <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 10 }}>
               {item.wins}V / {item.total - item.wins}D
             </Text>
           </View>
-          <Text style={{ fontFamily: FONTS.headingBlack, fontSize: 16, color: accent }}>
+          <Text style={{ fontFamily: FONTS.headingBlack, fontSize: 16, color: accent, marginLeft: 8 }}>
             {item.winRate}%
           </Text>
         </TouchableOpacity>
@@ -154,6 +158,7 @@ export function OnlineModeLeaderboard({ mode, accent, onOpenPlayer }: Props) {
       loading={loading}
       error={error}
       onRetry={refetch}
+      loadingContent={<SkeletonRows />}
       errorLabel={
         language === 'fr'
           ? 'Impossible de charger le classement.'
