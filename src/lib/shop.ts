@@ -42,3 +42,44 @@ export async function purchaseCosmetic(itemId: string, userId: string): Promise<
     return { ok: false, message: errorMessage(e) };
   }
 }
+
+export type BundlePurchaseResult =
+  | { ok: true; granted: string[]; newBalance: number }
+  | { ok: false; message: string };
+
+/** Atomic pack purchase — the server debits once and grants every missing item. */
+export async function purchaseBundle(bundleId: string, userId: string): Promise<BundlePurchaseResult> {
+  try {
+    const { data, error } = await supabase.rpc('purchase_bundle', { p_bundle_id: bundleId });
+    if (error) throw error;
+    const result = data as { granted: string[]; new_balance: number };
+    void cacheClear(`profile:${userId}`);
+    return { ok: true, granted: result.granted ?? [], newBalance: result.new_balance };
+  } catch (e: unknown) {
+    return { ok: false, message: errorMessage(e) };
+  }
+}
+
+export interface FeaturedCosmetic {
+  itemId: string;
+  /** Discounted price actually charged by purchase_cosmetic today. */
+  price: number;
+  basePrice: number;
+}
+
+/**
+ * Daily featured item (server-picked, 30% off). The server is the source of
+ * truth for both the pick and the discounted price, so the banner can never
+ * disagree with what purchase_cosmetic charges.
+ */
+export async function fetchFeaturedCosmetic(): Promise<FeaturedCosmetic | null> {
+  try {
+    const { data, error } = await supabase.rpc('get_featured_cosmetic');
+    if (error) throw error;
+    const row = data as { item_id: string; price: number; base_price: number } | null;
+    if (!row?.item_id) return null;
+    return { itemId: row.item_id, price: row.price, basePrice: row.base_price };
+  } catch {
+    return null; // the shop simply renders without the banner
+  }
+}

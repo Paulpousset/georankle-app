@@ -3,17 +3,24 @@
  * a procedural globe (paramaterised by the equipped globe style) sitting on a
  * cosmos backdrop, ringed by an orbit, with a landmark emblem and an orbiting
  * satellite glyph. No 3D, no WebView, no CDN — replaces the old <Avatar3D>.
+ *
+ * "Boutique 2.0" upgrade: every globe gets an atmosphere halo, a day/night
+ * terminator and cloud banks (per-style flags); 8 new globe styles, 6 new
+ * cosmos backdrops and 6 new orbit rings — including tilted Saturn-like rings
+ * drawn in two passes (behind then in front of the globe). react-native-svg
+ * has no SMIL <animate>, so pulses/blinks ride the existing rAF clock `t`.
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 import Svg, {
-  Rect, Circle, Ellipse, Path, Line, Defs, LinearGradient, RadialGradient, Stop, ClipPath, G,
+  Rect, Circle, Ellipse, Path, Line, Polygon, Defs, LinearGradient, RadialGradient, Stop, ClipPath, G,
+  Text as SvgText,
 } from 'react-native-svg';
 
 import type { AvatarConfig } from '../types';
 import { getPart } from '../data/cosmetics';
 import { WORLD_POLYS } from '../data/worldPolys';
-import { ringToPath, graticule } from '../lib/globeProjection';
+import { ringToPath, graticule, project } from '../lib/globeProjection';
 import { EmblemGlyph, SatelliteGlyph, satelliteOrient, satelliteScale, EMBLEM_COORD } from './worldGlyphs';
 
 const SAT_BASE_ANGLE = -Math.PI / 4;   // satellite start position on the orbit
@@ -34,18 +41,49 @@ interface GlobeStyle {
   political?: boolean;
   night?: boolean;
   wire?: boolean;
+  /** Dashed wireframe strokes (blueprint). */
+  dash?: boolean;
+  /** Random craters + polar cap instead of Earth landmasses (mars). */
+  craters?: boolean;
+  /** Glowing magma cracks + hot coastlines (lava). */
+  lava?: boolean;
+  /** Network nodes on the wireframe (cyber). */
+  cyber?: boolean;
+  /** Solar-corona rays behind a near-black disc (eclipse). */
+  corona?: boolean;
+  /** Glowing plankton dots in the ocean + phosphorescent coasts (biolum). */
+  biolum?: boolean;
+  /** Atmosphere halo colour — undefined disables the halo for this style. */
+  atmo?: string;
+  /** Day/night terminator shading. */
+  terminator?: boolean;
+  /** Semi-transparent cloud banks. */
+  clouds?: boolean;
+  /** Hologram scanlines + cyan outer glow. */
+  scan?: boolean;
+  /** Star-shaped glints on the surface (gold). */
+  sparkle?: boolean;
 }
 
 const GLOBE_STYLES: Record<string, GlobeStyle> = {
-  classic:   { ocean: ['#5cb3ec', '#1f6fae', '#0a2f52'], land: '#6e9e52', stroke: '#2c4a2c', grat: '#0a2f52' },
-  satellite: { ocean: ['#2a78b0', '#0d3a66', '#04203c'], land: '#2f6e3a', stroke: '#143a1a', grat: '#04203c' },
-  relief:    { ocean: ['#6ec0e0', '#2f7fae', '#123a52'], land: '#b89a5a', stroke: '#7a5a2a', grat: '#123a52', relief: true },
+  classic:   { ocean: ['#5cb3ec', '#1f6fae', '#0a2f52'], land: '#6e9e52', stroke: '#2c4a2c', grat: '#0a2f52', atmo: '#6fc0ff', terminator: true, clouds: true },
+  satellite: { ocean: ['#2a78b0', '#0d3a66', '#04203c'], land: '#2f6e3a', stroke: '#143a1a', grat: '#04203c', atmo: '#6fc0ff', terminator: true, clouds: true },
+  relief:    { ocean: ['#6ec0e0', '#2f7fae', '#123a52'], land: '#b89a5a', stroke: '#7a5a2a', grat: '#123a52', relief: true, atmo: '#6fc0ff', terminator: true, clouds: true },
   vintage:   { ocean: ['#ead6ab', '#cdb37e', '#9c7e4e'], land: '#c2a368', stroke: '#7a5a2a', grat: '#a8895a' },
-  gold:      { ocean: ['#ffe7a4', '#e0a93a', '#8a5a14'], land: '#caa23a', stroke: '#7a5212', grat: '#8a5a14' },
-  gaia:      { ocean: ['#43d6c6', '#159a8a', '#0a4a4a'], land: '#4fc24a', stroke: '#1a6a2a', grat: '#0a4a4a' },
+  gold:      { ocean: ['#ffe7a4', '#e0a93a', '#8a5a14'], land: '#caa23a', stroke: '#7a5212', grat: '#8a5a14', atmo: '#ffd700', terminator: true, sparkle: true },
+  gaia:      { ocean: ['#43d6c6', '#159a8a', '#0a4a4a'], land: '#4fc24a', stroke: '#1a6a2a', grat: '#0a4a4a', atmo: '#43d6c6', terminator: true, clouds: true },
   political: { ocean: ['#cfe4f2', '#9cc0e0', '#6f9fc4'], land: '#cccccc', stroke: '#ffffff', grat: '#9cc0e0', political: true },
-  night:     { ocean: ['#0c1834', '#070d22', '#03060f'], land: '#13233f', stroke: '#1c3454', grat: '#0c1830', night: true },
-  hologram:  { ocean: ['#0c2c3c', '#06202e', '#03121c'], land: 'none', stroke: '#5ff0ff', grat: '#5ff0ff', wire: true },
+  night:     { ocean: ['#0c1834', '#070d22', '#03060f'], land: '#13233f', stroke: '#1c3454', grat: '#0c1830', night: true, atmo: '#ffb45a' },
+  hologram:  { ocean: ['#0c2c3c', '#06202e', '#03121c'], land: 'none', stroke: '#5ff0ff', grat: '#5ff0ff', wire: true, atmo: '#5ff0ff', scan: true },
+  // ── Boutique 2.0 ──
+  pastel:    { ocean: ['#cfe8e4', '#a8cfd8', '#7fa8bc'], land: '#f0c8d0', stroke: '#d898a8', grat: '#a8cfd8', atmo: '#f0c8d0', clouds: true },
+  mars:      { ocean: ['#e8935a', '#b85a2e', '#6e2f14'], land: '#a04a24', stroke: '#7a3418', grat: '#6e2f14', craters: true, atmo: '#ff9a5a', terminator: true },
+  ice:       { ocean: ['#bfe4f5', '#7fb8d8', '#4a86ac'], land: '#f2f8fd', stroke: '#a8c8dc', grat: '#7fb8d8', atmo: '#bfe4f5', terminator: true, clouds: true },
+  blueprint: { ocean: ['#1d4d8f', '#16407c', '#0e2c58'], land: 'none', stroke: '#dce9fa', grat: '#dce9fa', wire: true, dash: true },
+  lava:      { ocean: ['#3a1410', '#240a08', '#120404'], land: '#1c0e0a', stroke: '#ff6a2a', grat: '#3a1410', lava: true, atmo: '#ff6a2a' },
+  cyber:     { ocean: ['#0a1420', '#060d18', '#03070f'], land: 'none', stroke: '#c04df0', grat: '#3af0a0', wire: true, cyber: true, atmo: '#c04df0', scan: true },
+  eclipse:   { ocean: ['#0c0c14', '#060608', '#020203'], land: '#0a0a10', stroke: '#1a1a26', grat: '#0c0c14', corona: true },
+  biolum:    { ocean: ['#04141c', '#020c14', '#01060a'], land: '#062018', stroke: '#2ff0c0', grat: '#04141c', biolum: true, atmo: '#2ff0c0' },
 };
 
 const POLITICAL_PALETTE = [
@@ -90,7 +128,7 @@ interface WorldAvatarProps {
   config?: AvatarConfig | null;
   size: number;
   style?: StyleProp<ViewStyle>;
-  /** Animate movable elements (satellite orbiting, globe spin when no emblem). */
+  /** Animate movable elements (satellite orbit, globe spin, pulses, blinks). */
   animate?: boolean;
   /** Reserved — kept for API parity with the old <Avatar3D>. */
   interactive?: boolean;
@@ -175,25 +213,106 @@ function WorldAvatarBase({ config, size, style, animate = false }: WorldAvatarPr
   // City-light dots (projected) for the "night" globe.
   const cityDots = useMemo(() => {
     if (!gs.night) return [] as { x: number; y: number }[];
-    const cLon = viewLon, cLat = viewLat;
-    const λ0 = (cLon * Math.PI) / 180, φ0 = (cLat * Math.PI) / 180;
     const out: { x: number; y: number }[] = [];
     for (const [lon, lat] of CITY_LIGHTS) {
-      const λ = (lon * Math.PI) / 180, φ = (lat * Math.PI) / 180;
-      const cosc = Math.sin(φ0) * Math.sin(φ) + Math.cos(φ0) * Math.cos(φ) * Math.cos(λ - λ0);
-      if (cosc < 0) continue;
-      const x = cx + r * Math.cos(φ) * Math.sin(λ - λ0);
-      const y = cy - r * (Math.cos(φ0) * Math.sin(φ) - Math.sin(φ0) * Math.cos(φ) * Math.cos(λ - λ0));
-      out.push({ x, y });
+      const [x, y, vis] = project(lon, lat, viewLon, viewLat, r, cx, cy);
+      if (vis) out.push({ x, y });
     }
     return out;
   }, [gs.night, r, cx, cy, viewLon, viewLat]);
+
+  // Mars craters — deterministic polar coords, projected each render is cheap.
+  const craters = useMemo(() => {
+    if (!gs.craters) return [] as { x: number; y: number; cr: number }[];
+    const rng = makeRng(42);
+    const out: { x: number; y: number; cr: number }[] = [];
+    for (let i = 0; i < 14; i++) {
+      const a = rng() * Math.PI * 2;
+      const rad = Math.sqrt(rng()) * r * 0.85;
+      out.push({ x: cx + Math.cos(a) * rad, y: cy + Math.sin(a) * rad, cr: r * (0.04 + rng() * 0.09) });
+    }
+    return out;
+  }, [gs.craters, r, cx, cy]);
+
+  // Lava cracks / cyber nodes / biolum plankton — deterministic decorations.
+  const surfaceDeco = useMemo(() => {
+    const cracks: string[] = [];
+    const dots: { x: number; y: number; rad: number; o: number }[] = [];
+    if (gs.lava) {
+      const rng = makeRng(9);
+      for (let i = 0; i < 7; i++) {
+        const a = rng() * Math.PI * 2, rad = Math.sqrt(rng()) * r * 0.8;
+        const px = cx + Math.cos(a) * rad, py = cy + Math.sin(a) * rad;
+        cracks.push(`M${px.toFixed(1)},${py.toFixed(1)} q${((rng() - 0.5) * r * 0.5).toFixed(1)},${((rng() - 0.5) * r * 0.3).toFixed(1)} ${((rng() - 0.5) * r * 0.8).toFixed(1)},${((rng() - 0.5) * r * 0.6).toFixed(1)}`);
+      }
+    }
+    if (gs.cyber) {
+      const rng = makeRng(5);
+      for (let i = 0; i < 8; i++) {
+        const a = rng() * Math.PI * 2, rad = Math.sqrt(rng()) * r * 0.85;
+        dots.push({ x: cx + Math.cos(a) * rad, y: cy + Math.sin(a) * rad, rad: Math.max(1.2, size * 0.012), o: 1 });
+      }
+    }
+    if (gs.biolum) {
+      const rng = makeRng(21);
+      for (let i = 0; i < 26; i++) {
+        const a = rng() * Math.PI * 2, rad = Math.sqrt(rng()) * r * 0.94;
+        dots.push({ x: cx + Math.cos(a) * rad, y: cy + Math.sin(a) * rad, rad: 0.6 + rng() * (size * 0.01), o: 0.25 + rng() * 0.5 });
+      }
+    }
+    return { cracks, dots };
+  }, [gs.lava, gs.cyber, gs.biolum, r, cx, cy, size]);
+
+  // Cloud banks (per-style flag) — deterministic ellipses over the globe.
+  const clouds = useMemo(() => {
+    if (!gs.clouds) return [] as { x: number; y: number; w: number; o: number; rot: number }[];
+    const rng = makeRng(13);
+    return Array.from({ length: 5 }, () => {
+      const a = rng() * Math.PI * 2, rad = Math.sqrt(rng()) * r * 0.7;
+      return {
+        x: cx + Math.cos(a) * rad,
+        y: cy + Math.sin(a) * rad,
+        w: r * (0.22 + rng() * 0.3),
+        o: 0.16 + rng() * 0.14,
+        rot: rng() * 40 - 20,
+      };
+    });
+  }, [gs.clouds, r, cx, cy]);
+
+  // Gold sparkles — star glints on the surface.
+  const sparkles = useMemo(() => {
+    if (!gs.sparkle) return [] as { x: number; y: number; s: number }[];
+    const rng = makeRng(3);
+    return Array.from({ length: 4 }, () => {
+      const a = rng() * Math.PI * 2, rad = Math.sqrt(rng()) * r * 0.8;
+      return { x: cx + Math.cos(a) * rad, y: cy + Math.sin(a) * rad, s: r * (0.06 + rng() * 0.06) };
+    });
+  }, [gs.sparkle, r, cx, cy]);
+
+  // Solar-corona rays (eclipse globe).
+  const coronaRays = useMemo(() => {
+    if (!gs.corona) return [] as { x1: number; y1: number; x2: number; y2: number }[];
+    const rng = makeRng(7);
+    return Array.from({ length: 10 }, () => {
+      const a = rng() * Math.PI * 2, len = r * (1.2 + rng() * 0.5);
+      return {
+        x1: cx + Math.cos(a) * r * 1.02, y1: cy + Math.sin(a) * r * 1.02,
+        x2: cx + Math.cos(a) * len, y2: cy + Math.sin(a) * len,
+      };
+    });
+  }, [gs.corona, r, cx, cy]);
 
   // ── Cosmos decoration (stars / bands / streaks) ──
   const stars = useMemo(() => {
     const rng = makeRng(uid * 97 + cosmosStyle.length);
     const want = cosmosStyle === 'gradient' ? 0
       : cosmosStyle === 'milkyway' ? 70
+      : cosmosStyle === 'galaxy' ? 55
+      : cosmosStyle === 'constellation' ? 30
+      : cosmosStyle === 'goldrain' ? 30
+      : cosmosStyle === 'blackhole' ? 40
+      : cosmosStyle === 'solareclipse' ? 26
+      : cosmosStyle === 'supernova' ? 36
       : 46;
     const out: { x: number; y: number; rad: number; o: number }[] = [];
     for (let i = 0; i < want; i++) {
@@ -207,15 +326,97 @@ function WorldAvatarBase({ config, size, style, animate = false }: WorldAvatarPr
     return out;
   }, [uid, cosmosStyle, size]);
 
+  // Meteor streaks — v2: tapered gradient trails with a bright head.
   const meteors = useMemo(() => {
     if (cosmosStyle !== 'meteors') return [] as { x: number; y: number; len: number }[];
     const rng = makeRng(uid * 31 + 7);
-    return Array.from({ length: 4 }, () => ({
-      x: rng() * size * 0.9,
-      y: rng() * size * 0.6,
-      len: size * (0.12 + rng() * 0.12),
+    return Array.from({ length: 5 }, () => ({
+      x: rng() * size * 0.85,
+      y: rng() * size * 0.55,
+      len: size * (0.16 + rng() * 0.16),
     }));
   }, [cosmosStyle, uid, size]);
+
+  // Aurora v2 — vertical light curtains (position, height, palette index).
+  const auroraCurtains = useMemo(() => {
+    if (cosmosStyle !== 'aurora') return [] as { x: number; h: number; ci: number }[];
+    const rng = makeRng(uid * 11 + 3);
+    return Array.from({ length: 7 }, (_, i) => ({
+      x: size * (0.08 + i * 0.13),
+      h: size * (0.28 + rng() * 0.22),
+      ci: i % 3,
+    }));
+  }, [cosmosStyle, uid, size]);
+
+  // Constellation figures — connected star points.
+  const constellation = useMemo(() => {
+    if (cosmosStyle !== 'constellation') return [] as { x: number; y: number }[];
+    const rng = makeRng(uid * 53 + 17);
+    return Array.from({ length: 9 }, () => ({ x: rng() * size, y: rng() * size * 0.9 }));
+  }, [cosmosStyle, uid, size]);
+
+  // Golden 8-point stars.
+  const goldStars = useMemo(() => {
+    if (cosmosStyle !== 'goldrain') return [] as { x: number; y: number; s: number; o: number }[];
+    const rng = makeRng(uid * 41 + 5);
+    return Array.from({ length: 9 }, () => ({
+      x: rng() * size, y: rng() * size, s: 1.5 + rng() * (size * 0.02), o: 0.5 + rng() * 0.5,
+    }));
+  }, [cosmosStyle, uid, size]);
+
+  // Galaxy spiral arms (logarithmic) — anchored top-right, clear of the globe.
+  const galaxyArms = useMemo(() => {
+    if (cosmosStyle !== 'galaxy') return [] as string[];
+    const gcx = size * 0.78, gcy = size * 0.2;
+    const arms: string[] = [];
+    for (let arm = 0; arm < 2; arm++) {
+      let d = `M${gcx.toFixed(1)},${gcy.toFixed(1)}`;
+      for (let tt = 0; tt < 3.6; tt += 0.15) {
+        const a = tt + arm * Math.PI, rad = size * 0.045 * Math.exp(tt * 0.42);
+        d += ` L${(gcx + Math.cos(a) * rad).toFixed(1)},${(gcy + Math.sin(a) * rad * 0.55).toFixed(1)}`;
+      }
+      arms.push(d);
+    }
+    return arms;
+  }, [cosmosStyle, size]);
+
+  // Fireflies orbit — blink phases (opacity animated on the rAF clock).
+  const fireflies = useMemo(() => {
+    if (orbitStyle !== 'fireflies') return [] as { a: number; rad: number; speed: number; phase: number }[];
+    return Array.from({ length: 10 }, (_, i) => {
+      const rng = makeRng(i * 29 + 11);
+      return {
+        a: (i / 10) * Math.PI * 2 + rng() * 0.4,
+        rad: ringR + (rng() - 0.5) * size * 0.06,
+        speed: 2 + rng() * 3,
+        phase: rng() * Math.PI * 2,
+      };
+    });
+  }, [orbitStyle, ringR, size]);
+
+  // Ice-ring crystals.
+  const iceCrystals = useMemo(() => {
+    if (orbitStyle !== 'iceRing') return [] as { x: number; y: number; s: number; rot: number }[];
+    return Array.from({ length: 12 }, (_, i) => {
+      const rng = makeRng(i * 7 + 5);
+      const a = (i / 12) * Math.PI * 2 + rng() * 0.2;
+      return {
+        x: cx + Math.cos(a) * ringR, y: cy + Math.sin(a) * ringR,
+        s: size * (0.014 + rng() * 0.016), rot: (a * 180) / Math.PI,
+      };
+    });
+  }, [orbitStyle, ringR, cx, cy, size]);
+
+  // Fire-ring flame licks.
+  const flames = useMemo(() => {
+    if (orbitStyle !== 'fire') return [] as string[];
+    return Array.from({ length: 16 }, (_, i) => {
+      const rng = makeRng(i * 17 + 3);
+      const a = (i / 16) * Math.PI * 2, fl = size * (0.03 + rng() * 0.045);
+      const px = cx + Math.cos(a) * ringR, py = cy + Math.sin(a) * ringR;
+      return `M${px.toFixed(1)},${py.toFixed(1)} q${(Math.cos(a) * fl * 0.6 - Math.sin(a) * fl * 0.4).toFixed(1)},${(Math.sin(a) * fl * 0.6 + Math.cos(a) * fl * 0.4).toFixed(1)} ${(Math.cos(a) * fl).toFixed(1)},${(Math.sin(a) * fl).toFixed(1)}`;
+    });
+  }, [orbitStyle, ringR, cx, cy, size]);
 
   // ── Cosmos gradient stops ──
   const cosmosStops = (() => {
@@ -227,9 +428,193 @@ function WorldAvatarBase({ config, size, style, animate = false }: WorldAvatarPr
       case 'milkyway': return ['#191033', '#06040f'];
       case 'nebula': return ['#1a0a2a', '#06040f'];
       case 'meteors': return ['#0a1030', '#04060f'];
+      case 'galaxy': return ['#140f2e', '#040309'];
+      case 'blackhole': return ['#0c0a14', '#020203'];
+      case 'constellation': return ['#0b1430', '#040814'];
+      case 'solareclipse': return ['#241436', '#050208'];
+      case 'supernova': return ['#2a1030', '#070310'];
+      case 'goldrain': return ['#141024', '#060410'];
       default: return ['#0b1230', '#05060f'];
     }
   })();
+
+  // Pulse in [0,1] for glow animations (neon ring). Static mid-value when idle.
+  const pulse = animate ? 0.5 + 0.5 * Math.sin(t * Math.PI) : 0.5;
+
+  const AURORA_COLORS = ['#3fe0a0', '#43c6e0', '#9a6af0'];
+
+  // Tilted Saturn ring arcs: back (upper) half drawn behind the globe, front
+  // (lower) half above it. rotation applied via <G rotation>.
+  const saturnArc = (back: boolean, rx: number, ry: number) =>
+    back
+      ? `M${cx - rx},${cy} A${rx},${ry} 0 0 1 ${cx + rx},${cy}`
+      : `M${cx - rx},${cy} A${rx},${ry} 0 0 0 ${cx + rx},${cy}`;
+
+  const renderSaturn = (back: boolean) => {
+    const rx = ringR * 1.08, ry = ringR * 0.34;
+    const bands: [number, string, number][] = [
+      [size * 0.055, '#d8b878', 0.5],
+      [size * 0.028, '#f0d8a8', 0.85],
+      [size * 0.012, '#a8865a', 0.9],
+    ];
+    return (
+      <G rotation={-16} originX={cx} originY={cy}>
+        {bands.map(([w, color, op], i) => (
+          <Path key={`sat${back ? 'b' : 'f'}${i}`} d={saturnArc(back, rx, ry)} fill="none" stroke={color} strokeWidth={w} strokeOpacity={op} />
+        ))}
+      </G>
+    );
+  };
+
+  const renderDouble = (back: boolean) => {
+    // Two crossed elliptical orbits; the upper halves sit behind the globe.
+    const halves = back ? { y: 0, h: cy } : { y: cy, h: size - cy };
+    return (
+      <G clipPath={`url(#half_${back ? 'top' : 'bot'}_${uid})`}>
+        <Ellipse cx={cx} cy={cy} rx={ringR} ry={ringR * 0.42} fill="none" stroke="#c8d0d8" strokeWidth={size * 0.011} strokeOpacity={back ? 0.4 : 1} rotation={28} originX={cx} originY={cy} />
+        <Ellipse cx={cx} cy={cy} rx={ringR} ry={ringR * 0.42} fill="none" stroke="#8fb8ff" strokeWidth={size * 0.011} strokeOpacity={back ? 0.4 : 1} rotation={-28} originX={cx} originY={cy} />
+      </G>
+    );
+  };
+
+  /** Orbit rings that need a "behind the globe" pass (saturn, double). */
+  const renderOrbitBack = () => {
+    if (orbitStyle === 'saturn') return renderSaturn(true);
+    if (orbitStyle === 'double') return renderDouble(true);
+    return null;
+  };
+
+  const renderOrbitFront = () => {
+    switch (orbitStyle) {
+      case 'meridian':
+        return (
+          <>
+            <Circle cx={cx} cy={cy} r={ringR} fill="none" stroke="#cd7f32" strokeWidth={size * 0.018} strokeOpacity={0.9} />
+            <Circle cx={cx} cy={cy} r={ringR} fill="none" stroke="#7a4a18" strokeWidth={size * 0.006} strokeOpacity={0.6} />
+          </>
+        );
+      case 'graticule':
+        return (
+          <>
+            <Circle cx={cx} cy={cy} r={ringR} fill="none" stroke="#c8d0d8" strokeWidth={size * 0.012} />
+            <Circle cx={cx} cy={cy} r={ringR * 0.92} fill="none" stroke="#c8d0d8" strokeWidth={0.8} strokeOpacity={0.5} strokeDasharray={`${size * 0.02},${size * 0.02}`} />
+          </>
+        );
+      case 'compass':
+        // v2: diagonal ticks + N/E/S/O cardinal medallions.
+        return (
+          <>
+            <Circle cx={cx} cy={cy} r={ringR} fill="none" stroke="#ffd700" strokeWidth={size * 0.014} />
+            {[45, 135, 225, 315].map((deg) => {
+              const a = (deg * Math.PI) / 180;
+              return (
+                <Line
+                  key={`ct${deg}`}
+                  x1={cx + Math.cos(a) * (ringR - size * 0.03)} y1={cy + Math.sin(a) * (ringR - size * 0.03)}
+                  x2={cx + Math.cos(a) * (ringR + size * 0.02)} y2={cy + Math.sin(a) * (ringR + size * 0.02)}
+                  stroke="#ffd700" strokeWidth={1} strokeOpacity={0.95}
+                />
+              );
+            })}
+            {([['N', 0, -1], ['E', 1, 0], ['S', 0, 1], ['O', -1, 0]] as [string, number, number][]).map(([L, dx, dy]) => (
+              <G key={`card${L}`}>
+                <Circle cx={cx + dx * ringR} cy={cy + dy * ringR} r={size * 0.062} fill="#0a0e1a" stroke="#ffd700" strokeWidth={1.4} />
+                <SvgText
+                  x={cx + dx * ringR}
+                  y={cy + dy * ringR + size * 0.028}
+                  textAnchor="middle"
+                  fontSize={size * 0.075}
+                  fontWeight="bold"
+                  fill="#ffd700"
+                >
+                  {L}
+                </SvgText>
+              </G>
+            ))}
+          </>
+        );
+      case 'neon':
+        // v2: triple halo with a slow breathing pulse on the outer glow.
+        return (
+          <>
+            <Circle cx={cx} cy={cy} r={ringR} fill="none" stroke="#80f0ff" strokeWidth={size * 0.05} strokeOpacity={0.1 + 0.16 * pulse} />
+            <Circle cx={cx} cy={cy} r={ringR} fill="none" stroke="#80f0ff" strokeWidth={size * 0.022} strokeOpacity={0.4} />
+            <Circle cx={cx} cy={cy} r={ringR} fill="none" stroke="#eafcff" strokeWidth={size * 0.01} strokeOpacity={1} />
+          </>
+        );
+      case 'asteroids':
+        return (
+          <>
+            <Circle cx={cx} cy={cy} r={ringR} fill="none" stroke="#6a5e44" strokeWidth={1} strokeOpacity={0.4} />
+            {Array.from({ length: 22 }).map((_, i) => {
+              const rng = makeRng(uid * 7 + i * 13);
+              const a = (i / 22) * Math.PI * 2 + rng() * 0.2;
+              const rr = ringR + (rng() - 0.5) * size * 0.05;
+              return (
+                <Circle key={`as${i}`} cx={cx + Math.cos(a) * rr} cy={cy + Math.sin(a) * rr} r={size * (0.008 + rng() * 0.014)} fill="#9a8a6a" fillOpacity={0.9} />
+              );
+            })}
+          </>
+        );
+      case 'saturn':
+        return renderSaturn(false);
+      case 'double':
+        return renderDouble(false);
+      case 'iceRing':
+        return (
+          <>
+            <Circle cx={cx} cy={cy} r={ringR} fill="none" stroke="#bfe4f5" strokeWidth={size * 0.012} strokeOpacity={0.7} />
+            {iceCrystals.map((c2, i) => (
+              <Polygon
+                key={`ic${i}`}
+                points={`${c2.x},${c2.y - c2.s} ${c2.x + c2.s * 0.7},${c2.y} ${c2.x},${c2.y + c2.s} ${c2.x - c2.s * 0.7},${c2.y}`}
+                fill="#eaf8ff" fillOpacity={0.9} stroke="#8fc8e8" strokeWidth={0.6}
+                rotation={c2.rot} originX={c2.x} originY={c2.y}
+              />
+            ))}
+          </>
+        );
+      case 'fireflies':
+        return (
+          <>
+            <Circle cx={cx} cy={cy} r={ringR} fill="none" stroke="#8a9a4a" strokeWidth={0.8} strokeOpacity={0.3} strokeDasharray={`${size * 0.015},${size * 0.03}`} />
+            {fireflies.map((f, i) => {
+              const blink = animate ? 0.15 + 0.85 * (0.5 + 0.5 * Math.sin(t * f.speed + f.phase)) : 0.8;
+              return (
+                <Circle key={`ff${i}`} cx={cx + Math.cos(f.a) * f.rad} cy={cy + Math.sin(f.a) * f.rad} r={size * 0.012} fill="#d8ff5a" fillOpacity={blink} />
+              );
+            })}
+          </>
+        );
+      case 'rainbow':
+        return (
+          <>
+            {['#ff5a5a', '#ffb02e', '#ffe95a', '#3fae5a', '#4f8ef7', '#a458ff'].map((color, i) => {
+              const r2 = ringR + size * 0.026 - i * size * 0.0105;
+              return (
+                <Path
+                  key={`rb${i}`}
+                  d={`M${cx - r2},${cy} A${r2},${r2} 0 1 0 ${(cx + r2 * Math.cos(-0.6)).toFixed(1)},${(cy + r2 * Math.sin(-0.6)).toFixed(1)}`}
+                  fill="none" stroke={color} strokeWidth={size * 0.011} strokeOpacity={0.85} strokeLinecap="round"
+                />
+              );
+            })}
+          </>
+        );
+      case 'fire':
+        return (
+          <>
+            <Circle cx={cx} cy={cy} r={ringR} fill="none" stroke="#ff6a2a" strokeWidth={size * 0.026} strokeOpacity={0.85} />
+            <Circle cx={cx} cy={cy} r={ringR} fill="none" stroke="#ffd27a" strokeWidth={size * 0.01} strokeOpacity={0.95} />
+            {flames.map((d, i) => (
+              <Path key={`fl${i}`} d={d} fill="none" stroke="#ff9a3a" strokeWidth={size * 0.014} strokeOpacity={0.8} strokeLinecap="round" />
+            ))}
+          </>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <View style={[{ width: size, height: size }, style]}>
@@ -245,11 +630,57 @@ function WorldAvatarBase({ config, size, style, animate = false }: WorldAvatarPr
             <Stop offset="100%" stopColor={gs.ocean[2]} />
           </RadialGradient>
           <RadialGradient id={`neb_${uid}`} cx="60%" cy="40%" r="55%">
-            <Stop offset="0%" stopColor="#c63aa6" stopOpacity="0.7" />
+            <Stop offset="0%" stopColor="#ff5ac8" stopOpacity="0.75" />
+            <Stop offset="60%" stopColor="#c63aa6" stopOpacity="0.3" />
             <Stop offset="100%" stopColor="#c63aa6" stopOpacity="0" />
           </RadialGradient>
+          <RadialGradient id={`neb2_${uid}`} cx="30%" cy="68%" r="50%">
+            <Stop offset="0%" stopColor="#4fa0ff" stopOpacity="0.6" />
+            <Stop offset="100%" stopColor="#2f7fd0" stopOpacity="0" />
+          </RadialGradient>
+          {gs.atmo && (
+            <RadialGradient id={`atm_${uid}`} cx="50%" cy="50%" r="50%">
+              <Stop offset="62%" stopColor={gs.atmo} stopOpacity="0" />
+              <Stop offset="82%" stopColor={gs.atmo} stopOpacity="0.55" />
+              <Stop offset="100%" stopColor={gs.atmo} stopOpacity="0" />
+            </RadialGradient>
+          )}
+          {gs.terminator && (
+            <RadialGradient id={`ter_${uid}`} cx="32%" cy="28%" r="85%">
+              <Stop offset="55%" stopColor="#000000" stopOpacity="0" />
+              <Stop offset="100%" stopColor="#000000" stopOpacity="0.62" />
+            </RadialGradient>
+          )}
+          {gs.corona && (
+            <RadialGradient id={`cor_${uid}`} cx="50%" cy="50%" r="50%">
+              <Stop offset="58%" stopColor="#fff2c8" stopOpacity="0" />
+              <Stop offset="72%" stopColor="#ffe9a8" stopOpacity="0.9" />
+              <Stop offset="100%" stopColor="#ff9a3a" stopOpacity="0" />
+            </RadialGradient>
+          )}
+          {cosmosStyle === 'solareclipse' && (
+            <RadialGradient id={`sec_${uid}`} cx="50%" cy="50%" r="50%">
+              <Stop offset="55%" stopColor="#ffe9a8" stopOpacity="0" />
+              <Stop offset="70%" stopColor="#ffe9a8" stopOpacity="0.85" />
+              <Stop offset="100%" stopColor="#ff9a3a" stopOpacity="0" />
+            </RadialGradient>
+          )}
+          {cosmosStyle === 'supernova' && (
+            <RadialGradient id={`sn_${uid}`} cx="50%" cy="50%" r="50%">
+              <Stop offset="0%" stopColor="#ffffff" stopOpacity="1" />
+              <Stop offset="30%" stopColor="#ffd27a" stopOpacity="0.8" />
+              <Stop offset="70%" stopColor="#ff5a8a" stopOpacity="0.3" />
+              <Stop offset="100%" stopColor="#ff5a8a" stopOpacity="0" />
+            </RadialGradient>
+          )}
           <ClipPath id={`clip_${uid}`}>
             <Circle cx={cx} cy={cy} r={r} />
+          </ClipPath>
+          <ClipPath id={`half_top_${uid}`}>
+            <Rect x={0} y={0} width={size} height={cy} />
+          </ClipPath>
+          <ClipPath id={`half_bot_${uid}`}>
+            <Rect x={0} y={cy} width={size} height={size - cy} />
           </ClipPath>
         </Defs>
 
@@ -258,14 +689,24 @@ function WorldAvatarBase({ config, size, style, animate = false }: WorldAvatarPr
 
         {cosmosStyle === 'nebula' && (
           <>
-            <Circle cx={size * 0.62} cy={size * 0.4} r={size * 0.4} fill={`url(#neb_${uid})`} />
-            <Circle cx={size * 0.3} cy={size * 0.66} r={size * 0.34} fill="#2f7fd0" fillOpacity={0.28} />
+            {/* v2: richer multi-colour swirls + a bright core */}
+            <Circle cx={size * 0.62} cy={size * 0.38} r={size * 0.44} fill={`url(#neb_${uid})`} />
+            <Circle cx={size * 0.3} cy={size * 0.68} r={size * 0.4} fill={`url(#neb2_${uid})`} />
+            <Circle cx={size * 0.55} cy={size * 0.45} r={size * 0.05} fill="#ffffff" fillOpacity={0.9} />
+            <Circle cx={size * 0.55} cy={size * 0.45} r={size * 0.12} fill="#ffd8f0" fillOpacity={0.3} />
           </>
         )}
         {cosmosStyle === 'aurora' && (
           <>
-            <Path d={`M0,${size * 0.32} Q${size * 0.5},${size * 0.18} ${size},${size * 0.34} L${size},${size * 0.5} Q${size * 0.5},${size * 0.36} 0,${size * 0.5} Z`} fill="#3fe0a0" fillOpacity={0.22} />
-            <Path d={`M0,${size * 0.46} Q${size * 0.5},${size * 0.32} ${size},${size * 0.48} L${size},${size * 0.62} Q${size * 0.5},${size * 0.5} 0,${size * 0.64} Z`} fill="#43c6e0" fillOpacity={0.18} />
+            {/* v2: vertical light curtains, multi-hue */}
+            {auroraCurtains.map((cu, i) => (
+              <Path
+                key={`au${i}`}
+                d={`M${cu.x},${size * 0.06} q${size * 0.04},${cu.h * 0.5} 0,${cu.h} l${size * 0.05},0 q${size * 0.04},-${cu.h * 0.5} 0,-${cu.h} Z`}
+                fill={AURORA_COLORS[cu.ci]}
+                fillOpacity={0.4}
+              />
+            ))}
           </>
         )}
         {cosmosStyle === 'milkyway' && (
@@ -274,26 +715,116 @@ function WorldAvatarBase({ config, size, style, animate = false }: WorldAvatarPr
         {cosmosStyle === 'sunrise' && (
           <Circle cx={cx} cy={size * 1.02} r={size * 0.5} fill="#ffd27a" fillOpacity={0.55} />
         )}
+        {cosmosStyle === 'galaxy' && (
+          <>
+            {galaxyArms.map((d, i) => (
+              <Path key={`ga${i}`} d={d} fill="none" stroke="#b8a0ff" strokeWidth={size * 0.035} strokeOpacity={0.3} strokeLinecap="round" />
+            ))}
+            <Circle cx={size * 0.78} cy={size * 0.2} r={size * 0.06} fill="#fff0d8" fillOpacity={0.95} />
+            <Circle cx={size * 0.78} cy={size * 0.2} r={size * 0.13} fill="#ffd9a0" fillOpacity={0.3} />
+          </>
+        )}
+        {cosmosStyle === 'blackhole' && (
+          <>
+            <Ellipse cx={size * 0.74} cy={size * 0.2} rx={size * 0.24} ry={size * 0.07} fill="none" stroke="#ff9a3a" strokeWidth={size * 0.022} strokeOpacity={0.85} />
+            <Ellipse cx={size * 0.74} cy={size * 0.2} rx={size * 0.30} ry={size * 0.10} fill="none" stroke="#ffd27a" strokeWidth={size * 0.01} strokeOpacity={0.5} />
+            <Circle cx={size * 0.74} cy={size * 0.2} r={size * 0.11} fill="#000000" />
+            <Circle cx={size * 0.74} cy={size * 0.2} r={size * 0.115} fill="none" stroke="#ffb45a" strokeWidth={1.6} strokeOpacity={0.9} />
+          </>
+        )}
+        {cosmosStyle === 'constellation' && (
+          <>
+            {constellation.slice(0, -1).map((p, i) => (
+              <Line key={`cl${i}`} x1={p.x} y1={p.y} x2={constellation[i + 1].x} y2={constellation[i + 1].y} stroke="#8fb8ff" strokeWidth={0.7} strokeOpacity={0.5} />
+            ))}
+            {constellation.map((p, i) => (
+              <G key={`cs${i}`}>
+                <Circle cx={p.x} cy={p.y} r={size * 0.026} fill="#8fb8ff" fillOpacity={0.25} />
+                <Circle cx={p.x} cy={p.y} r={size * 0.013} fill="#ffffff" />
+              </G>
+            ))}
+          </>
+        )}
+        {cosmosStyle === 'solareclipse' && (
+          <>
+            <Circle cx={size * 0.76} cy={size * 0.19} r={size * 0.26} fill={`url(#sec_${uid})`} />
+            <Circle cx={size * 0.76} cy={size * 0.19} r={size * 0.14} fill="#0a0612" />
+            <Circle cx={size * 0.76} cy={size * 0.19} r={size * 0.145} fill="none" stroke="#fff2c8" strokeWidth={1.8} strokeOpacity={0.95} />
+          </>
+        )}
+        {cosmosStyle === 'supernova' && (
+          <>
+            <Circle cx={size * 0.76} cy={size * 0.21} r={size * 0.34} fill={`url(#sn_${uid})`} />
+            {Array.from({ length: 8 }).map((_, i) => {
+              const a = (i * Math.PI) / 4;
+              const nx = size * 0.76, ny = size * 0.21;
+              return (
+                <Line
+                  key={`sr${i}`}
+                  x1={nx + Math.cos(a) * size * 0.1} y1={ny + Math.sin(a) * size * 0.1}
+                  x2={nx + Math.cos(a) * size * (0.3 + (i % 2) * 0.12)} y2={ny + Math.sin(a) * size * (0.3 + (i % 2) * 0.12)}
+                  stroke="#ffe9c8" strokeWidth={1.6} strokeOpacity={0.8} strokeLinecap="round"
+                />
+              );
+            })}
+          </>
+        )}
+        {cosmosStyle === 'goldrain' && goldStars.map((g2, i) => (
+          <Path
+            key={`gr${i}`}
+            d={`M${g2.x},${g2.y - g2.s * 2} L${g2.x + g2.s * 0.6},${g2.y - g2.s * 0.6} L${g2.x + g2.s * 2},${g2.y} L${g2.x + g2.s * 0.6},${g2.y + g2.s * 0.6} L${g2.x},${g2.y + g2.s * 2} L${g2.x - g2.s * 0.6},${g2.y + g2.s * 0.6} L${g2.x - g2.s * 2},${g2.y} L${g2.x - g2.s * 0.6},${g2.y - g2.s * 0.6} Z`}
+            fill="#ffd700" fillOpacity={g2.o}
+          />
+        ))}
 
         {stars.map((s, i) => (
           <Circle key={`st${i}`} cx={s.x} cy={s.y} r={s.rad} fill="#ffffff" fillOpacity={s.o} />
         ))}
         {meteors.map((m, i) => (
-          <Line key={`mt${i}`} x1={m.x} y1={m.y} x2={m.x + m.len} y2={m.y + m.len * 0.55} stroke="#ffffff" strokeWidth={1.4} strokeOpacity={0.8} strokeLinecap="round" />
+          // v2: tapered trail + incandescent head (gradient-free: layered strokes)
+          <G key={`mt${i}`}>
+            <Line x1={m.x} y1={m.y} x2={m.x + m.len} y2={m.y + m.len * 0.55} stroke="#ffffff" strokeWidth={2} strokeOpacity={0.25} strokeLinecap="round" />
+            <Line x1={m.x + m.len * 0.45} y1={m.y + m.len * 0.25} x2={m.x + m.len} y2={m.y + m.len * 0.55} stroke="#ffffff" strokeWidth={1.6} strokeOpacity={0.7} strokeLinecap="round" />
+            <Circle cx={m.x + m.len} cy={m.y + m.len * 0.55} r={1.9} fill="#ffffff" />
+          </G>
         ))}
+
+        {/* ── Orbit rings, back pass (saturn / double pass behind the globe) ── */}
+        {renderOrbitBack()}
+
+        {/* ── Atmosphere halo / eclipse corona (behind the globe disc) ── */}
+        {gs.atmo && <Circle cx={cx} cy={cy} r={r * 1.28} fill={`url(#atm_${uid})`} />}
+        {gs.corona && (
+          <>
+            <Circle cx={cx} cy={cy} r={r * 1.45} fill={`url(#cor_${uid})`} />
+            {coronaRays.map((ray, i) => (
+              <Line key={`cr${i}`} x1={ray.x1} y1={ray.y1} x2={ray.x2} y2={ray.y2} stroke="#ffe9a8" strokeWidth={1} strokeOpacity={0.5} strokeLinecap="round" />
+            ))}
+          </>
+        )}
 
         {/* ── Globe ── */}
         <Circle cx={cx} cy={cy} r={r} fill={`url(#oce_${uid})`} />
         <G clipPath={`url(#clip_${uid})`}>
           {/* graticule */}
           {gratLines.map((d, i) => (
-            <Path key={`g${i}`} d={d} fill="none" stroke={gs.grat} strokeWidth={gs.wire ? 0.7 : 0.45} strokeOpacity={gs.wire ? 0.5 : 0.28} />
+            <Path key={`g${i}`} d={d} fill="none" stroke={gs.grat} strokeWidth={gs.wire ? 0.7 : 0.45} strokeOpacity={gs.wire ? 0.5 : 0.28} strokeDasharray={gs.dash ? '3,3' : undefined} />
           ))}
 
           {/* land */}
-          {gs.wire ? (
+          {gs.craters ? (
+            <>
+              {craters.map((c2, i) => (
+                <G key={`cra${i}`}>
+                  <Circle cx={c2.x} cy={c2.y} r={c2.cr} fill="#7a3418" fillOpacity={0.55} />
+                  <Circle cx={c2.x - c2.cr * 0.2} cy={c2.y - c2.cr * 0.2} r={c2.cr * 0.7} fill="#c86a3a" fillOpacity={0.35} />
+                </G>
+              ))}
+              <Ellipse cx={cx} cy={cy - r * 0.78} rx={r * 0.55} ry={r * 0.16} fill="#f4e0d0" fillOpacity={0.85} />
+            </>
+          ) : gs.wire ? (
             fills.map((d, i) => (
-              <Path key={`w${i}`} d={d} fill="none" stroke={gs.stroke} strokeWidth={0.7} strokeOpacity={0.85} />
+              <Path key={`w${i}`} d={d} fill="none" stroke={gs.stroke} strokeWidth={0.7} strokeOpacity={0.85} strokeDasharray={gs.dash ? '2.5,2' : undefined} />
             ))
           ) : gs.political ? (
             fills.map((d, i) => (
@@ -310,76 +841,73 @@ function WorldAvatarBase({ config, size, style, animate = false }: WorldAvatarPr
               {gs.relief && highlights.map((d, i) => (
                 <Path key={`h${i}`} d={d} fill="rgba(255,255,255,0.20)" />
               ))}
+              {gs.lava && fills.map((d, i) => (
+                <Path key={`lv${i}`} d={d} fill="none" stroke="#ff8a3a" strokeWidth={1.1} strokeOpacity={0.9} />
+              ))}
+              {gs.biolum && fills.map((d, i) => (
+                <Path key={`bl${i}`} d={d} fill="none" stroke="#2ff0c0" strokeWidth={1} strokeOpacity={0.8} />
+              ))}
             </>
           )}
 
-          {/* night-side city lights */}
+          {/* lava cracks / cyber nodes / plankton */}
+          {surfaceDeco.cracks.map((d, i) => (
+            <Path key={`ck${i}`} d={d} fill="none" stroke="#ffb03a" strokeWidth={1.2} strokeOpacity={0.85} strokeLinecap="round" />
+          ))}
+          {surfaceDeco.dots.map((p, i) => (
+            <Circle key={`sd${i}`} cx={p.x} cy={p.y} r={p.rad} fill={gs.cyber ? '#3af0a0' : '#5affd8'} fillOpacity={p.o} />
+          ))}
+
+          {/* night-side city lights — v2: soft urban halo under each dot */}
           {cityDots.map((p, i) => (
-            <Circle key={`c${i}`} cx={p.x} cy={p.y} r={Math.max(0.8, size * 0.012)} fill="#ffe7a0" fillOpacity={0.9} />
+            <G key={`c${i}`}>
+              <Circle cx={p.x} cy={p.y} r={Math.max(2.4, size * 0.032)} fill="#ffce6a" fillOpacity={0.28} />
+              <Circle cx={p.x} cy={p.y} r={Math.max(0.8, size * 0.012)} fill="#ffe7a0" fillOpacity={0.95} />
+            </G>
+          ))}
+
+          {/* cloud banks */}
+          {clouds.map((cl, i) => (
+            <Ellipse key={`cb${i}`} cx={cl.x} cy={cl.y} rx={cl.w} ry={cl.w * 0.38} fill="#ffffff" fillOpacity={cl.o} rotation={cl.rot} originX={cl.x} originY={cl.y} />
+          ))}
+
+          {/* gold star glints */}
+          {sparkles.map((sp, i) => (
+            <Path
+              key={`gl${i}`}
+              d={`M${sp.x},${sp.y - sp.s} L${sp.x + sp.s * 0.28},${sp.y - sp.s * 0.28} L${sp.x + sp.s},${sp.y} L${sp.x + sp.s * 0.28},${sp.y + sp.s * 0.28} L${sp.x},${sp.y + sp.s} L${sp.x - sp.s * 0.28},${sp.y + sp.s * 0.28} L${sp.x - sp.s},${sp.y} L${sp.x - sp.s * 0.28},${sp.y - sp.s * 0.28} Z`}
+              fill="#fff6d8" fillOpacity={0.95}
+            />
+          ))}
+
+          {/* day/night terminator */}
+          {gs.terminator && <Circle cx={cx} cy={cy} r={r} fill={`url(#ter_${uid})`} />}
+
+          {/* hologram / cyber scanlines */}
+          {gs.scan && Array.from({ length: Math.floor((2 * r) / 3.2) }).map((_, i) => (
+            <Line key={`sc${i}`} x1={cx - r} y1={cy - r + i * 3.2} x2={cx + r} y2={cy - r + i * 3.2} stroke={gs.stroke} strokeWidth={0.5} strokeOpacity={0.13} />
           ))}
         </G>
 
+        {/* scan glow ring outside the clip */}
+        {gs.scan && <Circle cx={cx} cy={cy} r={r * 1.06} fill="none" stroke={gs.stroke} strokeWidth={2.4} strokeOpacity={0.22} />}
+
         {/* rim + specular highlight */}
         <Circle cx={cx} cy={cy} r={r} fill="none" stroke={shade(gs.ocean[0], 0.3)} strokeWidth={1.2} strokeOpacity={0.5} />
-        <Circle cx={cx - r * 0.27} cy={cy - r * 0.3} r={r * 0.18} fill="white" fillOpacity={0.22} />
+        <Circle cx={cx - r * 0.27} cy={cy - r * 0.3} r={r * 0.18} fill="white" fillOpacity={gs.terminator ? 0.3 : 0.22} />
 
         {/* ── Emblem — a landmark planted on the globe at its real country ── */}
         {emblem && emblem.id !== 'emblem_none' && (
           <>
+            {/* warm ground spotlight + contact shadow (Boutique 2.0 polish) */}
+            <Ellipse cx={cx} cy={cy + r * 0.04} rx={r * 0.86 * 0.46} ry={r * 0.86 * 0.12} fill="#ffce6a" opacity={0.13} />
             <Ellipse cx={cx} cy={cy + r * 0.04} rx={r * 0.86 * 0.34} ry={r * 0.86 * 0.075} fill="#00040a" opacity={0.32} />
             <EmblemGlyph id={emblem.id} bx={cx} by={cy + r * 0.04} h={r * 0.86} />
           </>
         )}
 
-        {/* ── Orbit ring ── */}
-        {orbitStyle === 'meridian' && (
-          <>
-            <Circle cx={cx} cy={cy} r={ringR} fill="none" stroke="#cd7f32" strokeWidth={size * 0.018} strokeOpacity={0.9} />
-            <Circle cx={cx} cy={cy} r={ringR} fill="none" stroke="#7a4a18" strokeWidth={size * 0.006} strokeOpacity={0.6} />
-          </>
-        )}
-        {orbitStyle === 'graticule' && (
-          <>
-            <Circle cx={cx} cy={cy} r={ringR} fill="none" stroke="#c8d0d8" strokeWidth={size * 0.012} />
-            <Circle cx={cx} cy={cy} r={ringR * 0.92} fill="none" stroke="#c8d0d8" strokeWidth={0.8} strokeOpacity={0.5} strokeDasharray={`${size * 0.02},${size * 0.02}`} />
-          </>
-        )}
-        {orbitStyle === 'compass' && (
-          <>
-            <Circle cx={cx} cy={cy} r={ringR} fill="none" stroke="#ffd700" strokeWidth={size * 0.014} />
-            {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => {
-              const a = (deg * Math.PI) / 180;
-              const inner = deg % 90 === 0 ? ringR - size * 0.06 : ringR - size * 0.03;
-              return (
-                <Line
-                  key={`ct${deg}`}
-                  x1={cx + Math.cos(a) * inner} y1={cy + Math.sin(a) * inner}
-                  x2={cx + Math.cos(a) * (ringR + size * 0.02)} y2={cy + Math.sin(a) * (ringR + size * 0.02)}
-                  stroke="#ffd700" strokeWidth={deg % 90 === 0 ? 2 : 1} strokeOpacity={0.95}
-                />
-              );
-            })}
-          </>
-        )}
-        {orbitStyle === 'neon' && (
-          <>
-            <Circle cx={cx} cy={cy} r={ringR} fill="none" stroke="#80f0ff" strokeWidth={size * 0.03} strokeOpacity={0.25} />
-            <Circle cx={cx} cy={cy} r={ringR} fill="none" stroke="#aef8ff" strokeWidth={size * 0.012} strokeOpacity={0.95} />
-          </>
-        )}
-        {orbitStyle === 'asteroids' && (
-          <>
-            <Circle cx={cx} cy={cy} r={ringR} fill="none" stroke="#6a5e44" strokeWidth={1} strokeOpacity={0.4} />
-            {Array.from({ length: 22 }).map((_, i) => {
-              const rng = makeRng(uid * 7 + i * 13);
-              const a = (i / 22) * Math.PI * 2 + rng() * 0.2;
-              const rr = ringR + (rng() - 0.5) * size * 0.05;
-              return (
-                <Circle key={`as${i}`} cx={cx + Math.cos(a) * rr} cy={cy + Math.sin(a) * rr} r={size * (0.008 + rng() * 0.014)} fill="#9a8a6a" fillOpacity={0.9} />
-              );
-            })}
-          </>
-        )}
+        {/* ── Orbit ring, front pass ── */}
+        {renderOrbitFront()}
 
         {/* ── Satellite — an SVG icon travelling the orbit, oriented to motion ── */}
         {satellite && satellite.id !== 'sat_none' && (() => {

@@ -8,7 +8,7 @@
  * into the `cosmetic_prices` table (the economic source of truth used by the
  * purchase/equip RPCs). Keep them in sync.
  */
-import type { AvatarConfig, AvatarLayer, CosmeticCategory, CosmeticPart, Rarity } from '../types';
+import type { AvatarConfig, AvatarLayer, CosmeticBundle, CosmeticCategory, CosmeticPart, Rarity } from '../types';
 
 /** Rarity tiers: badge colour + base price (aspirational scale). */
 export const RARITY_META: Record<Rarity, { color: string; price: number; labelFr: string; labelEn: string }> = {
@@ -42,6 +42,13 @@ const CATALOG: Record<CosmeticCategory, CosmeticPart[]> = {
     { id: 'cosmos_milkyway', category: 'cosmos', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Voie lactée', nameEn: 'Milky Way', tintable: false, cosmosStyle: 'milkyway', swatch: '#2a1a4a' },
     { id: 'cosmos_nebula', category: 'cosmos', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Nébuleuse', nameEn: 'Nebula', tintable: false, cosmosStyle: 'nebula', swatch: '#7a1a6a' },
     { id: 'cosmos_meteors', category: 'cosmos', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Pluie de météores', nameEn: 'Meteor shower', tintable: false, cosmosStyle: 'meteors', swatch: '#101030' },
+    // ── Vague "Boutique 2.0" (2026-07) ──
+    { id: 'cosmos_constellation', category: 'cosmos', price: RARITY_META.rare.price, isDefault: false, rarity: 'rare', nameFr: 'Constellations', nameEn: 'Constellations', tintable: false, cosmosStyle: 'constellation', swatch: '#0b1430', addedAt: '2026-07-02' },
+    { id: 'cosmos_goldrain', category: 'cosmos', price: RARITY_META.rare.price, isDefault: false, rarity: 'rare', nameFr: 'Pluie dorée', nameEn: 'Golden rain', tintable: false, cosmosStyle: 'goldrain', swatch: '#141024', addedAt: '2026-07-02' },
+    { id: 'cosmos_galaxy', category: 'cosmos', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Galaxie spirale', nameEn: 'Spiral galaxy', tintable: false, cosmosStyle: 'galaxy', swatch: '#140f2e', addedAt: '2026-07-02' },
+    { id: 'cosmos_solareclipse', category: 'cosmos', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Éclipse solaire', nameEn: 'Solar eclipse', tintable: false, cosmosStyle: 'solareclipse', swatch: '#241436', addedAt: '2026-07-02' },
+    { id: 'cosmos_supernova', category: 'cosmos', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Supernova', nameEn: 'Supernova', tintable: false, cosmosStyle: 'supernova', swatch: '#2a1030', addedAt: '2026-07-02' },
+    { id: 'cosmos_blackhole', category: 'cosmos', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Trou noir', nameEn: 'Black hole', tintable: false, cosmosStyle: 'blackhole', swatch: '#0c0a14', addedAt: '2026-07-02' },
   ],
 
   // ── GLOBE — the planet/map skin ──────────────────────────────────────────────
@@ -55,6 +62,15 @@ const CATALOG: Record<CosmeticCategory, CosmeticPart[]> = {
     { id: 'globe_hologram', category: 'globe', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Globe hologramme', nameEn: 'Hologram globe', tintable: false, globeStyle: 'hologram' },
     { id: 'globe_gold', category: 'globe', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: "Planète d'or", nameEn: 'Golden planet', tintable: false, globeStyle: 'gold' },
     { id: 'globe_gaia', category: 'globe', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Terre Gaïa', nameEn: 'Gaia Earth', tintable: false, globeStyle: 'gaia' },
+    // ── Vague "Boutique 2.0" (2026-07) ──
+    { id: 'globe_pastel', category: 'globe', price: RARITY_META.uncommon.price, isDefault: false, rarity: 'uncommon', nameFr: 'Pastel', nameEn: 'Pastel', tintable: false, globeStyle: 'pastel', addedAt: '2026-07-02' },
+    { id: 'globe_mars', category: 'globe', price: RARITY_META.rare.price, isDefault: false, rarity: 'rare', nameFr: 'Mars', nameEn: 'Mars', tintable: false, globeStyle: 'mars', addedAt: '2026-07-02' },
+    { id: 'globe_ice', category: 'globe', price: RARITY_META.rare.price, isDefault: false, rarity: 'rare', nameFr: 'Planète glacée', nameEn: 'Ice planet', tintable: false, globeStyle: 'ice', addedAt: '2026-07-02' },
+    { id: 'globe_blueprint', category: 'globe', price: RARITY_META.rare.price, isDefault: false, rarity: 'rare', nameFr: 'Blueprint', nameEn: 'Blueprint', tintable: false, globeStyle: 'blueprint', addedAt: '2026-07-02' },
+    { id: 'globe_lava', category: 'globe', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Monde de lave', nameEn: 'Lava world', tintable: false, globeStyle: 'lava', addedAt: '2026-07-02' },
+    { id: 'globe_cyber', category: 'globe', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Cyber-monde', nameEn: 'Cyber world', tintable: false, globeStyle: 'cyber', addedAt: '2026-07-02' },
+    { id: 'globe_eclipse', category: 'globe', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Éclipse', nameEn: 'Eclipse', tintable: false, globeStyle: 'eclipse', addedAt: '2026-07-02' },
+    { id: 'globe_biolum', category: 'globe', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Bioluminescente', nameEn: 'Bioluminescent', tintable: false, globeStyle: 'biolum', addedAt: '2026-07-02' },
   ],
 
   // ── ORBIT — the ring around the globe ────────────────────────────────────────
@@ -65,6 +81,13 @@ const CATALOG: Record<CosmeticCategory, CosmeticPart[]> = {
     { id: 'orbit_compass', category: 'orbit', price: RARITY_META.rare.price, isDefault: false, rarity: 'rare', nameFr: 'Rose des vents', nameEn: 'Compass rose', tintable: false, orbitStyle: 'compass', swatch: '#ffd700' },
     { id: 'orbit_neon', category: 'orbit', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Anneau néon', nameEn: 'Neon ring', tintable: false, orbitStyle: 'neon', swatch: '#80f0ff' },
     { id: 'orbit_asteroids', category: 'orbit', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: "Ceinture d'astéroïdes", nameEn: 'Asteroid belt', tintable: false, orbitStyle: 'asteroids', swatch: '#9a8a6a' },
+    // ── Vague "Boutique 2.0" (2026-07) ──
+    { id: 'orbit_ice', category: 'orbit', price: RARITY_META.uncommon.price, isDefault: false, rarity: 'uncommon', nameFr: 'Anneau glacé', nameEn: 'Ice ring', tintable: false, orbitStyle: 'iceRing', swatch: '#bfe4f5', addedAt: '2026-07-02' },
+    { id: 'orbit_double', category: 'orbit', price: RARITY_META.rare.price, isDefault: false, rarity: 'rare', nameFr: 'Double orbite', nameEn: 'Double orbit', tintable: false, orbitStyle: 'double', swatch: '#8fb8ff', addedAt: '2026-07-02' },
+    { id: 'orbit_fireflies', category: 'orbit', price: RARITY_META.rare.price, isDefault: false, rarity: 'rare', nameFr: 'Lucioles', nameEn: 'Fireflies', tintable: false, orbitStyle: 'fireflies', swatch: '#d8ff5a', addedAt: '2026-07-02' },
+    { id: 'orbit_saturn', category: 'orbit', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Anneaux de Saturne', nameEn: 'Saturn rings', tintable: false, orbitStyle: 'saturn', swatch: '#f0d8a8', addedAt: '2026-07-02' },
+    { id: 'orbit_rainbow', category: 'orbit', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Arc-en-ciel', nameEn: 'Rainbow', tintable: false, orbitStyle: 'rainbow', swatch: '#ffb02e', addedAt: '2026-07-02' },
+    { id: 'orbit_fire', category: 'orbit', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Anneau de feu', nameEn: 'Ring of fire', tintable: false, orbitStyle: 'fire', swatch: '#ff6a2a', addedAt: '2026-07-02' },
   ],
 
   // ── EMBLEM — a landmark glyph beside the globe ───────────────────────────────
@@ -79,6 +102,13 @@ const CATALOG: Record<CosmeticCategory, CosmeticPart[]> = {
     { id: 'emblem_christ', category: 'emblem', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Christ Rédempteur', nameEn: 'Christ the Redeemer', tintable: false, glyph: '⛪' },
     { id: 'emblem_taj', category: 'emblem', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Taj Mahal', nameEn: 'Taj Mahal', tintable: false, glyph: '🕌' },
     { id: 'emblem_colosseum', category: 'emblem', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Colisée', nameEn: 'Colosseum', tintable: false, glyph: '🏛️' },
+    // ── Vague "Boutique 2.0" (2026-07) ──
+    { id: 'emblem_windmill', category: 'emblem', price: RARITY_META.uncommon.price, isDefault: false, rarity: 'uncommon', nameFr: 'Moulin hollandais', nameEn: 'Dutch windmill', tintable: false, addedAt: '2026-07-02' },
+    { id: 'emblem_pisa', category: 'emblem', price: RARITY_META.rare.price, isDefault: false, rarity: 'rare', nameFr: 'Tour de Pise', nameEn: 'Leaning Tower of Pisa', tintable: false, addedAt: '2026-07-02' },
+    { id: 'emblem_moai', category: 'emblem', price: RARITY_META.rare.price, isDefault: false, rarity: 'rare', nameFr: 'Moaï', nameEn: 'Moai', tintable: false, addedAt: '2026-07-02' },
+    { id: 'emblem_goldengate', category: 'emblem', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Golden Gate', nameEn: 'Golden Gate', tintable: false, addedAt: '2026-07-02' },
+    { id: 'emblem_sydney', category: 'emblem', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Opéra de Sydney', nameEn: 'Sydney Opera House', tintable: false, addedAt: '2026-07-02' },
+    { id: 'emblem_greatwall', category: 'emblem', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Grande Muraille', nameEn: 'Great Wall', tintable: false, addedAt: '2026-07-02' },
   ],
 
   // ── SATELLITE — a small element in orbit ─────────────────────────────────────
@@ -90,6 +120,12 @@ const CATALOG: Record<CosmeticCategory, CosmeticPart[]> = {
     { id: 'sat_satellite', category: 'satellite', price: RARITY_META.rare.price, isDefault: false, rarity: 'rare', nameFr: 'Satellite', nameEn: 'Satellite', tintable: false, glyph: '🛰️' },
     { id: 'sat_iss', category: 'satellite', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Station ISS', nameEn: 'Space station', tintable: false, glyph: '🛸' },
     { id: 'sat_comet', category: 'satellite', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Comète', nameEn: 'Comet', tintable: false, glyph: '☄️' },
+    // ── Vague "Boutique 2.0" (2026-07) ──
+    { id: 'sat_paperplane', category: 'satellite', price: RARITY_META.uncommon.price, isDefault: false, rarity: 'uncommon', nameFr: 'Avion en papier', nameEn: 'Paper plane', tintable: false, addedAt: '2026-07-02' },
+    { id: 'sat_bird', category: 'satellite', price: RARITY_META.uncommon.price, isDefault: false, rarity: 'uncommon', nameFr: 'Oiseau migrateur', nameEn: 'Migrating bird', tintable: false, addedAt: '2026-07-02' },
+    { id: 'sat_rocket', category: 'satellite', price: RARITY_META.rare.price, isDefault: false, rarity: 'rare', nameFr: 'Fusée', nameEn: 'Rocket', tintable: false, addedAt: '2026-07-02' },
+    { id: 'sat_ufo', category: 'satellite', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'OVNI', nameEn: 'UFO', tintable: false, addedAt: '2026-07-02' },
+    { id: 'sat_shootingstar', category: 'satellite', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Étoile filante', nameEn: 'Shooting star', tintable: false, addedAt: '2026-07-02' },
   ],
 };
 
@@ -163,4 +199,56 @@ export function buildCosmeticPriceRows(): { item_id: string; category: string; p
     is_default: p.isDefault,
     rarity: p.rarity,
   }));
+}
+
+// ── Boutique 2.0 : badge NEW, vitrine du jour, packs ──────────────────────────
+
+/** Days an item keeps its "NEW" badge after being added to the catalog. */
+export const NEW_BADGE_DAYS = 14;
+
+export function isNewPart(part: CosmeticPart, now: Date = new Date()): boolean {
+  if (!part.addedAt) return false;
+  const age = now.getTime() - new Date(part.addedAt + 'T00:00:00Z').getTime();
+  return age >= 0 && age < NEW_BADGE_DAYS * 24 * 3600 * 1000;
+}
+
+/** Featured-item discount, mirrored by get_featured_cosmetic() server-side. */
+export const FEATURED_DISCOUNT = 0.3;
+
+/**
+ * Discounted packs sold in the shop. Mirrored into the `cosmetic_bundles` table
+ * (the economic source of truth used by the purchase_bundle RPC) — keep in sync.
+ * Prices are ~30% below the sum of the items' individual prices.
+ */
+export const BUNDLES: CosmeticBundle[] = [
+  {
+    id: 'bundle_solar',
+    nameFr: 'Pack Système solaire',
+    nameEn: 'Solar System pack',
+    itemIds: ['globe_mars', 'orbit_saturn', 'cosmos_galaxy'],
+    price: 1400, // 400 + 800 + 800 = 2000
+  },
+  {
+    id: 'bundle_fireice',
+    nameFr: 'Pack Feu & Glace',
+    nameEn: 'Fire & Ice pack',
+    itemIds: ['globe_lava', 'orbit_fire', 'globe_ice', 'orbit_ice'],
+    price: 2000, // 800 + 1500 + 400 + 150 = 2850
+  },
+  {
+    id: 'bundle_wonders',
+    nameFr: 'Pack Merveilles du monde',
+    nameEn: 'World Wonders pack',
+    itemIds: ['emblem_moai', 'emblem_goldengate', 'emblem_sydney'],
+    price: 1400, // 400 + 800 + 800 = 2000
+  },
+];
+
+export function getBundle(id: string): CosmeticBundle | undefined {
+  return BUNDLES.find((b) => b.id === id);
+}
+
+/** Seed rows for the cosmetic_bundles table. */
+export function buildBundleRows(): { bundle_id: string; item_ids: string[]; price: number }[] {
+  return BUNDLES.map((b) => ({ bundle_id: b.id, item_ids: b.itemIds, price: b.price }));
 }

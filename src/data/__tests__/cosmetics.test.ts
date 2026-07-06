@@ -1,11 +1,13 @@
 import {
   ALL_PARTS,
+  BUNDLES,
   RARITY_META,
   LAYER_ORDER,
   DEFAULT_AVATAR_CONFIG,
   getPart,
   getCategoryParts,
   deriveDefaultConfigFromSeed,
+  isNewPart,
   normalizeConfig,
   buildCosmeticPriceRows,
 } from '../cosmetics';
@@ -101,6 +103,61 @@ describe('buildCosmeticPriceRows (economy source of truth)', () => {
       } else {
         expect(row.price).toBe(RARITY_META[row.rarity as keyof typeof RARITY_META].price);
       }
+    }
+  });
+});
+
+describe('BUNDLES (mirrored in cosmetic_bundles)', () => {
+  const priceOf = (id: string) => ALL_PARTS.find((p) => p.id === id)?.price;
+
+  it('only references real, purchasable catalog items', () => {
+    for (const bundle of BUNDLES) {
+      for (const id of bundle.itemIds) {
+        const part = ALL_PARTS.find((p) => p.id === id);
+        expect(part).toBeDefined();
+        expect(part!.isDefault).toBe(false);
+      }
+    }
+  });
+
+  it('is always cheaper than buying the items separately', () => {
+    for (const bundle of BUNDLES) {
+      const sum = bundle.itemIds.reduce((acc, id) => acc + (priceOf(id) ?? 0), 0);
+      expect(bundle.price).toBeLessThan(sum);
+      expect(bundle.price).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('isNewPart', () => {
+  it('flags an item within its 14-day window and unflags it after', () => {
+    const part = ALL_PARTS.find((p) => p.addedAt === '2026-07-02')!;
+    expect(part).toBeDefined();
+    expect(isNewPart(part, new Date('2026-07-03T12:00:00Z'))).toBe(true);
+    expect(isNewPart(part, new Date('2026-08-01T12:00:00Z'))).toBe(false);
+  });
+
+  it('never flags legacy items without addedAt', () => {
+    const legacy = ALL_PARTS.find((p) => p.id === 'globe_gold')!;
+    expect(isNewPart(legacy)).toBe(false);
+  });
+});
+
+describe('Boutique 2.0 wave', () => {
+  it('adds 31 items across the five slots', () => {
+    const wave = ALL_PARTS.filter((p) => p.addedAt === '2026-07-02');
+    expect(wave).toHaveLength(31);
+    const byCat = Object.fromEntries(
+      LAYER_ORDER.map((cat) => [cat, wave.filter((p) => p.category === cat).length]),
+    );
+    expect(byCat).toEqual({ cosmos: 6, globe: 8, orbit: 6, emblem: 6, satellite: 5 });
+  });
+
+  it('every new globe/cosmos/orbit item carries its render style key', () => {
+    for (const p of ALL_PARTS.filter((x) => x.addedAt === '2026-07-02')) {
+      if (p.category === 'globe') expect(p.globeStyle).toBeTruthy();
+      if (p.category === 'cosmos') expect(p.cosmosStyle).toBeTruthy();
+      if (p.category === 'orbit') expect(p.orbitStyle).toBeTruthy();
     }
   });
 });
