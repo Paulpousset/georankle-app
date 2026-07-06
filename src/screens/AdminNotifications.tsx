@@ -33,6 +33,7 @@ import { modeLabel } from '../lib/ranked';
 import { tr } from '../i18n';
 import {
   deleteCampaign,
+  fetchCronHealth,
   listCampaigns,
   listLog,
   previewRecipients,
@@ -40,7 +41,9 @@ import {
   searchUsers,
   sendBroadcast,
   setCampaignEnabled,
+  CRON_STALE_MINUTES,
   type Campaign,
+  type CronHealth,
   type LogEntry,
   type Segment,
 } from '../lib/admin';
@@ -54,7 +57,7 @@ interface AdminNotificationsProps {
   onBack: () => void;
 }
 
-const MODES: MatchMode[] = ['classic', 'streak', 'versus', 'globe', 'guess'];
+const MODES: MatchMode[] = ['classic', 'streak', 'versus', 'globe', 'guess', 'higherlower', 'silhouette', 'borders'];
 
 /** Flat UI choice; mapped to the richer `Segment` union on send. */
 type SegChoice = 'everyone' | 'inactive' | 'users' | 'played_mode' | 'never_online';
@@ -100,10 +103,12 @@ export default function AdminNotifications({
   // ── Lists ────────────────────────────────────────────────────────────────────
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [log, setLog] = useState<LogEntry[]>([]);
+  const [cronHealth, setCronHealth] = useState<CronHealth | null>(null);
 
   const refreshLists = useCallback(() => {
     listCampaigns().then(setCampaigns).catch(() => {});
     listLog().then(setLog).catch(() => {});
+    fetchCronHealth().then(setCronHealth).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -316,6 +321,26 @@ export default function AdminNotifications({
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        {/* ── Cron health ─────────────────────────────────────────────────── */}
+        {cronHealth?.stale && (
+          <View style={[styles.card, { backgroundColor: '#c0392b1a', borderColor: '#c0392b', gap: 4 }]}>
+            <Text style={{ color: '#c0392b', fontFamily: FONTS.monoBold, fontSize: 13 }}>
+              {t('⚠️ Cron campagnes en panne ?', '⚠️ Campaigns cron down?')}
+            </Text>
+            <Text style={{ color: c.textMuted, fontFamily: FONTS.mono, fontSize: 12 }}>
+              {cronHealth.lastOkAt
+                ? t(
+                    `Aucune exécution réussie depuis ${CRON_STALE_MINUTES} min (dernière : ${new Date(cronHealth.lastOkAt).toLocaleString()}). Les campagnes programmées ne partent peut-être plus.`,
+                    `No successful run in the last ${CRON_STALE_MINUTES} min (last: ${new Date(cronHealth.lastOkAt).toLocaleString()}). Scheduled campaigns may not be going out.`,
+                  )
+                : t(
+                    'Aucune exécution réussie enregistrée dans cron_run_log. Vérifie le job pg_cron et la fonction run-campaigns.',
+                    'No successful run recorded in cron_run_log. Check the pg_cron job and the run-campaigns function.',
+                  )}
+            </Text>
+          </View>
+        )}
+
         {/* ── Compose ─────────────────────────────────────────────────────── */}
         <Text style={[styles.outerSectionTitle, { color: c.textMuted }]}>{t('MESSAGE', 'MESSAGE')}</Text>
         <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border, gap: 10 }]}>

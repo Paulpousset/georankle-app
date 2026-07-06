@@ -144,3 +144,34 @@ export async function listLog(limit = 20): Promise<LogEntry[]> {
     .limit(limit);
   return (data ?? []) as LogEntry[];
 }
+
+/** Minutes without a successful run after which the hourly campaigns cron is stale. */
+export const CRON_STALE_MINUTES = 90;
+
+export interface CronHealth {
+  /** ISO timestamp of the last successful campaigns-cron run, null if none logged. */
+  lastOkAt: string | null;
+  /** No successful run within the alert window (the cron ticks hourly). */
+  stale: boolean;
+}
+
+/**
+ * Health of the hourly `run-campaigns` cron, read from its `cron_run_log`
+ * audit table (admin-read RLS). Mirrors the alert query documented in
+ * SECURITY_HARDENING.md §B5 — surfaced in the admin panel so a silently dead
+ * cron gets noticed.
+ */
+export async function fetchCronHealth(): Promise<CronHealth> {
+  const { data, error } = await supabase
+    .from('cron_run_log')
+    .select('created_at')
+    .eq('job', 'run-campaigns')
+    .eq('status', 'ok')
+    .order('created_at', { ascending: false })
+    .limit(1);
+  if (error) throw error;
+  const lastOkAt = data?.[0]?.created_at ?? null;
+  const stale =
+    !lastOkAt || Date.now() - new Date(lastOkAt).getTime() > CRON_STALE_MINUTES * 60_000;
+  return { lastOkAt, stale };
+}

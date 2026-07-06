@@ -8,6 +8,8 @@ import {
   setCampaignEnabled,
   deleteCampaign,
   listLog,
+  fetchCronHealth,
+  CRON_STALE_MINUTES,
   type Segment,
 } from '../admin';
 import { supabase } from '../supabase';
@@ -185,5 +187,33 @@ describe('listLog', () => {
     sb.__setResult('notification_log', { data: rows, error: null });
     expect(await listLog(5)).toEqual(rows);
     expect(lastBuilder().limit).toHaveBeenCalledWith(5);
+  });
+});
+
+describe('fetchCronHealth', () => {
+  it('is healthy when a successful run landed within the window', async () => {
+    const recent = new Date(Date.now() - 10 * 60_000).toISOString();
+    sb.__setResult('cron_run_log', { data: [{ created_at: recent }], error: null });
+    const health = await fetchCronHealth();
+    expect(health).toEqual({ lastOkAt: recent, stale: false });
+    const b = lastBuilder();
+    expect(b.eq).toHaveBeenCalledWith('job', 'run-campaigns');
+    expect(b.eq).toHaveBeenCalledWith('status', 'ok');
+  });
+
+  it('is stale once the last success is older than the window', async () => {
+    const old = new Date(Date.now() - (CRON_STALE_MINUTES + 5) * 60_000).toISOString();
+    sb.__setResult('cron_run_log', { data: [{ created_at: old }], error: null });
+    expect((await fetchCronHealth()).stale).toBe(true);
+  });
+
+  it('is stale when no successful run was ever logged', async () => {
+    sb.__setResult('cron_run_log', { data: [], error: null });
+    expect(await fetchCronHealth()).toEqual({ lastOkAt: null, stale: true });
+  });
+
+  it('throws on query error so callers can ignore transient failures', async () => {
+    sb.__setResult('cron_run_log', { data: null, error: { message: 'rls' } });
+    await expect(fetchCronHealth()).rejects.toEqual({ message: 'rls' });
   });
 });
