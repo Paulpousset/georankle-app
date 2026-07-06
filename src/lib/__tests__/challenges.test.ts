@@ -48,9 +48,61 @@ describe('challenges data', () => {
 
   it('groups challenges by country and labels them', () => {
     const groups = challengesByCountry();
-    expect(groups.map((g) => g.country)).toEqual(['FRA', 'USA']);
+    expect(groups.map((g) => g.country)).toEqual(['FRA', 'USA', 'DEU', 'ESP', 'ITA', 'CAN']);
     expect(countryLabel('FRA', 'fr')).toBe('France');
     expect(countryLabel('USA', 'en')).toBe('United States');
+    expect(countryLabel('DEU', 'fr')).toBe('Allemagne');
+    expect(countryLabel('CAN', 'en')).toBe('Canada');
+  });
+
+  it('ships the six capital challenges with the expected entity counts', () => {
+    const expected: [string, number][] = [
+      ['fr-region-capital', 13],
+      ['us-state-capital', 50],
+      ['de-land-capital', 13],
+      ['es-comunidad-capital', 14],
+      ['it-region-capital', 20],
+      ['ca-province-capital', 13],
+    ];
+    for (const [id, count] of expected) {
+      const ch = getChallenge(id)!;
+      expect(ch).toBeDefined();
+      expect(ch.promptKind).toBe('text');
+      expect(ch.answerKind).toBe('name');
+      expect(ch.entities).toHaveLength(count);
+    }
+  });
+
+  it('every challenge has globally unique entity ids and non-empty answers', () => {
+    const ids = CHALLENGES.flatMap((c) => c.entities.map((e) => e.id));
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const c of CHALLENGES) {
+      for (const e of c.entities) {
+        expect(e.answerFr.length).toBeGreaterThan(0);
+        expect(e.answerEn.length).toBeGreaterThan(0);
+        if (c.promptKind === 'text') expect(entityPrompt(e, 'fr').length).toBeGreaterThan(0);
+        else expect(e.flagSlug).toBeTruthy();
+      }
+    }
+  });
+
+  it('capital spot-checks (both languages accepted when typed)', () => {
+    const de = getChallenge('de-land-capital')!;
+    const bavaria = de.entities.find((e) => e.promptEn === 'Bavaria')!;
+    expect(entityAnswer(bavaria, 'fr')).toBe('Munich');
+    expect(entityAcceptedAnswers(bavaria)).toEqual(expect.arrayContaining(['München']));
+
+    const it = getChallenge('it-region-capital')!;
+    const tuscany = it.entities.find((e) => e.promptFr === 'Toscane')!;
+    expect(entityAcceptedAnswers(tuscany)).toEqual(expect.arrayContaining(['Florence', 'Firenze']));
+
+    const ca = getChallenge('ca-province-capital')!;
+    const nl = ca.entities.find((e) => e.promptEn === 'Newfoundland and Labrador')!;
+    expect(entityAnswer(nl, 'en')).toBe("St. John's");
+    expect(entityAcceptedAnswers(nl)).toEqual(expect.arrayContaining(['Saint-Jean']));
+
+    const fr = getChallenge('fr-region-capital')!;
+    expect(entityAnswer(fr.entities.find((e) => e.promptFr === 'Normandie')!, 'fr')).toBe('Rouen');
   });
 });
 
