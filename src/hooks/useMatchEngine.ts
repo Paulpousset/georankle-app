@@ -6,6 +6,7 @@ import { tr } from '../i18n';
 import { track } from '../lib/analytics';
 import { log } from '../lib/log';
 import { setActiveMatch, clearActiveMatch } from '../lib/activeMatch';
+import { forfeitWindowElapsed, FORFEIT_WINDOW_SECONDS } from '../lib/match';
 import type { GameMode, Match, MatchMode } from '../types';
 import type { RoundSummaryData } from '../components/RoundSummary';
 import { useAuth } from '../contexts/AuthContext';
@@ -24,6 +25,9 @@ const MODE_LABELS: Record<MatchMode, [string, string]> = {
   guess: ['Devine le Pays', 'Guess Country'],
   regions: ['Défis Pays', 'Country Challenges'],
   challenge: ['Quiz Pays', 'Country Quiz'],
+  higherlower: ['Plus ou Moins', 'Higher or Lower'],
+  silhouette: ['Silhouette', 'Silhouette'],
+  borders: ['Frontières', 'Borders'],
 };
 
 /** Shape of the `apply_ranked_result` RPC payload (returned as JSONB). */
@@ -99,6 +103,23 @@ export function useMatchEngine({ setGameMode, clearPages }: MatchEngineDeps) {
   const [rankResult, setRankResult] = useState<{ eloChange: number; newElo: number; oldElo: number } | null>(null);
   const [coinsAwarded, setCoinsAwarded] = useState<number | null>(null);
 
+  // Forfeit: becomes claimable while we wait on an opponent whose activity clock
+  // has gone stale (they closed the app / left the match).
+  const [forfeitAvailable, setForfeitAvailable] = useState(false);
+  const [claimingForfeit, setClaimingForfeit] = useState(false);
+
+  // Async callbacks (the waiting-phase watcher, the round poll) need the
+  // *current* phase/match to avoid acting on a match we already resolved or
+  // left another way.
+  const matchPhaseRef = useRef(matchPhase);
+  useEffect(() => {
+    matchPhaseRef.current = matchPhase;
+  }, [matchPhase]);
+  const matchDataRef = useRef(matchData);
+  useEffect(() => {
+    matchDataRef.current = matchData;
+  }, [matchData]);
+
   // Listen for incoming matchmaking invites.
   useEffect(() => {
     if (!user) return;
@@ -160,12 +181,15 @@ export function useMatchEngine({ setGameMode, clearPages }: MatchEngineDeps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
-  // Heartbeat: while a 1v1 match is live, bump `last_activity_at` so the
-  // reconnect/forfeit window (match_reconnect.sql) sees us as present even
-  // during a long round before any score is written. Mirrors the FFA screen,
-  // which already pings `touch_match`. Stops once the series is over.
+  // Heartbeat: while we are actively playing (or between rounds), bump
+  // `last_activity_at` so the reconnect/forfeit window (match_reconnect.sql)
+  // sees us as present even during a long round before any score is written.
+  // Deliberately silent while we WAIT on the opponent: the activity clock is
+  // shared, so pinging there would keep a deserted match looking alive and the
+  // forfeit window could never open.
   useEffect(() => {
-    if (!matchData?.id || matchPhase === 'match_over') return;
+    if (!matchData?.id) return;
+    if (matchPhase !== 'playing' && matchPhase !== 'round_summary') return;
     const id = matchData.id;
     const ping = () => {
       supabase.rpc('touch_match', { p_match_id: id }).then(undefined, () => {});
@@ -225,6 +249,129 @@ export function useMatchEngine({ setGameMode, clearPages }: MatchEngineDeps) {
     const result = (data ?? {}) as OnlineResultPayload;
     if (typeof result.coins_awarded === 'number' && result.coins_awarded > 0) {
       setCoinsAwarded(result.coins_awarded);
+    }
+  };
+
+  // ─── Forfeit (absent opponent) ───────────────────────────────────────────────
+
+  // While waiting on the opponent, watch the match row: if the activity clock
+  // goes stale the forfeit claim is offered; if the series gets completed
+  // outside the normal round flow (the opponent claimed a forfeit against us),
+  // resolve the match locally instead of waiting forever.
+  useEffect(() => {
+    if (!matchData?.id || !user || matchPhase !== 'waiting_opponent') return;
+    const match = matchData;
+    const isPlayer1 = match.player1_id === user.id;
+    let cancelled = false;
+
+    const check = async () => {
+      const { data } = await supabase
+        .from('matches')
+        .select('status, last_activity_at, p1_rounds_won, p2_rounds_won, p1_finished_round, p2_finished_round, best_of, current_round')
+        .eq('id', match.id)
+        .single();
+      if (!data || cancelled || matchPhaseRef.current !== 'waiting_opponent') return;
+
+      if (data.status === 'completed') {
+        // Both-finished completions are resolved by the round channel/poll in
+        // handleRoundComplete; only a forfeit-style closure is handled here.
+        if (data.p1_finished_round && data.p2_finished_round) return;
+        const myWon = (isPlayer1 ? data.p1_rounds_won : data.p2_rounds_won) ?? 0;
+        const oppWon = (isPlayer1 ? data.p2_rounds_won : data.p1_rounds_won) ?? 0;
+        const roundNum = data.current_round ?? 1;
+        const summary: RoundSummaryData = {
+          roundNumber: roundNum,
+          myScore: myCurrentRoundScore,
+          opponentScore: 0,
+          myRoundsWon: myWon,
+          opponentRoundsWon: oppWon,
+          bestOf: data.best_of ?? match.best_of ?? 1,
+          isMatchOver: true,
+          matchWinner: myWon > oppWon ? 'me' : myWon < oppWon ? 'opponent' : 'draw',
+          gameMode: rankedModesRef.current?.[roundNum - 1] ?? match.game_mode,
+        };
+        clearActiveMatch();
+        // Idempotent server RPCs: whoever forfeited already applied the result;
+        // calling again just reads back our own standing / coins.
+        if (match.is_ranked) await updateRankedRating(match);
+        else if (match.player2_id) await awardOnlineCoins(match);
+        if (cancelled || matchPhaseRef.current !== 'waiting_opponent') return;
+        setRoundSummaryData(summary);
+        setAllRounds(prev => [...prev, summary]);
+        setMatchPhase('match_over');
+        toast.info(tr(langRef.current, 'La partie a été clôturée.', 'The match was closed.'));
+        return;
+      }
+
+      if (data.status !== 'in_progress') return;
+      setForfeitAvailable(forfeitWindowElapsed(data.last_activity_at as string, Date.now()));
+    };
+
+    check();
+    const handle = setInterval(check, 15_000);
+    return () => {
+      cancelled = true;
+      clearInterval(handle);
+      setForfeitAvailable(false);
+    };
+    // The match identity fields read above are immutable for a given match id,
+    // and the score is frozen while we wait — keyed on id + phase is enough.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matchData?.id, matchPhase, user?.id]);
+
+  // Claim the win over an absent opponent. The RPC is the authority: it
+  // re-checks the inactivity window server-side and closes the series with our
+  // rounds set to the win target, so the regular result RPCs grant ELO/coins.
+  const claimForfeit = async () => {
+    if (!matchData || !user || claimingForfeit) return;
+    const match = matchData;
+    setClaimingForfeit(true);
+    try {
+      const { data, error } = await supabase.rpc('forfeit_match', {
+        p_match_id: match.id,
+        p_window_seconds: FORFEIT_WINDOW_SECONDS,
+      });
+      if (error) {
+        log.error('forfeit_match error:', error);
+        toast.error(tr(language, 'Impossible de réclamer la victoire — réessaie.', 'Could not claim the win — try again.'));
+        return;
+      }
+      const result = (data ?? {}) as { forfeited?: boolean; reason?: string };
+      if (!result.forfeited) {
+        setForfeitAvailable(false);
+        toast.info(tr(language, "L'adversaire est toujours là — la partie continue.", 'The opponent is still here — the match goes on.'));
+        return;
+      }
+
+      if (match.is_ranked) await updateRankedRating(match);
+      else if (match.player2_id) await awardOnlineCoins(match);
+
+      const isPlayer1 = match.player1_id === user.id;
+      const bo = match.best_of ?? 1;
+      const roundNum = match.current_round ?? 1;
+      const summary: RoundSummaryData = {
+        roundNumber: roundNum,
+        myScore: myCurrentRoundScore,
+        opponentScore: 0,
+        myRoundsWon: Math.ceil(bo / 2),
+        opponentRoundsWon: (isPlayer1 ? match.p2_rounds_won : match.p1_rounds_won) ?? 0,
+        bestOf: bo,
+        isMatchOver: true,
+        matchWinner: 'me',
+        gameMode: rankedModesRef.current?.[roundNum - 1] ?? match.game_mode,
+      };
+      clearActiveMatch();
+      setRoundSummaryData(summary);
+      setAllRounds(prev => [...prev, summary]);
+      setMatchPhase('match_over');
+      toast.success(tr(language, 'Victoire par abandon !', 'Win by forfeit!'));
+      track('match_completed', {
+        mode: match.game_mode,
+        is_ranked: match.is_ranked ?? false,
+        result: 'won_forfeit',
+      });
+    } finally {
+      setClaimingForfeit(false);
     }
   };
 
@@ -314,10 +461,23 @@ export function useMatchEngine({ setGameMode, clearPages }: MatchEngineDeps) {
       // the finished flags, any later caller no-ops and just reports the advanced
       // state). It must commit before the award RPCs run, and its return value is
       // authoritative — we prefer it over a local recomputation.
-      const { data: finalizeData, error: finalizeError } = await supabase.rpc('finalize_round', {
+      let { data: finalizeData, error: finalizeError } = await supabase.rpc('finalize_round', {
         p_match_id: matchData.id,
       });
-      if (finalizeError) log.error('finalize_round error:', finalizeError);
+      if (finalizeError) {
+        // Idempotent + row-locked, so one transparent retry is safe (flaky
+        // network mid-match is common on mobile).
+        log.error('finalize_round error (retrying):', finalizeError);
+        ({ data: finalizeData, error: finalizeError } = await supabase.rpc('finalize_round', {
+          p_match_id: matchData.id,
+        }));
+      }
+      if (finalizeError) {
+        log.error('finalize_round error:', finalizeError);
+        toast.error(tr(langRef.current,
+          'Problème de synchronisation de la manche — le score affiché peut être provisoire.',
+          'Round sync problem — the displayed score may be provisional.'));
+      }
       const finalized = (finalizeData ?? {}) as FinalizeRoundPayload;
 
       const p1Wins = p1Score > p2Score;
@@ -400,6 +560,12 @@ export function useMatchEngine({ setGameMode, clearPages }: MatchEngineDeps) {
     };
 
     let handled = false;
+    let warnedDisconnect = false;
+    const settle = () => {
+      handled = true;
+      clearInterval(poll);
+      supabase.removeChannel(channel);
+    };
     const channel = supabase
       .channel(`round_${matchData.id}_r${matchData.current_round}`)
       .on('postgres_changes',
@@ -408,11 +574,46 @@ export function useMatchEngine({ setGameMode, clearPages }: MatchEngineDeps) {
           const u = payload.new;
           if (!u.p1_finished_round || !u.p2_finished_round) return;
           if (handled) return;
-          handled = true;
-          supabase.removeChannel(channel);
+          settle();
           await processRound(u);
         })
-      .subscribe();
+      .subscribe((status) => {
+        // The realtime channel dying mid-wait is exactly when a player would
+        // otherwise hang forever — tell them, and let the poll below carry on.
+        if ((status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') && !handled && !warnedDisconnect) {
+          warnedDisconnect = true;
+          toast.error(tr(langRef.current,
+            'Connexion instable — la partie continue, synchronisation en arrière-plan.',
+            'Unstable connection — the match continues, syncing in the background.'));
+        }
+      });
+
+    // Safety net: realtime events can be dropped (backgrounded app, flaky
+    // network). A slow poll re-reads the row so the round always resolves.
+    const poll = setInterval(async () => {
+      if (handled) { clearInterval(poll); return; }
+      if (matchDataRef.current?.id !== matchData.id || matchPhaseRef.current !== 'waiting_opponent') {
+        // The round resolved through another path, or the player left the
+        // match — tear the machinery down without processing anything.
+        clearInterval(poll);
+        supabase.removeChannel(channel);
+        return;
+      }
+      const { data: row } = await supabase
+        .from('matches')
+        .select('*')
+        .eq('id', matchData.id)
+        .single();
+      if (!row || handled) return;
+      if (row.p1_finished_round && row.p2_finished_round) {
+        settle();
+        await processRound(row);
+      } else if (row.status === 'completed') {
+        // Closed outside the round flow (forfeit) — the waiting-phase watcher
+        // owns that resolution; just stop this round's machinery.
+        settle();
+      }
+    }, 20_000);
 
     const { data: afterSave } = await supabase
       .from('matches')
@@ -426,8 +627,7 @@ export function useMatchEngine({ setGameMode, clearPages }: MatchEngineDeps) {
       .single();
 
     if (afterSave && afterSave.p1_finished_round && afterSave.p2_finished_round && !handled) {
-      handled = true;
-      supabase.removeChannel(channel);
+      settle();
       await processRound(afterSave);
     }
   };
@@ -473,6 +673,8 @@ export function useMatchEngine({ setGameMode, clearPages }: MatchEngineDeps) {
     coinsAwarded,
     showPreGameLobby,
     incomingInvite,
+    forfeitAvailable,
+    claimingForfeit,
     // actions
     startMatch,
     acceptInvite,
@@ -481,5 +683,6 @@ export function useMatchEngine({ setGameMode, clearPages }: MatchEngineDeps) {
     resetMatchState,
     continueToNextRound,
     dismissPreGameLobby,
+    claimForfeit,
   };
 }

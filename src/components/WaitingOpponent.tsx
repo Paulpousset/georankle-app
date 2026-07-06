@@ -15,13 +15,26 @@ interface WaitingOpponentProps {
   gameMode: string;
   /** Called when the player chooses to abandon while waiting. */
   onLeave?: () => void;
+  /** The opponent's activity clock is stale — the win can be claimed. */
+  forfeitAvailable?: boolean;
+  /** A forfeit claim is in flight. */
+  claimingForfeit?: boolean;
+  /** Claim the win over the absent opponent (server re-checks the window). */
+  onClaimForfeit?: () => void;
 }
 
 // After this delay we surface a "leave match" escape hatch so the player is
 // never stuck forever if the opponent disconnected.
 const LEAVE_BUTTON_DELAY_MS = 30_000;
 
-export function WaitingOpponent({ myScore, gameMode, onLeave }: WaitingOpponentProps) {
+export function WaitingOpponent({
+  myScore,
+  gameMode,
+  onLeave,
+  forfeitAvailable = false,
+  claimingForfeit = false,
+  onClaimForfeit,
+}: WaitingOpponentProps) {
   const { isDarkMode } = useTheme();
   const { language } = useLanguage();
   const c = getColors(isDarkMode);
@@ -32,6 +45,18 @@ export function WaitingOpponent({ myScore, gameMode, onLeave }: WaitingOpponentP
     const t = setTimeout(() => setCanLeave(true), LEAVE_BUTTON_DELAY_MS);
     return () => clearTimeout(t);
   }, [onLeave]);
+
+  // Screen-reader heads-up when the claim becomes possible (the new button
+  // appears without focus movement otherwise).
+  useEffect(() => {
+    if (forfeitAvailable && onClaimForfeit) {
+      announce(
+        language === 'fr'
+          ? "L'adversaire semble avoir quitté. Tu peux réclamer la victoire."
+          : 'The opponent seems to have left. You can claim the win.',
+      );
+    }
+  }, [forfeitAvailable, onClaimForfeit, language]);
 
   // Let screen-reader users know the round is over and we're waiting on the
   // opponent (this screen otherwise has no focusable element to convey it).
@@ -44,7 +69,7 @@ export function WaitingOpponent({ myScore, gameMode, onLeave }: WaitingOpponentP
   // points. Formatting the value goes through the shared `formatMatchScore` so
   // the unit can never drift from the other match screens.
   const scoreLabel =
-    gameMode === 'streak'
+    gameMode === 'streak' || gameMode === 'higherlower'
       ? language === 'fr' ? 'Série' : 'Streak'
       : gameMode === 'classic'
         ? language === 'fr' ? 'Efficacité' : 'Efficiency'
@@ -87,6 +112,39 @@ export function WaitingOpponent({ myScore, gameMode, onLeave }: WaitingOpponentP
           {language === 'fr' ? "En attente de l'adversaire…" : 'Waiting for opponent…'}
         </Text>
       </View>
+
+      {onClaimForfeit && forfeitAvailable && (
+        <View style={{ alignItems: 'center', gap: 12, paddingHorizontal: 32 }}>
+          <Text style={{ color: c.textMuted, fontSize: 13, fontFamily: FONTS.mono, textAlign: 'center' }}>
+            {language === 'fr'
+              ? "L'adversaire semble avoir quitté la partie."
+              : 'The opponent seems to have left the match.'}
+          </Text>
+          <TouchableOpacity
+            onPress={onClaimForfeit}
+            disabled={claimingForfeit}
+            {...a11yButton(
+              language === 'fr' ? 'Réclamer la victoire' : 'Claim the win',
+              { disabled: claimingForfeit },
+            )}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 8,
+              paddingHorizontal: 28,
+              paddingVertical: 14,
+              borderRadius: 12,
+              backgroundColor: '#2a6e3f',
+              opacity: claimingForfeit ? 0.6 : 1,
+            }}
+          >
+            {claimingForfeit && <ActivityIndicator size="small" color="#fff" />}
+            <Text style={{ color: '#fff', fontFamily: FONTS.monoBold, fontSize: 15 }}>
+              {language === 'fr' ? 'Réclamer la victoire' : 'Claim the win'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {onLeave && canLeave && (
         <TouchableOpacity

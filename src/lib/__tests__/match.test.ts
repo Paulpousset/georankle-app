@@ -1,4 +1,9 @@
-import { computeMatchOutcome, formatMatchScore } from '../match';
+import {
+  computeMatchOutcome,
+  formatMatchScore,
+  forfeitWindowElapsed,
+  FORFEIT_WINDOW_SECONDS,
+} from '../match';
 
 describe('computeMatchOutcome', () => {
   it('computes neededToWin as the majority of bestOf', () => {
@@ -47,5 +52,31 @@ describe('formatMatchScore', () => {
     expect(formatMatchScore('versus', 1000)).toBe('1000 / 1000');
     expect(formatMatchScore('globe', 600)).toBe('600 / 1000');
     expect(formatMatchScore('guess', 800)).toBe('800 / 1000');
+  });
+});
+
+describe('forfeitWindowElapsed', () => {
+  const NOW = Date.parse('2026-07-02T12:00:00Z');
+  const secondsAgo = (s: number) => new Date(NOW - s * 1000).toISOString();
+
+  it('is false while the opponent is recently active', () => {
+    expect(forfeitWindowElapsed(secondsAgo(0), NOW)).toBe(false);
+    expect(forfeitWindowElapsed(secondsAgo(30), NOW)).toBe(false);
+    expect(forfeitWindowElapsed(secondsAgo(FORFEIT_WINDOW_SECONDS - 1), NOW)).toBe(false);
+  });
+
+  it('opens exactly at the window boundary and beyond', () => {
+    expect(forfeitWindowElapsed(secondsAgo(FORFEIT_WINDOW_SECONDS), NOW)).toBe(true);
+    expect(forfeitWindowElapsed(secondsAgo(FORFEIT_WINDOW_SECONDS + 600), NOW)).toBe(true);
+  });
+
+  it('respects a custom window length', () => {
+    expect(forfeitWindowElapsed(secondsAgo(45), NOW, 60)).toBe(false);
+    expect(forfeitWindowElapsed(secondsAgo(60), NOW, 60)).toBe(true);
+  });
+
+  it('fails closed on a clock skewed into the future or a bad timestamp', () => {
+    expect(forfeitWindowElapsed(secondsAgo(-300), NOW)).toBe(false);
+    expect(forfeitWindowElapsed('not-a-date', NOW)).toBe(false);
   });
 });

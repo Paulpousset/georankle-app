@@ -49,3 +49,28 @@ export function computeMatchOutcome(
 export function formatMatchScore(gameMode: string, score: number): string {
   return `${score} / 1000`;
 }
+
+/**
+ * Seconds of match inactivity before the present player may claim the win
+ * (mirrors the default window of the forfeit_match RPC in match_reconnect.sql).
+ */
+export const FORFEIT_WINDOW_SECONDS = 120;
+
+/**
+ * Whether the forfeit window has elapsed for a match whose shared activity
+ * clock (`matches.last_activity_at`) last ticked at `lastActivityAt`.
+ *
+ * Client-side estimate only — the forfeit_match RPC re-checks server-side, so a
+ * skewed device clock can at worst show the claim button early/late, never
+ * grant an early win. An unparseable timestamp reports the window as NOT
+ * elapsed (fail closed). Shared by the 1v1 engine and the FFA screen.
+ */
+export function forfeitWindowElapsed(
+  lastActivityAt: string,
+  nowMs: number,
+  windowSeconds: number = FORFEIT_WINDOW_SECONDS,
+): boolean {
+  const last = new Date(lastActivityAt).getTime();
+  if (Number.isNaN(last)) return false;
+  return nowMs - last >= windowSeconds * 1000;
+}
