@@ -10,7 +10,9 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const TUTORIAL_VERSION = 1;
+// v2: rewrote the tour to be much more explicit for newcomers (added a
+// "how you play" step) — re-show it once to everyone.
+const TUTORIAL_VERSION = 2;
 const STORAGE_KEY = `tutorial:seen:v${TUTORIAL_VERSION}`;
 
 /** Has the user already seen (completed or skipped) the onboarding tour? */

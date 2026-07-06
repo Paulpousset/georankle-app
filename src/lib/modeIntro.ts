@@ -19,7 +19,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { GameMode } from '../types';
 
-const MODE_INTRO_VERSION = 1;
+// v2: clearer, step-by-step "how to play" copy for every mode — re-show once.
+const MODE_INTRO_VERSION = 2;
 const storageKey = (mode: GameMode) => `modeIntro:seen:v${MODE_INTRO_VERSION}:${mode}`;
 
 /** Has the player already seen the intro popup for this mode? */

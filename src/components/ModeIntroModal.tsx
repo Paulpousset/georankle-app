@@ -70,7 +70,12 @@ interface ModeIntroCardProps {
   onDismiss: () => void;
 }
 
-function ModeIntroCard({ mode, onDismiss }: ModeIntroCardProps) {
+/**
+ * The pure "how to play" card. Exported so the main menu can show a mode's rules
+ * on demand (the "?" button next to each mode card) — used there with a plain
+ * close handler, so viewing help never marks the mode as seen.
+ */
+export function ModeIntroCard({ mode, onDismiss }: ModeIntroCardProps) {
   const { isDarkMode } = useTheme();
   const { language } = useLanguage();
   const c = getColors(isDarkMode);

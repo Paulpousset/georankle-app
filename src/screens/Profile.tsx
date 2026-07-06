@@ -16,7 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as ImagePicker from 'expo-image-picker';
-import { Bell, Camera, Check, Coins, Eye, EyeOff, ArrowLeft, LayoutGrid, LogOut, Palette, ShoppingBag, Trash2, Zap } from 'lucide-react-native';
+import { Bell, Camera, Check, Coins, Eye, EyeOff, ArrowLeft, HelpCircle, LayoutGrid, LogOut, Palette, ShoppingBag, Trash2, Zap } from 'lucide-react-native';
 
 import { supabase } from '../lib/supabase';
 import { useCachedData } from '../lib/cache';
@@ -31,12 +31,15 @@ import { Avatar } from '../components/Avatar';
 import { WorldAvatar } from '../components/WorldAvatar';
 import { deriveDefaultConfigFromSeed, normalizeConfig } from '../data/cosmetics';
 import { tr } from '../i18n';
+import { resetTutorial } from '../lib/tutorial';
+import { resetModeIntros } from '../lib/modeIntro';
+import { MODE_INTROS } from '../data/modeIntros';
 import { a11yButton, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
-import type { AvatarConfig, MatchMode } from '../types';
+import type { AvatarConfig, GameMode, MatchMode } from '../types';
 
 interface ProfileProps {
   onBack: () => void;
@@ -47,7 +50,7 @@ interface ProfileProps {
   onOpenAdmin?: () => void;
 }
 
-const MODES: MatchMode[] = ['classic', 'streak', 'versus', 'globe', 'guess'];
+const MODES: MatchMode[] = ['classic', 'streak', 'versus', 'globe', 'guess', 'higherlower', 'silhouette', 'borders'];
 
 type ModeStat = { wins: number; total: number };
 
@@ -377,6 +380,18 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
     Linking.openURL('https://geogames-mu.vercel.app/privacy.html');
   };
 
+  // Replay the whole onboarding: clear the guided-tour flag AND every per-mode
+  // "how to play" flag, then drop back to the menu — where the tour re-appears
+  // on mount and each game re-explains itself the next time it's opened.
+  const replayTutorial = async () => {
+    await Promise.all([
+      resetTutorial(),
+      resetModeIntros(Object.keys(MODE_INTROS) as GameMode[]),
+    ]);
+    track('tutorial_replayed');
+    onBack();
+  };
+
   const winRate = wins + losses > 0 ? Math.round((wins / (wins + losses)) * 100) : 0;
 
   // Show the 3D character unless the user opted for a photo (useCustom === false).
@@ -647,6 +662,27 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
               <Text style={{ fontFamily: FONTS.monoBold, color: c.text, fontSize: 15 }}>{reminderTime}</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Help — replay the guided tour + every "how to play" card. */}
+          <Text style={[styles.outerSectionTitle, { color: c.textMuted }]}>
+            {tr(language, 'AIDE', 'HELP')}
+          </Text>
+          <TouchableOpacity
+            style={[styles.adminBtn, { backgroundColor: c.card, borderColor: c.border }]}
+            onPress={replayTutorial}
+            {...a11yButton(tr(language, 'Revoir le tutoriel', 'Replay the tutorial'), {
+              hint: tr(
+                language,
+                'Relance la visite guidée et réaffiche les règles de chaque jeu',
+                'Restarts the guided tour and shows each game’s rules again',
+              ),
+            })}
+          >
+            <HelpCircle color={c.accent} size={18} />
+            <Text style={[styles.adminText, { color: c.accent }]}>
+              {tr(language, 'Revoir le tutoriel', 'Replay the tutorial')}
+            </Text>
+          </TouchableOpacity>
 
           {isAdmin && onOpenAdmin && (
             <TouchableOpacity

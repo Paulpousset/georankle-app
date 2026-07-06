@@ -15,7 +15,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ComponentType } from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CalendarDays, Compass, LayoutGrid, ShoppingBag, Sparkles, Trophy, User } from 'lucide-react-native';
+import { CalendarDays, Compass, LayoutGrid, ShoppingBag, Sparkles, Target, User, Users } from 'lucide-react-native';
 
 import { tr } from '../i18n';
 import { useTheme } from '../contexts/ThemeContext';
@@ -46,8 +46,12 @@ export interface TutorialStep {
 const DAILY_FLAME = '#e8772e';
 
 /**
- * The 7 steps of the tour. `targetId`s map to refs registered by the host
- * screen (see MainMenu's `measureTarget`).
+ * The steps of the tour. `targetId`s map to refs registered by the host screen
+ * (see MainMenu's `measureTarget`); a null target shows a centered card.
+ *
+ * The copy is written for someone who has never seen the app before: each step
+ * says plainly what the thing is AND what to do with it. The `howto` step covers
+ * the one question a newcomer always has — "what do I actually do in a game?".
  */
 export const ONBOARDING_STEPS: TutorialStep[] = [
   {
@@ -55,10 +59,24 @@ export const ONBOARDING_STEPS: TutorialStep[] = [
     icon: Compass,
     accent: PALETTE.vermilion,
     targetId: null,
-    titleFr: 'Bienvenue sur GeoGames',
-    titleEn: 'Welcome to GeoGames',
-    bodyFr: 'Classez, devinez et explorez le monde. Voici un tour rapide en 1 minute — vous pouvez le passer à tout moment.',
-    bodyEn: "Rank, guess and explore the world. Here's a quick one-minute tour — you can skip it anytime.",
+    titleFr: 'Bienvenue sur GeoGames !',
+    titleEn: 'Welcome to GeoGames!',
+    bodyFr:
+      'GeoGames réunit des mini-jeux de géographie : classez des pays, devinez des drapeaux, trouvez des lieux sur le globe. Ce petit tour de 30 secondes vous montre l’essentiel — et vous pourrez le revoir quand vous voulez depuis votre Profil.',
+    bodyEn:
+      'GeoGames is a set of short geography games: rank countries, guess flags, find places on the globe. This 30-second tour shows you the essentials — and you can replay it anytime from your Profile.',
+  },
+  {
+    id: 'howto',
+    icon: Target,
+    accent: PALETTE.oceanBlue,
+    targetId: null,
+    titleFr: 'Comment on joue',
+    titleEn: 'How you play',
+    bodyFr:
+      'Chaque partie enchaîne quelques manches rapides. Selon le jeu, vous tapez, choisissez ou placez votre réponse. Plus vous êtes précis, plus vous marquez de points. Pas de chrono stressant : la première fois que vous ouvrez un jeu, ses règles s’affichent automatiquement.',
+    bodyEn:
+      'Every game is a few quick rounds. Depending on the game you tap, pick or place your answer. The more accurate you are, the more points you earn. No stressful timer — and the first time you open a game, its rules pop up automatically.',
   },
   {
     id: 'modes',
@@ -67,8 +85,10 @@ export const ONBOARDING_STEPS: TutorialStep[] = [
     targetId: 'modes',
     titleFr: 'Trois façons de jouer',
     titleEn: 'Three ways to play',
-    bodyFr: 'En Solo à votre rythme, en Local entre amis sur le même appareil, ou En Ligne contre des joueurs du monde entier.',
-    bodyEn: 'Solo at your own pace, Local with friends on one device, or Online against players worldwide.',
+    bodyFr:
+      'Commencez par Solo pour découvrir tous les jeux à votre rythme. Local se joue à plusieurs sur le même téléphone, et En Ligne vous oppose à d’autres joueurs du monde entier.',
+    bodyEn:
+      'Start with Solo to discover every game at your own pace. Local is for several players on one phone, and Online pits you against players from around the world.',
   },
   {
     id: 'daily',
@@ -77,8 +97,10 @@ export const ONBOARDING_STEPS: TutorialStep[] = [
     targetId: 'daily',
     titleFr: 'Le Défi du Jour',
     titleEn: 'Daily Challenge',
-    bodyFr: 'Un nouveau puzzle pour chaque mode, chaque jour. Jouez quotidiennement pour entretenir votre série.',
-    bodyEn: 'A fresh puzzle for every mode, every day. Play daily to keep your streak alive.',
+    bodyFr:
+      'Chaque jour, un nouveau puzzle pour chaque mode. Revenez quotidiennement pour allonger votre série : c’est le moyen le plus simple de progresser un peu chaque jour.',
+    bodyEn:
+      'Every day brings a fresh puzzle for each mode. Come back daily to grow your streak — the easiest way to improve a little every day.',
   },
   {
     id: 'profile',
@@ -87,8 +109,10 @@ export const ONBOARDING_STEPS: TutorialStep[] = [
     targetId: 'profile',
     titleFr: 'Votre profil',
     titleEn: 'Your profile',
-    bodyFr: 'Suivez vos statistiques, votre progression et vos succès — tout est ici, en haut à gauche.',
-    bodyEn: "Track your stats, progress and achievements — it's all here, top-left.",
+    bodyFr:
+      'Ici, en haut à gauche : votre pseudo, votre avatar, vos statistiques et vos records. Connectez-vous pour sauvegarder votre progression et jouer en ligne.',
+    bodyEn:
+      'Here, top-left: your name, avatar, stats and records. Sign in to save your progress and play online.',
   },
   {
     id: 'shop',
@@ -97,28 +121,34 @@ export const ONBOARDING_STEPS: TutorialStep[] = [
     targetId: 'shop',
     titleFr: 'La Boutique',
     titleEn: 'The Shop',
-    bodyFr: 'Gagnez des pièces en jouant, puis personnalisez votre globe : skins, orbites, emblèmes et satellites.',
-    bodyEn: 'Earn coins as you play, then customize your globe: skins, orbits, emblems and satellites.',
+    bodyFr:
+      'En jouant, vous gagnez des pièces. Dépensez-les dans la Boutique pour personnaliser votre globe : couleurs, orbites, emblèmes et satellites.',
+    bodyEn:
+      'As you play, you earn coins. Spend them in the Shop to customize your globe: colors, orbits, emblems and satellites.',
   },
   {
     id: 'friends',
-    icon: Trophy,
-    accent: PALETTE.sand,
+    icon: Users,
+    accent: PALETTE.vermilion,
     targetId: 'friends',
     titleFr: 'Amis & Classé',
     titleEn: 'Friends & Ranked',
-    bodyFr: 'Ajoutez des amis et défiez-les. En mode Classé, grimpez du Bronze jusqu’au rang Maître.',
-    bodyEn: 'Add friends and challenge them. In Ranked, climb from Bronze all the way to Master.',
+    bodyFr:
+      'Ajoutez des amis pour les défier directement. Et en mode Classé, vos victoires vous font gagner des points ELO et grimper les rangs, du Bronze jusqu’au Maître.',
+    bodyEn:
+      'Add friends to challenge them directly. And in Ranked, your wins earn ELO points and climb the ranks, from Bronze all the way to Master.',
   },
   {
     id: 'ready',
     icon: Sparkles,
     accent: PALETTE.forestGreen,
     targetId: null,
-    titleFr: 'Prêt à jouer ?',
-    titleEn: 'Ready to play?',
-    bodyFr: 'Commencez par le Défi du Jour ou un mode Solo. Bonne exploration, géographe !',
-    bodyEn: 'Start with the Daily Challenge or a Solo mode. Happy exploring!',
+    titleFr: 'À vous de jouer !',
+    titleEn: 'Your turn to play!',
+    bodyFr:
+      'Le plus simple pour démarrer : appuyez sur Solo, choisissez un jeu, et laissez-vous guider. Bonne exploration, géographe !',
+    bodyEn:
+      'The easiest way to start: tap Solo, pick a game, and follow the on-screen guide. Happy exploring!',
   },
 ];
 
