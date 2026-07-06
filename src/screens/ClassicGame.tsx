@@ -36,6 +36,7 @@ import { FONTS } from '../theme/typography';
 import { ThemeInfoModal } from '../components/ThemeInfoModal';
 import { a11yButton, announce, a11yHidden, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
+import { RewardedAdButton } from '../components/RewardedAdButton';
 import { TopInsetBar } from '../components/TopInsetBar';
 
 const isMobile = Platform.OS === 'ios' || Platform.OS === 'android';
@@ -359,7 +360,7 @@ export function ClassicGame({
 
   if (rounds.length === 0 || sessionThemes.length === 0) {
     return (
-      <View style={[styles.container, !isDarkMode && styles.containerLight]}>
+      <View style={[styles.container, !isDarkMode && styles.containerLight, { justifyContent: 'center', alignItems: 'center' }]}>
         <Text style={{ color: isDarkMode ? 'white' : 'black' }}>{tr(language, 'Chargement…', 'Loading…')}</Text>
       </View>
     );
@@ -958,6 +959,13 @@ export function ClassicGame({
                               : tr(language, 'Aucune pièce cette fois', 'No coins this time')}
                           </Text>
                         )}
+                      </View>
+                    )}
+
+                    {/* Rewarded ad slot (hidden while the rewarded_ads flag is off). */}
+                    {coinsEarned != null && (
+                      <View style={{ alignSelf: 'stretch', marginTop: 8 }}>
+                        <RewardedAdButton context="solo_summary" />
                       </View>
                     )}
                   </View>

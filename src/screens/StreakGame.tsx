@@ -33,6 +33,7 @@ import { FONTS } from '../theme/typography';
 import { tr } from '../i18n';
 import { a11yButton, announce, a11yHidden, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
+import { RewardedAdButton } from '../components/RewardedAdButton';
 import { TopInsetBar } from '../components/TopInsetBar';
 
 const isMobile = Platform.OS === 'ios' || Platform.OS === 'android';
@@ -570,6 +571,13 @@ export default function StreakGame({
                         : (language === 'fr' ? 'Aucune pièce cette fois' : 'No coins this time')}
                     </Text>
                   )}
+                </View>
+              )}
+
+              {/* Rewarded ad slot (hidden while the rewarded_ads flag is off). */}
+              {coinsEarned != null && (
+                <View style={{ alignSelf: 'stretch', marginBottom: 24 }}>
+                  <RewardedAdButton context="solo_summary" />
                 </View>
               )}
               {isDaily ? (
