@@ -27,6 +27,7 @@ import { normalizeRoundScore } from '../lib/score';
 import { tr } from '../i18n';
 import { track } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
+import { log } from '../lib/log';
 import rawCountriesStats from '../../assets/countries_stats.json';
 import rawWorldPolygons from '../../assets/world_polygons.json';
 import { a11yButton, announce, a11yImage, ICON_HIT_SLOP } from '../lib/a11y';
@@ -531,7 +532,22 @@ export default function FindCountryGame({
         setPhase('finished');
         return;
       }
-      if (!matchData) track('game_completed', { mode: 'globe', score });
+      if (!matchData) {
+        track('game_completed', { mode: 'globe', score });
+        if (user) {
+          // Leaderboard stores the unified 0–1000 scale so runs of any length compare fairly.
+          supabase
+            .from('scores')
+            .insert({
+              user_id: user.id,
+              game_mode: 'globe',
+              score: normalizeRoundScore('globe', score, { numQuestions: totalRounds }),
+            })
+            .then(({ error }) => {
+              if (error) log.error('Error saving globe score:', error);
+            });
+        }
+      }
       setPhase('finished');
       return;
     }

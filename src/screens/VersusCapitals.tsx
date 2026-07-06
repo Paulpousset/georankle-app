@@ -28,10 +28,13 @@ import { AtlasStar, AtlasTrophy, AtlasCross } from '../components/AtlasIcons';
 import * as Haptics from 'expo-haptics';
 import { track } from '../lib/analytics';
 import { normalizeRoundScore } from '../lib/score';
+import { supabase } from '../lib/supabase';
+import { log } from '../lib/log';
 import { getFlagUrl } from '../lib/flags';
 import { isAnswerClose, COUNTRY_ALIASES } from '../lib/answerMatch';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
+import type { User } from '@supabase/supabase-js';
 import type { GameMode, Match } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -59,6 +62,8 @@ const isMobile = Platform.OS === 'ios' || Platform.OS === 'android';
 interface VersusCapitalsProps {
   setGameMode: (mode: GameMode) => void;
   soloMode?: boolean;
+  /** Signed-in user — solo quiz runs save their score to the global leaderboard. */
+  user?: User | null;
   initialGameType?: string;
   matchData?: Match | null;
   onRoundComplete?: (score: number) => void;
@@ -122,6 +127,7 @@ function StarScore({ color, value, size = 10 }: { color: string; value: number; 
 export default function VersusCapitals({
   setGameMode,
   soloMode = false,
+  user,
   initialGameType,
   matchData,
   onRoundComplete,
@@ -405,7 +411,25 @@ export default function VersusCapitals({
         return;
       }
 
-      if (soloMode) track('game_completed', { mode: soloAnalyticsMode, score: scores[1] });
+      if (soloMode) {
+        track('game_completed', { mode: soloAnalyticsMode, score: scores[1] });
+        if (user) {
+          // Leaderboard stores the unified 0–1000 scale so 5/10/20-round runs compare fairly.
+          supabase
+            .from('scores')
+            .insert({
+              user_id: user.id,
+              game_mode: soloAnalyticsMode,
+              score: normalizeRoundScore('versus', scores[1], {
+                numQuestions: totalRounds,
+                maxPointsPerQuestion: 5,
+              }),
+            })
+            .then(({ error }) => {
+              if (error) log.error('Error saving quiz score:', error);
+            });
+        }
+      }
 
       let bestScore = -1;
       let winners: number[] = [];

@@ -43,6 +43,7 @@ import { COUNTRY_ALIASES } from '../lib/answerMatch';
 import { normalizeRoundScore } from '../lib/score';
 import { track } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
+import { log } from '../lib/log';
 import { createSeededRng } from '../lib/rng';
 import {
   CATEGORIES,
@@ -254,7 +255,16 @@ export default function GuessCountryGame({
         onDailyComplete?.(score, grid);
       } else {
         if (!matchData) track('game_completed', { mode: 'guess', score });
-        if (onRoundComplete) onRoundComplete(normalizeRoundScore('guess', score));
+        if (onRoundComplete) {
+          onRoundComplete(normalizeRoundScore('guess', score));
+        } else if (!matchData && user) {
+          supabase
+            .from('scores')
+            .insert({ user_id: user.id, game_mode: 'guess', score })
+            .then(({ error }) => {
+              if (error) log.error('Error saving guess score:', error);
+            });
+        }
       }
     } else {
       announce(
