@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>GeoG — Propositions Android (icône notif + feature graphic)</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700;900&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+  body { font-family: -apple-system, sans-serif; background:#f2ede2; color:#2b2620; margin:0; padding:32px; }
+  h1 { font-family:'Playfair Display', Georgia, serif; }
+  h2 { margin-top:48px; border-bottom:2px solid #c9a24b; padding-bottom:6px; font-family:'Playfair Display', Georgia, serif;}
+  .row { display:flex; gap:24px; flex-wrap:wrap; margin-top:16px; }
+  .card { background:#fff; border-radius:12px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,.08); }
+  .card h3 { margin:0 0 12px; font-size:15px; }
+  .statusbar { width:360px; height:32px; background:#1b1b1f; border-radius:8px 8px 0 0; display:flex; align-items:center; padding:0 12px; gap:8px; color:#e8e8ee; font-size:12px; }
+  .statusbar .spacer { flex:1; }
+  .statusbar svg { width:16px; height:16px; }
+  .shade { width:360px; background:#232329; border-radius:0 0 8px 8px; padding:10px 12px; display:flex; gap:10px; align-items:flex-start;}
+  .shade .appicon { width:24px; height:24px; border-radius:50%; background:#2a6e3f; display:flex; align-items:center; justify-content:center; }
+  .shade .appicon svg { width:16px; height:16px; }
+  .shade .txt { color:#ddd; font-size:12px; line-height:1.4; }
+  .shade .txt b { color:#fff; }
+  .big { width:96px; height:96px; background:repeating-conic-gradient(#3a3a42 0 90deg, #2c2c33 0 180deg) 0 0/16px 16px; border-radius:8px; padding:8px; }
+  .big svg { width:96px; height:96px; }
+  .fg { width:1024px; height:500px; transform:scale(.62); transform-origin:top left; border-radius:8px; overflow:hidden; box-shadow:0 2px 12px rgba(0,0,0,.15); }
+  .fgwrap { width:calc(1024px*.62); height:calc(500px*.62); }
+  .note { font-size:13px; color:#6b6355; max-width:760px; }
+</style>
+</head>
+<body>
+<h1>GeoG — Android : propositions visuelles</h1>
+<p class="note">Deux décisions : <b>1)</b> l'icône de notification (barre de statut Android — doit être une silhouette blanche sur fond transparent, Android la teinte lui-même) ; <b>2)</b> le feature graphic Google Play (bannière 1024×500 obligatoire en haut de la fiche store).</p>
+
+<h2>1 · Icône de notification</h2>
+
+<!-- ══════════ SVG defs of the three variants ══════════ -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <!-- V1 : rose des vents pleine (silhouette) -->
+    <g id="notif-v1">
+      <circle cx="48" cy="48" r="34" fill="none" stroke="#fff" stroke-width="5"/>
+      <path fill="#fff" d="M48 10 L53.5 42.5 L48 48 L42.5 42.5 Z"/>
+      <path fill="#fff" d="M48 86 L53.5 53.5 L48 48 L42.5 53.5 Z"/>
+      <path fill="#fff" d="M10 48 L42.5 42.5 L48 48 L42.5 53.5 Z"/>
+      <path fill="#fff" d="M86 48 L53.5 42.5 L48 48 L53.5 53.5 Z"/>
+      <circle cx="48" cy="48" r="7" fill="#fff"/>
+    </g>
+    <!-- V2 : rose des vents trait fin + graduations -->
+    <g id="notif-v2">
+      <circle cx="48" cy="48" r="35" fill="none" stroke="#fff" stroke-width="3.5"/>
+      <g stroke="#fff" stroke-width="3">
+        <line x1="48" y1="9"  x2="48" y2="16"/>
+        <line x1="48" y1="80" x2="48" y2="87"/>
+        <line x1="9"  y1="48" x2="16" y2="48"/>
+        <line x1="80" y1="48" x2="87" y2="48"/>
+      </g>
+      <path fill="none" stroke="#fff" stroke-width="4" stroke-linejoin="round"
+            d="M48 22 L54 42 L74 48 L54 54 L48 74 L42 54 L22 48 L42 42 Z"/>
+      <circle cx="48" cy="48" r="4.5" fill="#fff"/>
+    </g>
+    <!-- V3 : globe méridiens trait fin -->
+    <g id="notif-v3">
+      <circle cx="48" cy="48" r="36" fill="none" stroke="#fff" stroke-width="5"/>
+      <ellipse cx="48" cy="48" rx="16" ry="36" fill="none" stroke="#fff" stroke-width="4"/>
+      <line x1="12" y1="48" x2="84" y2="48" stroke="#fff" stroke-width="4"/>
+      <path d="M17 28 Q48 40 79 28" fill="none" stroke="#fff" stroke-width="4"/>
+      <path d="M17 68 Q48 56 79 68" fill="none" stroke="#fff" stroke-width="4"/>
+    </g>
+  </defs>
+</svg>
+
+<div class="row">
+  <!-- template card per variant, rendered by JS below -->
+</div>
+<div class="row" id="notif-cards"></div>
+<script>
+  const variants = [
+    ['V1', 'Rose des vents pleine', 'Lisible même en 16 px — recommandée'],
+    ['V2', 'Rose des vents trait fin', 'Style « Trait fin », plus délicat, risque de bouchage en petit'],
+    ['V3', 'Globe méridiens', 'Plus générique « géo », moins fidèle à l\'icône app'],
+  ];
+  const wrap = document.getElementById('notif-cards');
+  for (const [id, name, note] of variants) {
+    const use = `<use href="#notif-${id.toLowerCase()}"/>`;
+    wrap.insertAdjacentHTML('beforeend', `
+      <div class="card">
+        <h3>${id} — ${name}</h3>
+        <div class="statusbar">
+          <svg viewBox="0 0 96 96">${use}</svg>
+          <span>GeoG</span><span class="spacer"></span><span>21:37</span>
+        </div>
+        <div class="shade">
+          <div class="appicon"><svg viewBox="0 0 96 96">${use}</svg></div>
+          <div class="txt"><b>GeoG</b> · maintenant<br>Léa t'a défié en Duel Drapeaux 🇫🇷</div>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:12px;align-items:center">
+          <div class="big"><svg viewBox="0 0 96 96">${use}</svg></div>
+          <span class="note">${note}</span>
+        </div>
+      </div>`);
+  }
+</script>
+
+<h2>2 · Feature graphic 1024×500 (bannière Google Play)</h2>
+<p class="note">Palette de l'icône app : parchemin, or, vert et marine. Le texte reste minimal (la bannière est la même pour toutes les langues).</p>
+
+<div class="row">
+  <div>
+    <h3>F1 — Parchemin centré (fidèle à l'icône)</h3>
+    <div class="fgwrap"><div class="fg" id="fg1">
+      <svg width="1024" height="500" viewBox="0 0 1024 500" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="parch" cx="50%" cy="42%" r="75%">
+            <stop offset="0%" stop-color="#f7efdc"/><stop offset="100%" stop-color="#ecdfc2"/>
+          </radialGradient>
+        </defs>
+        <rect width="1024" height="500" fill="url(#parch)"/>
+        <g stroke="#d8c8a4" stroke-width="1">
+          <line x1="0" y1="125" x2="1024" y2="125"/><line x1="0" y1="250" x2="1024" y2="250"/><line x1="0" y1="375" x2="1024" y2="375"/>
+          <line x1="171" y1="0" x2="171" y2="500"/><line x1="341" y1="0" x2="341" y2="500"/><line x1="512" y1="0" x2="512" y2="500"/><line x1="683" y1="0" x2="683" y2="500"/><line x1="853" y1="0" x2="853" y2="500"/>
+        </g>
+        <rect x="22" y="22" width="980" height="456" rx="18" fill="none" stroke="#c9a24b" stroke-width="4"/>
+        <rect x="34" y="34" width="956" height="432" rx="12" fill="none" stroke="#b39058" stroke-width="1.5"/>
+        <text x="60" y="76" font-family="'Space Mono',monospace" font-size="22" fill="#a08c62" letter-spacing="2">48°N</text>
+        <text x="906" y="76" font-family="'Space Mono',monospace" font-size="22" fill="#a08c62" letter-spacing="2">2°E</text>
+        <!-- compass -->
+        <g transform="translate(240,250)">
+          <circle r="150" fill="none" stroke="#c9a24b" stroke-width="6"/>
+          <g stroke="#b39058" stroke-width="3">
+            <line y1="-150" y2="-134"/><line y1="150" y2="134"/><line x1="-150" x2="-134"/><line x1="150" x2="134"/>
+            <g transform="rotate(30)"><line y1="-150" y2="-140"/><line y1="150" y2="140"/></g>
+            <g transform="rotate(60)"><line y1="-150" y2="-140"/><line y1="150" y2="140"/></g>
+            <g transform="rotate(120)"><line y1="-150" y2="-140"/><line y1="150" y2="140"/></g>
+            <g transform="rotate(150)"><line y1="-150" y2="-140"/><line y1="150" y2="140"/></g>
+          </g>
+          <path fill="#9e2b25" d="M0,-118 L10,-88 L0,-96 L-10,-88 Z"/>
+          <path fill="#1d5c33" d="M0,-96 L13,0 L-13,0 Z"/>
+          <path fill="#1f3a5f" d="M0,118 L13,0 L-13,0 Z"/>
+          <path fill="#1f3a5f" d="M-118,0 L0,-11 L0,11 Z"/>
+          <path fill="#16293f" d="M118,0 L0,-11 L0,11 Z"/>
+          <circle r="26" fill="#f5ecd7" stroke="#c9a24b" stroke-width="6"/>
+          <circle r="9" fill="#1f3a5f"/><circle r="4" fill="#c9a24b"/>
+        </g>
+        <text x="450" y="235" font-family="'Playfair Display',Georgia,serif" font-weight="900" font-size="120" fill="#2b2620">GeoG</text>
+        <text x="454" y="300" font-family="'Playfair Display',Georgia,serif" font-size="34" fill="#6b5b3e" font-style="italic">Pays · Capitales · Drapeaux</text>
+        <text x="454" y="352" font-family="'Space Mono',monospace" font-size="20" fill="#a08c62" letter-spacing="3">DUELS EN LIGNE — DÉFIS QUOTIDIENS</text>
+      </svg>
+    </div></div>
+  </div>
+</div>
+
+<div class="row">
+  <div>
+    <h3>F2 — Marine atlas (contraste fort en store)</h3>
+    <div class="fgwrap"><div class="fg" id="fg2">
+      <svg width="1024" height="500" viewBox="0 0 1024 500" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="navy" cx="30%" cy="40%" r="90%">
+            <stop offset="0%" stop-color="#274a75"/><stop offset="100%" stop-color="#152a45"/>
+          </radialGradient>
+        </defs>
+        <rect width="1024" height="500" fill="url(#navy)"/>
+        <g stroke="#3a5a85" stroke-width="1" opacity=".6">
+          <line x1="0" y1="125" x2="1024" y2="125"/><line x1="0" y1="250" x2="1024" y2="250"/><line x1="0" y1="375" x2="1024" y2="375"/>
+          <line x1="171" y1="0" x2="171" y2="500"/><line x1="341" y1="0" x2="341" y2="500"/><line x1="512" y1="0" x2="512" y2="500"/><line x1="683" y1="0" x2="683" y2="500"/><line x1="853" y1="0" x2="853" y2="500"/>
+        </g>
+        <rect x="22" y="22" width="980" height="456" rx="18" fill="none" stroke="#c9a24b" stroke-width="4"/>
+        <!-- globe trait fin doré, décentré droite -->
+        <g transform="translate(790,250)" stroke="#c9a24b" fill="none">
+          <circle r="170" stroke-width="5"/>
+          <ellipse rx="75" ry="170" stroke-width="3"/>
+          <line x1="-170" x2="170" stroke-width="3"/>
+          <path d="M-155,-75 Q0,-25 155,-75" stroke-width="3"/>
+          <path d="M-155,75 Q0,25 155,75" stroke-width="3"/>
+          <circle r="6" fill="#c9a24b" stroke="none"/>
+        </g>
+        <text x="70" y="235" font-family="'Playfair Display',Georgia,serif" font-weight="900" font-size="130" fill="#f5ecd7">GeoG</text>
+        <text x="74" y="300" font-family="'Playfair Display',Georgia,serif" font-size="34" fill="#c9a24b" font-style="italic">Pays · Capitales · Drapeaux</text>
+        <text x="74" y="352" font-family="'Space Mono',monospace" font-size="20" fill="#8fa8c9" letter-spacing="3">DUELS EN LIGNE — DÉFIS QUOTIDIENS</text>
+      </svg>
+    </div></div>
+  </div>
+</div>
+
+<div class="row">
+  <div>
+    <h3>F3 — Vert forêt (couleur de marque des notifs #2a6e3f)</h3>
+    <div class="fgwrap"><div class="fg" id="fg3">
+      <svg width="1024" height="500" viewBox="0 0 1024 500" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="green" cx="70%" cy="40%" r="90%">
+            <stop offset="0%" stop-color="#2f7a46"/><stop offset="100%" stop-color="#1c4a2b"/>
+          </radialGradient>
+        </defs>
+        <rect width="1024" height="500" fill="url(#green)"/>
+        <g stroke="#3d8a54" stroke-width="1" opacity=".55">
+          <line x1="0" y1="125" x2="1024" y2="125"/><line x1="0" y1="250" x2="1024" y2="250"/><line x1="0" y1="375" x2="1024" y2="375"/>
+          <line x1="171" y1="0" x2="171" y2="500"/><line x1="341" y1="0" x2="341" y2="500"/><line x1="512" y1="0" x2="512" y2="500"/><line x1="683" y1="0" x2="683" y2="500"/><line x1="853" y1="0" x2="853" y2="500"/>
+        </g>
+        <rect x="22" y="22" width="980" height="456" rx="18" fill="none" stroke="#e8d9ae" stroke-width="4"/>
+        <!-- rose des vents crème, à gauche -->
+        <g transform="translate(235,250)">
+          <circle r="150" fill="none" stroke="#e8d9ae" stroke-width="6"/>
+          <path fill="#f5ecd7" d="M0,-118 L14,0 L-14,0 Z"/>
+          <path fill="#cdbd91" d="M0,118 L14,0 L-14,0 Z"/>
+          <path fill="#f5ecd7" d="M-118,0 L0,-12 L0,12 Z"/>
+          <path fill="#cdbd91" d="M118,0 L0,-12 L0,12 Z"/>
+          <circle r="24" fill="#1c4a2b" stroke="#e8d9ae" stroke-width="6"/>
+          <circle r="7" fill="#e8d9ae"/>
+        </g>
+        <text x="445" y="235" font-family="'Playfair Display',Georgia,serif" font-weight="900" font-size="120" fill="#f5ecd7">GeoG</text>
+        <text x="449" y="300" font-family="'Playfair Display',Georgia,serif" font-size="34" fill="#e8d9ae" font-style="italic">Pays · Capitales · Drapeaux</text>
+        <text x="449" y="352" font-family="'Space Mono',monospace" font-size="20" fill="#a9c9b2" letter-spacing="3">DUELS EN LIGNE — DÉFIS QUOTIDIENS</text>
+      </svg>
+    </div></div>
+  </div>
+</div>
+
+</body>
+</html>
