@@ -25,6 +25,32 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_claims: {
+        Row: {
+          count: number
+          day: string
+          user_id: string
+        }
+        Insert: {
+          count?: number
+          day: string
+          user_id: string
+        }
+        Update: {
+          count?: number
+          day?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_claims_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_secrets: {
         Row: {
           key: string
@@ -68,6 +94,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      cosmetic_bundles: {
+        Row: {
+          bundle_id: string
+          created_at: string
+          item_ids: string[]
+          price: number
+        }
+        Insert: {
+          bundle_id: string
+          created_at?: string
+          item_ids: string[]
+          price: number
+        }
+        Update: {
+          bundle_id?: string
+          created_at?: string
+          item_ids?: string[]
+          price?: number
+        }
+        Relationships: []
       }
       cosmetic_prices: {
         Row: {
@@ -152,6 +199,24 @@ export type Database = {
           },
         ]
       }
+      feature_flags: {
+        Row: {
+          enabled: boolean
+          key: string
+          updated_at: string
+        }
+        Insert: {
+          enabled?: boolean
+          key: string
+          updated_at?: string
+        }
+        Update: {
+          enabled?: boolean
+          key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       friends: {
         Row: {
           created_at: string
@@ -185,6 +250,38 @@ export type Database = {
           {
             foreignKeyName: "friends_user_id2_fkey"
             columns: ["user_id2"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      iap_grants: {
+        Row: {
+          coins: number
+          created_at: string
+          product_id: string
+          transaction_id: string
+          user_id: string
+        }
+        Insert: {
+          coins: number
+          created_at?: string
+          product_id: string
+          transaction_id: string
+          user_id: string
+        }
+        Update: {
+          coins?: number
+          created_at?: string
+          product_id?: string
+          transaction_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "iap_grants_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -463,6 +560,7 @@ export type Database = {
           id: string
           is_admin: boolean
           last_seen: string | null
+          push_lang: string
           push_token: string | null
           show_rank: boolean
           updated_at: string | null
@@ -477,6 +575,7 @@ export type Database = {
           id: string
           is_admin?: boolean
           last_seen?: string | null
+          push_lang?: string
           push_token?: string | null
           show_rank?: boolean
           updated_at?: string | null
@@ -491,12 +590,45 @@ export type Database = {
           id?: string
           is_admin?: boolean
           last_seen?: string | null
+          push_lang?: string
           push_token?: string | null
           show_rank?: boolean
           updated_at?: string | null
           username?: string | null
         }
         Relationships: []
+      }
+      quest_claims: {
+        Row: {
+          created_at: string
+          day: string
+          quest_id: string
+          reward: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          day: string
+          quest_id: string
+          reward: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          day?: string
+          quest_id?: string
+          reward?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quest_claims_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       scores: {
         Row: {
@@ -529,6 +661,72 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      season_rewards: {
+        Row: {
+          coins: number
+          created_at: string
+          elo: number
+          season_id: number
+          tier: string
+          user_id: string
+        }
+        Insert: {
+          coins: number
+          created_at?: string
+          elo: number
+          season_id: number
+          tier: string
+          user_id: string
+        }
+        Update: {
+          coins?: number
+          created_at?: string
+          elo?: number
+          season_id?: number
+          tier?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "season_rewards_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "season_rewards_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seasons: {
+        Row: {
+          closed: boolean
+          ends_at: string
+          id: number
+          name: string
+          starts_at: string
+        }
+        Insert: {
+          closed?: boolean
+          ends_at: string
+          id?: number
+          name: string
+          starts_at: string
+        }
+        Update: {
+          closed?: boolean
+          ends_at?: string
+          id?: number
+          name?: string
+          starts_at?: string
+        }
+        Relationships: []
       }
       solo_coin_log: {
         Row: {
@@ -611,20 +809,51 @@ export type Database = {
         }
         Returns: Json
       }
+      claim_quest: { Args: { p_quest_id: string }; Returns: Json }
+      claim_rewarded_ad: { Args: never; Returns: Json }
+      close_season: { Args: { p_season_id: number }; Returns: Json }
       delete_user_account: { Args: never; Returns: undefined }
       elo_k_factor: { Args: { p_elo: number; p_won: boolean }; Returns: number }
       equip_cosmetics: { Args: { p_config: Json }; Returns: Json }
+      featured_cosmetic_today: {
+        Args: never
+        Returns: {
+          base_price: number
+          item_id: string
+          price: number
+        }[]
+      }
       finalize_round: { Args: { p_match_id: string }; Returns: Json }
       finalize_round_ffa: { Args: { p_match_id: string }; Returns: Json }
       forfeit_match: {
         Args: { p_match_id: string; p_window_seconds?: number }
         Returns: Json
       }
+      get_daily_quests: { Args: never; Returns: Json }
+      get_featured_cosmetic: { Args: never; Returns: Json }
+      grant_iap_coins: {
+        Args: { p_product: string; p_transaction_id: string; p_user: string }
+        Returns: Json
+      }
       host_ffa_match: { Args: { p_match_id: string }; Returns: Json }
       is_admin: { Args: never; Returns: boolean }
       join_ffa_match: { Args: { p_match_id: string }; Returns: Json }
+      purchase_bundle: { Args: { p_bundle_id: string }; Returns: Json }
       purchase_cosmetic: { Args: { p_item_id: string }; Returns: Json }
+      quest_defs: {
+        Args: never
+        Returns: {
+          quest_id: string
+          reward: number
+          target: number
+        }[]
+      }
+      quest_progress: {
+        Args: { p_day: string; p_quest_id: string; p_uid: string }
+        Returns: number
+      }
       rank_tier_from_elo: { Args: { p_elo: number }; Returns: string }
+      todays_quest_ids: { Args: { p_day: string }; Returns: string[] }
       touch_last_seen: { Args: never; Returns: undefined }
       touch_match: { Args: { p_match_id: string }; Returns: undefined }
     }

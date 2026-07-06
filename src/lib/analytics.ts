@@ -44,6 +44,9 @@ export type AnalyticsEvent =
   | 'daily_completed'
   | 'daily_shared'
   | 'daily_reminder_set'
+  // Quests & streak rewards
+  | 'quest_claimed'
+  | 'streak_bonus_awarded'
   // Multiplayer
   | 'matchmaking_started'
   | 'match_invite_sent'
@@ -56,8 +59,15 @@ export type AnalyticsEvent =
   | 'bot_match_completed'
   // Economy
   | 'shop_opened'
+  | 'shop_item_viewed'
   | 'cosmetic_purchased'
+  | 'bundle_purchased'
+  | 'featured_purchased'
+  | 'shop_filter_changed'
   | 'avatar_equipped'
+  | 'rewarded_ad_requested'
+  | 'rewarded_ad_earned'
+  | 'rewarded_ad_failed'
   // Social
   | 'friend_request_sent'
   | 'friend_request_accepted'
@@ -69,6 +79,7 @@ export type AnalyticsEvent =
   // Settings
   | 'theme_toggled'
   | 'language_toggled'
+  | 'tutorial_replayed'
   // Admin
   | 'admin_broadcast_sent'
   | 'admin_campaign_saved';
