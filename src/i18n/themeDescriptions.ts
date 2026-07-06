@@ -129,3 +129,16 @@ export function getThemeDescription(themeId: string, language: Language): string
   if (description) return language === 'fr' ? description.fr : description.en;
   return language === 'fr' ? 'Informations non disponibles.' : 'Information not available.';
 }
+
+/**
+ * Spoiler-free version of the theme description: keeps only the sentence that
+ * explains what the metric measures, dropping the "#1 is ..." sentence that
+ * would reveal the ranking leader. Used in the « Plus ou Moins » theme card.
+ */
+export function getThemeShortDescription(themeId: string, language: Language): string {
+  const full = getThemeDescription(themeId, language);
+  const kept = full.split('. ').filter((sentence) => !sentence.includes('#1'));
+  if (kept.length === 0) return full;
+  const out = kept.join('. ').trim();
+  return /[.!?]$/.test(out) ? out : `${out}.`;
+}

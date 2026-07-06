@@ -99,7 +99,7 @@ describe('calculateEloChange (asymmetric per tier)', () => {
 });
 
 describe('generateRankedModes', () => {
-  const ALL: MatchMode[] = ['classic', 'streak', 'versus', 'globe', 'guess', 'regions'];
+  const ALL: MatchMode[] = ['classic', 'streak', 'versus', 'globe', 'guess', 'regions', 'higherlower', 'silhouette', 'borders'];
 
   it('is deterministic for a given seed', () => {
     expect(generateRankedModes(9, 42)).toEqual(generateRankedModes(9, 42));

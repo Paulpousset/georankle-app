@@ -99,7 +99,7 @@ export function getBestOfForRank(rank: RankInfo): number {
   return 9; // master
 }
 
-const RANKED_MODES: MatchMode[] = ['classic', 'streak', 'versus', 'globe', 'guess', 'regions'];
+const RANKED_MODES: MatchMode[] = ['classic', 'streak', 'versus', 'globe', 'guess', 'regions', 'higherlower', 'silhouette', 'borders'];
 
 /** A seeded country + division level for a ranked `regions` round. */
 export interface RankedRegionPick {
@@ -175,6 +175,9 @@ export function modeLabel(mode: MatchMode, lang: 'fr' | 'en'): string {
     guess: ['Devine le Pays', 'Guess Country'],
     regions: ['Défis Pays', 'Country Challenges'],
     challenge: ['Quiz Pays', 'Country Quiz'],
+    higherlower: ['Plus ou Moins', 'Higher or Lower'],
+    silhouette: ['Silhouette', 'Silhouette'],
+    borders: ['Frontières', 'Borders'],
   };
   return lang === 'fr' ? labels[mode][0] : labels[mode][1];
 }

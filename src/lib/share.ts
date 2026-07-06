@@ -19,7 +19,15 @@ function scoreLine(result: DailyResult, language: Language): string {
     case 'classic':
       return `${result.score}%`;
     case 'streak':
+    case 'higherlower':
       return tr(language, `Série de ${result.score}`, `Streak of ${result.score}`);
+    case 'silhouette':
+      // DUO/CARRÉ/CASH points (the 🟩/🟥 grid already shows how many were right).
+      return tr(language, `${result.score} pts`, `${result.score} pts`);
+    case 'borders':
+      return result.score > 0
+        ? tr(language, `Relié ! ${result.score} pts`, `Linked! ${result.score} pts`)
+        : tr(language, 'Non relié', 'Not linked');
     default:
       return tr(language, `Score : ${result.score}`, `Score: ${result.score}`);
   }

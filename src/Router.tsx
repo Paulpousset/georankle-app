@@ -15,6 +15,9 @@ import { ClassicGame } from './screens/ClassicGame';
 import StreakGame from './screens/StreakGame';
 import VersusCapitals from './screens/VersusCapitals';
 import GuessCountryGame from './screens/GuessCountryGame';
+import HigherLowerGame from './screens/HigherLowerGame';
+import SilhouetteGame from './screens/SilhouetteGame';
+import BordersGame from './screens/BordersGame';
 import FindCountryGame from './screens/FindCountryGame';
 import RegionGameFlow from './screens/RegionGameFlow';
 import FindRegionGame, { type RegionLevelKey } from './screens/FindRegionGame';
@@ -94,6 +97,8 @@ export function Router({
     coinsAwarded,
     showPreGameLobby,
     incomingInvite,
+    forfeitAvailable,
+    claimingForfeit,
     startMatch,
     acceptInvite,
     declineInvite,
@@ -101,6 +106,7 @@ export function Router({
     resetMatchState,
     continueToNextRound,
     dismissPreGameLobby,
+    claimForfeit,
   } = matchEngine;
 
   // Resuming a free-for-all match takes over the screen (it has its own engine).
@@ -264,6 +270,9 @@ export function Router({
           myScore={myCurrentRoundScore}
           gameMode={gameMode}
           onLeave={resetMatchState}
+          forfeitAvailable={forfeitAvailable}
+          claimingForfeit={claimingForfeit}
+          onClaimForfeit={claimForfeit}
         />
       </SafeAreaProvider>
     );
@@ -343,7 +352,47 @@ export function Router({
         <VersusCapitals
           setGameMode={setGameMode}
           soloMode
+          user={user}
           initialGameType={initialGameType}
+        />
+      </SafeAreaProvider>
+    );
+  }
+
+  if (gameMode === 'higherlower') {
+    return (
+      <SafeAreaProvider>
+        <HigherLowerGame
+          setGameMode={(mode) => { resetMatchState(); setGameMode(mode); }}
+          user={user}
+          matchData={matchData}
+          onRoundComplete={matchData ? handleRoundComplete : undefined}
+        />
+      </SafeAreaProvider>
+    );
+  }
+
+  if (gameMode === 'silhouette') {
+    return (
+      <SafeAreaProvider>
+        <SilhouetteGame
+          setGameMode={(mode) => { resetMatchState(); setGameMode(mode); }}
+          user={user}
+          matchData={matchData}
+          onRoundComplete={matchData ? handleRoundComplete : undefined}
+        />
+      </SafeAreaProvider>
+    );
+  }
+
+  if (gameMode === 'borders') {
+    return (
+      <SafeAreaProvider>
+        <BordersGame
+          setGameMode={(mode) => { resetMatchState(); setGameMode(mode); }}
+          user={user}
+          matchData={matchData}
+          onRoundComplete={matchData ? handleRoundComplete : undefined}
         />
       </SafeAreaProvider>
     );

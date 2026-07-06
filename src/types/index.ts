@@ -57,8 +57,8 @@ export interface Selection {
 /** Map of theme id -> selection. */
 export type SelectionMap = Record<string, Selection>;
 
-export type GameMode = 'menu' | 'classic' | 'streak' | 'versus' | 'guess' | 'globe' | 'regions' | 'challenge' | 'quiz-capital' | 'quiz-flag' | 'local-builder';
-export type MatchMode = 'classic' | 'streak' | 'versus' | 'globe' | 'guess' | 'regions' | 'challenge';
+export type GameMode = 'menu' | 'classic' | 'streak' | 'versus' | 'guess' | 'globe' | 'regions' | 'challenge' | 'quiz-capital' | 'quiz-flag' | 'higherlower' | 'silhouette' | 'borders' | 'local-builder';
+export type MatchMode = 'classic' | 'streak' | 'versus' | 'globe' | 'guess' | 'regions' | 'challenge' | 'higherlower' | 'silhouette' | 'borders';
 export type MatchStatus = 'waiting' | 'in_progress' | 'completed' | 'cancelled';
 
 /**
@@ -160,6 +160,19 @@ export interface CosmeticPart {
   glyph?: string;
   /** Representative colour for simple swatch tiles (cosmos, orbit). */
   swatch?: string;
+  /** ISO date the item was added to the catalog — drives the "NEW" badge. */
+  addedAt?: string;
+}
+
+/** A discounted multi-item pack sold in the shop (mirrored in cosmetic_bundles). */
+export interface CosmeticBundle {
+  id: string;
+  nameFr: string;
+  nameEn: string;
+  /** Item ids granted by the bundle (must exist in the catalog). */
+  itemIds: string[];
+  /** Discounted total price (below the sum of item prices). */
+  price: number;
 }
 
 /** One equipped layer: which part id and its chosen tint (null = part default). */

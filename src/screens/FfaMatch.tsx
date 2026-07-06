@@ -35,9 +35,13 @@ import { ScoreText } from '../components/ScoreText';
 import { AtlasWin } from '../components/AtlasIcons';
 import { standings as ffaStandings } from '../lib/ffa';
 import { setActiveMatch, clearActiveMatch } from '../lib/activeMatch';
+import { forfeitWindowElapsed, FORFEIT_WINDOW_SECONDS } from '../lib/match';
 
 import VersusCapitals from './VersusCapitals';
 import StreakGame from './StreakGame';
+import HigherLowerGame from './HigherLowerGame';
+import SilhouetteGame from './SilhouetteGame';
+import BordersGame from './BordersGame';
 import GuessCountryGame from './GuessCountryGame';
 import FindCountryGame from './FindCountryGame';
 import { ClassicGame } from './ClassicGame';
@@ -185,6 +189,73 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
     if (phase === 'lobby' && status === 'in_progress') setPhase('playing');
   }, [status, phase]);
 
+  // Heartbeat while actively playing a round: keeps the shared activity clock
+  // fresh so a slow-but-present player can't be forfeited out of the match.
+  // Silent while waiting on others (mirrors the 1v1 engine) so a deserted
+  // match goes stale and the close-match option below can open.
+  useEffect(() => {
+    if (phase !== 'playing' || status !== 'in_progress') return;
+    const ping = () => {
+      supabase.rpc('touch_match', { p_match_id: match.id }).then(undefined, () => {});
+    };
+    ping();
+    const handle = setInterval(ping, 30_000);
+    return () => clearInterval(handle);
+  }, [phase, status, match.id]);
+
+  // While waiting on the other players, watch the activity clock: once it has
+  // gone stale past the forfeit window (someone closed the app mid-round and
+  // the round can never complete), offer to close the match — the server
+  // freezes the standings as they are and awards placement coins.
+  const [canCloseMatch, setCanCloseMatch] = useState(false);
+  const [closingMatch, setClosingMatch] = useState(false);
+  useEffect(() => {
+    if (phase !== 'submitting' || status !== 'in_progress') return;
+    let cancelled = false;
+    const check = async () => {
+      const { data } = await supabase
+        .from('matches')
+        .select('status, last_activity_at')
+        .eq('id', match.id)
+        .single();
+      if (!data || cancelled || data.status !== 'in_progress') return;
+      setCanCloseMatch(forfeitWindowElapsed(data.last_activity_at as string, Date.now()));
+    };
+    check();
+    const handle = setInterval(check, 15_000);
+    return () => {
+      cancelled = true;
+      clearInterval(handle);
+      setCanCloseMatch(false);
+    };
+  }, [phase, status, match.id]);
+
+  const closeAbandonedMatch = async () => {
+    if (closingMatch) return;
+    setClosingMatch(true);
+    try {
+      const { data, error } = await supabase.rpc('forfeit_match', {
+        p_match_id: match.id,
+        p_window_seconds: FORFEIT_WINDOW_SECONDS,
+      });
+      if (error) {
+        log.error('forfeit_match (ffa) error:', error);
+        return;
+      }
+      const result = (data ?? {}) as { forfeited?: boolean };
+      if (!result.forfeited) {
+        // Someone is back — hide the option until the clock goes stale again.
+        setCanCloseMatch(false);
+        return;
+      }
+      // Realtime will normally deliver the status flip; set it locally too so
+      // the standings show even on a flaky connection.
+      setStatus('completed');
+    } finally {
+      setClosingMatch(false);
+    }
+  };
+
   // When everyone has finished the round, snapshot scores and let any client
   // finalise it (idempotent server-side). Only fire once per round.
   useEffect(() => {
@@ -255,6 +326,12 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
         return <VersusCapitals setGameMode={quit} matchData={synth} onRoundComplete={submitScore} onExit={onExit} key={common.key} />;
       case 'streak':
         return <StreakGame setGameMode={quit} user={null} {...common} />;
+      case 'higherlower':
+        return <HigherLowerGame setGameMode={quit} user={null} {...common} />;
+      case 'silhouette':
+        return <SilhouetteGame setGameMode={quit} user={null} {...common} />;
+      case 'borders':
+        return <BordersGame setGameMode={quit} user={null} {...common} />;
       case 'guess':
         return <GuessCountryGame onBackToMenu={onExit} user={null} {...common} />;
       case 'globe':
@@ -309,6 +386,31 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
                 </Text>
               ))}
             </View>
+            {canCloseMatch && (
+              <View style={{ alignItems: 'center', gap: 10, marginTop: 24, maxWidth: 320, width: '100%' }}>
+                <Text style={[styles.sub, { color: colors.textMuted }]}>
+                  {tr(
+                    language,
+                    'Un joueur semble avoir quitté la partie.',
+                    'A player seems to have left the match.',
+                  )}
+                </Text>
+                <TouchableOpacity
+                  style={[styles.btn, { backgroundColor: PALETTE.forestGreen, width: '100%', opacity: closingMatch ? 0.6 : 1 }]}
+                  onPress={closeAbandonedMatch}
+                  disabled={closingMatch}
+                  {...a11yButton(
+                    tr(language, 'Terminer la partie', 'End the match'),
+                    { disabled: closingMatch },
+                  )}
+                >
+                  {closingMatch && <ActivityIndicator size="small" color="#fff" />}
+                  <Text style={styles.btnText}>
+                    {tr(language, 'Terminer la partie', 'End the match')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </>
         )}
 

@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Flag,
   Globe,
+  HelpCircle,
   Info,
   LayoutGrid,
   LogIn,
@@ -16,9 +17,12 @@ import {
   Monitor,
   Moon,
   ShoppingBag,
+  Puzzle,
+  Route,
   SlidersHorizontal,
   Sun,
   Swords,
+  TrendingUp,
   Trophy,
   User,
   Users,
@@ -41,6 +45,7 @@ import { a11yButton, a11yImage, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
 import { NotificationDot } from '../components/NotificationDot';
 import { OnboardingTutorial, ONBOARDING_STEPS, type TutorialRect } from '../components/OnboardingTutorial';
+import { ModeIntroCard } from '../components/ModeIntroModal';
 import { getHasSeenTutorial, setHasSeenTutorial } from '../lib/tutorial';
 
 export type PlayType = 'solo' | 'local' | 'online';
@@ -57,11 +62,13 @@ interface ModeCardProps {
   isDarkMode: boolean;
   onPress: () => void;
   onLeaderboard?: () => void;
+  /** Show a "?" button that opens this mode's "how to play" card. */
+  onHelp?: () => void;
   /** Show a notification dot on the card (e.g. a pending invite for this mode). */
   notify?: boolean;
 }
 
-function ModeCard({ icon: Icon, accent, tint, title, subtitle, isDarkMode, onPress, onLeaderboard, notify = false }: ModeCardProps) {
+function ModeCard({ icon: Icon, accent, tint, title, subtitle, isDarkMode, onPress, onLeaderboard, onHelp, notify = false }: ModeCardProps) {
   const c = getColors(isDarkMode);
   const { language } = useLanguage();
   const startHint = tr(language, 'Démarrer ce mode', 'Start this mode');
@@ -98,7 +105,7 @@ function ModeCard({ icon: Icon, accent, tint, title, subtitle, isDarkMode, onPre
     </>
   );
 
-  if (!onLeaderboard) {
+  if (!onLeaderboard && !onHelp) {
     return (
       <TouchableOpacity onPress={onPress} style={cardStyle} {...a11yButton(title, { hint: startHint })}>
         {inner}
@@ -107,27 +114,43 @@ function ModeCard({ icon: Icon, accent, tint, title, subtitle, isDarkMode, onPre
     );
   }
 
+  // Square action button beside the card, matching the leaderboard button.
+  const actionBtnStyle = {
+    padding: 14,
+    borderRadius: 14,
+    backgroundColor: tint,
+    borderWidth: 1,
+    borderColor: c.border,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  };
+
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
       <TouchableOpacity onPress={onPress} style={[...cardStyle, { flex: 1 }]} {...a11yButton(title, { hint: startHint })}>
         {inner}
         <NotificationDot show={notify} />
       </TouchableOpacity>
-      <TouchableOpacity
-        onPress={onLeaderboard}
-        style={{
-          padding: 14,
-          borderRadius: 14,
-          backgroundColor: tint,
-          borderWidth: 1,
-          borderColor: c.border,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-        {...a11yButton(tr(language, `Classement ${title}`, `${title} leaderboard`))}
-      >
-        <Trophy color={accent} size={20} />
-      </TouchableOpacity>
+      {onHelp && (
+        <TouchableOpacity
+          onPress={onHelp}
+          style={actionBtnStyle}
+          {...a11yButton(tr(language, `Comment jouer à ${title}`, `How to play ${title}`), {
+            hint: tr(language, 'Voir les règles de ce mode', 'See this mode’s rules'),
+          })}
+        >
+          <HelpCircle color={accent} size={20} />
+        </TouchableOpacity>
+      )}
+      {onLeaderboard && (
+        <TouchableOpacity
+          onPress={onLeaderboard}
+          style={actionBtnStyle}
+          {...a11yButton(tr(language, `Classement ${title}`, `${title} leaderboard`))}
+        >
+          <Trophy color={accent} size={20} />
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -231,6 +254,10 @@ export function MainMenu({
   useEffect(() => {
     getLocalState().then((s) => setDailyStreak(s.streak));
   }, []);
+
+  // Which mode's "how to play" card is open from a "?" button (null = none).
+  // Shown on demand from the menu, so it does NOT mark the mode as seen.
+  const [helpMode, setHelpMode] = useState<GameMode | null>(null);
 
   // ----- First-launch onboarding tour -----
   // Refs on the elements the tour spotlights. `any` keeps the union of View /
@@ -570,9 +597,10 @@ export function MainMenu({
                 accent={isDarkMode ? PALETTE.forestGreen : PALETTE.forestGreen}
                 tint={isDarkMode ? 'rgba(42,110,63,0.15)' : 'rgba(42,110,63,0.10)'}
                 title="Rankle"
-                subtitle={tr(language, 'Classez les pays par population', 'Rank countries by population')}
+                subtitle={tr(language, 'Associez chaque pays à un thème', 'Match each country to a theme')}
                 isDarkMode={isDarkMode}
                 onPress={() => onPlay('classic')}
+                onHelp={() => setHelpMode('classic')}
               />
               <ModeCard
                 icon={Zap}
@@ -582,6 +610,37 @@ export function MainMenu({
                 subtitle={tr(language, 'Enchaînez les bonnes réponses', 'Chain correct answers')}
                 isDarkMode={isDarkMode}
                 onPress={() => onPlay('streak')}
+                onHelp={() => setHelpMode('streak')}
+              />
+              <ModeCard
+                icon={TrendingUp}
+                accent={isDarkMode ? PALETTE.chartBlue : PALETTE.oceanBlue}
+                tint={isDarkMode ? 'rgba(74,158,255,0.12)' : 'rgba(26,74,122,0.10)'}
+                title={tr(language, 'Plus ou Moins', 'Higher or Lower')}
+                subtitle={tr(language, 'Quel pays est au-dessus ?', 'Which country is higher?')}
+                isDarkMode={isDarkMode}
+                onPress={() => onPlay('higherlower')}
+                onHelp={() => setHelpMode('higherlower')}
+              />
+              <ModeCard
+                icon={Puzzle}
+                accent={PALETTE.forestGreen}
+                tint={isDarkMode ? 'rgba(42,110,63,0.15)' : 'rgba(42,110,63,0.10)'}
+                title="Silhouette"
+                subtitle={tr(language, 'Devinez le pays à sa forme', 'Guess the country by its shape')}
+                isDarkMode={isDarkMode}
+                onPress={() => onPlay('silhouette')}
+                onHelp={() => setHelpMode('silhouette')}
+              />
+              <ModeCard
+                icon={Route}
+                accent={PALETTE.sand}
+                tint={isDarkMode ? 'rgba(196,135,42,0.15)' : 'rgba(196,135,42,0.10)'}
+                title={tr(language, 'Frontières', 'Borders')}
+                subtitle={tr(language, 'Reliez deux pays par leurs frontières', 'Link two countries through borders')}
+                isDarkMode={isDarkMode}
+                onPress={() => onPlay('borders')}
+                onHelp={() => setHelpMode('borders')}
               />
               <ModeCard
                 icon={Info}
@@ -591,6 +650,7 @@ export function MainMenu({
                 subtitle={tr(language, 'Identifiez le pays depuis ses infos', 'Identify the country from clues')}
                 isDarkMode={isDarkMode}
                 onPress={() => onPlay('guess')}
+                onHelp={() => setHelpMode('guess')}
               />
               <ModeCard
                 icon={Globe}
@@ -600,6 +660,7 @@ export function MainMenu({
                 subtitle={tr(language, 'Trouvez les pays sur le globe', 'Find countries on the globe')}
                 isDarkMode={isDarkMode}
                 onPress={() => onPlay('globe')}
+                onHelp={() => setHelpMode('globe')}
               />
               <ModeCard
                 icon={Map}
@@ -609,6 +670,7 @@ export function MainMenu({
                 subtitle={tr(language, 'Des jeux variés pour un pays', 'Diverse games for one country')}
                 isDarkMode={isDarkMode}
                 onPress={() => onPlay('regions')}
+                onHelp={() => setHelpMode('regions')}
               />
               <ModeCard
                 icon={Flag}
@@ -618,6 +680,7 @@ export function MainMenu({
                 subtitle={tr(language, 'Retrouvez les capitales du monde', 'Find the world capitals')}
                 isDarkMode={isDarkMode}
                 onPress={() => onPlay('quiz-capital')}
+                onHelp={() => setHelpMode('quiz-capital')}
               />
               <ModeCard
                 icon={Flag}
@@ -627,6 +690,7 @@ export function MainMenu({
                 subtitle={tr(language, 'Identifiez les drapeaux des pays', 'Identify country flags')}
                 isDarkMode={isDarkMode}
                 onPress={() => onPlay('quiz-flag')}
+                onHelp={() => setHelpMode('quiz-flag')}
               />
             </View>
           </>
@@ -711,7 +775,7 @@ export function MainMenu({
                 accent={PALETTE.forestGreen}
                 tint={isDarkMode ? 'rgba(42,110,63,0.15)' : 'rgba(42,110,63,0.10)'}
                 title="Rankle"
-                subtitle={tr(language, 'Classez les pays par population', 'Rank countries by population')}
+                subtitle={tr(language, 'Associez chaque pays à un thème', 'Match each country to a theme')}
                 isDarkMode={isDarkMode}
                 onPress={() => onPlayOnline('classic')}
                 onLeaderboard={() => onOpenOnlineModeLeaderboard('classic', PALETTE.forestGreen)}
@@ -772,6 +836,39 @@ export function MainMenu({
                 onLeaderboard={() => onOpenOnlineModeLeaderboard('regions', isDarkMode ? PALETTE.sand : PALETTE.oceanBlue)}
                 notify={incomingInviteMode === 'regions'}
               />
+              <ModeCard
+                icon={TrendingUp}
+                accent={isDarkMode ? PALETTE.chartBlue : PALETTE.oceanBlue}
+                tint={isDarkMode ? 'rgba(74,158,255,0.12)' : 'rgba(26,74,122,0.10)'}
+                title={tr(language, 'Plus ou Moins', 'Higher or Lower')}
+                subtitle={tr(language, 'La même chaîne pour les deux joueurs', 'Same chain for both players')}
+                isDarkMode={isDarkMode}
+                onPress={() => onPlayOnline('higherlower')}
+                onLeaderboard={() => onOpenOnlineModeLeaderboard('higherlower', isDarkMode ? PALETTE.chartBlue : PALETTE.oceanBlue)}
+                notify={incomingInviteMode === 'higherlower'}
+              />
+              <ModeCard
+                icon={Puzzle}
+                accent={PALETTE.forestGreen}
+                tint={isDarkMode ? 'rgba(42,110,63,0.15)' : 'rgba(42,110,63,0.10)'}
+                title="Silhouette"
+                subtitle={tr(language, 'Les mêmes formes pour les deux joueurs', 'Same shapes for both players')}
+                isDarkMode={isDarkMode}
+                onPress={() => onPlayOnline('silhouette')}
+                onLeaderboard={() => onOpenOnlineModeLeaderboard('silhouette', PALETTE.forestGreen)}
+                notify={incomingInviteMode === 'silhouette'}
+              />
+              <ModeCard
+                icon={Route}
+                accent={PALETTE.sand}
+                tint={isDarkMode ? 'rgba(196,135,42,0.15)' : 'rgba(196,135,42,0.10)'}
+                title={tr(language, 'Frontières', 'Borders')}
+                subtitle={tr(language, 'Le même trajet pour les deux joueurs', 'Same route for both players')}
+                isDarkMode={isDarkMode}
+                onPress={() => onPlayOnline('borders')}
+                onLeaderboard={() => onOpenOnlineModeLeaderboard('borders', PALETTE.sand)}
+                notify={incomingInviteMode === 'borders'}
+              />
             </View>
           </>
         )}
@@ -791,6 +888,10 @@ export function MainMenu({
         measureTarget={measureTarget}
         onFinish={finishTutorial}
       />
+
+      {/* "How to play" card opened from a mode's "?" button — a plain close
+          handler, so consulting the rules here never marks the mode as seen. */}
+      <ModeIntroCard mode={helpMode} onDismiss={() => setHelpMode(null)} />
     </SafeAreaView>
   );
 }

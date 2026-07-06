@@ -47,7 +47,8 @@ export function normalizeRoundScore(
 
   switch (mode) {
     case 'guess':
-      // Already on the 0..1000 scale (calcScore).
+    case 'borders':
+      // Already on the 0..1000 scale (calcScore / bordersScore).
       return clamp(Math.round(raw), 0, ROUND_SCORE_MAX);
 
     case 'classic': {
@@ -72,13 +73,15 @@ export function normalizeRoundScore(
       return clamp(Math.round((raw / max) * ROUND_SCORE_MAX), 0, ROUND_SCORE_MAX);
     }
 
-    case 'streak': {
-      // Raw = consecutive-correct count (unbounded).
+    case 'streak':
+    case 'higherlower': {
+      // Raw = consecutive-correct count (unbounded chain until the first miss).
       const cap = ctx.streakCap ?? STREAK_CAP;
       if (cap <= 0) return 0;
       return clamp(Math.round((Math.min(raw, cap) / cap) * ROUND_SCORE_MAX), 0, ROUND_SCORE_MAX);
     }
 
+    case 'silhouette':
     case 'challenge': {
       // CARRÉ/DUO/CASH quiz: raw = sum of per-question points; the ceiling is
       // every question answered the hardest way (CASH = 5 pts). Both players face

@@ -84,7 +84,8 @@ export function simulateBotRound(
       break;
     }
     case 'globe':
-    case 'regions': {
+    case 'regions':
+    case 'silhouette': {
       // 1000 per correctly located country / region (same scale).
       for (let i = 0; i < n; i++) {
         if (hit(p, rng)) score += 1000;
@@ -100,7 +101,20 @@ export function simulateBotRound(
       ms = guesses * (1500 + rng() * 2500);
       break;
     }
-    case 'streak': {
+    case 'borders': {
+      // Win/lose on skill, then a plausible detour/miss deduction (raw 0..1000).
+      if (!hit(p, rng)) {
+        score = 0;
+        ms = 25_000 + rng() * 20_000;
+        break;
+      }
+      const deductions = Math.floor((1 - p) * 3 * rng()) * 150 + Math.floor(rng() * 2) * 100;
+      score = Math.max(200, 1000 - deductions);
+      ms = 15_000 + rng() * 25_000;
+      break;
+    }
+    case 'streak':
+    case 'higherlower': {
       // Consecutive correct answers until the first miss.
       let s = 0;
       while (hit(p, rng) && s < 30) s++;

@@ -30,7 +30,7 @@ export interface CustomRegionPick {
 }
 
 /** Builder identity for one custom round. `capital`/`flag` are both `versus`. */
-export type OnlineModeKey = 'capital' | 'flag' | 'classic' | 'streak' | 'globe' | 'guess' | 'regions';
+export type OnlineModeKey = 'capital' | 'flag' | 'classic' | 'streak' | 'globe' | 'guess' | 'regions' | 'higherlower' | 'silhouette' | 'borders';
 
 export const ONLINE_MODE_ORDER: OnlineModeKey[] = [
   'capital',
@@ -38,6 +38,9 @@ export const ONLINE_MODE_ORDER: OnlineModeKey[] = [
   'guess',
   'classic',
   'streak',
+  'higherlower',
+  'silhouette',
+  'borders',
   'globe',
   'regions',
 ];
@@ -63,6 +66,9 @@ export const ONLINE_MODES: Record<OnlineModeKey, OnlineModeMeta> = {
   guess: { key: 'guess', mode: 'guess', configurable: false, defaultCount: 1, fr: 'Devine le Pays', en: 'Guess Country', unitFr: 'pays mystère', unitEn: 'mystery country' },
   classic: { key: 'classic', mode: 'classic', configurable: false, defaultCount: 1, fr: 'Rankle', en: 'Rankle', unitFr: '8 thèmes', unitEn: '8 themes' },
   streak: { key: 'streak', mode: 'streak', configurable: false, defaultCount: 1, fr: 'Streak', en: 'Streak', unitFr: "jusqu'à l'erreur", unitEn: 'until a miss' },
+  higherlower: { key: 'higherlower', mode: 'higherlower', configurable: false, defaultCount: 1, fr: 'Plus ou Moins', en: 'Higher or Lower', unitFr: "jusqu'à l'erreur", unitEn: 'until a miss' },
+  silhouette: { key: 'silhouette', mode: 'silhouette', configurable: true, defaultCount: 5, fr: 'Silhouette', en: 'Silhouette', unitFr: 'formes', unitEn: 'shapes' },
+  borders: { key: 'borders', mode: 'borders', configurable: false, defaultCount: 1, fr: 'Frontières', en: 'Borders', unitFr: 'trajet', unitEn: 'route' },
   globe: { key: 'globe', mode: 'globe', configurable: true, defaultCount: 5, fr: 'Globe Géo', en: 'Geo Globe', unitFr: 'rounds', unitEn: 'rounds' },
   regions: { key: 'regions', mode: 'regions', configurable: true, defaultCount: 5, needsRegion: true, fr: 'Défis Pays', en: 'Country Challenges', unitFr: 'régions', unitEn: 'regions' },
 };

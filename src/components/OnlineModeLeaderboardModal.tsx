@@ -19,6 +19,9 @@ const MODE_LABELS: Record<MatchMode, [string, string]> = {
   guess: ['Devine le Pays', 'Guess Country'],
   regions: ['Défis Pays', 'Country Challenges'],
   challenge: ['Quiz Pays', 'Country Quiz'],
+  higherlower: ['Plus ou Moins', 'Higher or Lower'],
+  silhouette: ['Silhouette', 'Silhouette'],
+  borders: ['Frontières', 'Borders'],
 };
 
 interface Props {
