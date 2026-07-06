@@ -9,19 +9,6 @@ const cors = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const MODE_LABELS: Record<string, [string, string]> = {
-  classic: ['Classique', 'Classic'],
-  streak: ['Streak', 'Streak'],
-  versus: ['Versus', 'Versus'],
-  globe: ['Globe Géo', 'Geo Globe'],
-  guess: ['Devine le Pays', 'Guess the Country'],
-  regions: ['Défis Pays', 'Country Challenges'],
-  challenge: ['Quiz Pays', 'Country Quiz'],
-  higherlower: ['Plus ou Moins', 'Higher or Lower'],
-  silhouette: ['Silhouette', 'Silhouette'],
-  borders: ['Frontières', 'Borders'],
-};
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
@@ -42,9 +29,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { match_id } = await req.json();
-    if (!match_id) {
-      return new Response(JSON.stringify({ error: 'match_id required' }), {
+    const { target_user_id } = await req.json();
+    if (!target_user_id) {
+      return new Response(JSON.stringify({ error: 'target_user_id required' }), {
         status: 400,
         headers: { ...cors, 'Content-Type': 'application/json' },
       });
@@ -52,14 +39,16 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
-    const { data: match } = await admin
-      .from('matches')
-      .select('player1_id, player2_id, game_mode')
-      .eq('id', match_id)
-      .single();
-
-    // Only the inviting player (player1) may trigger the invite notification.
-    if (!match || match.player1_id !== user.id || !match.player2_id) {
+    // Only notify for a real pending request from the caller to the target —
+    // the row is the proof; without it anyone could push-spam arbitrary users.
+    const { data: request } = await admin
+      .from('friends')
+      .select('id')
+      .eq('user_id1', user.id)
+      .eq('user_id2', target_user_id)
+      .eq('status', 'pending')
+      .maybeSingle();
+    if (!request) {
       return new Response(JSON.stringify({ error: 'not allowed' }), {
         status: 403,
         headers: { ...cors, 'Content-Type': 'application/json' },
@@ -67,8 +56,8 @@ Deno.serve(async (req) => {
     }
 
     const [{ data: recipient }, { data: sender }] = await Promise.all([
-      admin.from('profiles').select('push_token, push_lang').eq('id', match.player2_id).single(),
-      admin.from('profiles').select('username').eq('id', match.player1_id).single(),
+      admin.from('profiles').select('push_token, push_lang').eq('id', target_user_id).single(),
+      admin.from('profiles').select('username').eq('id', user.id).single(),
     ]);
 
     if (!recipient?.push_token) {
@@ -79,19 +68,18 @@ Deno.serve(async (req) => {
 
     const en = recipient.push_lang === 'en';
     const fromName = sender?.username || (en ? 'A player' : 'Un joueur');
-    const [modeFr, modeEn] = MODE_LABELS[match.game_mode] ?? [match.game_mode, match.game_mode];
 
     const res = await fetch('https://exp.host/--/api/v2/push/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         to: recipient.push_token,
-        title: en ? 'GeoG — Challenge received!' : 'GeoG — Défi reçu !',
+        title: en ? 'GeoG — Friend request!' : "GeoG — Demande d'ami !",
         body: en
-          ? `${fromName} challenges you in ${modeEn}.`
-          : `${fromName} te défie en ${modeFr}.`,
+          ? `${fromName} wants to add you as a friend.`
+          : `${fromName} veut t'ajouter en ami.`,
         sound: 'default',
-        data: { match_id, type: 'invite' },
+        data: { type: 'friend_request', from: user.id },
       }),
     });
 

@@ -43,7 +43,14 @@ export async function sendFriendRequest(
   const { error } = await supabase
     .from('friends')
     .insert([{ user_id1: userId, user_id2: targetUserId, status: 'pending' }]);
-  return error ? { ok: false, error: error.message } : { ok: true };
+  if (error) return { ok: false, error: error.message };
+  // Push the target a heads-up even when their app is closed (mirrors the
+  // notify-invite call in Matchmaking). Best-effort — the in-app realtime toast
+  // remains the primary channel.
+  supabase.functions
+    .invoke('notify-friend-request', { body: { target_user_id: targetUserId } })
+    .catch(() => {});
+  return { ok: true };
 }
 
 /** Accept a pending request by its row id. */
