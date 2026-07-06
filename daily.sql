@@ -45,6 +45,10 @@ CREATE INDEX IF NOT EXISTS daily_results_leaderboard_idx
 --   last == today      → unchanged   (already played something today)
 --   last == yesterday  → +1
 --   otherwise          → reset to 1
+-- Milestone bonus: the day the streak reaches a multiple of 7 → +20 coins, a
+-- multiple of 30 → +100 coins (not cumulative; 30 wins over 7). Awarded at most
+-- once per day because the streak only advances on the first completion of the
+-- day (`last_date IS DISTINCT FROM p_date` guard), so replays are safe.
 CREATE OR REPLACE FUNCTION public.complete_daily(
   p_date  date,
   p_mode  text,
@@ -63,9 +67,10 @@ DECLARE
   best_streak int;
   new_streak  int;
   cnt         int;
+  bonus       int := 0;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'not authenticated'; END IF;
-  IF p_mode NOT IN ('classic','streak','guess','globe','regions','quiz-capital','quiz-flag') THEN
+  IF p_mode NOT IN ('classic','streak','guess','globe','regions','quiz-capital','quiz-flag','higherlower','silhouette','borders') THEN
     RAISE EXCEPTION 'bad game mode';
   END IF;
 
@@ -92,19 +97,36 @@ BEGIN
     new_streak := 1;
   END IF;
 
+  -- Milestone bonus, only on the completion that advanced the streak today.
+  IF last_date IS DISTINCT FROM p_date THEN
+    IF new_streak % 30 = 0 THEN
+      bonus := 100;
+    ELSIF new_streak % 7 = 0 THEN
+      bonus := 20;
+    END IF;
+  END IF;
+
   UPDATE public.profiles
     SET daily_streak      = new_streak,
         daily_best_streak = GREATEST(best_streak, new_streak),
         daily_last_date   = p_date
     WHERE id = uid;
 
+  IF bonus > 0 THEN
+    INSERT INTO public.coin_wallets (user_id) VALUES (uid) ON CONFLICT (user_id) DO NOTHING;
+    UPDATE public.coin_wallets
+      SET balance = balance + bonus, updated_at = now()
+      WHERE user_id = uid;
+  END IF;
+
   SELECT count(*) INTO cnt FROM public.daily_results
     WHERE user_id = uid AND puzzle_date = p_date;
 
   RETURN jsonb_build_object(
-    'streak',      new_streak,
-    'best_streak', GREATEST(best_streak, new_streak),
-    'today_count', cnt
+    'streak',       new_streak,
+    'best_streak',  GREATEST(best_streak, new_streak),
+    'today_count',  cnt,
+    'streak_bonus', bonus
   );
 END;
 $$;

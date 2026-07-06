@@ -13,6 +13,9 @@ import { useToast } from '../components/ToastProvider';
 
 import { ClassicGame } from './ClassicGame';
 import StreakGame from './StreakGame';
+import HigherLowerGame from './HigherLowerGame';
+import SilhouetteGame from './SilhouetteGame';
+import BordersGame from './BordersGame';
 import GuessCountryGame from './GuessCountryGame';
 import FindCountryGame from './FindCountryGame';
 import RegionGameFlow from './RegionGameFlow';
@@ -59,6 +62,17 @@ export default function DailyGameHost({
     track('daily_completed', { mode, score });
     const state = await completeDaily(user, result);
     setStreak(state.streak);
+    // Streak milestone (7/30-day multiples) — the server just credited coins.
+    if (state.streakBonus > 0) {
+      toast.success(
+        tr(
+          language,
+          `Palier de série ${state.streak} jours : +${state.streakBonus} pièces !`,
+          `${state.streak}-day streak milestone: +${state.streakBonus} coins!`,
+        ),
+      );
+      track('streak_bonus_awarded', { streak: state.streak, coins: state.streakBonus });
+    }
     // Signed in but the server didn't confirm → tell the player it's saved
     // locally and will sync, rather than letting them assume it's on the server.
     if (user && !state.synced) {
@@ -137,6 +151,33 @@ export default function DailyGameHost({
   } else if (mode === 'streak') {
     screen = (
       <StreakGame
+        setGameMode={exitOnMenu}
+        user={user}
+        onDailyScoreChange={reportScore}
+        {...common}
+      />
+    );
+  } else if (mode === 'higherlower') {
+    screen = (
+      <HigherLowerGame
+        setGameMode={exitOnMenu}
+        user={user}
+        onDailyScoreChange={reportScore}
+        {...common}
+      />
+    );
+  } else if (mode === 'silhouette') {
+    screen = (
+      <SilhouetteGame
+        setGameMode={exitOnMenu}
+        user={user}
+        onDailyScoreChange={reportScore}
+        {...common}
+      />
+    );
+  } else if (mode === 'borders') {
+    screen = (
+      <BordersGame
         setGameMode={exitOnMenu}
         user={user}
         onDailyScoreChange={reportScore}

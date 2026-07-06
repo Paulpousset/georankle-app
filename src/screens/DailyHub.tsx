@@ -8,14 +8,19 @@ import {
   Check,
   Flag,
   Globe,
+  HelpCircle,
   Info,
   LayoutGrid,
   Map,
+  Puzzle,
+  Route,
+  TrendingUp,
   Play,
   Share2,
   Zap,
 } from 'lucide-react-native';
 import { AtlasFlame } from '../components/AtlasIcons';
+import { DailyQuests } from '../components/DailyQuests';
 import type { ComponentType } from 'react';
 import type { User } from '@supabase/supabase-js';
 
@@ -41,6 +46,7 @@ import { a11yButton, a11yImage, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
 import { DailyResultCard } from '../components/DailyResultCard';
 import { DailyLeaderboardModal } from '../components/DailyLeaderboardModal';
+import { ModeIntroCard } from '../components/ModeIntroModal';
 
 const FLAME = '#e8772e';
 
@@ -53,6 +59,9 @@ const MODE_META: Record<string, { icon: ComponentType<{ color: string; size: num
   regions: { icon: Map, accent: PALETTE.oceanBlue },
   'quiz-capital': { icon: Flag, accent: PALETTE.sand },
   'quiz-flag': { icon: Flag, accent: PALETTE.vermilion },
+  higherlower: { icon: TrendingUp, accent: PALETTE.chartBlue },
+  silhouette: { icon: Puzzle, accent: PALETTE.forestGreen },
+  borders: { icon: Route, accent: PALETTE.sand },
 };
 
 interface DailyHubProps {
@@ -87,6 +96,8 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
   const [countdown, setCountdown] = useState(() => msUntilNextPuzzle());
   const [viewing, setViewing] = useState<DailyResult | null>(null);
   const [leaderboardMode, setLeaderboardMode] = useState<GameMode | null>(null);
+  // Which mode's "how to play" card is open from a "?" button (null = none).
+  const [helpMode, setHelpMode] = useState<GameMode | null>(null);
 
   const reload = useCallback(() => {
     getLocalState().then(setState);
@@ -169,7 +180,7 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
           <View style={{ width: 1, height: '70%', backgroundColor: c.border }} />
           <View style={{ alignItems: 'center' }}>
             <ScoreText style={{ fontFamily: FONTS.headingBlack, color: c.accent, fontSize: 28 }}>
-              {todayCount}/8
+              {todayCount}/{DAILY_MODES.length}
             </ScoreText>
             <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 9 }}>
               {tr(language, "AUJOURD'HUI", 'TODAY')}
@@ -185,6 +196,9 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
             </Text>
           </View>
         </View>
+
+        {/* Daily quests (signed-in only — progress lives server-side) */}
+        {user && <DailyQuests />}
 
         <Text
           style={{
@@ -258,6 +272,16 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                   <TouchableOpacity
+                    onPress={() => setHelpMode(mode)}
+                    style={{ padding: 8 }}
+                    hitSlop={ICON_HIT_SLOP}
+                    {...a11yButton(tr(language, `Comment jouer à ${dailyModeLabel(mode, language)}`, `How to play ${dailyModeLabel(mode, language)}`), {
+                      hint: tr(language, 'Voir les règles de ce mode', 'See this mode’s rules'),
+                    })}
+                  >
+                    <HelpCircle color={c.textMuted} size={18} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
                     onPress={() => setLeaderboardMode(mode)}
                     style={{ padding: 8 }}
                     hitSlop={ICON_HIT_SLOP}
@@ -312,6 +336,9 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
         onClose={() => setLeaderboardMode(null)}
         onOpenPlayer={onOpenPlayer}
       />
+      {/* "How to play" card opened from a mode's "?" button — plain close, so
+          consulting the rules here never marks the mode as seen. */}
+      <ModeIntroCard mode={helpMode} onDismiss={() => setHelpMode(null)} />
       {!user ? (
         <Text
           style={{

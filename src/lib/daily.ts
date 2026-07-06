@@ -27,6 +27,8 @@ import { tr } from '../i18n';
 interface CompleteDailyResult {
   streak?: number;
   best_streak?: number;
+  /** Coins granted for hitting a streak milestone today (0 most days). */
+  streak_bonus?: number;
 }
 
 /** The solo modes that have a daily challenge (mirrors MainMenu's solo list). */
@@ -38,6 +40,9 @@ export const DAILY_MODES: GameMode[] = [
   'regions',
   'quiz-capital',
   'quiz-flag',
+  'higherlower',
+  'silhouette',
+  'borders',
 ];
 
 /** Day index 0 maps to this UTC date — only affects the displayed "#N". */
@@ -216,12 +221,14 @@ async function recordLocal(result: DailyResult): Promise<StoredState> {
 export async function completeDaily(
   user: User | null,
   result: DailyResult,
-): Promise<DailyState & { synced: boolean }> {
+): Promise<DailyState & { synced: boolean; streakBonus: number }> {
   const stored = await recordLocal(result);
   const today = getTodayUTC();
 
   // Logged-out runs are local-only by design, so there's nothing to "sync".
   let synced = true;
+  // Coins the server granted for a streak milestone (7/30-day multiples).
+  let streakBonus = 0;
 
   if (user) {
     try {
@@ -237,6 +244,7 @@ export async function completeDaily(
         stored.streak = d.streak ?? stored.streak;
         stored.best = d.best_streak ?? stored.best;
         stored.lastDate = today;
+        streakBonus = d.streak_bonus ?? 0;
         await writeStored(stored);
       }
     } catch {
@@ -253,7 +261,7 @@ export async function completeDaily(
     }
   }
 
-  return { ...toState(stored, today), synced };
+  return { ...toState(stored, today), synced, streakBonus };
 }
 
 /**
