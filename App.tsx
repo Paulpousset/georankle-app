@@ -222,8 +222,12 @@ function App() {
     return <View style={{ flex: 1, backgroundColor: '#f2e8d0' }} />;
   }
 
+  // If the timeout fired first, we rendered with the system font; when the real
+  // fonts land afterwards Android swaps glyphs WITHOUT re-measuring layout, so
+  // every Text keeps its too-narrow box and gets clipped. Remount the tree
+  // (key flip) to force a fresh measure once fonts are actually ready.
   return (
-    <SafeAreaProvider>
+    <SafeAreaProvider key={fontsLoaded ? 'fonts-ready' : 'fonts-pending'}>
       <ThemeProvider>
         <LanguageProvider>
           <AuthProvider>
