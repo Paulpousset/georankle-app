@@ -10,11 +10,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { ArrowLeft, Swords, Shield } from 'lucide-react-native';
+import { ArrowLeft, Swords, Shield, CalendarDays } from 'lucide-react-native';
 
 import { track } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
 import { log } from '../lib/log';
+import { fetchCurrentSeason, seasonDaysLeft, type Season } from '../lib/seasons';
 import { FONTS } from '../theme/typography';
 import { getColors } from '../theme/colors';
 import { tr } from '../i18n';
@@ -125,6 +126,18 @@ export default function RankedMatchmaking({
   // never told it is a bot) and the result counts toward their ELO.
   const [botMatchData, setBotMatchData] = useState<Match | null>(null);
   const [botProfile, setBotProfile] = useState<BotProfile | null>(null);
+  const [season, setSeason] = useState<(Season & { daysLeft: number }) | null>(null);
+
+  // Current ranked season (banner only — closing/rewards are server-side).
+  // Days-left is computed once at fetch time; the screen never stays open
+  // long enough for a whole-day countdown to drift.
+  useEffect(() => {
+    let cancelled = false;
+    fetchCurrentSeason().then((s) => {
+      if (!cancelled) setSeason(s ? { ...s, daysLeft: seasonDaysLeft(s, Date.now()) } : null);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   const rank = getRankFromElo(elo);
   const progress = getRankProgress(elo);
@@ -388,6 +401,39 @@ export default function RankedMatchmaking({
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
+
+        {/* Season banner */}
+        {season && (
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 8,
+              alignSelf: 'stretch',
+              backgroundColor: isDarkMode ? 'rgba(196,135,42,0.12)' : 'rgba(196,135,42,0.10)',
+              borderColor: '#c4872a',
+              borderWidth: 1,
+              borderRadius: 12,
+              paddingVertical: 10,
+              paddingHorizontal: 14,
+              marginBottom: 12,
+            }}
+            accessible
+            accessibilityLabel={tr(
+              language,
+              `${season.name}, se termine dans ${season.daysLeft} jours`,
+              `${season.name}, ends in ${season.daysLeft} days`,
+            )}
+          >
+            <CalendarDays color="#c4872a" size={16} />
+            <Text style={{ fontFamily: FONTS.monoBold, color: '#c4872a', fontSize: 13, flex: 1 }}>
+              {season.name}
+            </Text>
+            <Text style={{ fontFamily: FONTS.mono, color: textSecondary, fontSize: 12 }}>
+              {tr(language, `fin dans ${season.daysLeft} j`, `ends in ${season.daysLeft} d`)}
+            </Text>
+          </View>
+        )}
 
         {/* Rank card */}
         <View style={[styles.rankCard, { backgroundColor: cardBg, borderColor: rank.color }]}>
