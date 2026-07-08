@@ -22,8 +22,9 @@
  * 2. (Hardening, later) wire AdMob SSV so a claim requires a real impression.
  * 3. Flip the 'rewarded_ads' feature flag.
  *
- * The native SDK is require()d lazily so jest/web bundles never touch it, and
- * only after the flag check, so nothing ad-related runs while the flag is off.
+ * The native SDK is loaded via ./adsSdk (platform-split: adsSdk.web.ts stubs
+ * it out so web bundles never touch it), and only after the flag check, so
+ * nothing ad-related runs while the flag is off.
  *
  * ⚠️ react-native-google-mobile-ads is pinned EXACTLY at 16.3.0: 16.4.0 pulls
  * play-services-ads 25.4.0 whose Kotlin metadata (2.3) can't be read by this
@@ -33,6 +34,7 @@
  */
 import { Platform } from 'react-native';
 
+import { loadAdsSdk, type AdsSdk } from './adsSdk';
 import { supabase } from './supabase';
 import { isFeatureEnabled } from './featureFlags';
 import { log } from './log';
@@ -81,19 +83,6 @@ const REWARDED_AD_UNIT_IDS: Record<string, string> = {
 
 /** How long to wait for an ad to load before giving up. */
 const AD_LOAD_TIMEOUT_MS = 15000;
-
-type AdsSdk = typeof import('react-native-google-mobile-ads');
-
-/** The native SDK, or null on web/jest/Expo Go where it isn't linked. */
-function loadAdsSdk(): AdsSdk | null {
-  if (Platform.OS !== 'android' && Platform.OS !== 'ios') return null;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require('react-native-google-mobile-ads') as AdsSdk;
-  } catch {
-    return null;
-  }
-}
 
 let initPromise: Promise<void> | null = null;
 
@@ -151,6 +140,10 @@ function loadAndShowAd(sdk: AdsSdk): Promise<boolean> {
     );
     subs.push(
       ad.addAdEventListener(sdk.RewardedAdEventType.LOADED, () => {
+        // The timeout only guards the LOAD phase — the ad itself runs 15-30s,
+        // so letting the timer keep running would reject mid-playback and
+        // unsubscribe EARNED_REWARD before the user finishes watching.
+        clearTimeout(timer);
         ad.show().catch((e) => settle(() => reject(e)));
       }),
       ad.addAdEventListener(sdk.RewardedAdEventType.EARNED_REWARD, () => {

@@ -25,7 +25,9 @@ jest.mock('../log', () => ({
 // does: earn the reward, get dismissed, or error out.
 jest.mock('react-native-google-mobile-ads', () => {
   const state = {
-    __outcome: 'earned' as 'earned' | 'dismissed' | 'error',
+    // 'slow' = the ad shows but nothing else happens until the test fires the
+    // listeners itself (simulates a long playback).
+    __outcome: 'earned' as 'earned' | 'dismissed' | 'error' | 'slow',
     __listeners: {} as Record<string, (arg?: unknown) => void>,
   };
   const fakeAd = {
@@ -41,7 +43,7 @@ jest.mock('react-native-google-mobile-ads', () => {
     show: jest.fn(() => {
       if (state.__outcome === 'error') {
         state.__listeners['error']?.(new Error('no fill'));
-      } else {
+      } else if (state.__outcome !== 'slow') {
         if (state.__outcome === 'earned') state.__listeners['earned']?.();
         state.__listeners['closed']?.();
       }
@@ -131,6 +133,26 @@ describe('showRewardedAd (flag ON, SDK mocked)', () => {
     adsMock.__state.__outcome = 'error';
     expect(await showRewardedAd()).toEqual({ granted: false, reason: 'failed' });
     expect(sb.rpc).not.toHaveBeenCalled();
+  });
+
+  // Regression (2026-07-08): the load timeout used to keep running during
+  // playback, rejecting mid-ad and unsubscribing EARNED_REWARD — so watching a
+  // real 15-30s ad never claimed anything.
+  it('still claims when playback outlasts the 15s load timeout', async () => {
+    jest.useFakeTimers();
+    try {
+      flagsOn();
+      adsMock.__state.__outcome = 'slow';
+      sb.rpc.mockResolvedValueOnce({ data: { granted: true, coins: 5 }, error: null });
+      const pending = showRewardedAd();
+      await jest.advanceTimersByTimeAsync(30000); // the ad is playing all along
+      adsMock.__state.__listeners['earned']?.();
+      adsMock.__state.__listeners['closed']?.();
+      await expect(pending).resolves.toEqual({ granted: true, coins: 5, reason: undefined });
+      expect(sb.rpc).toHaveBeenCalledWith('claim_rewarded_ad');
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('relays a server cap refusal after a genuinely watched ad', async () => {
