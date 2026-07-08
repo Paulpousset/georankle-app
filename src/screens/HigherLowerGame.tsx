@@ -41,7 +41,7 @@ import { ScoreText } from '../components/ScoreText';
 import { RewardedAdButton } from '../components/RewardedAdButton';
 import { TopInsetBar } from '../components/TopInsetBar';
 
-const isMobile = Platform.OS === 'ios' || Platform.OS === 'android';
+import { isMobileLayout as isMobile } from '../lib/layout';
 
 /** Reveal linger before the next pair (correct) or game over (wrong). */
 const NEXT_DELAY = 1400;

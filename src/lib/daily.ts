@@ -319,6 +319,12 @@ export function dailyModeLabel(mode: GameMode, language: Language): string {
       return tr(language, 'Capitales', 'Capitals');
     case 'quiz-flag':
       return tr(language, 'Drapeaux', 'Flags');
+    case 'higherlower':
+      return tr(language, 'Plus ou Moins', 'Higher or Lower');
+    case 'silhouette':
+      return 'Silhouette';
+    case 'borders':
+      return tr(language, 'Frontières', 'Borders');
     default:
       return mode;
   }

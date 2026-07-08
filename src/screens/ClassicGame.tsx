@@ -39,7 +39,7 @@ import { ScoreText } from '../components/ScoreText';
 import { RewardedAdButton } from '../components/RewardedAdButton';
 import { TopInsetBar } from '../components/TopInsetBar';
 
-const isMobile = Platform.OS === 'ios' || Platform.OS === 'android';
+import { isMobileLayout as isMobile } from '../lib/layout';
 
 /**
  * A finished classic session, captured so it can be reviewed read-only later

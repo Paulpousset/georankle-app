@@ -36,7 +36,7 @@ import { ScoreText } from '../components/ScoreText';
 import { RewardedAdButton } from '../components/RewardedAdButton';
 import { TopInsetBar } from '../components/TopInsetBar';
 
-const isMobile = Platform.OS === 'ios' || Platform.OS === 'android';
+import { isMobileLayout as isMobile } from '../lib/layout';
 
 // How long the revealed ranks stay on screen (correct answer highlighted green)
 // before the game-over screen appears / the match advances.

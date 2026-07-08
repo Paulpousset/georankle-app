@@ -36,8 +36,10 @@ export const BORDER_PAIRS: string[] = (
   // South-East Asia & Oceania
   'MMR-LAO MMR-THA THA-KHM THA-LAO THA-MYS LAO-KHM LAO-VNM VNM-KHM MYS-BRN MYS-IDN ' +
   'IDN-PNG IDN-TLS ' +
-  // Africa
-  'MAR-DZA DZA-LBY DZA-MLI DZA-MRT DZA-NER DZA-TUN TUN-LBY ' +
+  // Africa — MAR-MRT is deliberate: Western Sahara is not in the country
+  // list, so Morocco is treated as reaching Mauritania through it (the Travle
+  // convention; without this edge players hit an invisible hole in the map).
+  'MAR-DZA MAR-MRT DZA-LBY DZA-MLI DZA-MRT DZA-NER DZA-TUN TUN-LBY ' +
   'LBY-TCD LBY-EGY LBY-NER LBY-SDN EGY-SDN SDN-CAF SDN-TCD SDN-ERI SDN-ETH SDN-SSD ' +
   'SSD-CAF SSD-COD SSD-ETH SSD-KEN SSD-UGA ERI-DJI ERI-ETH DJI-ETH DJI-SOM ' +
   'ETH-KEN ETH-SOM SOM-KEN KEN-TZA KEN-UGA UGA-COD UGA-RWA UGA-TZA RWA-BDI RWA-COD ' +
@@ -68,9 +70,9 @@ export const BORDER_COUNT_EXCEPTIONS: Record<string, { official: number; interna
   SRB: { official: 8, internal: 7, why: 'Kosovo not in the country list' },
   CHN: { official: 16, internal: 14, why: 'Hong Kong & Macao not in the country list' },
   ESP: { official: 5, internal: 4, why: 'Gibraltar not in the country list' },
-  MAR: { official: 3, internal: 2, why: 'Western Sahara not in the country list' },
+  MAR: { official: 3, internal: 3, why: 'Western Sahara absent → MAR-MRT bridge replaces the ESH edge' },
   DZA: { official: 7, internal: 6, why: 'Western Sahara not in the country list' },
-  MRT: { official: 4, internal: 3, why: 'Western Sahara not in the country list' },
+  MRT: { official: 4, internal: 4, why: 'Western Sahara absent → MAR-MRT bridge replaces the ESH edge' },
   BRA: { official: 10, internal: 9, why: 'France is metropolitan-only (French Guiana cropped)' },
   SUR: { official: 3, internal: 2, why: 'France is metropolitan-only (French Guiana cropped)' },
 };

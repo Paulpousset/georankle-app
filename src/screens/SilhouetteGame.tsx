@@ -55,7 +55,7 @@ import { AtlasTrophy, AtlasCross } from '../components/AtlasIcons';
 import { RewardedAdButton } from '../components/RewardedAdButton';
 import { TopInsetBar } from '../components/TopInsetBar';
 
-const isMobile = Platform.OS === 'ios' || Platform.OS === 'android';
+import { isMobileLayout as isMobile } from '../lib/layout';
 
 type QuizMode = 'DUO' | 'CARRE' | 'CASH';
 type Feedback = { correct: boolean; points: number; answer: string };

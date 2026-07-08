@@ -57,7 +57,7 @@ function createSeededRng(seed: number) {
   };
 }
 
-const isMobile = Platform.OS === 'ios' || Platform.OS === 'android';
+import { isMobileLayout as isMobile } from '../lib/layout';
 
 interface VersusCapitalsProps {
   setGameMode: (mode: GameMode) => void;
@@ -893,7 +893,9 @@ export default function VersusCapitals({
                     currentPlayer === 1 && { borderBottomWidth: 3, borderBottomColor: '#4a9eff' },
                   ]}
                 >
-                  <Text style={[styles.playerLabel, { color: '#4a9eff' }]}>P1</Text>
+                  <Text style={[styles.playerLabel, { color: '#4a9eff' }]}>
+                    {numPlayers === 1 ? 'SCORE' : 'P1'}
+                  </Text>
                   <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
                     <Text style={[styles.scoreValue, { color: c.text }]}>
                       {scores[1]}
@@ -903,6 +905,7 @@ export default function VersusCapitals({
                     )}
                   </View>
                 </View>
+                {numPlayers >= 2 && (
                 <View
                   style={[
                     styles.playerScore,
@@ -919,6 +922,7 @@ export default function VersusCapitals({
                     )}
                   </View>
                 </View>
+                )}
                 {numPlayers >= 3 && (
                   <View
                     style={[
@@ -1046,7 +1050,9 @@ export default function VersusCapitals({
                     currentPlayer === 1 && { borderBottomWidth: 3, borderBottomColor: '#4a9eff' },
                   ]}
                 >
-                  <Text style={[styles.playerLabel, { color: '#4a9eff' }]}>P1</Text>
+                  <Text style={[styles.playerLabel, { color: '#4a9eff' }]}>
+                    {numPlayers === 1 ? 'SCORE' : 'P1'}
+                  </Text>
                   <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
                     <Text style={[styles.scoreValue, { color: c.text }]}>
                       {scores[1]}
@@ -1056,6 +1062,7 @@ export default function VersusCapitals({
                     )}
                   </View>
                 </View>
+                {numPlayers >= 2 && (
                 <View
                   style={[
                     styles.playerScore,
@@ -1072,6 +1079,7 @@ export default function VersusCapitals({
                     )}
                   </View>
                 </View>
+                )}
                 {numPlayers >= 3 && (
                   <View
                     style={[

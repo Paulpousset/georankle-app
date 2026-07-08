@@ -9,6 +9,7 @@ import {
   Alert,
   Animated,
   Image,
+  KeyboardAvoidingView,
   ScrollView,
   StyleSheet,
   Text,
@@ -52,7 +53,7 @@ import { ScoreText } from '../components/ScoreText';
 import { RewardedAdButton } from '../components/RewardedAdButton';
 import { TopInsetBar } from '../components/TopInsetBar';
 
-const isMobile = Platform.OS === 'ios' || Platform.OS === 'android';
+import { isMobileLayout as isMobile } from '../lib/layout';
 
 interface StatEntry {
   cca3: string;
@@ -367,6 +368,7 @@ export default function BordersGame({
 
   // ── Globe visualization ────────────────────────────────────────────────────
   const webRef = useRef<any>(null);
+  const scrollRef = useRef<ScrollView>(null);
   const [globeReady, setGlobeReady] = useState(false);
   const globeHtml = useMemo(() => buildBordersGlobeHtml(isDarkMode), [isDarkMode]);
 
@@ -425,6 +427,11 @@ export default function BordersGame({
       .slice(0, 5);
   }, [input, fuse, chain, puzzle.target, outcome]);
 
+  // The suggestion list grows below the input; keep it above the keyboard.
+  useEffect(() => {
+    if (suggestions.length > 0) scrollRef.current?.scrollToEnd({ animated: true });
+  }, [suggestions.length]);
+
   const currentScore = () =>
     bordersScore(true, Math.max(0, stepsUsed + 1 - puzzle.optimal), misses);
 
@@ -481,23 +488,43 @@ export default function BordersGame({
       return;
     }
     if (!sharesBorder(last, cca3)) {
+      // Kind case: the country touches an EARLIER link (e.g. France after
+      // Spain→Morocco). The player clearly knows their geography — explain the
+      // chain rule instead of charging a life.
+      const touchesEarlier = chain.some((link) => sharesBorder(link, cca3));
+      if (touchesEarlier) {
+        const msg = tr(
+          language,
+          `${countryName(cca3, language)} touche la chaîne, mais il faut continuer depuis ${countryName(last, language)}.`,
+          `${countryName(cca3, language)} touches the chain, but you must continue from ${countryName(last, language)}.`,
+        );
+        toast.info(msg);
+        announce(msg);
+        return;
+      }
       const newMisses = misses + 1;
       setMisses(newMisses);
       flashLifeLost();
-      announce(
-        tr(
-          language,
-          `${countryName(cca3, language)} ne touche pas ${countryName(last, language)}.`,
-          `${countryName(cca3, language)} does not border ${countryName(last, language)}.`,
-        ),
+      const msg = tr(
+        language,
+        `${countryName(cca3, language)} ne touche pas ${countryName(last, language)}.`,
+        `${countryName(cca3, language)} does not border ${countryName(last, language)}.`,
       );
+      toast.error(msg);
+      announce(msg);
       if (newMisses >= BORDERS_MAX_MISSES) finishRun(false, 0);
       return;
     }
 
     const newChain = [...chain, cca3];
     setChain(newChain);
-    announce(tr(language, `${countryName(cca3, language)} ajouté.`, `${countryName(cca3, language)} added.`));
+    const addedMsg = tr(
+      language,
+      `${countryName(cca3, language)} ajouté ✓`,
+      `${countryName(cca3, language)} added ✓`,
+    );
+    toast.success(addedMsg);
+    announce(addedMsg);
 
     if (sharesBorder(cca3, puzzle.target) || cca3 === puzzle.target) {
       // Reached the destination — the final crossing into the target counts.
@@ -648,7 +675,12 @@ export default function BordersGame({
         </Animated.View>
       )}
 
-      <ScrollView contentContainerStyle={styles.gameArea} keyboardShouldPersistTaps="handled">
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={styles.gameArea}
+        keyboardShouldPersistTaps="handled"
+      >
         <Text style={[styles.question, { color: c.textMuted }]}>
           {tr(
             language,
@@ -692,10 +724,15 @@ export default function BordersGame({
                 {chip(cca3, i === 0 ? 'start' : 'chain')}
               </Fragment>
             ))}
-            <ArrowRight color={c.textFaint} size={15} {...a11yHidden} />
-            <View style={[styles.chipDashed, { borderColor: c.border }]}>
-              <Text style={[styles.chipText, { color: c.textFaint }]}>?</Text>
-            </View>
+            {/* The "?" placeholder disappears once the link is made. */}
+            {outcome !== 'won' && (
+              <>
+                <ArrowRight color={c.textFaint} size={15} {...a11yHidden} />
+                <View style={[styles.chipDashed, { borderColor: c.border }]}>
+                  <Text style={[styles.chipText, { color: c.textFaint }]}>?</Text>
+                </View>
+              </>
+            )}
             <ArrowRight color={c.textFaint} size={15} {...a11yHidden} />
             {chip(puzzle.target, 'target')}
           </View>
@@ -721,6 +758,16 @@ export default function BordersGame({
                 autoCapitalize="none"
                 accessibilityLabel={tr(language, 'Saisir un pays', 'Type a country')}
                 style={[styles.searchInput, { color: c.text }]}
+                // Keep the input and its suggestion list above the keyboard —
+                // they sit at the bottom of the scroll content.
+                onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 250)}
+                // Keyboard "return" submits the top suggestion — tapping the
+                // list also works, but the list may sit close to the keyboard.
+                returnKeyType="go"
+                submitBehavior="submit"
+                onSubmitEditing={() => {
+                  if (suggestions.length > 0) submitCountry(suggestions[0].cca3);
+                }}
               />
             </View>
 
@@ -832,6 +879,7 @@ export default function BordersGame({
           </View>
         )}
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
