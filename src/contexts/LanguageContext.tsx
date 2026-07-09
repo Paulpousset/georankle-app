@@ -1,4 +1,15 @@
-import { createContext, useContext, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Language } from '../types';
 import { tr } from '../i18n';
 import { track } from '../lib/analytics';
@@ -32,8 +43,31 @@ interface LanguageContextValue {
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
+const STORAGE_KEY = 'lang:v1';
+
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguage] = useState<Language>('fr');
+  const hydrated = useRef(false);
+
+  // Restore the last chosen language; before this lands the app renders in
+  // French, exactly like the pre-persistence behaviour.
+  useEffect(() => {
+    AsyncStorage.getItem(STORAGE_KEY)
+      .then((stored) => {
+        if (stored === 'fr' || stored === 'en') setLanguage(stored);
+      })
+      .catch(() => {})
+      .finally(() => {
+        hydrated.current = true;
+      });
+  }, []);
+
+  useEffect(() => {
+    // Don't write the initial 'fr' before hydration has had a chance to
+    // restore a stored 'en' — the write could race ahead of the read.
+    if (!hydrated.current) return;
+    AsyncStorage.setItem(STORAGE_KEY, language).catch(() => {});
+  }, [language]);
 
   const value = useMemo<LanguageContextValue>(
     () => ({

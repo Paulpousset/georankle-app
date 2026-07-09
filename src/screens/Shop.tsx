@@ -447,18 +447,20 @@ export default function Shop({ onBack, onEditAvatar }: ShopProps) {
               <View style={styles.featuredInfo}>
                 <View style={styles.featuredTitleRow}>
                   <Sparkles size={13} color="#ffd700" />
-                  <Text style={[styles.featuredTitle, { color: c.textMuted }]}>
+                  {/* Fixed light colors: the card background is a fixed dark
+                      navy, so theme colors (dark text in light mode) vanish. */}
+                  <Text style={[styles.featuredTitle, { color: '#c9b98a' }]}>
                     {tr(language, 'VITRINE DU JOUR', "TODAY'S FEATURED")}
                   </Text>
                 </View>
-                <Text style={[styles.featuredName, { color: c.text }]} numberOfLines={1}>
+                <Text style={[styles.featuredName, { color: '#f5efdf' }]} numberOfLines={1}>
                   {language === 'fr' ? featuredPart.nameFr : featuredPart.nameEn}
                 </Text>
                 <View style={styles.priceRow}>
                   <Coins color="#ffd700" size={13} />
-                  <Text style={[styles.priceStrike, { color: c.textMuted }]}>{featured.basePrice}</Text>
+                  <Text style={[styles.priceStrike, { color: '#9aa0b5' }]}>{featured.basePrice}</Text>
                   <Text style={[styles.featuredPrice, { color: '#ffd700' }]}>{featured.price}</Text>
-                  <Text style={[styles.featuredHint, { color: c.textMuted }]}>
+                  <Text style={[styles.featuredHint, { color: '#9aa0b5' }]}>
                     {tr(language, "· aujourd'hui seulement", '· today only')}
                   </Text>
                 </View>

@@ -17,6 +17,7 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { log } from './log';
 import { supabase } from './supabase';
 
 export type PendingOp =
@@ -106,22 +107,40 @@ export async function enqueue(op: NewOp): Promise<void> {
   await write(dedupe([...ops, full]));
 }
 
-/** Replay one op against its RPC. Resolves true when the server accepted it. */
-async function replay(op: PendingOp): Promise<boolean> {
+/**
+ * A Postgres business rejection (RAISE EXCEPTION → P0001, data/constraint
+ * violations → 22xxx/23xxx) will fail identically on every replay. Such an op
+ * must be dropped, otherwise it blocks the head of the queue forever and the
+ * player's coins/daily writes never sync again (seen in prod: stale clients
+ * retrying `bad game mode` in a loop).
+ */
+function isPermanentRpcError(error: { code?: string } | null): boolean {
+  const code = error?.code ?? '';
+  return code === 'P0001' || code.startsWith('22') || code.startsWith('23');
+}
+
+type ReplayOutcome = 'ok' | 'retry' | 'drop';
+
+/** Replay one op against its RPC. */
+async function replay(op: PendingOp): Promise<ReplayOutcome> {
   try {
-    if (op.type === 'coins') {
-      const { error } = await supabase.rpc('award_solo_coins', { p_game_mode: op.gameMode });
-      return !error;
+    const { error } =
+      op.type === 'coins'
+        ? await supabase.rpc('award_solo_coins', { p_game_mode: op.gameMode })
+        : await supabase.rpc('complete_daily', {
+            p_date: op.date,
+            p_mode: op.mode,
+            p_score: op.score,
+            p_grid: op.grid ?? '',
+          });
+    if (!error) return 'ok';
+    if (isPermanentRpcError(error)) {
+      log.error('syncQueue: dropping permanently rejected op', error, op);
+      return 'drop';
     }
-    const { error } = await supabase.rpc('complete_daily', {
-      p_date: op.date,
-      p_mode: op.mode,
-      p_score: op.score,
-      p_grid: op.grid ?? '',
-    });
-    return !error;
+    return 'retry';
   } catch {
-    return false;
+    return 'retry';
   }
 }
 
@@ -146,9 +165,9 @@ export async function flushQueue(): Promise<void> {
   try {
     const remaining = [...ops];
     while (remaining.length > 0) {
-      const ok = await replay(remaining[0]);
-      if (!ok) break;
-      remaining.shift();
+      const outcome = await replay(remaining[0]);
+      if (outcome === 'retry') break; // likely still offline — try again later
+      remaining.shift(); // 'ok' and 'drop' both consume the op
     }
     if (remaining.length !== ops.length) await write(remaining);
   } finally {

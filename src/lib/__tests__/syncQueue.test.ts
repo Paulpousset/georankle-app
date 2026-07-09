@@ -26,9 +26,15 @@ jest.mock('@react-native-async-storage/async-storage', () => {
   };
 });
 
+// log.ts pulls in @sentry/react-native (untranspiled ESM) — irrelevant here.
+jest.mock('../log', () => ({
+  log: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}));
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { enqueue, getPendingCount, subscribePending, _resetMemo } from '../syncQueue';
+import { supabase } from '../supabase';
+import { enqueue, flushQueue, getPendingCount, subscribePending, _resetMemo } from '../syncQueue';
 
 beforeEach(async () => {
   await AsyncStorage.clear();
@@ -67,5 +73,41 @@ describe('syncQueue.enqueue + dedupe', () => {
     unsub();
     // Initial emit (0) plus the post-enqueue emit (1).
     expect(seen[seen.length - 1]).toBe(1);
+  });
+});
+
+describe('syncQueue.flushQueue error handling', () => {
+  const mockSession = () =>
+    (supabase.auth.getSession as jest.Mock).mockResolvedValue({
+      data: { session: { user: { id: 'u1' } } },
+    });
+
+  it('drops a permanently rejected op instead of blocking the queue forever', async () => {
+    mockSession();
+    // First op is rejected by the server for good (RAISE EXCEPTION → P0001),
+    // second op succeeds — the queue must end up empty.
+    (supabase.rpc as jest.Mock)
+      .mockResolvedValueOnce({ data: null, error: { code: 'P0001', message: 'bad game mode' } })
+      .mockResolvedValue({ data: {}, error: null });
+
+    await enqueue({ type: 'coins', gameMode: 'stale-mode' });
+    await enqueue({ type: 'coins', gameMode: 'classic' });
+    await flushQueue();
+
+    expect(await getPendingCount()).toBe(0);
+    expect(supabase.rpc).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps ops queued on a transient (network-ish) failure', async () => {
+    mockSession();
+    (supabase.rpc as jest.Mock).mockResolvedValue({
+      data: null,
+      error: { message: 'FetchError: network request failed' },
+    });
+
+    await enqueue({ type: 'coins', gameMode: 'classic' });
+    await flushQueue();
+
+    expect(await getPendingCount()).toBe(1); // still there for the next retry
   });
 });

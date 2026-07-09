@@ -159,7 +159,9 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
         .eq('id', userId)
         .single(),
       supabase.from('coin_wallets').select('balance').eq('user_id', userId).maybeSingle(),
-      supabase.from('player_ratings').select('elo, wins, losses').eq('user_id', userId).single(),
+      // maybeSingle: players who never finished a ranked match have no row —
+      // .single() turned every such profile view into a 406 + console error.
+      supabase.from('player_ratings').select('elo, wins, losses').eq('user_id', userId).maybeSingle(),
       supabase
         .from('matches')
         .select('game_mode, player1_id, player2_id, p1_rounds_won, p2_rounds_won')
