@@ -144,10 +144,12 @@ async function runConfig(cfg, authState) {
   };
   const bodyText = () => page.evaluate(() => document.body.innerText);
 
-  // Language lives in React state only (not persisted), so the EN config must
-  // re-toggle it after every full page load.
+  // Language now persists (AsyncStorage), so only toggle when the UI is still in
+  // French — a blind toggle every reload would flip a restored EN back to FR.
   const toEnglish = async () => {
-    try { await tapAria('Changer de langue', 900); } catch { await tapAria('Change language', 900).catch(() => {}); }
+    const inFrench = await page.locator('[aria-label="Changer de langue"]').first().isVisible().catch(() => false);
+    if (!inFrench) return; // already English (label reads "Change language")
+    await tapAria('Changer de langue', 900).catch(() => {});
   };
   const fresh = async () => {
     await page.goto(URL, { waitUntil: 'networkidle', timeout: 60000 });
