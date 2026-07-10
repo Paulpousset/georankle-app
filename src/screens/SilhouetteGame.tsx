@@ -11,6 +11,7 @@
 import { showAlert } from '../lib/alert';
 import { useState, useEffect, useRef } from 'react';
 import {
+  KeyboardAvoidingView,
   ScrollView,
   StyleSheet,
   Text,
@@ -328,6 +329,10 @@ export default function SilhouetteGame({
         </View>
       </View>
 
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
       <ScrollView contentContainerStyle={styles.gameArea} keyboardShouldPersistTaps="handled">
         <Text style={[styles.turnIndicator, { color: c.accent }]}>
           {`Question ${questionIndex + 1}/${run.length}`}
@@ -456,6 +461,7 @@ export default function SilhouetteGame({
           )
         )}
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {gameOver && !matchData && (
         <View

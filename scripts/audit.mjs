@@ -9,9 +9,6 @@
 //   ONLY=globe,capitales node scripts/audit.mjs
 //
 // Output: $AUDIT_OUT (default scratchpad)/<config>/*.png + report-<config>.json
-/* eslint-disable no-undef, @typescript-eslint/no-unused-expressions --
-   Playwright harness: browser globals live inside page.evaluate() callbacks,
-   and `await tapIf(a) || await tapIf(b)` is the idiomatic fallback tap. */
 import pw from '/Users/paulpousset/.npm/_npx/e41f203b7505f1fb/node_modules/playwright/index.js';
 import { mkdirSync, writeFileSync } from 'fs';
 import {
@@ -62,12 +59,10 @@ const wantConfig = (n) => !CONFIG || CONFIG.includes(n);
 const browser = await chromium.launch({ channel: 'chrome' });
 
 const seed = ({ modes }) => {
-  /* eslint-disable no-undef, no-empty -- runs in the browser page context */
   try {
     localStorage.setItem('tutorial:seen:v2', 'true');
     for (const m of modes) localStorage.setItem(`modeIntro:seen:v2:${m}`, 'true');
   } catch {}
-  /* eslint-enable no-undef, no-empty */
 };
 
 // ── one shared demo-account login, reused by every config ──────────────────
@@ -259,7 +254,6 @@ async function runConfig(cfg, authState) {
           /* eslint-disable no-undef, no-empty */
           try { sel = cca3; } catch {}
           (window.parent !== window ? window.parent : window).postMessage({ type: 'COUNTRY_SELECTED', cca3 }, '*');
-          /* eslint-enable no-undef, no-empty */
         }, g.cca3).catch(() => {});
         await w(900);
         await tapIf('Valider', 2000) || await tapIf('Confirm', 2000);

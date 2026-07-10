@@ -147,11 +147,26 @@ export async function cancelDailyReminder(): Promise<void> {
  * local). Requests permission if needed. Returns true when scheduled. Safe on
  * web/simulators (returns false without throwing).
  */
+// Serializes concurrent scheduleDailyReminder calls: two launches (e.g. mount +
+// language change) racing here both read prior=null and each scheduled a
+// reminder, so the user got duplicate daily pushes. Chaining on this promise
+// makes the cancel-then-schedule atomic across callers.
+let schedulingChain: Promise<boolean> = Promise.resolve(false);
+
 export async function scheduleDailyReminder(
   time: string,
   language: 'fr' | 'en' = 'fr',
 ): Promise<boolean> {
   if (Platform.OS === 'web') return false;
+  const run = schedulingChain.then(() => doScheduleDailyReminder(time, language), () => doScheduleDailyReminder(time, language));
+  schedulingChain = run;
+  return run;
+}
+
+async function doScheduleDailyReminder(
+  time: string,
+  language: 'fr' | 'en',
+): Promise<boolean> {
   try {
     if (!(await ensurePermissionGranted())) return false;
 

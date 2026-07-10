@@ -68,6 +68,8 @@ module.exports = [
   {
     // App entrypoint uses require() for a lazy, catchable App import; scripts
     // are Node tooling. Give them Node globals instead of the RN/browser set.
+    // The Playwright QA/screenshot scripts also reference browser globals inside
+    // page.evaluate()/addInitScript callbacks, so allow those too.
     files: ['index.js', 'scripts/**'],
     languageOptions: {
       globals: {
@@ -76,10 +78,20 @@ module.exports = [
         process: 'readonly',
         console: 'readonly',
         __dirname: 'readonly',
+        document: 'readonly',
+        window: 'readonly',
+        localStorage: 'readonly',
+        getComputedStyle: 'readonly',
+        HTMLElement: 'readonly',
       },
     },
     rules: {
       '@typescript-eslint/no-require-imports': 'off',
+      // `await tapIf(a) || await tapIf(b)` short-circuit fallbacks are idiomatic
+      // in the Playwright helper scripts, and the seed init callback swallows a
+      // storage error with an intentional empty catch.
+      '@typescript-eslint/no-unused-expressions': 'off',
+      'no-empty': 'off',
     },
   },
   {

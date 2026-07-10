@@ -97,8 +97,11 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
       const classicScores = scores.filter((s) => s.game_mode === 'classic').map((s) => s.score);
       const streakScores = scores.filter((s) => s.game_mode === 'streak').map((s) => s.score);
 
-      // Lowest total rank is best for classic; highest streak is best for streak.
-      if (classicScores.length > 0) setBestClassic(Math.min(...classicScores));
+      // Classic now stores a 0–100 efficiency (higher is better); filter out
+      // legacy raw-points rows (>100) as ClassicGame/Leaderboard do. Streak is
+      // a plain chain length, higher is better.
+      const classicEff = classicScores.filter((s) => s <= 100);
+      if (classicEff.length > 0) setBestClassic(Math.max(...classicEff));
       if (streakScores.length > 0) setBestStreak(Math.max(...streakScores));
     }
   };

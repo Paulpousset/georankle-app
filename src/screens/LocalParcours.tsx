@@ -34,6 +34,7 @@ import {
 } from 'lucide-react-native';
 
 import { track } from '../lib/analytics';
+import { showAlert } from '../lib/alert';
 import { getColors } from '../theme/colors';
 import { PALETTE } from '../theme/colors';
 import { FONTS } from '../theme/typography';
@@ -402,7 +403,18 @@ export default function LocalParcours({
     const roundsParam = perQuestion ? 1 : manche.rounds;
     const match = makeSyntheticMatch(manche.mode, turnSeed, roundsParam, 1);
     const key = `${manche.id}-${s.questionIdx}-${s.playerIdx}`;
-    const quit = () => onExit();
+    // A single stray tap on a game screen's Home/back button dropped the whole
+    // multi-player run with no warning — confirm first.
+    const quit = () => {
+      showAlert(
+        tr(language, 'Quitter le parcours ?', 'Leave the game?'),
+        tr(language, 'La progression de tous les joueurs sera perdue.', 'Every player’s progress will be lost.'),
+        [
+          { text: tr(language, 'Continuer', 'Keep playing'), style: 'cancel' },
+          { text: tr(language, 'Quitter', 'Leave'), style: 'destructive', onPress: onExit },
+        ],
+      );
+    };
 
     switch (manche.mode) {
       case 'capital':

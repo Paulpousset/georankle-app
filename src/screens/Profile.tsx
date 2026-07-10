@@ -19,7 +19,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Bell, Camera, Check, Coins, Eye, EyeOff, ArrowLeft, HelpCircle, LayoutGrid, LogOut, Palette, ShoppingBag, Trash2, Zap } from 'lucide-react-native';
 
 import { supabase } from '../lib/supabase';
-import { useCachedData } from '../lib/cache';
+import { useCachedData, cacheClear } from '../lib/cache';
 import { isValidUsername, usernameError, USERNAME_MAX } from '../lib/validation';
 import { cancelDailyReminder, getDailyReminderPrefs, scheduleDailyReminder } from '../lib/notifications';
 import { track } from '../lib/analytics';
@@ -251,6 +251,9 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
       showAlert(tr(language, 'Erreur', 'Error'), error.message);
     } else {
       setSavedUsername(trimmed);
+      // Drop the cached snapshot so re-opening within the 5-min TTL doesn't show
+      // the old name (the write bypasses useCachedData's cache).
+      cacheClear(`profile:${userId}`);
     }
   };
 
@@ -262,6 +265,8 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
     if (error) {
       setShowRank(!value);
       showAlert(tr(language, 'Erreur', 'Error'), error.message);
+    } else {
+      cacheClear(`profile:${userId}`);
     }
   };
 
@@ -314,6 +319,7 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
       if (saveError) throw saveError;
 
       setAvatarUrl(publicUrl);
+      cacheClear(`profile:${userId}`);
     } catch (e: unknown) {
       showAlert(tr(language, 'Erreur', 'Error'), e instanceof Error ? e.message : String(e));
     } finally {

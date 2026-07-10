@@ -28,12 +28,10 @@ const ctx = await browser.newContext({
 // AsyncStorage on web writes straight to localStorage with the same keys.
 const MODES = ['classic','streak','versus','guess','globe','regions','challenge','quiz-capital','quiz-flag','higherlower','silhouette','borders','local-builder'];
 await ctx.addInitScript(({ modes }) => {
-  /* eslint-disable no-undef, no-empty -- runs in the browser page context */
   try {
     localStorage.setItem('tutorial:seen:v2', 'true');
     for (const m of modes) localStorage.setItem(`modeIntro:seen:v2:${m}`, 'true');
   } catch {}
-  /* eslint-enable no-undef, no-empty */
 }, { modes: MODES });
 
 const page = await ctx.newPage();

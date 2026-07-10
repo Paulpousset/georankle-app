@@ -10,6 +10,8 @@ import { touchLastSeen } from './src/lib/activity';
 import type { GameMode, MatchMode } from './src/types';
 import { posthog, trackScreen } from './src/lib/analytics';
 import { initSentry, Sentry } from './src/lib/sentry';
+import { showAlert } from './src/lib/alert';
+import { tr } from './src/i18n';
 import { ThemeProvider } from './src/contexts/ThemeContext';
 import { LanguageProvider, useLanguage } from './src/contexts/LanguageContext';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
@@ -108,6 +110,20 @@ function AppContent() {
       }
       if (gameMode !== 'menu' && !match.matchData) {
         match.resetMatchState();
+        return true;
+      }
+      // In a LIVE online match, consume the event and confirm before leaving —
+      // otherwise Android's system back closed the whole app and silently
+      // abandoned the match (the opponent then won by forfeit).
+      if (match.matchData) {
+        showAlert(
+          tr(language, 'Quitter le match ?', 'Leave the match?'),
+          tr(language, 'Tu déclareras forfait pour cette partie.', 'You will forfeit this match.'),
+          [
+            { text: tr(language, 'Rester', 'Stay'), style: 'cancel' },
+            { text: tr(language, 'Quitter', 'Leave'), style: 'destructive', onPress: () => match.resetMatchState() },
+          ],
+        );
         return true;
       }
       // On the menu, step out of a play-type sub-list back to the chooser.

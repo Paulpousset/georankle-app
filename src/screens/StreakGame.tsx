@@ -97,6 +97,8 @@ export default function StreakGame({
   const [revealedRanks, setRevealedRanks] = useState<Record<string, number>>({});
   const rngRef = useRef<(() => number) | null>(null);
   const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Guards against a second answer landing before state updates (multitouch).
+  const answeredRef = useRef(false);
 
   // Surface the running score so the daily host can lock it in on a mid-game quit.
   useEffect(() => {
@@ -154,6 +156,7 @@ export default function StreakGame({
       rank: country.ranks[id],
     }));
 
+    answeredRef.current = false;
     setCurrentCountry(country);
     prefetchFlags([country.cca3]);
     setOptions(roundOptions);
@@ -164,6 +167,12 @@ export default function StreakGame({
 
   const handleChoice = (themeId: string) => {
     if (gameOver) return;
+    // Synchronous multitouch guard: `gameOver`/reveal are async state, so two
+    // near-simultaneous taps both passed this point → double score insert,
+    // double coin award, leaked reveal timer. The ref flips immediately and is
+    // cleared when the next round initialises (or on game over).
+    if (answeredRef.current) return;
+    answeredRef.current = true;
 
     const chosenOption = options.find((o) => o.id === themeId)!;
     const minRank = Math.min(...options.map((o) => o.rank));

@@ -177,12 +177,34 @@ export default function PlayerProfile({
 
   const addFriend = async () => {
     setActing(true);
+    // Re-check just before inserting: the other player may have sent US a
+    // request in the meantime (crossed requests). Inserting blindly then
+    // created a duplicate/phantom row — instead accept the incoming one.
+    const { data: existing } = await supabase
+      .from('friends')
+      .select('id, user_id1, status')
+      .or(
+        `and(user_id1.eq.${currentUserId},user_id2.eq.${userId}),and(user_id1.eq.${userId},user_id2.eq.${currentUserId})`,
+      )
+      .limit(1)
+      .maybeSingle();
+    if (existing) {
+      // Their pending request → accept it; anything else → just resync the UI.
+      if (existing.status === 'pending' && existing.user_id1 === userId) {
+        await supabase.from('friends').update({ status: 'accepted' }).eq('id', existing.id);
+        track('friend_request_accepted');
+      }
+      setActing(false);
+      await loadFriendState();
+      return;
+    }
     const { error } = await supabase
       .from('friends')
       .insert([{ user_id1: currentUserId, user_id2: userId, status: 'pending' }]);
     setActing(false);
     if (error) {
-      showAlert(tr(language, 'Erreur', 'Error'), tr(language, "Impossible d'envoyer la demande.", 'Could not send the request.'));
+      // A unique-constraint hit means they raced us — reconcile instead of erroring.
+      await loadFriendState();
       return;
     }
     track('friend_request_sent', { target_user_id: userId });

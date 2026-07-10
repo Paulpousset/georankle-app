@@ -39,10 +39,13 @@ export function ResumeMatchBanner({
     (async () => {
       const ref = await getResumableMatch(Date.now());
       if (!ref || cancelled) return;
-      const { data } = await supabase.from('matches').select('*').eq('id', ref.matchId).single();
+      const { data, error } = await supabase.from('matches').select('*').eq('id', ref.matchId).maybeSingle();
       if (cancelled) return;
+      // A network error must NOT wipe the resume pointer — the match may still
+      // be live. Only clear it when the server positively says the row is gone
+      // or finished; on error, keep it and retry on the next mount.
+      if (error) return;
       const m = data as Match | null;
-      // Only offer matches still open and that the player belongs to.
       if (m && (m.status === 'in_progress' || m.status === 'waiting')) {
         setMatch(m);
       } else {
