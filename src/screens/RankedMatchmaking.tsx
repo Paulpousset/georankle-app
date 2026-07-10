@@ -154,11 +154,13 @@ export default function RankedMatchmaking({
       .single();
     setUsername(profile?.username ?? null);
 
+    // maybeSingle: a player who never finished a ranked match has no row —
+    // .single() returned a 406 + console error on every ranked lobby open.
     const { data: rating } = await supabase
       .from('player_ratings')
       .select('elo, wins, losses')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (rating) {
       setElo(rating.elo);
