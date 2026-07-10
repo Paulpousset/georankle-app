@@ -378,8 +378,15 @@ export default function VersusCapitals({
     }
   };
 
+  // Kept in a ref so quit/reset can cancel it: a pending advance firing after
+  // the state was reset used to corrupt the next game (round 2/5, ghost tie).
+  const proceedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (proceedTimer.current) clearTimeout(proceedTimer.current); }, []);
+
   const proceedNext = () => {
-    setTimeout(() => {
+    if (proceedTimer.current) clearTimeout(proceedTimer.current);
+    proceedTimer.current = setTimeout(() => {
+      proceedTimer.current = null;
       if (currentPlayer === numPlayers) {
         if (currentRound >= totalRounds) {
           // Finale
@@ -481,7 +488,7 @@ export default function VersusCapitals({
   }, [gameOver]);
 
   const nextSet = () => {
-    setScores({ 1: 0, 2: 0, 3: 0 });
+    setScores({ 1: 0, 2: 0, 3: 0, 4: 0 });
     setCurrentRound(1);
     setCurrentPlayer(1);
     // Note: Used countries are intentionally NOT reset to avoid duplicates in the same match
@@ -491,6 +498,10 @@ export default function VersusCapitals({
   };
 
   const resetMatch = () => {
+    if (proceedTimer.current) {
+      clearTimeout(proceedTimer.current);
+      proceedTimer.current = null;
+    }
     setScores({ 1: 0, 2: 0, 3: 0, 4: 0 });
     setMatchScores({ 1: 0, 2: 0, 3: 0, 4: 0 });
     setCurrentRound(1);
@@ -504,6 +515,13 @@ export default function VersusCapitals({
   };
 
   const quitToMenu = () => {
+    // Daily: the host confirms first and records the CURRENT score on quit.
+    // Resetting before that popup zeroed the recorded score, and wiped the
+    // run even when the player cancelled — leave the state intact.
+    if (isDaily) {
+      setGameMode('menu');
+      return;
+    }
     resetMatch();
     if (isOnline && onExit) onExit();
     else if (soloMode) setGameMode('menu');

@@ -1,7 +1,7 @@
+import { showAlert } from '../lib/alert';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Platform,
   ScrollView,
   StyleSheet,
@@ -183,14 +183,14 @@ export default function AdminNotifications({
   const doPreview = async () => {
     const segment = buildSegment();
     if (!segment) {
-      Alert.alert(t('Cible incomplète', 'Incomplete target'), t('Vérifie la sélection.', 'Check the selection.'));
+      showAlert(t('Cible incomplète', 'Incomplete target'), t('Vérifie la sélection.', 'Check the selection.'));
       return;
     }
     setPreviewing(true);
     try {
       setPreview(await previewRecipients(segment));
     } catch (e) {
-      Alert.alert(t('Erreur', 'Error'), e instanceof Error ? e.message : String(e));
+      showAlert(t('Erreur', 'Error'), e instanceof Error ? e.message : String(e));
     } finally {
       setPreviewing(false);
     }
@@ -199,11 +199,11 @@ export default function AdminNotifications({
   const doSend = () => {
     const segment = buildSegment();
     if (!segment) {
-      Alert.alert(t('Cible incomplète', 'Incomplete target'), t('Vérifie la sélection.', 'Check the selection.'));
+      showAlert(t('Cible incomplète', 'Incomplete target'), t('Vérifie la sélection.', 'Check the selection.'));
       return;
     }
     if (!title.trim() || !body.trim()) {
-      Alert.alert(t('Message vide', 'Empty message'), t('Renseigne un titre et un message.', 'Add a title and a message.'));
+      showAlert(t('Message vide', 'Empty message'), t('Renseigne un titre et un message.', 'Add a title and a message.'));
       return;
     }
     const confirmMsg = t(
@@ -216,12 +216,12 @@ export default function AdminNotifications({
         const res = await sendBroadcast(title.trim(), body.trim(), segment);
         track('admin_broadcast_sent', { segment: segment.type, recipients: res.recipients, sent: res.sent });
         refreshLists();
-        Alert.alert(
+        showAlert(
           t('Envoyé', 'Sent'),
           t(`${res.sent}/${res.recipients} notifications envoyées.`, `${res.sent}/${res.recipients} notifications sent.`),
         );
       } catch (e) {
-        Alert.alert(t('Erreur', 'Error'), e instanceof Error ? e.message : String(e));
+        showAlert(t('Erreur', 'Error'), e instanceof Error ? e.message : String(e));
       } finally {
         setSending(false);
       }
@@ -230,7 +230,7 @@ export default function AdminNotifications({
       if (typeof confirm === 'function' && confirm(confirmMsg)) send();
       return;
     }
-    Alert.alert(t('Confirmer l\'envoi', 'Confirm send'), confirmMsg, [
+    showAlert(t('Confirmer l\'envoi', 'Confirm send'), confirmMsg, [
       { text: t('Annuler', 'Cancel'), style: 'cancel' },
       { text: t('Envoyer', 'Send'), onPress: send },
     ]);
@@ -239,11 +239,11 @@ export default function AdminNotifications({
   const doSaveCampaign = async () => {
     const segment = buildSegment();
     if (!segment) {
-      Alert.alert(t('Cible incomplète', 'Incomplete target'), t('Vérifie la sélection.', 'Check the selection.'));
+      showAlert(t('Cible incomplète', 'Incomplete target'), t('Vérifie la sélection.', 'Check the selection.'));
       return;
     }
     if (!title.trim() || !body.trim()) {
-      Alert.alert(t('Message vide', 'Empty message'), t('Renseigne un titre et un message.', 'Add a title and a message.'));
+      showAlert(t('Message vide', 'Empty message'), t('Renseigne un titre et un message.', 'Add a title and a message.'));
       return;
     }
     setSavingCampaign(true);
@@ -263,9 +263,9 @@ export default function AdminNotifications({
       track('admin_campaign_saved', { segment: segment.type, schedule });
       setScheduleOpen(false);
       refreshLists();
-      Alert.alert(t('Campagne créée', 'Campaign created'), t('Elle partira automatiquement.', 'It will fire automatically.'));
+      showAlert(t('Campagne créée', 'Campaign created'), t('Elle partira automatiquement.', 'It will fire automatically.'));
     } catch (e) {
-      Alert.alert(t('Erreur', 'Error'), e instanceof Error ? e.message : String(e));
+      showAlert(t('Erreur', 'Error'), e instanceof Error ? e.message : String(e));
     } finally {
       setSavingCampaign(false);
     }
@@ -277,7 +277,7 @@ export default function AdminNotifications({
       if (typeof confirm === 'function' && confirm(t('Supprimer cette campagne ?', 'Delete this campaign?'))) del();
       return;
     }
-    Alert.alert(t('Supprimer', 'Delete'), t('Supprimer cette campagne ?', 'Delete this campaign?'), [
+    showAlert(t('Supprimer', 'Delete'), t('Supprimer cette campagne ?', 'Delete this campaign?'), [
       { text: t('Annuler', 'Cancel'), style: 'cancel' },
       { text: t('Supprimer', 'Delete'), style: 'destructive', onPress: del },
     ]);

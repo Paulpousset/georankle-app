@@ -164,12 +164,18 @@ export async function flushQueue(): Promise<void> {
   flushing = true;
   try {
     const remaining = [...ops];
+    const consumed = new Set<string>();
     while (remaining.length > 0) {
       const outcome = await replay(remaining[0]);
       if (outcome === 'retry') break; // likely still offline — try again later
-      remaining.shift(); // 'ok' and 'drop' both consume the op
+      consumed.add(remaining.shift()!.id); // 'ok' and 'drop' both consume the op
     }
-    if (remaining.length !== ops.length) await write(remaining);
+    if (consumed.size > 0) {
+      // Remove ONLY what we replayed: an op enqueued while the flush was
+      // awaiting must survive (writing `remaining` back would drop it).
+      const current = await read();
+      await write(current.filter((op) => !consumed.has(op.id)));
+    }
   } finally {
     flushing = false;
   }

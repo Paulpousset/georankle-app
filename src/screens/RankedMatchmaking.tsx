@@ -1,6 +1,6 @@
+import { showAlert } from '../lib/alert';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Alert,
   View,
   Text,
   StyleSheet,
@@ -280,7 +280,7 @@ export default function RankedMatchmaking({
   }, [searching, matchState?.id]);
 
   const cancelSearch = () => {
-    Alert.alert(
+    showAlert(
       tr(language, 'Annuler la recherche ?', 'Cancel search?'),
       tr(language, 'Tu quitteras la file d’attente classée.', 'You will leave the ranked queue.'),
       [
@@ -361,7 +361,7 @@ export default function RankedMatchmaking({
     } else {
       log.error('Ranked matchmaking error:', createError);
       setSearching(false);
-      Alert.alert(
+      showAlert(
         tr(language, 'Erreur', 'Error'),
         tr(language, 'Impossible de lancer la recherche. Réessaie.', 'Could not start matchmaking. Try again.'),
       );

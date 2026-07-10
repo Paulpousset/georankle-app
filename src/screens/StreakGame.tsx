@@ -1,6 +1,6 @@
+import { showAlert } from '../lib/alert';
 import { useState, useEffect, useRef } from 'react';
 import {
-  Alert,
   StyleSheet,
   Text,
   View,
@@ -205,7 +205,7 @@ export default function StreakGame({
             .then(({ error }) => {
               if (error) {
                 log.error('Error saving streak score:', error);
-                Alert.alert(
+                showAlert(
                   language === 'fr' ? 'Erreur' : 'Error',
                   language === 'fr' ? "Impossible d'enregistrer ton score." : 'Could not save your score.',
                 );

@@ -1,7 +1,7 @@
+import { showAlert } from '../lib/alert';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -182,7 +182,7 @@ export default function PlayerProfile({
       .insert([{ user_id1: currentUserId, user_id2: userId, status: 'pending' }]);
     setActing(false);
     if (error) {
-      Alert.alert(tr(language, 'Erreur', 'Error'), tr(language, "Impossible d'envoyer la demande.", 'Could not send the request.'));
+      showAlert(tr(language, 'Erreur', 'Error'), tr(language, "Impossible d'envoyer la demande.", 'Could not send the request.'));
       return;
     }
     track('friend_request_sent', { target_user_id: userId });
@@ -195,7 +195,7 @@ export default function PlayerProfile({
     const { error } = await supabase.from('friends').update({ status: 'accepted' }).eq('id', friendRowId);
     setActing(false);
     if (error) {
-      Alert.alert(tr(language, 'Erreur', 'Error'), tr(language, "Impossible d'accepter la demande.", 'Could not accept the request.'));
+      showAlert(tr(language, 'Erreur', 'Error'), tr(language, "Impossible d'accepter la demande.", 'Could not accept the request.'));
       return;
     }
     track('friend_request_accepted');
@@ -204,7 +204,7 @@ export default function PlayerProfile({
 
   const removeFriend = () => {
     if (!friendRowId) return;
-    Alert.alert(
+    showAlert(
       tr(language, 'Supprimer', 'Remove'),
       tr(language, 'Voulez-vous vraiment supprimer cet ami ?', 'Do you really want to remove this friend?'),
       [

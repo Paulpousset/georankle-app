@@ -1,6 +1,6 @@
+import { showAlert } from '../lib/alert';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Alert,
   Image,
   Platform,
   ScrollView,
@@ -180,6 +180,18 @@ export function ClassicGame({
       selectedCountries = prebuilt.countryCca3s
         .map((cca3: string) => gameData.countries.find((c) => c.cca3 === cca3))
         .filter(Boolean) as typeof gameData.countries;
+      // Version drift: an opponent's session may reference a cca3 this build's
+      // game_data no longer has. Fewer countries than themes crashed the end
+      // screen (rounds[i] undefined) — top up from the local pool instead.
+      if (selectedCountries.length < prebuilt.countryCca3s.length) {
+        const have = new Set(selectedCountries.map((co) => co.cca3));
+        const fillers = gameData.countries.filter(
+          (co) => !have.has(co.cca3) && selectedThemes.every((t) => co.ranks && co.ranks[t.id] !== undefined),
+        );
+        while (selectedCountries.length < prebuilt.countryCca3s.length && fillers.length) {
+          selectedCountries.push(fillers.shift()!);
+        }
+      }
     } else {
       // Solo mode: randomise locally.
       const allThemeIds = Object.keys(gameData.themes).filter((themeId) => {
@@ -222,8 +234,14 @@ export function ClassicGame({
 
   const selectTheme = (themeId: string) => {
     if (gameOver || usedThemeIds.includes(themeId)) return;
+    // Exactly one pick per round: the round index only advances via a 300 ms
+    // setTimeout, so a second fast tap on a DIFFERENT theme card would assign
+    // the same country twice, skip one, and (on the last rounds) jump past the
+    // end-of-game branch entirely.
+    if (usedThemeIds.length !== currentRoundIndex) return;
 
     const country = rounds[currentRoundIndex];
+    if (!country) return;
     const rank = country.ranks[themeId] || MISSING_RANK;
 
     setSelections((prev) => ({
@@ -284,7 +302,7 @@ export function ClassicGame({
             .then(({ error }) => {
               if (error) {
                 log.error('Error saving classic efficiency:', error);
-                Alert.alert(tr(language, 'Erreur', 'Error'), tr(language, "Impossible d'enregistrer ton score.", 'Could not save your score.'));
+                showAlert(tr(language, 'Erreur', 'Error'), tr(language, "Impossible d'enregistrer ton score.", 'Could not save your score.'));
               }
             });
           // Solo coins (server-side daily cap, score-independent). Skip in matches.
@@ -983,6 +1001,9 @@ export function ClassicGame({
                     {sessionThemes.map((theme) => {
                       const selection = selections[theme.id];
                       const optimal = optimalSelections[theme.id];
+                      // Defensive: an interrupted/degenerate session can leave a
+                      // theme without a pick — skip the row instead of crashing.
+                      if (!selection || !optimal) return null;
                       const optimalCountryName =
                         language === 'fr'
                           ? optimal.countryName

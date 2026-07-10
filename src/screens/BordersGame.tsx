@@ -4,9 +4,9 @@
  * END of the current chain. Wrong guesses cost a life, detours cost points.
  * Puzzle generation / graph logic is pure and seeded (src/lib/borders.ts).
  */
+import { showAlert } from '../lib/alert';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
   Animated,
   Image,
   KeyboardAvoidingView,
@@ -451,7 +451,7 @@ export default function BordersGame({
           .then(({ error }) => {
             if (error) {
               log.error('Error saving borders score:', error);
-              Alert.alert(
+              showAlert(
                 tr(language, 'Erreur', 'Error'),
                 tr(language, "Impossible d'enregistrer ton score.", 'Could not save your score.'),
               );

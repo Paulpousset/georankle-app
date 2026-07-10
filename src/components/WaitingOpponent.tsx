@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
+import { showAlert } from '../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useTheme } from '../contexts/ThemeContext';
@@ -78,7 +79,7 @@ export function WaitingOpponent({
   const scoreDisplay = formatMatchScore(gameMode, myScore);
 
   const confirmLeave = () => {
-    Alert.alert(
+    showAlert(
       language === 'fr' ? 'Quitter la partie ?' : 'Leave the match?',
       language === 'fr'
         ? "L'adversaire semble absent. Tu peux quitter et revenir au menu."

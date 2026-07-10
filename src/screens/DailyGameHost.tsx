@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
-import { Alert, Share, View } from 'react-native';
+import { Share, View } from 'react-native';
+import { showAlert } from '../lib/alert';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { User } from '@supabase/supabase-js';
 
@@ -99,7 +100,7 @@ export default function DailyGameHost({
       onExit();
       return;
     }
-    Alert.alert(
+    showAlert(
       tr(language, 'Quitter le défi ?', 'Quit the challenge?'),
       tr(
         language,

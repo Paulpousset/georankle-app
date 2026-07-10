@@ -1,7 +1,7 @@
+import { showAlert } from '../lib/alert';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   StyleSheet,
   Text,
   TextInput,
@@ -138,7 +138,7 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
 
   async function updateUsername() {
     if (!isValidUsername(username)) {
-      Alert.alert(t.error, usernameErr ?? t.invalidUsername);
+      showAlert(t.error, usernameErr ?? t.invalidUsername);
       return;
     }
     setLoading(true);
@@ -153,14 +153,14 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
       .from('profiles')
       .upsert({ id: user.id, username: username.trim(), updated_at: new Date().toISOString() });
 
-    if (error) Alert.alert(t.error, error.message);
-    else Alert.alert(t.success, language === 'fr' ? 'Profil mis à jour !' : 'Profile updated!');
+    if (error) showAlert(t.error, error.message);
+    else showAlert(t.success, language === 'fr' ? 'Profil mis à jour !' : 'Profile updated!');
     setLoading(false);
   }
 
   async function signInWithEmail() {
     if (!isValidEmail(email)) {
-      Alert.alert(t.error, t.invalidEmail);
+      showAlert(t.error, t.invalidEmail);
       return;
     }
     setLoading(true);
@@ -170,7 +170,7 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
     });
 
     if (error) {
-      Alert.alert(
+      showAlert(
         t.error,
         error.message === 'Invalid login credentials'
           ? language === 'fr'
@@ -186,16 +186,16 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
 
   async function signUpWithEmail() {
     if (!isValidEmail(email)) {
-      Alert.alert(t.error, t.invalidEmail);
+      showAlert(t.error, t.invalidEmail);
       return;
     }
     const pwErr = passwordError(language, password);
     if (pwErr) {
-      Alert.alert(t.error, pwErr);
+      showAlert(t.error, pwErr);
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert(t.error, t.passwordsDontMatch);
+      showAlert(t.error, t.passwordsDontMatch);
       return;
     }
 
@@ -207,7 +207,7 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
 
     if (error) {
       log.error('Signup error details:', error);
-      Alert.alert(t.error, error.message);
+      showAlert(t.error, error.message);
     } else if (data?.session) {
       // Email confirmation disabled: the session exists, log in directly.
       track('signed_up');
@@ -215,7 +215,7 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
     } else {
       // Email confirmation enabled: prompt the user to check their inbox.
       track('signed_up');
-      Alert.alert(language === 'fr' ? 'Compte créé !' : 'Account created!', t.checkEmail);
+      showAlert(language === 'fr' ? 'Compte créé !' : 'Account created!', t.checkEmail);
       setMode('login');
     }
     setLoading(false);

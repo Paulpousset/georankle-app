@@ -4,9 +4,9 @@
  * seed (src/lib/higherLower.ts), so daily and online rounds are identical for
  * everyone sharing the seed. Mirrors StreakGame's solo / daily / match wiring.
  */
+import { showAlert } from '../lib/alert';
 import { useState, useEffect, useRef } from 'react';
 import {
-  Alert,
   StyleSheet,
   Text,
   View,
@@ -151,7 +151,7 @@ export default function HigherLowerGame({
           .then(({ error }) => {
             if (error) {
               log.error('Error saving higherlower score:', error);
-              Alert.alert(
+              showAlert(
                 tr(language, 'Erreur', 'Error'),
                 tr(language, "Impossible d'enregistrer ton score.", 'Could not save your score.'),
               );

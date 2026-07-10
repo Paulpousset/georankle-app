@@ -1,7 +1,7 @@
+import { showAlert } from '../lib/alert';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   RefreshControl,
   ScrollView,
@@ -301,7 +301,7 @@ export default function CustomMatchmaking({ onBack, onStartMatch }: CustomMatchm
     if ((match.max_players ?? 2) > 2) {
       const { data, error } = await supabase.rpc('join_ffa_match', { p_match_id: match.id });
       if (error) {
-        Alert.alert(
+        showAlert(
           tr(language, 'Erreur', 'Error'),
           tr(language, 'Impossible de rejoindre la partie', 'Could not join match'),
         );
@@ -324,7 +324,7 @@ export default function CustomMatchmaking({ onBack, onStartMatch }: CustomMatchm
       setMatchState(updated);
       onStartMatch(updated as Match);
     } else {
-      Alert.alert(
+      showAlert(
         tr(language, 'Erreur', 'Error'),
         tr(language, 'Impossible de rejoindre la partie', 'Could not join match'),
       );
@@ -376,7 +376,7 @@ export default function CustomMatchmaking({ onBack, onStartMatch }: CustomMatchm
       setView('waiting');
     } else {
       log.error('custom match create error:', error);
-      Alert.alert(
+      showAlert(
         tr(language, 'Erreur', 'Error'),
         tr(language, 'Impossible de créer la partie', 'Could not create match'),
       );
@@ -394,7 +394,7 @@ export default function CustomMatchmaking({ onBack, onStartMatch }: CustomMatchm
   };
 
   const cancelMatch = () => {
-    Alert.alert(
+    showAlert(
       tr(language, 'Annuler la partie ?', 'Cancel match?'),
       tr(language, 'La partie en attente sera annulée.', 'The pending match will be cancelled.'),
       [

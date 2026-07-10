@@ -1,7 +1,7 @@
+import { showAlert } from '../lib/alert';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Linking,
   Platform,
@@ -248,7 +248,7 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
       .upsert({ id: userId, username: trimmed, updated_at: new Date().toISOString() });
     setSavingName(false);
     if (error) {
-      Alert.alert(tr(language, 'Erreur', 'Error'), error.message);
+      showAlert(tr(language, 'Erreur', 'Error'), error.message);
     } else {
       setSavedUsername(trimmed);
     }
@@ -261,7 +261,7 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
       .upsert({ id: userId, show_rank: value, updated_at: new Date().toISOString() });
     if (error) {
       setShowRank(!value);
-      Alert.alert(tr(language, 'Erreur', 'Error'), error.message);
+      showAlert(tr(language, 'Erreur', 'Error'), error.message);
     }
   };
 
@@ -269,7 +269,7 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
     if (Platform.OS !== 'web') {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert(
+        showAlert(
           tr(language, 'Permission requise', 'Permission needed'),
           tr(language, 'Autorisez l\'accès aux photos pour changer votre avatar.', 'Allow photo access to change your avatar.'),
         );
@@ -288,7 +288,7 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
 
     const asset = result.assets[0];
     if (!asset.base64) {
-      Alert.alert(tr(language, 'Erreur', 'Error'), tr(language, 'Image illisible.', 'Could not read image.'));
+      showAlert(tr(language, 'Erreur', 'Error'), tr(language, 'Image illisible.', 'Could not read image.'));
       return;
     }
 
@@ -315,7 +315,7 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
 
       setAvatarUrl(publicUrl);
     } catch (e: unknown) {
-      Alert.alert(tr(language, 'Erreur', 'Error'), e instanceof Error ? e.message : String(e));
+      showAlert(tr(language, 'Erreur', 'Error'), e instanceof Error ? e.message : String(e));
     } finally {
       setUploading(false);
     }
@@ -327,7 +327,7 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
   };
 
   const logout = () => {
-    Alert.alert(
+    showAlert(
       tr(language, 'Déconnexion', 'Logout'),
       tr(language, 'Veux-tu vraiment te déconnecter ?', 'Do you really want to log out?'),
       [
@@ -344,7 +344,7 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
     const { error } = await supabase.rpc('delete_user_account');
     if (error) {
       setDeleting(false);
-      Alert.alert(
+      showAlert(
         tr(language, 'Erreur', 'Error'),
         tr(
           language,
@@ -372,7 +372,7 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
       }
       return;
     }
-    Alert.alert(title, message, [
+    showAlert(title, message, [
       { text: tr(language, 'Annuler', 'Cancel'), style: 'cancel' },
       { text: tr(language, 'Supprimer', 'Delete'), style: 'destructive', onPress: performDelete },
     ]);

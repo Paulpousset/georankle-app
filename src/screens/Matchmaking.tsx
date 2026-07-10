@@ -1,3 +1,4 @@
+import { showAlert } from '../lib/alert';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -5,7 +6,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   FlatList,
   ScrollView,
   RefreshControl,
@@ -346,7 +346,7 @@ export default function Matchmaking({
       setMatchState(updated);
       onStartMatch(updated as Match);
     } else {
-      Alert.alert(language === 'fr' ? 'Erreur' : 'Error',
+      showAlert(language === 'fr' ? 'Erreur' : 'Error',
         language === 'fr' ? 'Impossible de rejoindre la partie' : 'Could not join match');
     }
   }, [userId, gameMode, language, onStartMatch]);
@@ -375,7 +375,7 @@ export default function Matchmaking({
     if (gameMode === 'regions') {
       if (regionPicks.length === 0) {
         setCreating(false);
-        Alert.alert(
+        showAlert(
           language === 'fr' ? 'Choisis un pays' : 'Pick a country',
           language === 'fr' ? "Sélectionne d'abord un pays et un niveau." : 'Select a country and level first.',
         );
@@ -421,7 +421,7 @@ export default function Matchmaking({
           .catch(() => {});
       }
     } else {
-      Alert.alert(language === 'fr' ? 'Erreur' : 'Error',
+      showAlert(language === 'fr' ? 'Erreur' : 'Error',
         language === 'fr' ? 'Impossible de créer la partie' : 'Could not create match');
     }
   }, [userId, gameMode, isPublic, bestOf, questionType, roundsPerSet, regionPicks, language]);
@@ -435,7 +435,7 @@ export default function Matchmaking({
   };
 
   const cancelMatch = () => {
-    Alert.alert(
+    showAlert(
       language === 'fr' ? 'Annuler la partie ?' : 'Cancel match?',
       language === 'fr' ? 'La partie en attente sera annulée.' : 'The pending match will be cancelled.',
       [
@@ -739,7 +739,7 @@ export default function Matchmaking({
           ]}
           onPress={() => {
             if (gameMode === 'regions' && regionPicks.length === 0) {
-              Alert.alert(
+              showAlert(
                 language === 'fr' ? 'Choisis un pays' : 'Pick a country',
                 language === 'fr' ? "Sélectionne d'abord un pays et un niveau." : 'Select a country and level first.',
               );
