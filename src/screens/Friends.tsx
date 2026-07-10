@@ -1,3 +1,4 @@
+import { showAlert } from '../lib/alert';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
@@ -7,7 +8,6 @@ import {
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -65,7 +65,7 @@ export default function Friends({ onBack, onOpenPlayer, onRequestsChanged }: Fri
 
     if (friendsError) {
       log.error('Error loading friends:', friendsError);
-      Alert.alert(tr(language, 'Erreur', 'Error'), tr(language, 'Impossible de charger vos amis.', 'Could not load your friends.'));
+      showAlert(tr(language, 'Erreur', 'Error'), tr(language, 'Impossible de charger vos amis.', 'Could not load your friends.'));
     }
 
     // Load pending requests where current user is the receiver
@@ -109,7 +109,7 @@ export default function Friends({ onBack, onOpenPlayer, onRequestsChanged }: Fri
 
     if (error) {
       log.error('Search error:', error);
-      Alert.alert(tr(language, 'Erreur', 'Error'), tr(language, 'Impossible de chercher des utilisateurs.', 'Could not search users.'));
+      showAlert(tr(language, 'Erreur', 'Error'), tr(language, 'Impossible de chercher des utilisateurs.', 'Could not search users.'));
     } else {
       track('user_searched', { query_length: searchQuery.trim().length });
       setSearchResults(data || []);
@@ -121,16 +121,16 @@ export default function Friends({ onBack, onOpenPlayer, onRequestsChanged }: Fri
     const result = await sendFriendRequestApi(user!.id, targetUserId);
 
     if (result.alreadyExists) {
-      Alert.alert(tr(language, 'Info', 'Info'), tr(language, 'Une relation ou demande existe déjà avec cet utilisateur.', 'A relationship or request already exists with this user.'));
+      showAlert(tr(language, 'Info', 'Info'), tr(language, 'Une relation ou demande existe déjà avec cet utilisateur.', 'A relationship or request already exists with this user.'));
       return;
     }
     if (!result.ok) {
       log.error('Send request error:', result.error);
-      Alert.alert(tr(language, 'Erreur', 'Error'), tr(language, "Impossible d'envoyer la demande.", 'Could not send the request.'));
+      showAlert(tr(language, 'Erreur', 'Error'), tr(language, "Impossible d'envoyer la demande.", 'Could not send the request.'));
       return;
     }
     track('friend_request_sent', { target_user_id: targetUserId });
-    Alert.alert(tr(language, 'Succès', 'Success'), tr(language, "Demande d'ami envoyée !", 'Friend request sent!'));
+    showAlert(tr(language, 'Succès', 'Success'), tr(language, "Demande d'ami envoyée !", 'Friend request sent!'));
     setSearchQuery('');
     setSearchResults([]);
   }, [user, language]);
@@ -140,7 +140,7 @@ export default function Friends({ onBack, onOpenPlayer, onRequestsChanged }: Fri
 
     if (!result.ok) {
       log.error('Accept error:', result.error);
-      Alert.alert(tr(language, 'Erreur', 'Error'), tr(language, "Impossible d'accepter la demande.", 'Could not accept the request.'));
+      showAlert(tr(language, 'Erreur', 'Error'), tr(language, "Impossible d'accepter la demande.", 'Could not accept the request.'));
       return;
     }
     track('friend_request_accepted');
@@ -152,14 +152,14 @@ export default function Friends({ onBack, onOpenPlayer, onRequestsChanged }: Fri
 
     if (!result.ok) {
       log.error('Reject error:', result.error);
-      Alert.alert(tr(language, 'Erreur', 'Error'), tr(language, "Impossible de refuser la demande.", 'Could not reject the request.'));
+      showAlert(tr(language, 'Erreur', 'Error'), tr(language, "Impossible de refuser la demande.", 'Could not reject the request.'));
       return;
     }
     loadFriendsAndRequests();
   }, [language, loadFriendsAndRequests]);
 
   const removeFriend = useCallback(async (requestId: string) => {
-    Alert.alert(tr(language, 'Supprimer', 'Remove'), tr(language, 'Voulez-vous vraiment supprimer cet ami ?', 'Do you really want to remove this friend?'), [
+    showAlert(tr(language, 'Supprimer', 'Remove'), tr(language, 'Voulez-vous vraiment supprimer cet ami ?', 'Do you really want to remove this friend?'), [
       { text: tr(language, 'Annuler', 'Cancel'), style: 'cancel' },
       {
         text: tr(language, 'Supprimer', 'Remove'),

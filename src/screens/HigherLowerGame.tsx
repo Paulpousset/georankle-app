@@ -4,9 +4,9 @@
  * seed (src/lib/higherLower.ts), so daily and online rounds are identical for
  * everyone sharing the seed. Mirrors StreakGame's solo / daily / match wiring.
  */
+import { showAlert } from '../lib/alert';
 import { useState, useEffect, useRef } from 'react';
 import {
-  Alert,
   StyleSheet,
   Text,
   View,
@@ -100,6 +100,8 @@ export default function HigherLowerGame({
   const [coinsCapped, setCoinsCapped] = useState(false);
   const [coinsSyncFailed, setCoinsSyncFailed] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Synchronous multitouch guard (state `picked` updates async).
+  const answeredRef = useRef(false);
 
   // Surface the running score so the daily host can lock it in on a mid-game quit.
   useEffect(() => {
@@ -151,7 +153,7 @@ export default function HigherLowerGame({
           .then(({ error }) => {
             if (error) {
               log.error('Error saving higherlower score:', error);
-              Alert.alert(
+              showAlert(
                 tr(language, 'Erreur', 'Error'),
                 tr(language, "Impossible d'enregistrer ton score.", 'Could not save your score.'),
               );
@@ -186,6 +188,10 @@ export default function HigherLowerGame({
 
   const handleChoice = (side: 'a' | 'b') => {
     if (!pair || picked || gameOver) return;
+    // Two simultaneous taps (one per card) both passed the async `picked`
+    // check → stale score saved and a 'lost' overlay over the next pair.
+    if (answeredRef.current) return;
+    answeredRef.current = true;
     setPicked(side);
     const correct = side === higherSide(pair);
 
@@ -193,6 +199,7 @@ export default function HigherLowerGame({
       announce(tr(language, `Correct ! Série ${score + 1}`, `Correct! Chain ${score + 1}`));
       setScore((prev) => prev + 1);
       timerRef.current = setTimeout(() => {
+        answeredRef.current = false;
         setPicked(null);
         // The precomputed chain is ~100 questions deep; wrap defensively if a
         // player somehow outruns it by reseeding a fresh run.

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { showAlert } from '../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Check, ArrowLeft, Lock, ShoppingBag } from 'lucide-react-native';
@@ -126,7 +127,7 @@ export default function AvatarEditor({ onBack, onOpenShop }: AvatarEditorProps) 
     });
     setSaving(false);
     if (error) {
-      Alert.alert(tr(language, 'Erreur', 'Error'), error.message);
+      showAlert(tr(language, 'Erreur', 'Error'), error.message);
       return;
     }
     announce(tr(language, 'Monde enregistré', 'World saved'));

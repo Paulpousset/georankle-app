@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, Share, Text, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState, ScrollView, Share, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import {
@@ -32,6 +32,7 @@ import {
   dailyModeLabel,
   getLocalState,
   getPuzzleNumber,
+  getTodayUTC,
   msUntilNextPuzzle,
   type DailyResult,
   type DailyState,
@@ -103,11 +104,33 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
     getLocalState().then(setState);
   }, []);
 
+  // Track the UTC day the hub was built for, so we can refresh when midnight
+  // rolls over while the screen sits open (cards were stuck on yesterday's
+  // "Done" state and the new puzzles were unreachable without re-navigating).
+  const dayRef = useRef(getTodayUTC());
+
   useEffect(() => {
     track('daily_opened');
     reload();
-    const id = setInterval(() => setCountdown(msUntilNextPuzzle()), 60000);
-    return () => clearInterval(id);
+    const id = setInterval(() => {
+      setCountdown(msUntilNextPuzzle());
+      const today = getTodayUTC();
+      if (today !== dayRef.current) {
+        dayRef.current = today;
+        reload();
+      }
+    }, 60000);
+    // Also re-check on foreground (the interval doesn't tick while backgrounded).
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s !== 'active') return;
+      const today = getTodayUTC();
+      if (today !== dayRef.current) {
+        dayRef.current = today;
+        reload();
+      }
+      setCountdown(msUntilNextPuzzle());
+    });
+    return () => { clearInterval(id); sub.remove(); };
   }, [reload]);
 
   const puzzle = getPuzzleNumber();

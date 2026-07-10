@@ -84,12 +84,28 @@ export function simulateBotRound(
       break;
     }
     case 'globe':
-    case 'regions':
-    case 'silhouette': {
+    case 'regions': {
       // 1000 per correctly located country / region (same scale).
       for (let i = 0; i < n; i++) {
         if (hit(p, rng)) score += 1000;
         ms += 1800 + rng() * 3500;
+      }
+      break;
+    }
+    case 'silhouette': {
+      // CARRÉ/DUO/CASH quiz like versus: raw = per-question points (max n×5).
+      // Simulating on the globe scale (1000/hit) made the normalized bot score
+      // clamp to the maximum — an auto-lost round for the player in ranked.
+      for (let i = 0; i < n; i++) {
+        if (hit(p, rng)) {
+          score += rng() < 0.6 ? 5 : 3;
+          ms += 1500 + rng() * 2500;
+        } else if (rng() < 0.5) {
+          score += 1;
+          ms += 2500 + rng() * 3500;
+        } else {
+          ms += 2000 + rng() * 3000;
+        }
       }
       break;
     }

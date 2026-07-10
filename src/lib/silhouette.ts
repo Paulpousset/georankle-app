@@ -11,6 +11,7 @@
 import rawWorldPolygons from '../../assets/world_polygons.json';
 import rawCountriesStats from '../../assets/countries_stats.json';
 import { createSeededRng, seededShuffle } from './rng';
+import { COUNTRY_ALIASES } from './answerMatch';
 
 interface PolyEntry {
   id: string;
@@ -147,7 +148,10 @@ export function silhouetteCountryName(cca3: string, lang: 'fr' | 'en'): string {
 export function silhouetteAcceptedAnswers(cca3: string): string[] {
   const s = STATS_BY_ID.get(cca3);
   if (!s) return [cca3];
-  return Array.from(new Set([s.name, s.name_en ?? s.name].filter(Boolean)));
+  // Include the shared aliases (USA, UK, Birmanie…) so a typed CASH answer
+  // accepts the same spellings as every other mode.
+  const aliases = COUNTRY_ALIASES[cca3] ?? [];
+  return Array.from(new Set([s.name, s.name_en ?? s.name, ...aliases].filter(Boolean)));
 }
 
 /**

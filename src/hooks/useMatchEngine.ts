@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Alert } from 'react-native';
+import { } from 'react-native';
+import { showAlert } from '../lib/alert';
 
 import { supabase } from '../lib/supabase';
 import { tr } from '../i18n';
@@ -95,6 +96,9 @@ export function useMatchEngine({ setGameMode, clearPages }: MatchEngineDeps) {
 
   // Ranked mode sequence for the current match (populated on match start).
   const rankedModesRef = useRef<MatchMode[] | null>(null);
+  // Score to re-enter the waiting flow with, when resuming a round we had
+  // already submitted (see startMatch) — consumed by an effect below.
+  const resumeScoreRef = useRef<number | null>(null);
 
   const [matchPhase, setMatchPhase] = useState<MatchPhase>('playing');
   const [myCurrentRoundScore, setMyCurrentRoundScore] = useState(0);
@@ -211,7 +215,7 @@ export function useMatchEngine({ setGameMode, clearPages }: MatchEngineDeps) {
 
     if (error) {
       log.error('apply_ranked_result error:', error);
-      Alert.alert(
+      showAlert(
         tr(language, 'Erreur', 'Error'),
         tr(language, 'Impossible de mettre à jour ton classement.', 'Could not update your ranking.'),
       );
@@ -240,7 +244,7 @@ export function useMatchEngine({ setGameMode, clearPages }: MatchEngineDeps) {
     const { data, error } = await supabase.rpc('apply_online_result', { p_match_id: match.id });
     if (error) {
       log.error('apply_online_result error:', error);
-      Alert.alert(
+      showAlert(
         tr(language, 'Erreur', 'Error'),
         tr(language, 'Impossible de créditer tes pièces.', 'Could not credit your coins.'),
       );
@@ -403,7 +407,17 @@ export function useMatchEngine({ setGameMode, clearPages }: MatchEngineDeps) {
       rankedModesRef.current = null;
       setGameMode(match.game_mode);
     }
-    setShowPreGameLobby(true);
+    // Resuming a round we had already submitted: replaying it would overwrite
+    // the recorded score and desync the series — jump straight back to the
+    // waiting screen instead (handled by the resume effect below).
+    const iAmP1 = match.player1_id === user?.id;
+    const myFinished = iAmP1 ? match.p1_finished_round : match.p2_finished_round;
+    if (myFinished) {
+      resumeScoreRef.current = (iAmP1 ? match.p1_current_score : match.p2_current_score) ?? 0;
+      setShowPreGameLobby(false);
+    } else {
+      setShowPreGameLobby(true);
+    }
   };
 
   const acceptInvite = async () => {
@@ -423,7 +437,7 @@ export function useMatchEngine({ setGameMode, clearPages }: MatchEngineDeps) {
     if (!error && updatedMatch) {
       startMatch(updatedMatch as Match);
     } else {
-      Alert.alert(
+      showAlert(
         tr(language, 'Erreur', 'Error'),
         tr(language, 'Impossible de rejoindre la partie', 'Could not join match'),
       );
@@ -608,6 +622,26 @@ export function useMatchEngine({ setGameMode, clearPages }: MatchEngineDeps) {
       if (row.p1_finished_round && row.p2_finished_round) {
         settle();
         await processRound(row);
+      } else if ((row.current_round ?? 1) > (matchData.current_round ?? 1)) {
+        // The opponent's client already finalized this round while our
+        // realtime event was dropped: the finished flags are reset, so the
+        // condition above can never fire and the player would wait forever.
+        // Reconstruct the round scores (own = local, opponent = totals delta)
+        // and resolve through the normal path — finalize_round no-ops and
+        // returns the authoritative advanced state.
+        settle();
+        // Cast: p*_total_score come from score_tiebreaker.sql, deployed but
+        // not yet in the generated database.ts types.
+        const totals = row as unknown as Match;
+        const oppRound = isPlayer1
+          ? (totals.p2_total_score ?? 0) - (matchData.p2_total_score ?? 0)
+          : (totals.p1_total_score ?? 0) - (matchData.p1_total_score ?? 0);
+        await processRound({
+          ...row,
+          current_round: matchData.current_round ?? 1,
+          p1_current_score: isPlayer1 ? myScore : Math.max(0, oppRound),
+          p2_current_score: isPlayer1 ? Math.max(0, oppRound) : myScore,
+        });
       } else if (row.status === 'completed') {
         // Closed outside the round flow (forfeit) — the waiting-phase watcher
         // owns that resolution; just stop this round's machinery.
@@ -615,22 +649,44 @@ export function useMatchEngine({ setGameMode, clearPages }: MatchEngineDeps) {
       }
     }, 20_000);
 
-    const { data: afterSave } = await supabase
-      .from('matches')
-      .update(
-        isPlayer1
-          ? { p1_current_score: myScore, p1_finished_round: true }
-          : { p2_current_score: myScore, p2_finished_round: true },
-      )
-      .eq('id', matchData.id)
-      .select()
-      .single();
+    // Idempotent write → retry transient failures. A single silent failure
+    // here meant the server never saw the score: the opponent waits, then wins
+    // by forfeit while this player sits on the waiting screen.
+    let afterSave: Match | null = null;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 3000));
+      const { data, error: saveError } = await supabase
+        .from('matches')
+        .update(
+          isPlayer1
+            ? { p1_current_score: myScore, p1_finished_round: true }
+            : { p2_current_score: myScore, p2_finished_round: true },
+        )
+        .eq('id', matchData.id)
+        .select()
+        .single();
+      if (!saveError && data) {
+        afterSave = data as Match;
+        break;
+      }
+      log.error('round score save error:', saveError);
+    }
 
     if (afterSave && afterSave.p1_finished_round && afterSave.p2_finished_round && !handled) {
       settle();
       await processRound(afterSave);
     }
   };
+
+  // Consume a pending resume: matchData is now set, so handleRoundComplete can
+  // rewrite the (identical) score and arm the round watchers.
+  useEffect(() => {
+    if (!matchData || resumeScoreRef.current == null) return;
+    const s = resumeScoreRef.current;
+    resumeScoreRef.current = null;
+    void handleRoundComplete(s);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fire once per resumed match
+  }, [matchData]);
 
   const resetMatchState = () => {
     clearActiveMatch();

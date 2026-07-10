@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, Modal, Pressable, SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Modal, Pressable, SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { showAlert } from '../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Check, Coins, ArrowLeft, Palette, X, Sparkles, Package } from 'lucide-react-native';
@@ -175,7 +176,7 @@ export default function Shop({ onBack, onEditAvatar }: ShopProps) {
     });
     const { error } = await supabase.rpc('equip_cosmetics', { p_config: next as unknown as Json });
     if (error) {
-      Alert.alert(tr(language, 'Erreur', 'Error'), error.message);
+      showAlert(tr(language, 'Erreur', 'Error'), error.message);
       return;
     }
     setAvatarConfig(next);
@@ -186,7 +187,7 @@ export default function Shop({ onBack, onEditAvatar }: ShopProps) {
   const buy = async (part: CosmeticPart) => {
     const price = effectivePrice(part);
     if (balance < price) {
-      Alert.alert(
+      showAlert(
         tr(language, 'Solde insuffisant', 'Insufficient funds'),
         tr(language, 'Jouez pour gagner des pièces.', 'Play to earn coins.'),
       );
@@ -203,7 +204,7 @@ export default function Shop({ onBack, onEditAvatar }: ShopProps) {
       setPreviewPart(null);
       // Post-purchase flow: offer to equip the new item right away.
       const itemName = language === 'fr' ? part.nameFr : part.nameEn;
-      Alert.alert(
+      showAlert(
         tr(language, `${itemName} acheté !`, `${itemName} purchased!`),
         tr(language, "L'équiper sur ton monde maintenant ?", 'Equip it on your world now?'),
         [
@@ -215,7 +216,7 @@ export default function Shop({ onBack, onEditAvatar }: ShopProps) {
       // The purchase runs inside a native Modal, where an app-root toast would be
       // hidden behind it — Alert reliably surfaces above the modal.
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
-      Alert.alert(
+      showAlert(
         tr(language, 'Achat impossible', 'Purchase failed'),
         tr(
           language,
@@ -230,14 +231,14 @@ export default function Shop({ onBack, onEditAvatar }: ShopProps) {
   const buyBundle = (bundle: CosmeticBundle) => {
     const name = language === 'fr' ? bundle.nameFr : bundle.nameEn;
     if (balance < bundle.price) {
-      Alert.alert(
+      showAlert(
         tr(language, 'Solde insuffisant', 'Insufficient funds'),
         tr(language, 'Jouez pour gagner des pièces.', 'Play to earn coins.'),
       );
       return;
     }
     const missing = bundle.itemIds.filter((id) => !owned.has(id));
-    Alert.alert(
+    showAlert(
       name,
       tr(
         language,
@@ -267,7 +268,7 @@ export default function Shop({ onBack, onEditAvatar }: ShopProps) {
               ));
             } else {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
-              Alert.alert(tr(language, 'Achat impossible', 'Purchase failed'), result.message);
+              showAlert(tr(language, 'Achat impossible', 'Purchase failed'), result.message);
             }
             setBuying(null);
           },
@@ -447,18 +448,20 @@ export default function Shop({ onBack, onEditAvatar }: ShopProps) {
               <View style={styles.featuredInfo}>
                 <View style={styles.featuredTitleRow}>
                   <Sparkles size={13} color="#ffd700" />
-                  <Text style={[styles.featuredTitle, { color: c.textMuted }]}>
+                  {/* Fixed light colors: the card background is a fixed dark
+                      navy, so theme colors (dark text in light mode) vanish. */}
+                  <Text style={[styles.featuredTitle, { color: '#c9b98a' }]}>
                     {tr(language, 'VITRINE DU JOUR', "TODAY'S FEATURED")}
                   </Text>
                 </View>
-                <Text style={[styles.featuredName, { color: c.text }]} numberOfLines={1}>
+                <Text style={[styles.featuredName, { color: '#f5efdf' }]} numberOfLines={1}>
                   {language === 'fr' ? featuredPart.nameFr : featuredPart.nameEn}
                 </Text>
                 <View style={styles.priceRow}>
                   <Coins color="#ffd700" size={13} />
-                  <Text style={[styles.priceStrike, { color: c.textMuted }]}>{featured.basePrice}</Text>
+                  <Text style={[styles.priceStrike, { color: '#9aa0b5' }]}>{featured.basePrice}</Text>
                   <Text style={[styles.featuredPrice, { color: '#ffd700' }]}>{featured.price}</Text>
-                  <Text style={[styles.featuredHint, { color: c.textMuted }]}>
+                  <Text style={[styles.featuredHint, { color: '#9aa0b5' }]}>
                     {tr(language, "· aujourd'hui seulement", '· today only')}
                   </Text>
                 </View>

@@ -4,6 +4,11 @@ jest.mock('../supabase', () => ({
   supabase: { rpc: jest.fn(async () => ({ data: null, error: null })) },
 }));
 
+// log.ts pulls in @sentry/react-native (untranspiled ESM) — irrelevant here.
+jest.mock('../log', () => ({
+  log: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}));
+
 jest.mock('@react-native-async-storage/async-storage', () => {
   const store: Record<string, string> = {};
   return {

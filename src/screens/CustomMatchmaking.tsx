@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import { showAlert } from '../lib/alert';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   RefreshControl,
   ScrollView,
@@ -168,6 +168,8 @@ export default function CustomMatchmaking({ onBack, onStartMatch }: CustomMatchm
   const [loadingMatches, setLoadingMatches] = useState(false);
   const [friends, setFriends] = useState<any[]>([]);
   const [matchState, setMatchState] = useState<any>(null);
+  const matchStateRef = useRef<any>(null);
+  useEffect(() => { matchStateRef.current = matchState; }, [matchState]);
   const [creating, setCreating] = useState(false);
   // Free-for-all: 2 = classic 1v1; 3–8 seats an FFA match via match_players.
   const [playerCount, setPlayerCount] = useState(2);
@@ -287,11 +289,29 @@ export default function CustomMatchmaking({ onBack, onStartMatch }: CustomMatchm
             const { data: fullMatch } = await supabase
               .from('matches').select('*').eq('id', newMatch.id).single();
             onStartMatch((fullMatch ?? newMatch) as Match);
+          } else if (newMatch.status === 'cancelled') {
+            announce(tr(language, 'Partie annulée', 'Match cancelled'));
+            showAlert(
+              tr(language, 'Partie annulée', 'Match cancelled'),
+              newMatch.is_public
+                ? tr(language, 'Cette partie a été annulée.', 'This match was cancelled.')
+                : tr(language, 'Ton ami a refusé l’invitation.', 'Your friend declined the invite.'),
+            );
+            setMatchState(null);
+            setView('lobby');
           }
         },
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+      const id = matchStateRef.current?.id;
+      const st = matchStateRef.current?.status;
+      if (id && st === 'waiting') {
+        supabase.from('matches').update({ status: 'cancelled' })
+          .eq('id', id).eq('status', 'waiting').then(undefined, () => {});
+      }
+    };
   }, [matchState?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Actions ────────────────────────────────────────────────────────────────
@@ -301,7 +321,7 @@ export default function CustomMatchmaking({ onBack, onStartMatch }: CustomMatchm
     if ((match.max_players ?? 2) > 2) {
       const { data, error } = await supabase.rpc('join_ffa_match', { p_match_id: match.id });
       if (error) {
-        Alert.alert(
+        showAlert(
           tr(language, 'Erreur', 'Error'),
           tr(language, 'Impossible de rejoindre la partie', 'Could not join match'),
         );
@@ -317,6 +337,8 @@ export default function CustomMatchmaking({ onBack, onStartMatch }: CustomMatchm
       .from('matches')
       .update({ player2_id: userId, status: 'in_progress' })
       .eq('id', match.id)
+      .eq('status', 'waiting')
+      .is('player2_id', null)
       .select()
       .single();
     if (!error && updated) {
@@ -324,7 +346,7 @@ export default function CustomMatchmaking({ onBack, onStartMatch }: CustomMatchm
       setMatchState(updated);
       onStartMatch(updated as Match);
     } else {
-      Alert.alert(
+      showAlert(
         tr(language, 'Erreur', 'Error'),
         tr(language, 'Impossible de rejoindre la partie', 'Could not join match'),
       );
@@ -376,7 +398,7 @@ export default function CustomMatchmaking({ onBack, onStartMatch }: CustomMatchm
       setView('waiting');
     } else {
       log.error('custom match create error:', error);
-      Alert.alert(
+      showAlert(
         tr(language, 'Erreur', 'Error'),
         tr(language, 'Impossible de créer la partie', 'Could not create match'),
       );
@@ -387,14 +409,14 @@ export default function CustomMatchmaking({ onBack, onStartMatch }: CustomMatchm
 
   const doCancelMatch = async () => {
     if (matchState) {
-      await supabase.from('matches').update({ status: 'cancelled' }).eq('id', matchState.id);
+      await supabase.from('matches').update({ status: 'cancelled' }).eq('id', matchState.id).eq('status', 'waiting');
     }
     setMatchState(null);
     setView('lobby');
   };
 
   const cancelMatch = () => {
-    Alert.alert(
+    showAlert(
       tr(language, 'Annuler la partie ?', 'Cancel match?'),
       tr(language, 'La partie en attente sera annulée.', 'The pending match will be cancelled.'),
       [
@@ -712,6 +734,7 @@ export default function CustomMatchmaking({ onBack, onStartMatch }: CustomMatchm
     if (view === 'lobby') onBack();
     else if (view === 'friends') setView('builder');
     else if (view === 'builder') setView('lobby');
+    else if (view === 'waiting' && matchState) { cancelMatch(); }
     else setView('lobby');
   };
 

@@ -1,7 +1,7 @@
+import { showAlert } from '../lib/alert';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Linking,
   Platform,
@@ -19,7 +19,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Bell, Camera, Check, Coins, Eye, EyeOff, ArrowLeft, HelpCircle, LayoutGrid, LogOut, Palette, ShoppingBag, Trash2, Zap } from 'lucide-react-native';
 
 import { supabase } from '../lib/supabase';
-import { useCachedData } from '../lib/cache';
+import { useCachedData, cacheClear } from '../lib/cache';
 import { isValidUsername, usernameError, USERNAME_MAX } from '../lib/validation';
 import { cancelDailyReminder, getDailyReminderPrefs, scheduleDailyReminder } from '../lib/notifications';
 import { track } from '../lib/analytics';
@@ -159,7 +159,9 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
         .eq('id', userId)
         .single(),
       supabase.from('coin_wallets').select('balance').eq('user_id', userId).maybeSingle(),
-      supabase.from('player_ratings').select('elo, wins, losses').eq('user_id', userId).single(),
+      // maybeSingle: players who never finished a ranked match have no row —
+      // .single() turned every such profile view into a 406 + console error.
+      supabase.from('player_ratings').select('elo, wins, losses').eq('user_id', userId).maybeSingle(),
       supabase
         .from('matches')
         .select('game_mode, player1_id, player2_id, p1_rounds_won, p2_rounds_won')
@@ -246,9 +248,12 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
       .upsert({ id: userId, username: trimmed, updated_at: new Date().toISOString() });
     setSavingName(false);
     if (error) {
-      Alert.alert(tr(language, 'Erreur', 'Error'), error.message);
+      showAlert(tr(language, 'Erreur', 'Error'), error.message);
     } else {
       setSavedUsername(trimmed);
+      // Drop the cached snapshot so re-opening within the 5-min TTL doesn't show
+      // the old name (the write bypasses useCachedData's cache).
+      cacheClear(`profile:${userId}`);
     }
   };
 
@@ -259,7 +264,9 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
       .upsert({ id: userId, show_rank: value, updated_at: new Date().toISOString() });
     if (error) {
       setShowRank(!value);
-      Alert.alert(tr(language, 'Erreur', 'Error'), error.message);
+      showAlert(tr(language, 'Erreur', 'Error'), error.message);
+    } else {
+      cacheClear(`profile:${userId}`);
     }
   };
 
@@ -267,7 +274,7 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
     if (Platform.OS !== 'web') {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert(
+        showAlert(
           tr(language, 'Permission requise', 'Permission needed'),
           tr(language, 'Autorisez l\'accès aux photos pour changer votre avatar.', 'Allow photo access to change your avatar.'),
         );
@@ -286,7 +293,7 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
 
     const asset = result.assets[0];
     if (!asset.base64) {
-      Alert.alert(tr(language, 'Erreur', 'Error'), tr(language, 'Image illisible.', 'Could not read image.'));
+      showAlert(tr(language, 'Erreur', 'Error'), tr(language, 'Image illisible.', 'Could not read image.'));
       return;
     }
 
@@ -312,8 +319,9 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
       if (saveError) throw saveError;
 
       setAvatarUrl(publicUrl);
+      cacheClear(`profile:${userId}`);
     } catch (e: unknown) {
-      Alert.alert(tr(language, 'Erreur', 'Error'), e instanceof Error ? e.message : String(e));
+      showAlert(tr(language, 'Erreur', 'Error'), e instanceof Error ? e.message : String(e));
     } finally {
       setUploading(false);
     }
@@ -325,7 +333,7 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
   };
 
   const logout = () => {
-    Alert.alert(
+    showAlert(
       tr(language, 'Déconnexion', 'Logout'),
       tr(language, 'Veux-tu vraiment te déconnecter ?', 'Do you really want to log out?'),
       [
@@ -342,7 +350,7 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
     const { error } = await supabase.rpc('delete_user_account');
     if (error) {
       setDeleting(false);
-      Alert.alert(
+      showAlert(
         tr(language, 'Erreur', 'Error'),
         tr(
           language,
@@ -370,7 +378,7 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
       }
       return;
     }
-    Alert.alert(title, message, [
+    showAlert(title, message, [
       { text: tr(language, 'Annuler', 'Cancel'), style: 'cancel' },
       { text: tr(language, 'Supprimer', 'Delete'), style: 'destructive', onPress: performDelete },
     ]);

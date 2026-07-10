@@ -123,6 +123,11 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
 
   const finalizingRound = useRef<number>(0);
   const resultApplied = useRef(false);
+  // Live mirror of `players` + last round seen via realtime, for the
+  // round-bump handler below (it must read state without re-subscribing).
+  const playersRef = useRef<PlayerRow[]>([]);
+  const lastSeenRound = useRef<number>(match.current_round ?? 1);
+  useEffect(() => { playersRef.current = players; }, [players]);
 
   const refetchPlayers = useCallback(async () => {
     const { data } = await supabase
@@ -177,7 +182,23 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
         (payload: { new: { status?: string; current_round?: number } }) => {
           const row = payload.new;
           if (row.status) setStatus(row.status);
-          if (typeof row.current_round === 'number') setCurrentRound(row.current_round);
+          if (typeof row.current_round === 'number') {
+            if (row.current_round > lastSeenRound.current) {
+              lastSeenRound.current = row.current_round;
+              // The server already reset finished_round for the new round. Our
+              // players snapshot may still show everyone done for the OLD round:
+              // left as-is, the finalize effect would fire on that stale data
+              // and poison its once-per-round guard for the round that just
+              // started (match stuck with nobody calling finalize). Snapshot
+              // the standings we know, then clear the stale flags locally.
+              const snap = playersRef.current;
+              if (snap.length > 0 && snap.some((p) => p.finished_round)) {
+                setLastRoundScores(Object.fromEntries(snap.map((p) => [p.player_id, p.current_score])));
+              }
+              setPlayers((ps) => ps.map((p) => ({ ...p, finished_round: false, current_score: 0 })));
+            }
+            setCurrentRound(row.current_round);
+          }
         },
       )
       .subscribe();
@@ -267,7 +288,12 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
     setLastRoundScores(Object.fromEntries(players.map((p) => [p.player_id, p.current_score])));
     supabase.rpc('finalize_round_ffa', { p_match_id: match.id }).then(
       () => refetchPlayers(),
-      (e) => log.error('finalize_round_ffa error:', e),
+      (e) => {
+        log.error('finalize_round_ffa error:', e);
+        // Un-claim the round so this client (or a later players update) retries
+        // — otherwise a single failed call could leave the match unfinalised.
+        if (finalizingRound.current === currentRound) finalizingRound.current = 0;
+      },
     );
   }, [players, status, currentRound, match.id, refetchPlayers]);
 
@@ -279,7 +305,18 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
     if (!resultApplied.current) {
       resultApplied.current = true;
       track('match_completed', { mode: 'ffa', players: maxPlayers });
-      supabase.rpc('apply_ffa_result', { p_match_id: match.id }).then(undefined, () => {});
+      // Idempotent server-side (coins_awarded guard) → safe to retry; a
+      // swallowed one-shot failure meant everyone's placement coins vanished
+      // unless another player's call happened to succeed.
+      const apply = async () => {
+        for (let attempt = 0; attempt < 3; attempt++) {
+          if (attempt > 0) await new Promise((r) => setTimeout(r, attempt * 2000));
+          const { error } = await supabase.rpc('apply_ffa_result', { p_match_id: match.id });
+          if (!error) return;
+          log.error('apply_ffa_result error:', error);
+        }
+      };
+      void apply();
     }
   }, [status, match.id, maxPlayers]);
 
@@ -297,12 +334,20 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
   const submitScore = useCallback(
     async (score: number) => {
       setPhase('submitting');
-      const { error } = await supabase
-        .from('match_players')
-        .update({ current_score: score, finished_round: true })
-        .eq('match_id', match.id)
-        .eq('player_id', user.id);
-      if (error) log.error('ffa submit score error:', error);
+      // The write is idempotent → retry transient failures. Giving up after
+      // one silent error left the player stuck on "waiting for the others"
+      // with a score the server never saw.
+      let error: unknown = null;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        if (attempt > 0) await new Promise((r) => setTimeout(r, 3000));
+        ({ error } = await supabase
+          .from('match_players')
+          .update({ current_score: score, finished_round: true })
+          .eq('match_id', match.id)
+          .eq('player_id', user.id));
+        if (!error) break;
+      }
+      if (error) log.error('ffa submit score error (giving up):', error);
       supabase.rpc('touch_match', { p_match_id: match.id }).then(undefined, () => {});
       refetchPlayers();
     },

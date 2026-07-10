@@ -42,6 +42,9 @@ import StreakGame from './StreakGame';
 import GuessCountryGame from './GuessCountryGame';
 import FindCountryGame from './FindCountryGame';
 import FindRegionGame from './FindRegionGame';
+import HigherLowerGame from './HigherLowerGame';
+import SilhouetteGame from './SilhouetteGame';
+import BordersGame from './BordersGame';
 import { ClassicGame } from './ClassicGame';
 
 interface BotMatchProps {
@@ -56,6 +59,7 @@ interface BotMatchProps {
 const VERSUS_QUESTIONS = 5;
 const GLOBE_ROUNDS = 5;
 const REGION_ROUNDS = 5;
+const SILHOUETTE_QUESTIONS = 5; // SilhouetteGame's online default session length
 
 interface PlayerProfile {
   username: string | null;
@@ -251,7 +255,8 @@ export default function BotMatch({ user, match, bot, onExit }: BotMatchProps) {
     mode === 'versus' ? VERSUS_QUESTIONS
       : mode === 'globe' ? GLOBE_ROUNDS
         : mode === 'regions' ? REGION_ROUNDS
-          : 1;
+          : mode === 'silhouette' ? SILHOUETTE_QUESTIONS
+            : 1;
   // Regions rounds carry their own seeded country/level (stored on the match at
   // creation; fall back to a deterministic pick for any malformed row).
   const regionPick: RankedRegionPick =
@@ -268,11 +273,19 @@ export default function BotMatch({ user, match, bot, onExit }: BotMatchProps) {
     if (resultApplied.current) return;
     resultApplied.current = true;
     track('bot_match_completed', { won: pWins > bWins, best_of: bestOf });
-    const { data, error } = await supabase.rpc('apply_bot_ranked_result', {
-      p_match_id: match.id,
-      p_player_rounds_won: pWins,
-      p_bot_rounds_won: bWins,
-    });
+    // The RPC is idempotent (rating_applied guard), so a transient network
+    // failure can be retried — swallowing it lost the ELO + coins for good.
+    let data: unknown = null;
+    let error: unknown = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, attempt * 2000));
+      ({ data, error } = await supabase.rpc('apply_bot_ranked_result', {
+        p_match_id: match.id,
+        p_player_rounds_won: pWins,
+        p_bot_rounds_won: bWins,
+      }));
+      if (!error && data) break;
+    }
     if (error || !data) return;
     const r = data as {
       elo_change?: number; new_elo?: number; old_elo?: number; coins_awarded?: number;
@@ -370,6 +383,12 @@ export default function BotMatch({ user, match, bot, onExit }: BotMatchProps) {
             {...common}
           />
         );
+      case 'silhouette':
+        return <SilhouetteGame setGameMode={quit} user={null} {...common} />;
+      case 'borders':
+        return <BordersGame setGameMode={quit} user={null} {...common} />;
+      case 'higherlower':
+        return <HigherLowerGame setGameMode={quit} user={null} {...common} />;
       case 'classic':
       default:
         return <ClassicGame user={null} onExit={onExit} {...common} />;

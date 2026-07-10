@@ -8,9 +8,10 @@
  * as the challenge quiz), normalized to 0..1000 for matches.
  * Mirrors HigherLowerGame's solo / daily / match wiring.
  */
+import { showAlert } from '../lib/alert';
 import { useState, useEffect, useRef } from 'react';
 import {
-  Alert,
+  KeyboardAvoidingView,
   ScrollView,
   StyleSheet,
   Text,
@@ -216,7 +217,7 @@ export default function SilhouetteGame({
         .then(({ error }) => {
           if (error) {
             log.error('Error saving silhouette score:', error);
-            Alert.alert(
+            showAlert(
               tr(language, 'Erreur', 'Error'),
               tr(language, "Impossible d'enregistrer ton score.", 'Could not save your score.'),
             );
@@ -328,6 +329,10 @@ export default function SilhouetteGame({
         </View>
       </View>
 
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
       <ScrollView contentContainerStyle={styles.gameArea} keyboardShouldPersistTaps="handled">
         <Text style={[styles.turnIndicator, { color: c.accent }]}>
           {`Question ${questionIndex + 1}/${run.length}`}
@@ -456,6 +461,7 @@ export default function SilhouetteGame({
           )
         )}
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {gameOver && !matchData && (
         <View

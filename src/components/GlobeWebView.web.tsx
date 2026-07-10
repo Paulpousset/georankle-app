@@ -28,6 +28,12 @@ const GlobeWebView = forwardRef<Handle, Props>(function GlobeWebView(
 ) {
   const viewRef = useRef<any>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  // Keep the latest onMessage without making it an effect dependency: a parent
+  // that passes an inline handler (BordersGame re-creates one on every
+  // keystroke) would otherwise tear down and rebuild the whole iframe — the
+  // globe flickered and lost its rotation on each typed letter.
+  const onMessageRef = useRef(onMessage);
+  useEffect(() => { onMessageRef.current = onMessage; }, [onMessage]);
 
   useImperativeHandle(ref, () => ({
     injectJavaScript(code: string) {
@@ -65,7 +71,7 @@ const GlobeWebView = forwardRef<Handle, Props>(function GlobeWebView(
     const onMsg = (e: MessageEvent) => {
       if (e.source === iframe.contentWindow) {
         const data = typeof e.data === 'string' ? e.data : JSON.stringify(e.data);
-        onMessage({ nativeEvent: { data } });
+        onMessageRef.current({ nativeEvent: { data } });
       }
     };
     window.addEventListener('message', onMsg);
@@ -75,7 +81,7 @@ const GlobeWebView = forwardRef<Handle, Props>(function GlobeWebView(
       iframe.remove();
       iframeRef.current = null;
     };
-  }, [source.html, source.uri, allow, onMessage]);
+  }, [source.html, source.uri, allow]);
 
   return <View ref={viewRef} style={[styles.fill, style]} />;
 });
