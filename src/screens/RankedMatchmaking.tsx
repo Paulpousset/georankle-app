@@ -214,6 +214,19 @@ export default function RankedMatchmaking({
   // apply_bot_ranked_result, which applies the ELO change like any ranked game.
   const launchBotOpponent = async () => {
     const waitingId = matchState?.id;
+    // Claim the waiting row FIRST, guarded on status: if a human joined it in
+    // the last moment (status → in_progress via realtime), we must not create a
+    // bot match. Only proceed once we've atomically cancelled our own wait.
+    if (waitingId) {
+      const { data: claimed } = await supabase
+        .from('matches')
+        .update({ status: 'cancelled' })
+        .eq('id', waitingId)
+        .eq('status', 'waiting')
+        .is('player2_id', null)
+        .select();
+      if (!claimed || claimed.length === 0) return; // a human joined → let realtime start that match
+    }
     const profile = makeBotProfile(elo);
     const seed = Math.floor(Math.random() * 2147483647);
     const rankedModes = generateRankedModes(bestOf, seed);
@@ -252,10 +265,7 @@ export default function RankedMatchmaking({
       return; // keep searching; the timer may retry or the user can cancel.
     }
 
-    // Tear down the abandoned real-matchmaking row and leave the queue.
-    if (waitingId) {
-      await supabase.from('matches').update({ status: 'cancelled' }).eq('id', waitingId);
-    }
+    // The waiting row was already cancelled above (atomic claim).
     setMatchState(null);
     setSearching(false);
     track('bot_match_started', { best_of: bestOf });
@@ -316,6 +326,8 @@ export default function RankedMatchmaking({
         .from('matches')
         .update({ player2_id: userId, status: 'in_progress' })
         .eq('id', compatible.id)
+        .eq('status', 'waiting')
+        .is('player2_id', null)
         .select()
         .single();
 
@@ -323,6 +335,7 @@ export default function RankedMatchmaking({
         onStartMatch(updated as Match);
         return;
       }
+      // else: another player claimed it first → fall through and create our own.
     }
 
     // Create a new ranked match

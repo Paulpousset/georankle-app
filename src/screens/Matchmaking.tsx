@@ -1,5 +1,5 @@
 import { showAlert } from '../lib/alert';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -210,6 +210,10 @@ export default function Matchmaking({
   const [publicMatches, setPublicMatches] = useState<PublicMatchItem[]>([]);
   const [loadingMatches, setLoadingMatches] = useState(false);
   const [matchState, setMatchState] = useState<any>(null);
+  // Mirror for the realtime cleanup, which must read the latest row without
+  // re-subscribing the channel.
+  const matchStateRef = useRef<any>(null);
+  useEffect(() => { matchStateRef.current = matchState; }, [matchState]);
   const [friends, setFriends] = useState<any[]>([]);
 
   // Create-form state
@@ -325,20 +329,48 @@ export default function Matchmaking({
             const { data: fullMatch } = await supabase
               .from('matches').select('*').eq('id', newMatch.id).single();
             onStartMatch((fullMatch ?? newMatch) as Match);
+          } else if (newMatch.status === 'cancelled') {
+            // The invited friend declined, or the row was cancelled elsewhere —
+            // stop the infinite "waiting for…" spinner and say why.
+            announce(tr(language, 'Partie annulée', 'Match cancelled'));
+            showAlert(
+              tr(language, 'Partie annulée', 'Match cancelled'),
+              newMatch.is_public
+                ? tr(language, 'Cette partie a été annulée.', 'This match was cancelled.')
+                : tr(language, 'Ton ami a refusé l’invitation.', 'Your friend declined the invite.'),
+            );
+            setMatchState(null);
+            setView('lobby');
           }
         },
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+      // Leaving the waiting view without a resolution (back/swipe/unmount) must
+      // not leave a public 'waiting' row behind as a ghost lobby entry. Guard on
+      // status so a match that just started is never touched.
+      const id = matchStateRef.current?.id;
+      const st = matchStateRef.current?.status;
+      if (id && st === 'waiting') {
+        supabase.from('matches').update({ status: 'cancelled' })
+          .eq('id', id).eq('status', 'waiting').then(undefined, () => {});
+      }
+    };
   }, [matchState?.id]);
 
   // ─── Actions ─────────────────────────────────────────────────────────────────
 
   const joinMatch = useCallback(async (match: PublicMatchItem) => {
+    // Guard the join: only an open 'waiting' slot can be taken. Without this,
+    // two players joining the same row both "succeed" (the second overwrites
+    // player2_id), and a cancelled row could be resurrected.
     const { data: updated, error } = await supabase
       .from('matches')
       .update({ player2_id: userId, status: 'in_progress' })
       .eq('id', match.id)
+      .eq('status', 'waiting')
+      .is('player2_id', null)
       .select()
       .single();
     if (!error && updated) {
@@ -346,10 +378,14 @@ export default function Matchmaking({
       setMatchState(updated);
       onStartMatch(updated as Match);
     } else {
-      showAlert(language === 'fr' ? 'Erreur' : 'Error',
-        language === 'fr' ? 'Impossible de rejoindre la partie' : 'Could not join match');
+      // 0 rows matched (PGRST116) → someone else took it or it was cancelled.
+      showAlert(
+        tr(language, 'Partie indisponible', 'Match unavailable'),
+        tr(language, 'Cette partie n’est plus disponible.', 'This match is no longer available.'),
+      );
+      fetchPublicMatches();
     }
-  }, [userId, gameMode, language, onStartMatch]);
+  }, [userId, gameMode, language, onStartMatch, fetchPublicMatches]);
 
   const createMatch = useCallback(async (friendId?: string) => {
     setCreating(true);
@@ -428,7 +464,15 @@ export default function Matchmaking({
 
   const doCancelMatch = async () => {
     if (matchState) {
-      await supabase.from('matches').update({ status: 'cancelled' }).eq('id', matchState.id);
+      // Only cancel a still-waiting row: if an opponent joined during the
+      // confirm dialog, the match is already in progress — don't kill it.
+      const { data } = await supabase
+        .from('matches')
+        .update({ status: 'cancelled' })
+        .eq('id', matchState.id)
+        .eq('status', 'waiting')
+        .select();
+      if (!data || data.length === 0) return; // started meanwhile → realtime takes over
     }
     setMatchState(null);
     setView('lobby');
@@ -824,6 +868,9 @@ export default function Matchmaking({
   const handleBack = () => {
     if (view === 'lobby') onBack();
     else if (view === 'friends') setView('create');
+    // From the waiting view, the header back must cancel the pending match
+    // (same confirm as the Cancel button) rather than silently orphaning it.
+    else if (view === 'waiting' && matchState) cancelMatch();
     else setView('lobby');
   };
 
