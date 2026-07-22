@@ -37,6 +37,8 @@ import { Platform } from 'react-native';
 import { loadAdsSdk, type AdsSdk } from './adsSdk';
 import { supabase } from './supabase';
 import { isFeatureEnabled } from './featureFlags';
+import { recordGameAndShouldShow } from './interstitialGate';
+import { track } from './analytics';
 import { log } from './log';
 
 /** Store product ids ↔ coins (must mirror grant_iap_coins in SQL). */
@@ -79,6 +81,14 @@ export const REWARDED_COINS = 5;
 const REWARDED_AD_UNIT_IDS: Record<string, string> = {
   android: 'ca-app-pub-2429865520138981/3361572181',
   ios: 'ca-app-pub-2429865520138981/2431633897',
+};
+
+// Interstitial ad-unit ids. ⚠️ Paul must create an INTERSTITIAL unit per platform
+// in the AdMob console and paste the ids here; until then we fall back to Google
+// TEST ids so the flow is exercisable without serving real (policy-violating) ads.
+const INTERSTITIAL_AD_UNIT_IDS: Record<string, string> = {
+  android: '',
+  ios: '',
 };
 
 /** How long to wait for an ad to load before giving up. */
@@ -156,10 +166,19 @@ function loadAndShowAd(sdk: AdsSdk): Promise<boolean> {
   });
 }
 
-/** Whether the "watch an ad" button may be shown at all. */
+/**
+ * Whether the "watch an ad" button may be shown at all. Also kicks off the
+ * one-time SDK start as soon as we know ads are enabled — Google's SDK
+ * expects `start()` shortly after the native module is touched, not deferred
+ * until the user taps "watch"; touching the module without ever starting it
+ * trips the SDK's own internal publisher-initialization check and crashes.
+ */
 export async function rewardedAdsAvailable(): Promise<boolean> {
   if (!(await isFeatureEnabled('rewarded_ads'))) return false;
-  return loadAdsSdk() !== null;
+  const sdk = loadAdsSdk();
+  if (!sdk) return false;
+  initAdsOnce(sdk).catch((e) => log.warn('ads SDK init failed', e));
+  return true;
 }
 
 /**
@@ -182,24 +201,61 @@ export async function getRewardedAdsRemaining(): Promise<number | null> {
 }
 
 /**
- * Show one AdMob rewarded ad, then claim the coins server-side (flag-gated,
+ * Play one rewarded ad and resolve to whether the reward was genuinely earned.
+ * Shared by every "watch an ad" entry point; returns a typed reason on failure
+ * so each caller can claim its own kind of reward afterwards.
+ */
+export async function watchRewardedAd(): Promise<
+  { earned: true } | { earned: false; reason: RewardedAdResult['reason'] }
+> {
+  if (!(await isFeatureEnabled('rewarded_ads'))) return { earned: false, reason: 'disabled' };
+  const sdk = loadAdsSdk();
+  if (!sdk) return { earned: false, reason: 'not_implemented' };
+  try {
+    await initAdsOnce(sdk);
+    const earned = await loadAndShowAd(sdk);
+    return earned ? { earned: true } : { earned: false, reason: 'dismissed' };
+  } catch (e) {
+    log.warn('rewarded ad failed', e);
+    return { earned: false, reason: 'failed' };
+  }
+}
+
+/**
+ * Show one AdMob rewarded ad, then claim the flat coins server-side (flag-gated,
  * 5/day cap — see claim_rewarded_ad). Every failure mode resolves to a typed
  * reason so the UI can toast something sensible.
  */
 export async function showRewardedAd(): Promise<RewardedAdResult> {
-  if (!(await isFeatureEnabled('rewarded_ads'))) return { granted: false, reason: 'disabled' };
-  const sdk = loadAdsSdk();
-  if (!sdk) return { granted: false, reason: 'not_implemented' };
-  let earned = false;
-  try {
-    await initAdsOnce(sdk);
-    earned = await loadAndShowAd(sdk);
-  } catch (e) {
-    log.warn('rewarded ad failed', e);
-    return { granted: false, reason: 'failed' };
-  }
-  if (!earned) return { granted: false, reason: 'dismissed' };
+  const res = await watchRewardedAd();
+  if (!res.earned) return { granted: false, reason: res.reason };
   return claimRewardedAd();
+}
+
+/**
+ * Show one rewarded ad, then multiply THIS game's coins server-side.
+ * `base` is the session's original award; `stage` is 1 (→ ×2) or 2 (→ ×4).
+ * Shares the flat rewarded-ad daily cap. See claim_coin_multiplier.
+ */
+export async function showCoinMultiplierAd(base: number, stage: 1 | 2): Promise<RewardedAdResult> {
+  const res = await watchRewardedAd();
+  if (!res.earned) return { granted: false, reason: res.reason };
+  return claimCoinMultiplier(base, stage);
+}
+
+/** Server claim for a multiplier ad — exported for testability. */
+export async function claimCoinMultiplier(base: number, stage: 1 | 2): Promise<RewardedAdResult> {
+  const { data, error } = await supabase.rpc('claim_coin_multiplier', {
+    p_base: base,
+    p_stage: stage,
+  });
+  if (error) return { granted: false, reason: 'failed' };
+  const res = (data ?? {}) as { granted?: boolean; coins?: number; reason?: string };
+  return {
+    granted: res.granted === true,
+    coins: res.coins,
+    reason: res.granted ? undefined : (res.reason as RewardedAdResult['reason']) ?? 'failed',
+  };
 }
 
 /**
@@ -215,4 +271,62 @@ export async function claimRewardedAd(): Promise<RewardedAdResult> {
     coins: res.coins,
     reason: res.granted ? undefined : (res.reason as RewardedAdResult['reason']) ?? 'failed',
   };
+}
+
+// ── Interstitial ads (flag-gated, frequency-capped) ──────────────────────────
+// Unlike rewarded ads, interstitials are shown proactively at natural breaks
+// (leaving a finished game) and grant nothing — so there's no server claim, just
+// the ad. The frequency gate (interstitialGate.ts) protects retention.
+
+/** Load + show one interstitial; resolves when it closes (or fails). */
+function loadAndShowInterstitial(sdk: AdsSdk): Promise<void> {
+  const configured = INTERSTITIAL_AD_UNIT_IDS[Platform.OS];
+  const unitId = configured && configured.length > 0 ? configured : sdk.TestIds.INTERSTITIAL;
+  const ad = sdk.InterstitialAd.createForAdRequest(unitId);
+  return new Promise<void>((resolve, reject) => {
+    let settled = false;
+    const subs: Array<() => void> = [];
+    const settle = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      subs.forEach((off) => off());
+      fn();
+    };
+    const timer = setTimeout(
+      () => settle(() => reject(new Error('interstitial load timeout'))),
+      AD_LOAD_TIMEOUT_MS,
+    );
+    subs.push(
+      ad.addAdEventListener(sdk.AdEventType.LOADED, () => {
+        clearTimeout(timer);
+        ad.show().catch((e) => settle(() => reject(e)));
+      }),
+      ad.addAdEventListener(sdk.AdEventType.CLOSED, () => settle(() => resolve())),
+      ad.addAdEventListener(sdk.AdEventType.ERROR, (e) => settle(() => reject(e))),
+    );
+    ad.load();
+  });
+}
+
+/**
+ * Maybe show an interstitial at a natural break. Call this once per finished
+ * game — it records the play and decides internally whether to actually show
+ * (flag off, or under the per-N-games / daily-cap threshold → no-op). Fire and
+ * forget: navigation can proceed behind the ad. Never throws.
+ */
+export async function maybeShowInterstitial(): Promise<void> {
+  if (!(await isFeatureEnabled('interstitial_ads'))) return;
+  // Count the game & consult the gate BEFORE touching the SDK.
+  if (!(await recordGameAndShouldShow())) return;
+  const sdk = loadAdsSdk();
+  if (!sdk) return;
+  try {
+    await initAdsOnce(sdk);
+    await loadAndShowInterstitial(sdk);
+    track('interstitial_shown', {});
+  } catch (e) {
+    log.warn('interstitial failed', e);
+    track('interstitial_failed', {});
+  }
 }

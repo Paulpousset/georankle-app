@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { RefreshCcw, Moon, Sun, Home, Share2, Coins } from 'lucide-react-native';
+import { RefreshCcw, Moon, Sun, Home, Share2 } from 'lucide-react-native';
 import { ThemeIcon } from '../components/themeIcons';
 import type { User } from '@supabase/supabase-js';
 
@@ -38,7 +38,7 @@ import { tr } from '../i18n';
 import { getThemeShortDescription } from '../i18n/themeDescriptions';
 import { a11yButton, announce, a11yHidden, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
-import { RewardedAdButton } from '../components/RewardedAdButton';
+import { SoloCoinReward } from '../components/SoloCoinReward';
 import { TopInsetBar } from '../components/TopInsetBar';
 
 import { isMobileLayout as isMobile } from '../lib/layout';
@@ -160,7 +160,7 @@ export default function HigherLowerGame({
             }
           });
         if (!matchData) {
-          awardSoloCoins('higherlower').then((res) => {
+          awardSoloCoins('higherlower', normalizeRoundScore('higherlower', finalScore)).then((res) => {
             setCoinsEarned(res.coinsAwarded);
             setCoinsCapped(res.capped);
             setCoinsSyncFailed(!res.synced);
@@ -386,55 +386,13 @@ export default function HigherLowerGame({
               {tr(language, 'Ta série : ', 'Your chain: ')}
               {score}
             </Text>
-            {coinsEarned != null && (
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 8,
-                  marginBottom: 24,
-                  backgroundColor: c.surface,
-                  borderRadius: 14,
-                  borderWidth: 1,
-                  borderColor: coinsEarned > 0 ? '#ffd700' : coinsSyncFailed ? '#c0392b' : c.border,
-                  paddingVertical: 10,
-                  paddingHorizontal: 16,
-                }}
-              >
-                <Coins color="#ffd700" size={20} />
-                {coinsEarned > 0 ? (
-                  <>
-                    <Text style={{ color: '#ffd700', fontSize: 22, fontFamily: FONTS.headingBlack }}>
-                      {`+${coinsEarned}`}
-                    </Text>
-                    <Text style={{ color: c.textMuted, fontSize: 13, fontFamily: FONTS.mono }}>
-                      {tr(language, 'pièces gagnées', 'coins earned')}
-                    </Text>
-                  </>
-                ) : coinsSyncFailed ? (
-                  <Text style={{ color: '#c0392b', fontSize: 13, fontFamily: FONTS.mono, textAlign: 'center' }}>
-                    {tr(
-                      language,
-                      'Pièces non synchronisées — réessai à la reconnexion',
-                      'Coins not synced — will retry on reconnect',
-                    )}
-                  </Text>
-                ) : (
-                  <Text style={{ color: c.textMuted, fontSize: 13, fontFamily: FONTS.mono }}>
-                    {coinsCapped
-                      ? tr(language, 'Plafond quotidien atteint', 'Daily coin cap reached')
-                      : tr(language, 'Aucune pièce cette fois', 'No coins this time')}
-                  </Text>
-                )}
-              </View>
-            )}
-
-            {/* Rewarded ad slot (hidden while the rewarded_ads flag is off). */}
-            {coinsEarned != null && (
-              <View style={{ alignSelf: 'stretch', marginBottom: 24 }}>
-                <RewardedAdButton context="solo_summary" />
-              </View>
-            )}
+            {/* Animated coins + rewarded-ad doubler (solo only, server-credited). */}
+            <SoloCoinReward
+              coinsEarned={coinsEarned}
+              coinsCapped={coinsCapped}
+              coinsSyncFailed={coinsSyncFailed}
+              containerStyle={{ alignSelf: 'stretch', marginBottom: 24 }}
+            />
             {isDaily ? (
               <TouchableOpacity
                 style={styles.resetBtn}

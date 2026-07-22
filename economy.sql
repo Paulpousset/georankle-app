@@ -270,24 +270,35 @@ $$;
 REVOKE ALL ON FUNCTION public.apply_online_result(uuid) FROM public, anon;
 GRANT EXECUTE ON FUNCTION public.apply_online_result(uuid) TO authenticated;
 
--- ── Solo coins (daily-capped, score-independent → anti-farm) ──────────────────
-CREATE OR REPLACE FUNCTION public.award_solo_coins(p_game_mode text)
+-- ── Solo coins (daily-capped; reward scales with performance) ─────────────────
+-- p_score is the session's normalized score (0..1000, see normalizeRoundScore);
+-- the reward scales linearly to min_reward..max_reward (2..10). The daily cap
+-- (5/mode) still bounds farming. See coin_multiplier.sql (2026-07-20).
+DROP FUNCTION IF EXISTS public.award_solo_coins(text);
+
+CREATE OR REPLACE FUNCTION public.award_solo_coins(p_game_mode text, p_score int DEFAULT 0)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  uid    uuid := auth.uid();
-  today  date := (now() at time zone 'utc')::date;
-  cur    int;
-  cap    constant int := 5;
-  reward constant int := 2;
+  uid        uuid := auth.uid();
+  today      date := (now() at time zone 'utc')::date;
+  cur        int;
+  cap        constant int := 5;
+  min_reward constant int := 2;
+  max_reward constant int := 10;
+  score      int;
+  reward     int;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'not authenticated'; END IF;
   IF p_game_mode NOT IN ('classic','streak','versus','globe','guess','regions','quiz-capital','quiz-flag','higherlower','silhouette','borders') THEN
     RAISE EXCEPTION 'bad game mode';
   END IF;
+
+  score  := GREATEST(0, LEAST(COALESCE(p_score, 0), 1000));
+  reward := min_reward + round(score::numeric / 1000 * (max_reward - min_reward));
 
   INSERT INTO public.solo_coin_log (user_id, day, game_mode, count)
     VALUES (uid, today, p_game_mode, 0)
@@ -310,8 +321,8 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.award_solo_coins(text) FROM public, anon;
-GRANT EXECUTE ON FUNCTION public.award_solo_coins(text) TO authenticated;
+REVOKE ALL ON FUNCTION public.award_solo_coins(text, int) FROM public, anon;
+GRANT EXECUTE ON FUNCTION public.award_solo_coins(text, int) TO authenticated;
 
 -- ── Purchase a cosmetic ───────────────────────────────────────────────────────
 CREATE OR REPLACE FUNCTION public.purchase_cosmetic(p_item_id text)

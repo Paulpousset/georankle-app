@@ -9,7 +9,7 @@
 import { supabase } from './supabase';
 
 /** Known flags (rows created by seasons_monetization.sql, all OFF). */
-export type FeatureFlag = 'iap' | 'rewarded_ads';
+export type FeatureFlag = 'iap' | 'rewarded_ads' | 'interstitial_ads';
 
 const TTL_MS = 5 * 60 * 1000;
 

@@ -149,12 +149,22 @@ describe('buildShareMessage', () => {
       5,
       'fr',
     );
-    expect(msg).toContain('GeoRankle');
+    expect(msg).toContain('GeoG');
     expect(msg).toContain('#');
     expect(msg).toContain('🟩🟩🟨');
     expect(msg).toContain('87%');
     expect(msg).toContain('🔥');
-    expect(msg).toContain('georankle.app');
+    expect(msg).toContain('playgeog.com');
+  });
+
+  it('turns the shared result into an invite link when given a referral code', () => {
+    const msg = buildShareMessage(
+      { mode: 'classic', date: '2024-06-01', score: 87, grid: '🟩🟩🟨' },
+      5,
+      'fr',
+      'A3F8C13E',
+    );
+    expect(msg).toContain('/play?code=A3F8C13E');
   });
 
   it('falls back to a score line when a mode ships no grid', () => {

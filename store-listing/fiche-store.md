@@ -58,7 +58,6 @@ GeoG réunit les meilleurs jeux de géographie dans une seule app, avec un style
 • Interface en français et en anglais
 • Régions : joue sur le monde entier ou concentre-toi sur un continent
 • Statistiques détaillées et historique de tes parties
-• Aucune publicité
 
 Télécharge GeoG et prouve que tu connais ta géographie ! 🧭
 ```
@@ -127,7 +126,6 @@ GeoG brings the best geography games together in one app, with a unique vintage-
 • Interface in English and French
 • Regions: play the whole world or focus on one continent
 • Detailed statistics and match history
-• No ads
 
 Download GeoG and prove you know your geography! 🧭
 ```

@@ -385,7 +385,7 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
   };
 
   const openPrivacyPolicy = () => {
-    Linking.openURL('https://geogames-mu.vercel.app/privacy.html');
+    Linking.openURL('https://playgeog.com/privacy.html');
   };
 
   // Replay the whole onboarding: clear the guided-tour flag AND every per-mode

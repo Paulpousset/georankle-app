@@ -32,6 +32,7 @@ export type AnalyticsEvent =
   | 'signed_up'
   | 'logged_in'
   | 'logged_out'
+  | 'password_reset_requested'
   // Games (solo + local)
   | 'game_started'
   | 'game_completed'
@@ -44,6 +45,11 @@ export type AnalyticsEvent =
   | 'daily_completed'
   | 'daily_shared'
   | 'daily_reminder_set'
+  // Story mode
+  | 'story_opened'
+  | 'story_level_started'
+  | 'story_level_completed'
+  | 'story_life_ad_claimed'
   // Quests & streak rewards
   | 'quest_claimed'
   | 'streak_bonus_awarded'
@@ -68,12 +74,21 @@ export type AnalyticsEvent =
   | 'rewarded_ad_requested'
   | 'rewarded_ad_earned'
   | 'rewarded_ad_failed'
+  | 'coin_multiplier_requested'
+  | 'coin_multiplier_earned'
+  | 'coin_multiplier_failed'
+  | 'interstitial_shown'
+  | 'interstitial_failed'
   // Social
   | 'friend_request_sent'
   | 'friend_request_accepted'
   | 'friend_removed'
   | 'user_searched'
   | 'player_profile_viewed'
+  // Referral (viral loop)
+  | 'referral_link_opened'
+  | 'referral_shared'
+  | 'referral_redeemed'
   // Discovery
   | 'leaderboard_opened'
   // Settings

@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "HAMS39CUCG.com.paulpousset.geog",
+        "paths": [ "/invite.html", "/invite.html*" ]
+      }
+    ]
+  }
+}

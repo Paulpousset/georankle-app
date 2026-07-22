@@ -21,10 +21,14 @@ import { OfflineBanner } from './src/components/OfflineBanner';
 import { useMatchEngine } from './src/hooks/useMatchEngine';
 import { useNavigationStack } from './src/hooks/useNavigationStack';
 import { useSocialNotifications } from './src/hooks/useSocialNotifications';
+import { useDeepLinks } from './src/hooks/useDeepLinks';
+import { getInitialWebIntent } from './src/lib/webEntry';
 import { Router } from './src/Router';
 import { ScreenErrorBoundary } from './src/components/ScreenErrorBoundary';
 import { SwipeBack } from './src/components/SwipeBack';
 import { ModeIntroGate } from './src/components/ModeIntroModal';
+import { UsernameGate } from './src/components/UsernameGate';
+import { IncomingInviteModal } from './src/components/IncomingInviteModal';
 
 // Start crash reporting as early as possible so startup errors are captured.
 initSentry();
@@ -53,6 +57,23 @@ function AppContent() {
   // Live friend-graph awareness: pending-request count (header badge) + toasts
   // when a request arrives or one you sent is accepted.
   const social = useSocialNotifications();
+
+  // Zero-friction web entry: a shared `/play` link boots straight into today's
+  // daily challenge (playable logged out) instead of the menu — the Wordle loop.
+  useEffect(() => {
+    if (getInitialWebIntent()?.screen === 'daily') nav.pushPage({ name: 'daily' });
+    // Mount-once: read the opening URL a single time.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Viral loop: capture a referral code from the link that opened the app and
+  // redeem it once a session exists — celebrate the granted coins.
+  useDeepLinks((coins) => {
+    showAlert(
+      tr(language, '🎉 Bienvenue !', '🎉 Welcome!'),
+      tr(language, `Ton ami t'a offert ${coins} pièces.`, `Your friend gifted you ${coins} coins.`),
+    );
+  });
 
   // Auth state (user/isAdmin) and its side effects live in AuthProvider now;
   // the only UI concern left here is dismissing the login modal once a session
@@ -202,6 +223,16 @@ function AppContent() {
       </SwipeBack>
       {/* First-play "how to play" popup for whichever mode is on screen. */}
       <ModeIntroGate mode={introMode} />
+      {/* Force a username on any logged-in account that lacks one (legacy
+          accounts + the email-confirmation sign-up path). */}
+      <UsernameGate />
+      {/* Incoming game invite: mounted globally so the accept/decline modal
+          pops up on ANY screen (menu, mid-game, summaries…), not just the menu. */}
+      <IncomingInviteModal
+        invite={match.incomingInvite}
+        onAccept={match.acceptInvite}
+        onDecline={match.declineInvite}
+      />
       {/* Floats above every screen: offline / not-synced indicator. */}
       <OfflineBanner />
     </View>

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <title>GeoG — Jeu de géographie : quiz, drapeaux et capitales du monde</title>
+  <meta name="description" content="GeoG, le jeu de géographie gratuit : quiz de drapeaux, capitales et pays du monde, défi du jour, duels en ligne et mode classé. Joue dans ton navigateur ou sur iPhone et Android." />
+  <link rel="canonical" href="https://playgeog.com/" />
+  <link rel="icon" href="/favicon.ico" />
+
+  <!-- Open Graph / Twitter -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="GeoG" />
+  <meta property="og:title" content="GeoG — Jeu de géographie : quiz, drapeaux et capitales" />
+  <meta property="og:description" content="Le jeu de géographie gratuit : drapeaux, capitales, pays du monde, défi du jour et duels en ligne. Joue dans ton navigateur ou sur mobile." />
+  <meta property="og:url" content="https://playgeog.com/" />
+  <meta property="og:image" content="https://playgeog.com/og-invite.png" />
+  <meta property="og:locale" content="fr_FR" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="GeoG — Jeu de géographie : quiz, drapeaux et capitales" />
+  <meta name="twitter:description" content="Le jeu de géographie gratuit : drapeaux, capitales, pays du monde et défi du jour." />
+  <meta name="twitter:image" content="https://playgeog.com/og-invite.png" />
+
+  <!-- Données structurées : dit à Google que c'est un jeu + les liens store -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "GeoG",
+    "applicationCategory": "GameApplication",
+    "operatingSystem": "iOS, Android, Web",
+    "description": "Jeu de géographie gratuit : quiz de drapeaux, capitales et pays du monde, défi du jour, duels en ligne et mode classé.",
+    "url": "https://playgeog.com/",
+    "image": "https://playgeog.com/og-invite.png",
+    "inLanguage": ["fr", "en", "es", "pt", "de", "it"],
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+    "downloadUrl": [
+      "https://apps.apple.com/app/id6779650018",
+      "https://play.google.com/store/apps/details?id=com.paulpousset.geog"
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "GeoG est-il gratuit ?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Oui, GeoG est un jeu de géographie gratuit. Tu peux jouer directement dans ton navigateur ou télécharger l'app sur iPhone et Android." }
+      },
+      {
+        "@type": "Question",
+        "name": "À quoi joue-t-on dans GeoG ?",
+        "acceptedAnswer": { "@type": "Answer", "text": "À des quiz de géographie : reconnaître les drapeaux, retrouver les capitales, localiser les pays sur un globe, deviner un pays, et un défi du jour identique pour tous les joueurs du monde." }
+      },
+      {
+        "@type": "Question",
+        "name": "Peut-on jouer sans installer l'application ?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Oui. Le défi du jour est jouable gratuitement dans le navigateur sur playgeog.com/play, sans compte et sans installation." }
+      }
+    ]
+  }
+  </script>
+
+  <style>
+    :root {
+      --bg:#f2e8d0; --card:#fffaf0; --ink:#1e2a22; --muted:#5a6b5f;
+      --accent:#2a6e3f; --accent-ink:#fff; --border:#e2d6b8;
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      line-height:1.5; }
+    .wrap { max-width:960px; margin:0 auto; padding:24px; }
+    header { text-align:center; padding:40px 0 24px; }
+    .logo { width:88px; height:88px; border-radius:22px; margin:0 auto 18px; display:block; }
+    h1 { font-size:2rem; line-height:1.15; margin:0 0 12px; }
+    .lead { font-size:1.15rem; color:var(--muted); max-width:640px; margin:0 auto 28px; }
+    .cta { display:flex; flex-wrap:wrap; gap:12px; justify-content:center; }
+    a.btn { text-decoration:none; padding:14px 22px; border-radius:14px; font-weight:700; font-size:1.02rem;
+      background:var(--accent); color:var(--accent-ink); display:inline-block; }
+    a.btn.ghost { background:transparent; color:var(--accent); border:2px solid var(--accent); }
+    section { background:var(--card); border:1px solid var(--border); border-radius:20px; padding:28px; margin:20px 0; }
+    h2 { font-size:1.4rem; margin:0 0 16px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; }
+    .mode h3 { margin:0 0 4px; font-size:1.05rem; }
+    .mode p { margin:0; color:var(--muted); font-size:.95rem; }
+    .faq h3 { margin:18px 0 4px; font-size:1.05rem; }
+    .faq p { margin:0; color:var(--muted); }
+    footer { text-align:center; color:var(--muted); font-size:.85rem; padding:28px 0; }
+    footer a { color:var(--accent); }
+    @media (max-width:520px){ h1{font-size:1.6rem;} }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <img class="logo" src="/icon-512.png" alt="Logo GeoG, jeu de géographie" />
+      <h1>GeoG — le jeu de géographie : drapeaux, capitales et pays du monde</h1>
+      <p class="lead">Deviens un as de la géographie. Reconnais les drapeaux, retrouve les capitales, localise les pays sur le globe — un <strong>défi du jour</strong> gratuit, des duels en ligne et un mode classé.</p>
+      <div class="cta">
+        <a class="btn" href="/play">🌍 Jouer maintenant (gratuit)</a>
+        <a class="btn ghost" href="https://apps.apple.com/app/id6779650018">📲 App Store</a>
+        <a class="btn ghost" href="https://play.google.com/store/apps/details?id=com.paulpousset.geog">🤖 Google Play</a>
+      </div>
+    </header>
+
+    <section>
+      <h2>Un jeu, tous les quiz de géographie</h2>
+      <div class="grid">
+        <div class="mode"><h3>🚩 Quiz de drapeaux</h3><p>Identifie le pays derrière chaque drapeau du monde.</p></div>
+        <div class="mode"><h3>🏛️ Quiz des capitales</h3><p>Retrouve la capitale de chaque pays.</p></div>
+        <div class="mode"><h3>🌐 Globe interactif</h3><p>Localise le pays demandé sur un globe 3D.</p></div>
+        <div class="mode"><h3>🔎 Devine le pays</h3><p>Des indices se dévoilent un à un — trouve le pays.</p></div>
+        <div class="mode"><h3>📊 Rankle</h3><p>Classe les pays selon un critère mystère : population, superficie, PIB…</p></div>
+        <div class="mode"><h3>🔥 Défi du jour</h3><p>Un défi quotidien identique pour tous les joueurs du monde, avec série à entretenir.</p></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Joue seul, contre tes amis, ou contre le monde</h2>
+      <p>Enchaîne les quiz en solo, défie tes amis en <strong>duel 1 contre 1</strong>, grimpe au <strong>classement mondial</strong> avec un système de rangs, ou passe le téléphone pour jouer à plusieurs sur un seul appareil. GeoG rassemble les meilleurs jeux de géographie dans une seule app, avec un style de carte ancienne unique.</p>
+      <div class="cta" style="margin-top:18px; justify-content:flex-start;">
+        <a class="btn" href="/play">Jouer au défi du jour</a>
+      </div>
+    </section>
+
+    <section class="faq">
+      <h2>Questions fréquentes</h2>
+      <h3>GeoG est-il gratuit ?</h3>
+      <p>Oui. Joue gratuitement dans ton navigateur, ou télécharge l'app sur iPhone et Android.</p>
+      <h3>Peut-on jouer sans installer l'application ?</h3>
+      <p>Oui — le <a href="/play">défi du jour</a> est jouable directement ici, sans compte et sans installation.</p>
+      <h3>Sur quels appareils fonctionne GeoG ?</h3>
+      <p>Sur le web (navigateur), sur iPhone/iPad via l'App Store, et sur Android via Google Play.</p>
+    </section>
+
+    <footer>
+      <p>
+        <a href="/play">Jouer</a> ·
+        <a href="https://apps.apple.com/app/id6779650018">App Store</a> ·
+        <a href="https://play.google.com/store/apps/details?id=com.paulpousset.geog">Google Play</a> ·
+        <a href="/privacy.html">Confidentialité</a>
+      </p>
+      <p>GeoG — jeu de géographie gratuit : quiz, drapeaux, capitales et pays du monde.</p>
+    </footer>
+  </div>
+</body>
+</html>

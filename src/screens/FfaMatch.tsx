@@ -31,6 +31,7 @@ import { track } from '../lib/analytics';
 import { log } from '../lib/log';
 import { supabase } from '../lib/supabase';
 import { a11yButton } from '../lib/a11y';
+import { showAlert } from '../lib/alert';
 import { ScoreText } from '../components/ScoreText';
 import { AtlasWin } from '../components/AtlasIcons';
 import { standings as ffaStandings } from '../lib/ffa';
@@ -139,6 +140,32 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
     return (data ?? []) as PlayerRow[];
   }, [match.id]);
 
+  // Apply an authoritative `matches` row from EITHER realtime or the poll
+  // fallback below. Idempotent — safe to call repeatedly with the same row.
+  const applyMatchRow = useCallback(
+    (row: { status?: string | null; current_round?: number | null }) => {
+      if (row.status) setStatus(row.status);
+      if (typeof row.current_round === 'number') {
+        if (row.current_round > lastSeenRound.current) {
+          lastSeenRound.current = row.current_round;
+          // The server already reset finished_round for the new round. Our
+          // players snapshot may still show everyone done for the OLD round:
+          // left as-is, the finalize effect would fire on that stale data and
+          // poison its once-per-round guard for the round that just started
+          // (match stuck with nobody calling finalize). Snapshot the standings
+          // we know, then clear the stale flags locally.
+          const snap = playersRef.current;
+          if (snap.length > 0 && snap.some((p) => p.finished_round)) {
+            setLastRoundScores(Object.fromEntries(snap.map((p) => [p.player_id, p.current_score])));
+          }
+          setPlayers((ps) => ps.map((p) => ({ ...p, finished_round: false, current_score: 0 })));
+        }
+        setCurrentRound(row.current_round);
+      }
+    },
+    [],
+  );
+
   // Resolve display names once we know the player ids.
   useEffect(() => {
     const ids = players.map((p) => p.player_id).filter((id) => !(id in names));
@@ -162,10 +189,21 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
   }, [players, names, language]);
 
   // Remember this match for resume; clear on unmount-after-completion handled below.
+  // Reconcile status + round immediately too: the match may have filled (or a
+  // round advanced) between the row we were handed and our realtime subscribing,
+  // which would otherwise leave us stuck until the first poll tick.
   useEffect(() => {
     setActiveMatch(match.id, Date.now());
     refetchPlayers();
-  }, [match.id, refetchPlayers]);
+    supabase
+      .from('matches')
+      .select('status, current_round')
+      .eq('id', match.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) applyMatchRow(data as { status?: string; current_round?: number });
+      });
+  }, [match.id, refetchPlayers, applyMatchRow]);
 
   // Realtime: match_players (per-player state) + matches (status / current_round).
   useEffect(() => {
@@ -180,30 +218,49 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'matches', filter: `id=eq.${match.id}` },
         (payload: { new: { status?: string; current_round?: number } }) => {
-          const row = payload.new;
-          if (row.status) setStatus(row.status);
-          if (typeof row.current_round === 'number') {
-            if (row.current_round > lastSeenRound.current) {
-              lastSeenRound.current = row.current_round;
-              // The server already reset finished_round for the new round. Our
-              // players snapshot may still show everyone done for the OLD round:
-              // left as-is, the finalize effect would fire on that stale data
-              // and poison its once-per-round guard for the round that just
-              // started (match stuck with nobody calling finalize). Snapshot
-              // the standings we know, then clear the stale flags locally.
-              const snap = playersRef.current;
-              if (snap.length > 0 && snap.some((p) => p.finished_round)) {
-                setLastRoundScores(Object.fromEntries(snap.map((p) => [p.player_id, p.current_score])));
-              }
-              setPlayers((ps) => ps.map((p) => ({ ...p, finished_round: false, current_score: 0 })));
-            }
-            setCurrentRound(row.current_round);
-          }
+          applyMatchRow(payload.new);
         },
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [match.id, refetchPlayers]);
+  }, [match.id, refetchPlayers, applyMatchRow]);
+
+  // Reconciliation poll — the FFA path is otherwise 100% realtime-driven, so a
+  // single dropped event (or a channel that subscribes just AFTER the match
+  // filled / a round advanced) strands a player in the lobby or on the "waiting
+  // for others" screen forever. This mirrors the 1v1 engine's poll fallback:
+  // re-read the authoritative match row + player rows on an interval and let the
+  // existing effects react. Everything it drives is idempotent, so it can never
+  // double-advance a round or double-start a match.
+  useEffect(() => {
+    if (phase === 'over') return;
+    let cancelled = false;
+    const tick = async () => {
+      const { data } = await supabase
+        .from('matches')
+        .select('status, current_round')
+        .eq('id', match.id)
+        .maybeSingle();
+      if (cancelled || !data) return;
+      applyMatchRow(data as { status?: string; current_round?: number });
+      if (!cancelled) await refetchPlayers();
+    };
+    const handle = setInterval(tick, 5000);
+    return () => { cancelled = true; clearInterval(handle); };
+  }, [phase, match.id, applyMatchRow, refetchPlayers]);
+
+  // Host cancelled the forming lobby (leave_ffa_match) → drop the players out.
+  const cancelledHandled = useRef(false);
+  useEffect(() => {
+    if (status !== 'cancelled' || cancelledHandled.current) return;
+    cancelledHandled.current = true;
+    clearActiveMatch();
+    showAlert(
+      tr(language, 'Partie annulée', 'Match cancelled'),
+      tr(language, "L'hôte a annulé la partie.", 'The host cancelled the match.'),
+    );
+    onExit();
+  }, [status, language, onExit]);
 
   // Lobby → playing when the server flips the match to in_progress.
   useEffect(() => {
@@ -355,6 +412,22 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
   );
 
   const nextRound = () => setPhase('playing');
+
+  // Leaving the lobby must free our seat, otherwise the ghost seat keeps the
+  // match from ever reaching max_players and everyone else is stuck waiting.
+  // (If we're the host, the RPC cancels the whole forming match.)
+  const [leaving, setLeaving] = useState(false);
+  const leaveLobby = async () => {
+    if (leaving) return;
+    setLeaving(true);
+    clearActiveMatch();
+    try {
+      await supabase.rpc('leave_ffa_match', { p_match_id: match.id });
+    } catch (e) {
+      log.error('leave_ffa_match error:', e);
+    }
+    onExit();
+  };
 
   // ── Active round: mount the real game screen in solo mode ──────────────────
   if (phase === 'playing') {
@@ -514,9 +587,10 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
 
         {phase === 'lobby' && (
           <TouchableOpacity
-            style={[styles.btn, { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, marginTop: 24, maxWidth: 320, width: '100%' }]}
-            onPress={onExit}
-            {...a11yButton(tr(language, 'Quitter', 'Leave'))}
+            style={[styles.btn, { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, marginTop: 24, maxWidth: 320, width: '100%', opacity: leaving ? 0.6 : 1 }]}
+            onPress={leaveLobby}
+            disabled={leaving}
+            {...a11yButton(tr(language, 'Quitter', 'Leave'), { disabled: leaving })}
           >
             <Home color={colors.text} size={18} />
             <Text style={[styles.btnText, { color: colors.text }]}>{tr(language, 'Quitter', 'Leave')}</Text>

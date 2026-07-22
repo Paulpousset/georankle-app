@@ -3,6 +3,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { getTodayUTC } from './lib/daily';
 import { track } from './lib/analytics';
+import { maybeShowInterstitial } from './lib/monetization';
 import type { GameMode, Match, MatchMode } from './types';
 import { useAuth } from './contexts/AuthContext';
 import type { useNavigationStack } from './hooks/useNavigationStack';
@@ -11,6 +12,7 @@ import type { useMatchEngine } from './hooks/useMatchEngine';
 import { MainMenu } from './screens/MainMenu';
 import DailyHub from './screens/DailyHub';
 import DailyGameHost from './screens/DailyGameHost';
+import StoryMap from './screens/StoryMap';
 import { ClassicGame } from './screens/ClassicGame';
 import StreakGame from './screens/StreakGame';
 import VersusCapitals from './screens/VersusCapitals';
@@ -39,7 +41,6 @@ import AdminNotifications from './screens/AdminNotifications';
 import { AuthModal } from './components/AuthModal';
 import { LeaderboardModal } from './components/LeaderboardModal';
 import { OnlineModeLeaderboardModal } from './components/OnlineModeLeaderboardModal';
-import { IncomingInviteModal } from './components/IncomingInviteModal';
 import { PreGameLobby } from './components/PreGameLobby';
 import { WaitingOpponent } from './components/WaitingOpponent';
 import { RoundSummary } from './components/RoundSummary';
@@ -86,6 +87,13 @@ export function Router({
   refreshFriendCount,
 }: RouterProps) {
   const { user, isAdmin } = useAuth();
+  // Which screen the auth modal opens on: the banner CTA opens signup, the
+  // header/gated features open login. Local to routing — App owns visibility.
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const openAuth = (m: 'login' | 'signup') => {
+    setAuthMode(m);
+    setShowAuthModal(true);
+  };
   const { currentPage, pushPage, popPage, clearPages, openPlayer, playType, setPlayType } = nav;
   const {
     matchData,
@@ -100,8 +108,6 @@ export function Router({
     forfeitAvailable,
     claimingForfeit,
     startMatch,
-    acceptInvite,
-    declineInvite,
     handleRoundComplete,
     resetMatchState,
     continueToNextRound,
@@ -127,7 +133,13 @@ export function Router({
         mode={daily.mode}
         date={daily.date}
         user={user}
-        onExit={() => setDaily(null)}
+        onExit={() => {
+          // Leaving a finished daily → a natural break: maybe show one
+          // (flag-gated, frequency-capped) interstitial. Fire and forget so
+          // navigation proceeds behind it.
+          void maybeShowInterstitial();
+          setDaily(null);
+        }}
       />
     );
   }
@@ -138,6 +150,18 @@ export function Router({
         <DailyHub
           user={user}
           onPlayDaily={(mode) => setDaily({ mode, date: getTodayUTC() })}
+          onBack={popPage}
+          onOpenPlayer={user ? openPlayer : undefined}
+        />
+      </SafeAreaProvider>
+    );
+  }
+
+  if (currentPage?.name === 'story') {
+    return (
+      <SafeAreaProvider>
+        <StoryMap
+          user={user}
           onBack={popPage}
           onOpenPlayer={user ? openPlayer : undefined}
         />
@@ -529,8 +553,9 @@ export function Router({
     <SafeAreaProvider>
       <MainMenu
         isAuthenticated={!!user}
-        onOpenAuth={() => (user ? pushPage({ name: 'profile' }) : setShowAuthModal(true))}
-        onOpenShop={() => (user ? pushPage({ name: 'shop' }) : setShowAuthModal(true))}
+        onOpenAuth={() => (user ? pushPage({ name: 'profile' }) : openAuth('login'))}
+        onOpenSignup={() => openAuth('signup')}
+        onOpenShop={() => (user ? pushPage({ name: 'shop' }) : openAuth('login'))}
         onOpenFriends={() => pushPage({ name: 'friends' })}
         onOpenLeaderboard={() => {
           track('leaderboard_opened', { type: 'global' });
@@ -542,9 +567,10 @@ export function Router({
         }}
         onPlay={setGameMode}
         onPlayOnline={(mode) => pushPage({ name: 'matchmaking', mode })}
-        onPlayCustomOnline={() => (user ? pushPage({ name: 'custom-matchmaking' }) : setShowAuthModal(true))}
-        onPlayRanked={() => (user ? pushPage({ name: 'ranked' }) : setShowAuthModal(true))}
+        onPlayCustomOnline={() => (user ? pushPage({ name: 'custom-matchmaking' }) : openAuth('login'))}
+        onPlayRanked={() => (user ? pushPage({ name: 'ranked' }) : openAuth('login'))}
         onOpenDaily={() => pushPage({ name: 'daily' })}
+        onOpenStory={() => pushPage({ name: 'story' })}
         playType={playType}
         onChangePlayType={setPlayType}
         pendingFriendCount={pendingFriendCount}
@@ -562,6 +588,7 @@ export function Router({
       <AuthModal
         visible={showAuthModal}
         onClose={() => setShowAuthModal(false)}
+        initialMode={authMode}
       />
       <LeaderboardModal
         visible={showLeaderboard}
@@ -573,11 +600,6 @@ export function Router({
         accent={onlineLeaderboard?.accent ?? '#2a6e3f'}
         onClose={() => setOnlineLeaderboard(null)}
         onOpenPlayer={user ? openPlayer : undefined}
-      />
-      <IncomingInviteModal
-        invite={incomingInvite}
-        onAccept={acceptInvite}
-        onDecline={declineInvite}
       />
     </SafeAreaProvider>
   );

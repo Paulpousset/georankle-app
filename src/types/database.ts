@@ -199,6 +199,70 @@ export type Database = {
           },
         ]
       }
+      story_progress: {
+        Row: {
+          completed_at: string
+          level: number
+          score: number
+          stars: number
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          level: number
+          score?: number
+          stars?: number
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          level?: number
+          score?: number
+          stars?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "story_progress_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      story_lives: {
+        Row: {
+          ad_refill_day: string | null
+          ad_refills: number
+          lives: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ad_refill_day?: string | null
+          ad_refills?: number
+          lives?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ad_refill_day?: string | null
+          ad_refills?: number
+          lives?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "story_lives_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feature_flags: {
         Row: {
           enabled: boolean
@@ -563,6 +627,7 @@ export type Database = {
           push_lang: string
           push_token: string | null
           show_rank: boolean
+          story_max_level: number
           updated_at: string | null
           username: string | null
         }
@@ -578,6 +643,7 @@ export type Database = {
           push_lang?: string
           push_token?: string | null
           show_rank?: boolean
+          story_max_level?: number
           updated_at?: string | null
           username?: string | null
         }
@@ -593,6 +659,7 @@ export type Database = {
           push_lang?: string
           push_token?: string | null
           show_rank?: boolean
+          story_max_level?: number
           updated_at?: string | null
           username?: string | null
         }
@@ -799,7 +866,7 @@ export type Database = {
       apply_ffa_result: { Args: { p_match_id: string }; Returns: Json }
       apply_online_result: { Args: { p_match_id: string }; Returns: Json }
       apply_ranked_result: { Args: { p_match_id: string }; Returns: Json }
-      award_solo_coins: { Args: { p_game_mode: string }; Returns: Json }
+      award_solo_coins: { Args: { p_game_mode: string; p_score?: number }; Returns: Json }
       complete_daily: {
         Args: {
           p_date: string
@@ -811,6 +878,14 @@ export type Database = {
       }
       claim_quest: { Args: { p_quest_id: string }; Returns: Json }
       claim_rewarded_ad: { Args: never; Returns: Json }
+      claim_story_life: { Args: never; Returns: Json }
+      consume_story_life: { Args: never; Returns: Json }
+      get_story_state: { Args: never; Returns: Json }
+      complete_story_level: {
+        Args: { p_level: number; p_score: number; p_stars: number }
+        Returns: Json
+      }
+      claim_coin_multiplier: { Args: { p_base: number; p_stage: number }; Returns: Json }
       close_season: { Args: { p_season_id: number }; Returns: Json }
       delete_user_account: { Args: never; Returns: undefined }
       elo_k_factor: { Args: { p_elo: number; p_won: boolean }; Returns: number }
@@ -831,6 +906,9 @@ export type Database = {
       }
       get_daily_quests: { Args: never; Returns: Json }
       get_featured_cosmetic: { Args: never; Returns: Json }
+      get_referral_info: { Args: never; Returns: Json }
+      redeem_referral: { Args: { p_code: string }; Returns: Json }
+      referral_code_for: { Args: { p_user: string }; Returns: string }
       grant_iap_coins: {
         Args: { p_product: string; p_transaction_id: string; p_user: string }
         Returns: Json
@@ -838,6 +916,7 @@ export type Database = {
       host_ffa_match: { Args: { p_match_id: string }; Returns: Json }
       is_admin: { Args: never; Returns: boolean }
       join_ffa_match: { Args: { p_match_id: string }; Returns: Json }
+      leave_ffa_match: { Args: { p_match_id: string }; Returns: Json }
       purchase_bundle: { Args: { p_bundle_id: string }; Returns: Json }
       purchase_cosmetic: { Args: { p_item_id: string }; Returns: Json }
       quest_defs: {

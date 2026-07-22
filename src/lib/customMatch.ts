@@ -33,16 +33,16 @@ export interface CustomRegionPick {
 export type OnlineModeKey = 'capital' | 'flag' | 'classic' | 'streak' | 'globe' | 'guess' | 'regions' | 'higherlower' | 'silhouette' | 'borders';
 
 export const ONLINE_MODE_ORDER: OnlineModeKey[] = [
-  'capital',
-  'flag',
-  'guess',
-  'classic',
-  'streak',
-  'higherlower',
-  'silhouette',
-  'borders',
   'globe',
   'regions',
+  'guess',
+  'borders',
+  'silhouette',
+  'higherlower',
+  'classic',
+  'streak',
+  'capital',
+  'flag',
 ];
 
 interface OnlineModeMeta {

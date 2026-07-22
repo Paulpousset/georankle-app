@@ -25,8 +25,10 @@ import {
   TrendingUp,
   Trophy,
   User,
+  UserPlus,
   Users,
   Wifi,
+  X,
   Zap,
 } from 'lucide-react-native';
 import { AtlasFlame } from '../components/AtlasIcons';
@@ -207,6 +209,8 @@ function PlayTypeCard({ icon: Icon, accent, tint, title, subtitle, isDarkMode, o
 interface MainMenuProps {
   isAuthenticated: boolean;
   onOpenAuth: () => void;
+  /** Opens the auth modal straight on the sign-up screen (banner CTA). */
+  onOpenSignup: () => void;
   onOpenShop: () => void;
   onOpenFriends: () => void;
   onOpenLeaderboard: () => void;
@@ -216,6 +220,7 @@ interface MainMenuProps {
   onPlayCustomOnline: () => void;
   onPlayRanked: () => void;
   onOpenDaily: () => void;
+  onOpenStory: () => void;
   /** Which play-type sub-list is open (null = the play-type chooser). Lifted to
    *  App so it survives launching a game — returning lands on the same list. */
   playType: PlayType | null;
@@ -229,6 +234,7 @@ interface MainMenuProps {
 export function MainMenu({
   isAuthenticated,
   onOpenAuth,
+  onOpenSignup,
   onOpenShop,
   onOpenFriends,
   onOpenLeaderboard,
@@ -238,6 +244,7 @@ export function MainMenu({
   onPlayCustomOnline,
   onPlayRanked,
   onOpenDaily,
+  onOpenStory,
   playType,
   onChangePlayType: setPlayType,
   pendingFriendCount = 0,
@@ -258,6 +265,10 @@ export function MainMenu({
   // Which mode's "how to play" card is open from a "?" button (null = none).
   // Shown on demand from the menu, so it does NOT mark the mode as seen.
   const [helpMode, setHelpMode] = useState<GameMode | null>(null);
+
+  // Sign-up nudge for logged-out players. Dismissible for the session only, so
+  // it reappears next launch — a gentle, repeatable conversion prompt.
+  const [signupBannerDismissed, setSignupBannerDismissed] = useState(false);
 
   // ----- First-launch onboarding tour -----
   // Refs on the elements the tour spotlights. `any` keeps the union of View /
@@ -491,6 +502,102 @@ export function MainMenu({
 
         <View style={{ width: '100%', marginVertical: 16, overflow: 'hidden', height: 1, backgroundColor: c.border, opacity: 0.6 }} />
 
+        {/* Sign-up call-to-action for logged-out players: what an account unlocks,
+            straight to the sign-up screen. Dismissible for the session. */}
+        {!isAuthenticated && !signupBannerDismissed && (
+          <View
+            style={{
+              width: '100%',
+              maxWidth: 400,
+              marginBottom: 18,
+              borderRadius: 18,
+              borderWidth: 2,
+              borderColor: accent,
+              backgroundColor: isDarkMode ? c.surface : PALETTE.parchmentDark,
+              padding: 16,
+              overflow: 'hidden',
+            }}
+          >
+            <TouchableOpacity
+              onPress={() => setSignupBannerDismissed(true)}
+              style={{ position: 'absolute', top: 8, right: 8, padding: 6, zIndex: 2 }}
+              hitSlop={ICON_HIT_SLOP}
+              {...a11yButton(tr(language, 'Masquer', 'Dismiss'))}
+            >
+              <X color={c.textFaint} size={16} />
+            </TouchableOpacity>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12, paddingRight: 20 }}>
+              <View
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 21,
+                  backgroundColor: accent,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <UserPlus color="#fff" size={22} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: FONTS.headingBlack, fontSize: 16, color: c.text }}>
+                  {tr(language, 'Crée ton compte gratuit', 'Create your free account')}
+                </Text>
+                <Text style={{ fontFamily: FONTS.mono, fontSize: 11.5, color: c.textMuted, marginTop: 2, lineHeight: 16 }}>
+                  {tr(
+                    language,
+                    'Sauvegarde ta progression, joue en ligne, gagne des pièces et grimpe au classement.',
+                    'Save your progress, play online, earn coins and climb the leaderboard.',
+                  )}
+                </Text>
+              </View>
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity
+                onPress={onOpenSignup}
+                style={{
+                  flex: 1,
+                  height: 44,
+                  borderRadius: 12,
+                  backgroundColor: accent,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                }}
+                {...a11yButton(tr(language, "S'inscrire", 'Sign up'))}
+              >
+                <UserPlus color="#fff" size={18} />
+                <Text style={{ color: '#fff', fontFamily: FONTS.monoBold, fontSize: 14 }}>
+                  {tr(language, "S'inscrire", 'Sign up')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={onOpenAuth}
+                style={{
+                  height: 44,
+                  paddingHorizontal: 16,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: c.border,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                }}
+                {...a11yButton(tr(language, 'Se connecter', 'Log in'))}
+              >
+                <LogIn color={iconColor} size={16} />
+                <Text style={{ color: c.textMuted, fontFamily: FONTS.mono, fontSize: 13 }}>
+                  {tr(language, 'Connexion', 'Log in')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* Daily challenge hero — always visible, the first thing players see. */}
         <TouchableOpacity
           ref={dailyRef}
@@ -550,6 +657,47 @@ export function MainMenu({
           )}
         </TouchableOpacity>
 
+        {/* Story mode hero — the 300-level campaign, right below the daily. */}
+        <TouchableOpacity
+          onPress={onOpenStory}
+          style={[
+            styles.countryCard,
+            !isDarkMode && styles.countryCardLight,
+            {
+              width: '100%',
+              maxWidth: 400,
+              padding: 18,
+              marginBottom: 18,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 15,
+              borderWidth: 2,
+              borderColor: PALETTE.oceanBlue,
+              backgroundColor: isDarkMode ? 'rgba(26,74,122,0.16)' : 'rgba(26,74,122,0.10)',
+            },
+          ]}
+          {...a11yButton(tr(language, 'Mode Histoire', 'Story Mode'), {
+            hint: tr(language, 'Ouvrir la campagne de 300 niveaux', 'Open the 300-level campaign'),
+          })}
+        >
+          <View style={{ backgroundColor: isDarkMode ? 'rgba(26,74,122,0.24)' : 'rgba(26,74,122,0.16)', padding: 12, borderRadius: 12 }}>
+            <Map color={PALETTE.oceanBlue} size={28} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.countryName, !isDarkMode && styles.countryNameLight, { fontSize: 17, textAlign: 'left', marginBottom: 3, color: PALETTE.oceanBlue }]}>
+              {tr(language, 'Mode Histoire', 'Story Mode')}
+            </Text>
+            <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 10 }}>
+              {tr(language, '300 niveaux, de plus en plus durs', '300 levels, harder and harder')}
+            </Text>
+          </View>
+          <View style={{ backgroundColor: PALETTE.oceanBlue, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 }}>
+            <Text style={{ fontFamily: FONTS.monoBold, color: '#fff', fontSize: 9 }}>
+              {tr(language, 'NOUVEAU', 'NEW')}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
         {!playType ? (
           <>
             <Text style={{ fontFamily: FONTS.mono, color: c.textMuted, fontSize: 11, marginBottom: 28, textAlign: 'center' }}>
@@ -593,66 +741,6 @@ export function MainMenu({
             </Text>
             <View style={{ gap: 12, width: '100%', maxWidth: 400 }}>
               <ModeCard
-                icon={LayoutGrid}
-                accent={isDarkMode ? PALETTE.forestGreen : PALETTE.forestGreen}
-                tint={isDarkMode ? 'rgba(42,110,63,0.15)' : 'rgba(42,110,63,0.10)'}
-                title="Rankle"
-                subtitle={tr(language, 'Associez chaque pays à un thème', 'Match each country to a theme')}
-                isDarkMode={isDarkMode}
-                onPress={() => onPlay('classic')}
-                onHelp={() => setHelpMode('classic')}
-              />
-              <ModeCard
-                icon={Zap}
-                accent={PALETTE.sand}
-                tint={isDarkMode ? 'rgba(196,135,42,0.15)' : 'rgba(196,135,42,0.10)'}
-                title={tr(language, 'Mode Streak', 'Streak Mode')}
-                subtitle={tr(language, 'Enchaînez les bonnes réponses', 'Chain correct answers')}
-                isDarkMode={isDarkMode}
-                onPress={() => onPlay('streak')}
-                onHelp={() => setHelpMode('streak')}
-              />
-              <ModeCard
-                icon={TrendingUp}
-                accent={isDarkMode ? PALETTE.chartBlue : PALETTE.oceanBlue}
-                tint={isDarkMode ? 'rgba(74,158,255,0.12)' : 'rgba(26,74,122,0.10)'}
-                title={tr(language, 'Plus ou Moins', 'Higher or Lower')}
-                subtitle={tr(language, 'Quel pays est au-dessus ?', 'Which country is higher?')}
-                isDarkMode={isDarkMode}
-                onPress={() => onPlay('higherlower')}
-                onHelp={() => setHelpMode('higherlower')}
-              />
-              <ModeCard
-                icon={Puzzle}
-                accent={PALETTE.forestGreen}
-                tint={isDarkMode ? 'rgba(42,110,63,0.15)' : 'rgba(42,110,63,0.10)'}
-                title="Silhouette"
-                subtitle={tr(language, 'Devinez le pays à sa forme', 'Guess the country by its shape')}
-                isDarkMode={isDarkMode}
-                onPress={() => onPlay('silhouette')}
-                onHelp={() => setHelpMode('silhouette')}
-              />
-              <ModeCard
-                icon={Route}
-                accent={PALETTE.sand}
-                tint={isDarkMode ? 'rgba(196,135,42,0.15)' : 'rgba(196,135,42,0.10)'}
-                title={tr(language, 'Frontières', 'Borders')}
-                subtitle={tr(language, 'Reliez deux pays par leurs frontières', 'Link two countries through borders')}
-                isDarkMode={isDarkMode}
-                onPress={() => onPlay('borders')}
-                onHelp={() => setHelpMode('borders')}
-              />
-              <ModeCard
-                icon={Info}
-                accent={isDarkMode ? PALETTE.chartBlue : PALETTE.vermilion}
-                tint={isDarkMode ? 'rgba(74,158,255,0.12)' : 'rgba(192,74,26,0.10)'}
-                title={tr(language, 'Devinez le Pays', 'Guess Country')}
-                subtitle={tr(language, 'Identifiez le pays depuis ses infos', 'Identify the country from clues')}
-                isDarkMode={isDarkMode}
-                onPress={() => onPlay('guess')}
-                onHelp={() => setHelpMode('guess')}
-              />
-              <ModeCard
                 icon={Globe}
                 accent={isDarkMode ? PALETTE.sand : PALETTE.vermilion}
                 tint={isDarkMode ? 'rgba(196,135,42,0.14)' : 'rgba(192,74,26,0.10)'}
@@ -671,6 +759,66 @@ export function MainMenu({
                 isDarkMode={isDarkMode}
                 onPress={() => onPlay('regions')}
                 onHelp={() => setHelpMode('regions')}
+              />
+              <ModeCard
+                icon={Info}
+                accent={isDarkMode ? PALETTE.chartBlue : PALETTE.vermilion}
+                tint={isDarkMode ? 'rgba(74,158,255,0.12)' : 'rgba(192,74,26,0.10)'}
+                title={tr(language, 'Devinez le Pays', 'Guess Country')}
+                subtitle={tr(language, 'Identifiez le pays depuis ses infos', 'Identify the country from clues')}
+                isDarkMode={isDarkMode}
+                onPress={() => onPlay('guess')}
+                onHelp={() => setHelpMode('guess')}
+              />
+              <ModeCard
+                icon={Route}
+                accent={PALETTE.sand}
+                tint={isDarkMode ? 'rgba(196,135,42,0.15)' : 'rgba(196,135,42,0.10)'}
+                title={tr(language, 'Frontières', 'Borders')}
+                subtitle={tr(language, 'Reliez deux pays par leurs frontières', 'Link two countries through borders')}
+                isDarkMode={isDarkMode}
+                onPress={() => onPlay('borders')}
+                onHelp={() => setHelpMode('borders')}
+              />
+              <ModeCard
+                icon={Puzzle}
+                accent={PALETTE.forestGreen}
+                tint={isDarkMode ? 'rgba(42,110,63,0.15)' : 'rgba(42,110,63,0.10)'}
+                title="Silhouette"
+                subtitle={tr(language, 'Devinez le pays à sa forme', 'Guess the country by its shape')}
+                isDarkMode={isDarkMode}
+                onPress={() => onPlay('silhouette')}
+                onHelp={() => setHelpMode('silhouette')}
+              />
+              <ModeCard
+                icon={TrendingUp}
+                accent={isDarkMode ? PALETTE.chartBlue : PALETTE.oceanBlue}
+                tint={isDarkMode ? 'rgba(74,158,255,0.12)' : 'rgba(26,74,122,0.10)'}
+                title={tr(language, 'Plus ou Moins', 'Higher or Lower')}
+                subtitle={tr(language, 'Quel pays est au-dessus ?', 'Which country is higher?')}
+                isDarkMode={isDarkMode}
+                onPress={() => onPlay('higherlower')}
+                onHelp={() => setHelpMode('higherlower')}
+              />
+              <ModeCard
+                icon={LayoutGrid}
+                accent={isDarkMode ? PALETTE.forestGreen : PALETTE.forestGreen}
+                tint={isDarkMode ? 'rgba(42,110,63,0.15)' : 'rgba(42,110,63,0.10)'}
+                title="Rankle"
+                subtitle={tr(language, 'Associez chaque pays à un thème', 'Match each country to a theme')}
+                isDarkMode={isDarkMode}
+                onPress={() => onPlay('classic')}
+                onHelp={() => setHelpMode('classic')}
+              />
+              <ModeCard
+                icon={Zap}
+                accent={PALETTE.sand}
+                tint={isDarkMode ? 'rgba(196,135,42,0.15)' : 'rgba(196,135,42,0.10)'}
+                title={tr(language, 'Mode Streak', 'Streak Mode')}
+                subtitle={tr(language, 'Enchaînez les bonnes réponses', 'Chain correct answers')}
+                isDarkMode={isDarkMode}
+                onPress={() => onPlay('streak')}
+                onHelp={() => setHelpMode('streak')}
               />
               <ModeCard
                 icon={Flag}
@@ -771,6 +919,83 @@ export function MainMenu({
               <View style={{ height: 1, backgroundColor: c.border, opacity: 0.5, marginVertical: 2 }} />
 
               <ModeCard
+                icon={Globe}
+                accent={isDarkMode ? PALETTE.sand : PALETTE.vermilion}
+                tint={isDarkMode ? 'rgba(196,135,42,0.14)' : 'rgba(192,74,26,0.10)'}
+                title={tr(language, 'Globe Géo', 'Geo Globe')}
+                subtitle={tr(language, 'Trouvez les pays sur le globe', 'Find countries on the globe')}
+                isDarkMode={isDarkMode}
+                onPress={() => onPlayOnline('globe')}
+                onLeaderboard={() => onOpenOnlineModeLeaderboard('globe', isDarkMode ? PALETTE.sand : PALETTE.vermilion)}
+                notify={incomingInviteMode === 'globe'}
+              />
+              <ModeCard
+                icon={Map}
+                accent={isDarkMode ? PALETTE.sand : PALETTE.oceanBlue}
+                tint={isDarkMode ? 'rgba(196,135,42,0.14)' : 'rgba(26,74,122,0.10)'}
+                title={tr(language, 'Défis Pays', 'Country Challenges')}
+                subtitle={tr(language, "Placez les régions d'un pays, à 2", "Place a country's regions, head-to-head")}
+                isDarkMode={isDarkMode}
+                onPress={() => onPlayOnline('regions')}
+                onLeaderboard={() => onOpenOnlineModeLeaderboard('regions', isDarkMode ? PALETTE.sand : PALETTE.oceanBlue)}
+                notify={incomingInviteMode === 'regions'}
+              />
+              <ModeCard
+                icon={Info}
+                accent={isDarkMode ? PALETTE.chartBlue : PALETTE.vermilion}
+                tint={isDarkMode ? 'rgba(74,158,255,0.12)' : 'rgba(192,74,26,0.10)'}
+                title={tr(language, 'Devine le Pays', 'Guess Country')}
+                subtitle={tr(language, 'Même pays mystère pour les deux', 'Same mystery country for both')}
+                isDarkMode={isDarkMode}
+                onPress={() => onPlayOnline('guess')}
+                onLeaderboard={() => onOpenOnlineModeLeaderboard('guess', isDarkMode ? PALETTE.chartBlue : PALETTE.vermilion)}
+                notify={incomingInviteMode === 'guess'}
+              />
+              <ModeCard
+                icon={Route}
+                accent={PALETTE.sand}
+                tint={isDarkMode ? 'rgba(196,135,42,0.15)' : 'rgba(196,135,42,0.10)'}
+                title={tr(language, 'Frontières', 'Borders')}
+                subtitle={tr(language, 'Le même trajet pour les deux joueurs', 'Same route for both players')}
+                isDarkMode={isDarkMode}
+                onPress={() => onPlayOnline('borders')}
+                onLeaderboard={() => onOpenOnlineModeLeaderboard('borders', PALETTE.sand)}
+                notify={incomingInviteMode === 'borders'}
+              />
+              <ModeCard
+                icon={Puzzle}
+                accent={PALETTE.forestGreen}
+                tint={isDarkMode ? 'rgba(42,110,63,0.15)' : 'rgba(42,110,63,0.10)'}
+                title="Silhouette"
+                subtitle={tr(language, 'Les mêmes formes pour les deux joueurs', 'Same shapes for both players')}
+                isDarkMode={isDarkMode}
+                onPress={() => onPlayOnline('silhouette')}
+                onLeaderboard={() => onOpenOnlineModeLeaderboard('silhouette', PALETTE.forestGreen)}
+                notify={incomingInviteMode === 'silhouette'}
+              />
+              <ModeCard
+                icon={TrendingUp}
+                accent={isDarkMode ? PALETTE.chartBlue : PALETTE.oceanBlue}
+                tint={isDarkMode ? 'rgba(74,158,255,0.12)' : 'rgba(26,74,122,0.10)'}
+                title={tr(language, 'Plus ou Moins', 'Higher or Lower')}
+                subtitle={tr(language, 'La même chaîne pour les deux joueurs', 'Same chain for both players')}
+                isDarkMode={isDarkMode}
+                onPress={() => onPlayOnline('higherlower')}
+                onLeaderboard={() => onOpenOnlineModeLeaderboard('higherlower', isDarkMode ? PALETTE.chartBlue : PALETTE.oceanBlue)}
+                notify={incomingInviteMode === 'higherlower'}
+              />
+              <ModeCard
+                icon={Users}
+                accent={isDarkMode ? PALETTE.chartBlue : PALETTE.vermilion}
+                tint={isDarkMode ? 'rgba(74,158,255,0.12)' : 'rgba(192,74,26,0.10)'}
+                title={tr(language, 'Mode Versus', 'Versus Mode')}
+                subtitle={tr(language, 'Affrontez un joueur en ligne', 'Face a player online')}
+                isDarkMode={isDarkMode}
+                onPress={() => onPlayOnline('versus')}
+                onLeaderboard={() => onOpenOnlineModeLeaderboard('versus', isDarkMode ? PALETTE.chartBlue : PALETTE.vermilion)}
+                notify={incomingInviteMode === 'versus'}
+              />
+              <ModeCard
                 icon={LayoutGrid}
                 accent={PALETTE.forestGreen}
                 tint={isDarkMode ? 'rgba(42,110,63,0.15)' : 'rgba(42,110,63,0.10)'}
@@ -791,83 +1016,6 @@ export function MainMenu({
                 onPress={() => onPlayOnline('streak')}
                 onLeaderboard={() => onOpenOnlineModeLeaderboard('streak', PALETTE.sand)}
                 notify={incomingInviteMode === 'streak'}
-              />
-              <ModeCard
-                icon={Users}
-                accent={isDarkMode ? PALETTE.chartBlue : PALETTE.vermilion}
-                tint={isDarkMode ? 'rgba(74,158,255,0.12)' : 'rgba(192,74,26,0.10)'}
-                title={tr(language, 'Mode Versus', 'Versus Mode')}
-                subtitle={tr(language, 'Affrontez un joueur en ligne', 'Face a player online')}
-                isDarkMode={isDarkMode}
-                onPress={() => onPlayOnline('versus')}
-                onLeaderboard={() => onOpenOnlineModeLeaderboard('versus', isDarkMode ? PALETTE.chartBlue : PALETTE.vermilion)}
-                notify={incomingInviteMode === 'versus'}
-              />
-              <ModeCard
-                icon={Globe}
-                accent={isDarkMode ? PALETTE.sand : PALETTE.vermilion}
-                tint={isDarkMode ? 'rgba(196,135,42,0.14)' : 'rgba(192,74,26,0.10)'}
-                title={tr(language, 'Globe Géo', 'Geo Globe')}
-                subtitle={tr(language, 'Trouvez les pays sur le globe', 'Find countries on the globe')}
-                isDarkMode={isDarkMode}
-                onPress={() => onPlayOnline('globe')}
-                onLeaderboard={() => onOpenOnlineModeLeaderboard('globe', isDarkMode ? PALETTE.sand : PALETTE.vermilion)}
-                notify={incomingInviteMode === 'globe'}
-              />
-              <ModeCard
-                icon={Info}
-                accent={isDarkMode ? PALETTE.chartBlue : PALETTE.vermilion}
-                tint={isDarkMode ? 'rgba(74,158,255,0.12)' : 'rgba(192,74,26,0.10)'}
-                title={tr(language, 'Devine le Pays', 'Guess Country')}
-                subtitle={tr(language, 'Même pays mystère pour les deux', 'Same mystery country for both')}
-                isDarkMode={isDarkMode}
-                onPress={() => onPlayOnline('guess')}
-                onLeaderboard={() => onOpenOnlineModeLeaderboard('guess', isDarkMode ? PALETTE.chartBlue : PALETTE.vermilion)}
-                notify={incomingInviteMode === 'guess'}
-              />
-              <ModeCard
-                icon={Map}
-                accent={isDarkMode ? PALETTE.sand : PALETTE.oceanBlue}
-                tint={isDarkMode ? 'rgba(196,135,42,0.14)' : 'rgba(26,74,122,0.10)'}
-                title={tr(language, 'Défis Pays', 'Country Challenges')}
-                subtitle={tr(language, "Placez les régions d'un pays, à 2", "Place a country's regions, head-to-head")}
-                isDarkMode={isDarkMode}
-                onPress={() => onPlayOnline('regions')}
-                onLeaderboard={() => onOpenOnlineModeLeaderboard('regions', isDarkMode ? PALETTE.sand : PALETTE.oceanBlue)}
-                notify={incomingInviteMode === 'regions'}
-              />
-              <ModeCard
-                icon={TrendingUp}
-                accent={isDarkMode ? PALETTE.chartBlue : PALETTE.oceanBlue}
-                tint={isDarkMode ? 'rgba(74,158,255,0.12)' : 'rgba(26,74,122,0.10)'}
-                title={tr(language, 'Plus ou Moins', 'Higher or Lower')}
-                subtitle={tr(language, 'La même chaîne pour les deux joueurs', 'Same chain for both players')}
-                isDarkMode={isDarkMode}
-                onPress={() => onPlayOnline('higherlower')}
-                onLeaderboard={() => onOpenOnlineModeLeaderboard('higherlower', isDarkMode ? PALETTE.chartBlue : PALETTE.oceanBlue)}
-                notify={incomingInviteMode === 'higherlower'}
-              />
-              <ModeCard
-                icon={Puzzle}
-                accent={PALETTE.forestGreen}
-                tint={isDarkMode ? 'rgba(42,110,63,0.15)' : 'rgba(42,110,63,0.10)'}
-                title="Silhouette"
-                subtitle={tr(language, 'Les mêmes formes pour les deux joueurs', 'Same shapes for both players')}
-                isDarkMode={isDarkMode}
-                onPress={() => onPlayOnline('silhouette')}
-                onLeaderboard={() => onOpenOnlineModeLeaderboard('silhouette', PALETTE.forestGreen)}
-                notify={incomingInviteMode === 'silhouette'}
-              />
-              <ModeCard
-                icon={Route}
-                accent={PALETTE.sand}
-                tint={isDarkMode ? 'rgba(196,135,42,0.15)' : 'rgba(196,135,42,0.10)'}
-                title={tr(language, 'Frontières', 'Borders')}
-                subtitle={tr(language, 'Le même trajet pour les deux joueurs', 'Same route for both players')}
-                isDarkMode={isDarkMode}
-                onPress={() => onPlayOnline('borders')}
-                onLeaderboard={() => onOpenOnlineModeLeaderboard('borders', PALETTE.sand)}
-                notify={incomingInviteMode === 'borders'}
               />
             </View>
           </>

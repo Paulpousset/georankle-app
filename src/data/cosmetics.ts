@@ -49,6 +49,9 @@ const CATALOG: Record<CosmeticCategory, CosmeticPart[]> = {
     { id: 'cosmos_solareclipse', category: 'cosmos', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Éclipse solaire', nameEn: 'Solar eclipse', tintable: false, cosmosStyle: 'solareclipse', swatch: '#241436', addedAt: '2026-07-02' },
     { id: 'cosmos_supernova', category: 'cosmos', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Supernova', nameEn: 'Supernova', tintable: false, cosmosStyle: 'supernova', swatch: '#2a1030', addedAt: '2026-07-02' },
     { id: 'cosmos_blackhole', category: 'cosmos', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Trou noir', nameEn: 'Black hole', tintable: false, cosmosStyle: 'blackhole', swatch: '#0c0a14', addedAt: '2026-07-02' },
+    // ── Mode Histoire : fonds cosmiques EXCLUSIFS ──
+    { id: 'cosmos_st_aurorastorm', category: 'cosmos', price: 0, isDefault: false, rarity: 'legendary', exclusive: true, nameFr: "Tempête d'Aurores", nameEn: 'Aurora Storm', tintable: false, cosmosStyle: 'st_aurorastorm', swatch: '#062a3a' },
+    { id: 'cosmos_st_embersky', category: 'cosmos', price: 0, isDefault: false, rarity: 'legendary', exclusive: true, nameFr: 'Ciel de Braises', nameEn: 'Ember Sky', tintable: false, cosmosStyle: 'st_embersky', swatch: '#1a0a08' },
   ],
 
   // ── GLOBE — the planet/map skin ──────────────────────────────────────────────
@@ -71,6 +74,10 @@ const CATALOG: Record<CosmeticCategory, CosmeticPart[]> = {
     { id: 'globe_cyber', category: 'globe', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Cyber-monde', nameEn: 'Cyber world', tintable: false, globeStyle: 'cyber', addedAt: '2026-07-02' },
     { id: 'globe_eclipse', category: 'globe', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Éclipse', nameEn: 'Eclipse', tintable: false, globeStyle: 'eclipse', addedAt: '2026-07-02' },
     { id: 'globe_biolum', category: 'globe', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Bioluminescente', nameEn: 'Bioluminescent', tintable: false, globeStyle: 'biolum', addedAt: '2026-07-02' },
+    // ── Mode Histoire : globes EXCLUSIFS à effet inédit (gagnés par jalon) ──
+    { id: 'globe_st_fractured', category: 'globe', price: 0, isDefault: false, rarity: 'legendary', exclusive: true, nameFr: 'Terre Fracturée', nameEn: 'Fractured Earth', tintable: false, globeStyle: 'st_fractured' },
+    { id: 'globe_st_galaxy', category: 'globe', price: 0, isDefault: false, rarity: 'legendary', exclusive: true, nameFr: 'Terre-Galaxie', nameEn: 'Galaxy World', tintable: false, globeStyle: 'st_galaxy' },
+    { id: 'globe_st_crowned', category: 'globe', price: 0, isDefault: false, rarity: 'legendary', exclusive: true, nameFr: 'Monde Couronné', nameEn: 'Crowned World', tintable: false, globeStyle: 'st_crowned' },
   ],
 
   // ── ORBIT — the ring around the globe ────────────────────────────────────────
@@ -88,6 +95,9 @@ const CATALOG: Record<CosmeticCategory, CosmeticPart[]> = {
     { id: 'orbit_saturn', category: 'orbit', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Anneaux de Saturne', nameEn: 'Saturn rings', tintable: false, orbitStyle: 'saturn', swatch: '#f0d8a8', addedAt: '2026-07-02' },
     { id: 'orbit_rainbow', category: 'orbit', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Arc-en-ciel', nameEn: 'Rainbow', tintable: false, orbitStyle: 'rainbow', swatch: '#ffb02e', addedAt: '2026-07-02' },
     { id: 'orbit_fire', category: 'orbit', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Anneau de feu', nameEn: 'Ring of fire', tintable: false, orbitStyle: 'fire', swatch: '#ff6a2a', addedAt: '2026-07-02' },
+    // ── Mode Histoire : anneaux EXCLUSIFS ──
+    { id: 'orbit_st_laurel', category: 'orbit', price: 0, isDefault: false, rarity: 'legendary', exclusive: true, nameFr: 'Anneau de Lauriers', nameEn: 'Laurel Orbit', tintable: false, orbitStyle: 'st_laurel', swatch: '#4fae5a' },
+    { id: 'orbit_st_compass', category: 'orbit', price: 0, isDefault: false, rarity: 'legendary', exclusive: true, nameFr: 'Orbite Boussole', nameEn: 'Compass Orbit', tintable: false, orbitStyle: 'st_compass', swatch: '#e0a93a' },
   ],
 
   // ── EMBLEM — a landmark glyph beside the globe ───────────────────────────────
@@ -109,6 +119,11 @@ const CATALOG: Record<CosmeticCategory, CosmeticPart[]> = {
     { id: 'emblem_goldengate', category: 'emblem', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Golden Gate', nameEn: 'Golden Gate', tintable: false, addedAt: '2026-07-02' },
     { id: 'emblem_sydney', category: 'emblem', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Opéra de Sydney', nameEn: 'Sydney Opera House', tintable: false, addedAt: '2026-07-02' },
     { id: 'emblem_greatwall', category: 'emblem', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Grande Muraille', nameEn: 'Great Wall', tintable: false, addedAt: '2026-07-02' },
+    // ── Mode Histoire : emblèmes héraldiques EXCLUSIFS ──
+    { id: 'emblem_st_star', category: 'emblem', price: 0, isDefault: false, rarity: 'legendary', exclusive: true, nameFr: 'Étoile du Voyageur', nameEn: "Traveler's Star", tintable: false },
+    { id: 'emblem_st_summit', category: 'emblem', price: 0, isDefault: false, rarity: 'legendary', exclusive: true, nameFr: 'Fanion de Sommet', nameEn: 'Summit Pennant', tintable: false },
+    { id: 'emblem_st_worldtree', category: 'emblem', price: 0, isDefault: false, rarity: 'legendary', exclusive: true, nameFr: 'Arbre-Monde', nameEn: 'World Tree', tintable: false },
+    { id: 'emblem_st_laurel', category: 'emblem', price: 0, isDefault: false, rarity: 'legendary', exclusive: true, nameFr: 'Couronne de Lauriers', nameEn: 'Laurel Crown', tintable: false },
   ],
 
   // ── SATELLITE — a small element in orbit ─────────────────────────────────────
@@ -126,6 +141,10 @@ const CATALOG: Record<CosmeticCategory, CosmeticPart[]> = {
     { id: 'sat_rocket', category: 'satellite', price: RARITY_META.rare.price, isDefault: false, rarity: 'rare', nameFr: 'Fusée', nameEn: 'Rocket', tintable: false, addedAt: '2026-07-02' },
     { id: 'sat_ufo', category: 'satellite', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'OVNI', nameEn: 'UFO', tintable: false, addedAt: '2026-07-02' },
     { id: 'sat_shootingstar', category: 'satellite', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Étoile filante', nameEn: 'Shooting star', tintable: false, addedAt: '2026-07-02' },
+    // ── Mode Histoire : satellites EXCLUSIFS ──
+    { id: 'sat_st_moon', category: 'satellite', price: 0, isDefault: false, rarity: 'legendary', exclusive: true, nameFr: 'Lune-Trophée', nameEn: 'Trophy Moon', tintable: false },
+    { id: 'sat_st_ship', category: 'satellite', price: 0, isDefault: false, rarity: 'legendary', exclusive: true, nameFr: 'Vaisseau Pionnier', nameEn: 'Pioneer Ship', tintable: false },
+    { id: 'sat_st_comet', category: 'satellite', price: 0, isDefault: false, rarity: 'legendary', exclusive: true, nameFr: 'Comète Dorée', nameEn: 'Golden Comet', tintable: false },
   ],
 };
 
@@ -190,9 +209,11 @@ export function normalizeConfig(config: AvatarConfig): AvatarConfig {
   return { v: 4, useCustom: config.useCustom !== false, layers };
 }
 
-/** Seed rows for the cosmetic_prices table (economic source of truth). */
+/** Seed rows for the cosmetic_prices table (economic source of truth). Exclusive
+ *  story rewards are omitted so they can never be purchased or featured — they
+ *  only enter `user_cosmetics` via the story grant, which equip validates. */
 export function buildCosmeticPriceRows(): { item_id: string; category: string; price: number; is_default: boolean; rarity: string }[] {
-  return ALL_PARTS.map((p) => ({
+  return ALL_PARTS.filter((p) => !p.exclusive).map((p) => ({
     item_id: p.id,
     category: p.category,
     price: p.price,
@@ -200,6 +221,34 @@ export function buildCosmeticPriceRows(): { item_id: string; category: string; p
     rarity: p.rarity,
   }));
 }
+
+/** Lookup any part by id across all categories (nil if unknown). */
+export function getPartById(id: string): CosmeticPart | undefined {
+  return ALL_PARTS.find((p) => p.id === id);
+}
+
+/**
+ * Story-mode reward schedule: which exclusive cosmetic is granted at the first
+ * clear of a given level. MUST stay in sync with the CASE mapping in
+ * `complete_story_level` (story_mode.sql). Client uses it only to show the
+ * unlock's name in the toast; the server is authoritative for the grant.
+ */
+export const STORY_COSMETIC_UNLOCKS: { level: number; itemId: string }[] = [
+  { level: 30, itemId: 'emblem_st_star' },
+  { level: 60, itemId: 'sat_st_moon' },
+  { level: 75, itemId: 'globe_st_fractured' },
+  { level: 90, itemId: 'emblem_st_summit' },
+  { level: 100, itemId: 'orbit_st_laurel' },
+  { level: 125, itemId: 'cosmos_st_aurorastorm' },
+  { level: 150, itemId: 'emblem_st_worldtree' },
+  { level: 170, itemId: 'sat_st_ship' },
+  { level: 180, itemId: 'globe_st_galaxy' },
+  { level: 200, itemId: 'sat_st_comet' },
+  { level: 225, itemId: 'orbit_st_compass' },
+  { level: 250, itemId: 'emblem_st_laurel' },
+  { level: 275, itemId: 'cosmos_st_embersky' },
+  { level: 300, itemId: 'globe_st_crowned' },
+];
 
 // ── Boutique 2.0 : badge NEW, vitrine du jour, packs ──────────────────────────
 

@@ -64,7 +64,7 @@ function AvatarBase({ config, photoUrl, username, size, ringColor, ringWidth = 3
           backgroundColor: '#05060f',
         }}
       >
-        <WorldAvatar config={worldConfig} size={size} />
+        <WorldAvatar config={worldConfig} size={size} round />
       </View>
     );
   }

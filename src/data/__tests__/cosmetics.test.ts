@@ -92,8 +92,9 @@ describe('normalizeConfig', () => {
 });
 
 describe('buildCosmeticPriceRows (economy source of truth)', () => {
-  it('mirrors every catalog part', () => {
-    expect(buildCosmeticPriceRows()).toHaveLength(ALL_PARTS.length);
+  it('mirrors every non-exclusive catalog part', () => {
+    // Exclusive story rewards are intentionally omitted (not purchasable).
+    expect(buildCosmeticPriceRows()).toHaveLength(ALL_PARTS.filter((p) => !p.exclusive).length);
   });
 
   it('keeps each non-default price aligned with its rarity tier', () => {

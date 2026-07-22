@@ -16,6 +16,7 @@
  */
 import { createSeededRng, seededShuffle } from './rng';
 import { gameData as gd } from '../data/gameData';
+import { inBand } from './notoriety';
 import rawCountriesStats from '../../assets/countries_stats.json';
 import type { MatchMode } from '../types';
 
@@ -102,4 +103,31 @@ export function pickRoundCountries(
   });
 
   return out;
+}
+
+/**
+ * Story mode: pick `count` answer cca3s for one level's mode, restricted to a
+ * notoriety band so the game gets harder as the band slides toward obscure
+ * countries. Reuses each mode's real pool (`poolFor`) and the same seeded
+ * shuffle. If the band is too narrow to yield `count` distinct countries, it
+ * falls back to the mode's full pool so a level is always playable.
+ *
+ * Returns the ordered cca3 list to drop straight into `game_data.roundCountries`.
+ */
+export function pickBandCountries(
+  seed: number,
+  mode: MatchMode,
+  questionType: 'CAPITAL' | 'FLAG' | undefined,
+  count: number,
+  band: { minRank: number; maxRank: number } | null,
+): string[] {
+  const full = poolFor(mode, questionType);
+  if (full.length === 0) return [];
+  const n = Math.max(1, count);
+  const banded = band
+    ? full.filter((cca3) => inBand(cca3, band))
+    : full;
+  const pool = banded.length >= n ? banded : full;
+  const rng = createSeededRng(seed);
+  return seededShuffle(pool, rng).slice(0, n);
 }

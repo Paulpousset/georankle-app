@@ -30,6 +30,20 @@ const CONFIGS = [
   { name: 'mobile-fr-dark', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'fr-FR', colorScheme: 'dark' },
   { name: 'mobile-en-light', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'en-US', colorScheme: 'light', en: true },
   { name: 'desktop-fr-light', viewport: { width: 1280, height: 800 }, isMobile: false, hasTouch: false, locale: 'fr-FR', colorScheme: 'light' },
+  // Smallest current iPhone (SE 3rd gen / mini form factor).
+  { name: 'mobile-se', viewport: { width: 375, height: 667 }, isMobile: true, hasTouch: true, locale: 'fr-FR', colorScheme: 'light' },
+  // Largest current iPhone (15/16 Pro Max).
+  { name: 'mobile-promax', viewport: { width: 430, height: 932 }, isMobile: true, hasTouch: true, locale: 'fr-FR', colorScheme: 'light' },
+  // Common small Android (Galaxy A-series class).
+  { name: 'android-sm', viewport: { width: 360, height: 740 }, isMobile: true, hasTouch: true, locale: 'fr-FR', colorScheme: 'light' },
+  // iPad 10.2"/mini portrait. isMobile:true because the native app always
+  // renders the compact/phone layout (see src/lib/layout.ts) regardless of
+  // width — only the web export's own <768px breakpoint differs, and the
+  // real iPad app never hits that desktop branch.
+  { name: 'tablet-ipad-portrait', viewport: { width: 810, height: 1080 }, isMobile: true, hasTouch: true, locale: 'fr-FR', colorScheme: 'light' },
+  { name: 'tablet-ipad-landscape', viewport: { width: 1080, height: 810 }, isMobile: true, hasTouch: true, locale: 'fr-FR', colorScheme: 'light' },
+  // iPad Pro 12.9" portrait — widest/tallest real device the app ships on.
+  { name: 'tablet-ipad-pro', viewport: { width: 1024, height: 1366 }, isMobile: true, hasTouch: true, locale: 'fr-FR', colorScheme: 'light' },
 ];
 
 // Console noise that is expected on react-native-web and not actionable.
@@ -434,6 +448,24 @@ async function runConfig(cfg, authState) {
       await page.mouse.move(195, 520);
       for (let d = 0; d < 700; d += 14) { await page.mouse.wheel(0, 14); await w(20); }
       await checkpoint('scrolled');
+    },
+
+    story: async () => {
+      await fresh();
+      await tap(cfg.en ? 'Story Mode' : 'Mode Histoire', 2500);
+      await checkpoint('map-top');
+      await page.mouse.move(195, 520);
+      for (let d = 0; d < 1400; d += 16) { await page.mouse.wheel(0, 16); await w(16); }
+      await checkpoint('map-scrolled');
+    },
+
+    avatar: async () => {
+      await fresh();
+      try { await tapAria('Profil', 2800); } catch { await tapAria('Profile', 2800); }
+      await tap(cfg.en ? 'Customize' : 'Personnaliser', 2500);
+      await checkpoint('editor');
+      await pokeButtons(2);
+      await checkpoint('poked');
     },
 
     friends: async () => {

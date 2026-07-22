@@ -54,28 +54,28 @@ const serie = (lang: string) => (lang === 'fr' ? 'série' : 'streak');
 
 /** Solo modes ranked by personal best in the `scores` table. */
 const SOLO_MODES: ModeDef[] = [
+  { key: 'globe', fr: 'Globe Géo', en: 'Geo Globe', icon: Globe, accent: (d) => (d ? PALETTE.sand : PALETTE.vermilion), unit: pts },
+  { key: 'guess', fr: 'Devine le Pays', en: 'Guess Country', icon: Info, accent: (d) => (d ? PALETTE.chartBlue : PALETTE.vermilion), unit: pts },
+  { key: 'borders', fr: 'Frontières', en: 'Borders', icon: Route, accent: () => PALETTE.sand, unit: pts },
+  { key: 'silhouette', fr: 'Silhouette', en: 'Silhouette', icon: Puzzle, accent: () => PALETTE.forestGreen, unit: pts },
+  { key: 'higherlower', fr: 'Plus ou Moins', en: 'Higher/Lower', icon: TrendingUp, accent: (d) => (d ? PALETTE.chartBlue : PALETTE.oceanBlue), unit: serie },
   { key: 'classic', fr: 'Rankle', en: 'Rankle', icon: LayoutGrid, accent: () => PALETTE.forestGreen, unit: pct },
   { key: 'streak', fr: 'Streak', en: 'Streak', icon: Zap, accent: () => PALETTE.sand, unit: serie },
-  { key: 'higherlower', fr: 'Plus ou Moins', en: 'Higher/Lower', icon: TrendingUp, accent: (d) => (d ? PALETTE.chartBlue : PALETTE.oceanBlue), unit: serie },
-  { key: 'silhouette', fr: 'Silhouette', en: 'Silhouette', icon: Puzzle, accent: () => PALETTE.forestGreen, unit: pts },
-  { key: 'borders', fr: 'Frontières', en: 'Borders', icon: Route, accent: () => PALETTE.sand, unit: pts },
-  { key: 'guess', fr: 'Devine le Pays', en: 'Guess Country', icon: Info, accent: (d) => (d ? PALETTE.chartBlue : PALETTE.vermilion), unit: pts },
-  { key: 'globe', fr: 'Globe Géo', en: 'Geo Globe', icon: Globe, accent: (d) => (d ? PALETTE.sand : PALETTE.vermilion), unit: pts },
   { key: 'quiz-capital', fr: 'Capitales', en: 'Capitals', icon: Landmark, accent: () => PALETTE.sand, unit: pts },
   { key: 'quiz-flag', fr: 'Drapeaux', en: 'Flags', icon: Flag, accent: (d) => (d ? PALETTE.chartBlue : PALETTE.vermilion), unit: pts },
 ];
 
 /** Online modes ranked by win rate over completed matches. */
 const ONLINE_MODES: ModeDef[] = [
+  { key: 'globe', fr: 'Globe Géo', en: 'Geo Globe', icon: Globe, accent: (d) => (d ? PALETTE.sand : PALETTE.vermilion), unit: pct },
+  { key: 'regions', fr: 'Défis Pays', en: 'Challenges', icon: Map, accent: (d) => (d ? PALETTE.sand : PALETTE.vermilion), unit: pct },
+  { key: 'guess', fr: 'Devine le Pays', en: 'Guess Country', icon: Info, accent: (d) => (d ? PALETTE.chartBlue : PALETTE.vermilion), unit: pct },
+  { key: 'borders', fr: 'Frontières', en: 'Borders', icon: Route, accent: () => PALETTE.sand, unit: pct },
+  { key: 'silhouette', fr: 'Silhouette', en: 'Silhouette', icon: Puzzle, accent: () => PALETTE.forestGreen, unit: pct },
+  { key: 'higherlower', fr: 'Plus ou Moins', en: 'Higher/Lower', icon: TrendingUp, accent: (d) => (d ? PALETTE.chartBlue : PALETTE.oceanBlue), unit: pct },
+  { key: 'versus', fr: 'Versus', en: 'Versus', icon: Users, accent: (d) => (d ? PALETTE.chartBlue : PALETTE.vermilion), unit: pct },
   { key: 'classic', fr: 'Rankle', en: 'Rankle', icon: LayoutGrid, accent: () => PALETTE.forestGreen, unit: pct },
   { key: 'streak', fr: 'Streak', en: 'Streak', icon: Zap, accent: () => PALETTE.sand, unit: pct },
-  { key: 'versus', fr: 'Versus', en: 'Versus', icon: Users, accent: (d) => (d ? PALETTE.chartBlue : PALETTE.vermilion), unit: pct },
-  { key: 'globe', fr: 'Globe Géo', en: 'Geo Globe', icon: Globe, accent: (d) => (d ? PALETTE.sand : PALETTE.vermilion), unit: pct },
-  { key: 'guess', fr: 'Devine le Pays', en: 'Guess Country', icon: Info, accent: (d) => (d ? PALETTE.chartBlue : PALETTE.vermilion), unit: pct },
-  { key: 'regions', fr: 'Défis Pays', en: 'Challenges', icon: Map, accent: (d) => (d ? PALETTE.sand : PALETTE.vermilion), unit: pct },
-  { key: 'higherlower', fr: 'Plus ou Moins', en: 'Higher/Lower', icon: TrendingUp, accent: (d) => (d ? PALETTE.chartBlue : PALETTE.oceanBlue), unit: pct },
-  { key: 'silhouette', fr: 'Silhouette', en: 'Silhouette', icon: Puzzle, accent: () => PALETTE.forestGreen, unit: pct },
-  { key: 'borders', fr: 'Frontières', en: 'Borders', icon: Route, accent: () => PALETTE.sand, unit: pct },
 ];
 
 interface Entry {
@@ -273,7 +273,7 @@ const Leaderboard = ({ onOpenPlayer }: LeaderboardProps) => {
             },
           ]}
         >
-          <WorldAvatar config={entry.avatar} size={avatarSize} />
+          <WorldAvatar config={entry.avatar} size={avatarSize} round />
         </View>
         <TruncatedText style={[styles.podiumName, { color: c.text }]}>{name}</TruncatedText>
         {isMe && (
@@ -335,7 +335,7 @@ const Leaderboard = ({ onOpenPlayer }: LeaderboardProps) => {
         >
           <Text style={[styles.rankText, { color: isMe ? accent : c.textFaint }]}>{rank}</Text>
           <View style={[styles.rowAvatar, { backgroundColor: c.surface, borderColor: c.border }]}>
-            <WorldAvatar config={item.avatar} size={30} />
+            <WorldAvatar config={item.avatar} size={30} round />
           </View>
           <View style={styles.userInfo}>
             <View style={styles.nameRow}>
@@ -466,7 +466,7 @@ const Leaderboard = ({ onOpenPlayer }: LeaderboardProps) => {
           >
             <Text style={[styles.rankText, { color: accent }]}>{myRank + 1}</Text>
             <View style={[styles.rowAvatar, { backgroundColor: c.card, borderColor: c.border }]}>
-              <WorldAvatar config={me.avatar} size={30} />
+              <WorldAvatar config={me.avatar} size={30} round />
             </View>
             <View style={styles.userInfo}>
               <View style={styles.nameRow}>

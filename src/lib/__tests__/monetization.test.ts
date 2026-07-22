@@ -4,6 +4,8 @@ import {
   purchaseCoinPack,
   showRewardedAd,
   claimRewardedAd,
+  claimCoinMultiplier,
+  showCoinMultiplierAd,
   getRewardedAdsRemaining,
   rewardedAdsAvailable,
 } from '../monetization';
@@ -15,6 +17,16 @@ jest.mock('../supabase', () => {
   const { makeSupabaseMock } = require('../../../test-utils/supabaseMock');
   return { supabase: makeSupabaseMock() };
 });
+
+// monetization.ts now imports interstitialGate, which pulls in AsyncStorage.
+jest.mock('@react-native-async-storage/async-storage', () => ({
+  __esModule: true,
+  default: {
+    getItem: jest.fn(async () => null),
+    setItem: jest.fn(async () => {}),
+    removeItem: jest.fn(async () => {}),
+  },
+}));
 
 // log.ts pulls in @sentry/react-native (untranspiled ESM) — irrelevant here.
 jest.mock('../log', () => ({
@@ -178,6 +190,44 @@ describe('getRewardedAdsRemaining', () => {
     expect(await getRewardedAdsRemaining()).toBe(0);
     sb.__setResult('ad_claims', { data: null, error: { message: 'boom' } });
     expect(await getRewardedAdsRemaining()).toBeNull();
+  });
+});
+
+describe('showCoinMultiplierAd (flag ON, SDK mocked)', () => {
+  it('shows the ad and claims the multiplier with base + stage on EARNED_REWARD', async () => {
+    flagsOn();
+    sb.rpc.mockResolvedValueOnce({ data: { granted: true, coins: 5 }, error: null });
+    expect(await showCoinMultiplierAd(5, 1)).toEqual({ granted: true, coins: 5, reason: undefined });
+    expect(sb.rpc).toHaveBeenCalledWith('claim_coin_multiplier', { p_base: 5, p_stage: 1 });
+  });
+
+  it('does NOT claim when the ad is dismissed before the reward', async () => {
+    flagsOn();
+    adsMock.__state.__outcome = 'dismissed';
+    expect(await showCoinMultiplierAd(5, 1)).toEqual({ granted: false, reason: 'dismissed' });
+    expect(sb.rpc).not.toHaveBeenCalled();
+  });
+
+  it('refuses while the flag is off — nothing reaches the network', async () => {
+    flagsOff();
+    expect(await showCoinMultiplierAd(5, 2)).toEqual({ granted: false, reason: 'disabled' });
+    expect(sb.rpc).not.toHaveBeenCalled();
+  });
+});
+
+describe('claimCoinMultiplier (server relay)', () => {
+  it('relays a grant and passes base + stage through', async () => {
+    sb.rpc.mockResolvedValueOnce({ data: { granted: true, coins: 10 }, error: null });
+    expect(await claimCoinMultiplier(5, 2)).toEqual({ granted: true, coins: 10, reason: undefined });
+    expect(sb.rpc).toHaveBeenCalledWith('claim_coin_multiplier', { p_base: 5, p_stage: 2 });
+  });
+
+  it('relays server refusals and failures', async () => {
+    sb.rpc.mockResolvedValueOnce({ data: { granted: false, reason: 'capped' }, error: null });
+    expect((await claimCoinMultiplier(5, 1)).reason).toBe('capped');
+
+    sb.rpc.mockResolvedValueOnce({ data: null, error: { message: 'boom' } });
+    expect((await claimCoinMultiplier(5, 1)).reason).toBe('failed');
   });
 });
 

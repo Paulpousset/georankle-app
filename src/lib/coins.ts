@@ -39,24 +39,32 @@ function withTimeout<T>(p: PromiseLike<T>): Promise<T | typeof TIMEOUT> {
   return Promise.race([Promise.resolve(p), timeout]).finally(() => clearTimeout(timer));
 }
 
-export async function awardSoloCoins(gameMode: string): Promise<CoinAwardResult> {
+/**
+ * @param gameMode the solo mode played.
+ * @param score    the session's normalized score (0..1000, see
+ *                 normalizeRoundScore) — the reward scales with it server-side.
+ */
+export async function awardSoloCoins(gameMode: string, score: number): Promise<CoinAwardResult> {
+  const p_score = Math.max(0, Math.round(Number.isFinite(score) ? score : 0));
   try {
-    const result = await withTimeout(supabase.rpc('award_solo_coins', { p_game_mode: gameMode }));
+    const result = await withTimeout(
+      supabase.rpc('award_solo_coins', { p_game_mode: gameMode, p_score }),
+    );
     if (result === TIMEOUT) {
       // The request never resolved in time — queue it instead of hanging.
-      await enqueue({ type: 'coins', gameMode });
+      await enqueue({ type: 'coins', gameMode, score: p_score });
       return { coinsAwarded: 0, capped: false, synced: false };
     }
     const { data, error } = result;
     if (error) {
-      await enqueue({ type: 'coins', gameMode });
+      await enqueue({ type: 'coins', gameMode, score: p_score });
       return { coinsAwarded: 0, capped: false, synced: false };
     }
     const res = data as { coins_awarded?: number; capped?: boolean } | null;
     return { coinsAwarded: res?.coins_awarded ?? 0, capped: !!res?.capped, synced: true };
   } catch {
     // Network/exception path (the old code only checked `error` and hung).
-    await enqueue({ type: 'coins', gameMode });
+    await enqueue({ type: 'coins', gameMode, score: p_score });
     return { coinsAwarded: 0, capped: false, synced: false };
   }
 }

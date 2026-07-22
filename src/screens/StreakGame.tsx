@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { Trophy, RefreshCcw, Moon, Sun, Heart, TrendingUp, Home, Share2, Coins } from 'lucide-react-native';
+import { Trophy, RefreshCcw, Moon, Sun, Heart, TrendingUp, Home, Share2 } from 'lucide-react-native';
 import { ThemeIcon } from '../components/themeIcons';
 import type { User } from '@supabase/supabase-js';
 
@@ -33,7 +33,7 @@ import { FONTS } from '../theme/typography';
 import { tr } from '../i18n';
 import { a11yButton, announce, a11yHidden, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
-import { RewardedAdButton } from '../components/RewardedAdButton';
+import { SoloCoinReward } from '../components/SoloCoinReward';
 import { TopInsetBar } from '../components/TopInsetBar';
 
 import { isMobileLayout as isMobile } from '../lib/layout';
@@ -220,10 +220,10 @@ export default function StreakGame({
                 );
               }
             });
-          // Solo coins (server-side daily cap, score-independent). Skip in matches.
-          // Failures are queued for retry on reconnect and surfaced to the player.
+          // Solo coins (server-side daily cap; reward scales with performance).
+          // Skip in matches. Failures are queued for retry on reconnect.
           if (!matchData) {
-            awardSoloCoins('streak').then((res) => {
+            awardSoloCoins('streak', normalizeRoundScore('streak', score)).then((res) => {
               setCoinsEarned(res.coinsAwarded);
               setCoinsCapped(res.capped);
               setCoinsSyncFailed(!res.synced);
@@ -541,54 +541,13 @@ export default function StreakGame({
                 {language === 'fr' ? 'Votre score : ' : 'Your score: '}
                 {score}
               </Text>
-              {/* Coins earned for this run (solo only, server-credited). */}
-              {coinsEarned != null && (
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 8,
-                    marginBottom: 24,
-                    backgroundColor: c.surface,
-                    borderRadius: 14,
-                    borderWidth: 1,
-                    borderColor: coinsEarned > 0 ? '#ffd700' : coinsSyncFailed ? '#c0392b' : c.border,
-                    paddingVertical: 10,
-                    paddingHorizontal: 16,
-                  }}
-                >
-                  <Coins color="#ffd700" size={20} />
-                  {coinsEarned > 0 ? (
-                    <>
-                      <Text style={{ color: '#ffd700', fontSize: 22, fontFamily: FONTS.headingBlack }}>
-                        {`+${coinsEarned}`}
-                      </Text>
-                      <Text style={{ color: c.textMuted, fontSize: 13, fontFamily: FONTS.mono }}>
-                        {language === 'fr' ? 'pièces gagnées' : 'coins earned'}
-                      </Text>
-                    </>
-                  ) : coinsSyncFailed ? (
-                    <Text style={{ color: '#c0392b', fontSize: 13, fontFamily: FONTS.mono, textAlign: 'center' }}>
-                      {language === 'fr'
-                        ? 'Pièces non synchronisées — réessai à la reconnexion'
-                        : 'Coins not synced — will retry on reconnect'}
-                    </Text>
-                  ) : (
-                    <Text style={{ color: c.textMuted, fontSize: 13, fontFamily: FONTS.mono }}>
-                      {coinsCapped
-                        ? (language === 'fr' ? 'Plafond quotidien atteint' : 'Daily coin cap reached')
-                        : (language === 'fr' ? 'Aucune pièce cette fois' : 'No coins this time')}
-                    </Text>
-                  )}
-                </View>
-              )}
-
-              {/* Rewarded ad slot (hidden while the rewarded_ads flag is off). */}
-              {coinsEarned != null && (
-                <View style={{ alignSelf: 'stretch', marginBottom: 24 }}>
-                  <RewardedAdButton context="solo_summary" />
-                </View>
-              )}
+              {/* Animated coins + rewarded-ad doubler (solo only, server-credited). */}
+              <SoloCoinReward
+                coinsEarned={coinsEarned}
+                coinsCapped={coinsCapped}
+                coinsSyncFailed={coinsSyncFailed}
+                containerStyle={{ alignSelf: 'stretch', marginBottom: 24 }}
+              />
               {isDaily ? (
                 <TouchableOpacity
                   style={styles.resetBtn}

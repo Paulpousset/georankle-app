@@ -25,7 +25,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
 import Svg, { Path } from 'react-native-svg';
 import {
-  RefreshCcw, Moon, Sun, Home, Share2, Coins, HelpCircle, Eye, CheckCircle, ChevronRight,
+  RefreshCcw, Moon, Sun, Home, Share2, HelpCircle, Eye, CheckCircle, ChevronRight,
 } from 'lucide-react-native';
 import type { User } from '@supabase/supabase-js';
 
@@ -53,7 +53,7 @@ import { tr } from '../i18n';
 import { a11yButton, a11yImage, announce, a11yHidden, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
 import { AtlasTrophy, AtlasCross } from '../components/AtlasIcons';
-import { RewardedAdButton } from '../components/RewardedAdButton';
+import { SoloCoinReward } from '../components/SoloCoinReward';
 import { TopInsetBar } from '../components/TopInsetBar';
 
 import { isMobileLayout as isMobile } from '../lib/layout';
@@ -223,7 +223,13 @@ export default function SilhouetteGame({
             );
           }
         });
-      awardSoloCoins('silhouette').then((res) => {
+      awardSoloCoins(
+        'silhouette',
+        normalizeRoundScore('silhouette', finalScore, {
+          numQuestions: run.length,
+          maxPointsPerQuestion: MAX_POINTS_PER_QUESTION,
+        }),
+      ).then((res) => {
         setCoinsEarned(res.coinsAwarded);
         setCoinsCapped(res.capped);
         setCoinsSyncFailed(!res.synced);
@@ -477,55 +483,13 @@ export default function SilhouetteGame({
           <Text style={{ color: c.textMuted, fontFamily: FONTS.mono, fontSize: 14, marginBottom: 16 }}>
             {tr(language, `${correctCount} / ${run.length} bonnes réponses`, `${correctCount} / ${run.length} correct`)}
           </Text>
-          {coinsEarned != null && (
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 8,
-                marginBottom: 24,
-                backgroundColor: c.surface,
-                borderRadius: 14,
-                borderWidth: 1,
-                borderColor: coinsEarned > 0 ? '#ffd700' : coinsSyncFailed ? '#c0392b' : c.border,
-                paddingVertical: 10,
-                paddingHorizontal: 16,
-              }}
-            >
-              <Coins color="#ffd700" size={20} />
-              {coinsEarned > 0 ? (
-                <>
-                  <Text style={{ color: '#ffd700', fontSize: 22, fontFamily: FONTS.headingBlack }}>
-                    {`+${coinsEarned}`}
-                  </Text>
-                  <Text style={{ color: c.textMuted, fontSize: 13, fontFamily: FONTS.mono }}>
-                    {tr(language, 'pièces gagnées', 'coins earned')}
-                  </Text>
-                </>
-              ) : coinsSyncFailed ? (
-                <Text style={{ color: '#c0392b', fontSize: 13, fontFamily: FONTS.mono, textAlign: 'center' }}>
-                  {tr(
-                    language,
-                    'Pièces non synchronisées — réessai à la reconnexion',
-                    'Coins not synced — will retry on reconnect',
-                  )}
-                </Text>
-              ) : (
-                <Text style={{ color: c.textMuted, fontSize: 13, fontFamily: FONTS.mono }}>
-                  {coinsCapped
-                    ? tr(language, 'Plafond quotidien atteint', 'Daily coin cap reached')
-                    : tr(language, 'Aucune pièce cette fois', 'No coins this time')}
-                </Text>
-              )}
-            </View>
-          )}
-
-          {/* Rewarded ad slot (hidden while the rewarded_ads flag is off). */}
-          {coinsEarned != null && (
-            <View style={{ alignSelf: 'stretch', marginBottom: 24 }}>
-              <RewardedAdButton context="solo_summary" />
-            </View>
-          )}
+          {/* Animated coins + rewarded-ad doubler (solo only, server-credited). */}
+          <SoloCoinReward
+            coinsEarned={coinsEarned}
+            coinsCapped={coinsCapped}
+            coinsSyncFailed={coinsSyncFailed}
+            containerStyle={{ alignSelf: 'stretch', marginBottom: 24 }}
+          />
           {isDaily ? (
             <TouchableOpacity
               style={styles.resetBtn}

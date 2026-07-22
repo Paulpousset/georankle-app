@@ -33,11 +33,11 @@ export function IncomingInviteModal({
   }, [invite, language]);
 
   return (
-    <Modal visible={!!invite} animationType="slide" transparent onRequestClose={onDecline}>
+    <Modal visible={!!invite} animationType="fade" transparent onRequestClose={onDecline}>
       <View
         style={{
-          flex: 1, justifyContent: 'flex-start', alignItems: 'center',
-          paddingTop: 60, backgroundColor: 'rgba(0,0,0,0.4)',
+          flex: 1, justifyContent: 'center', alignItems: 'center',
+          paddingHorizontal: 16, backgroundColor: 'rgba(0,0,0,0.4)',
         }}
       >
         <View

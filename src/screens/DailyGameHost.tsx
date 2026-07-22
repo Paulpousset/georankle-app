@@ -7,6 +7,7 @@ import type { User } from '@supabase/supabase-js';
 import type { GameMode } from '../types';
 import { completeDaily, seedFor, type DailyResult } from '../lib/daily';
 import { buildShareMessage } from '../lib/share';
+import { getReferralInfo } from '../lib/referral';
 import { track } from '../lib/analytics';
 import { tr } from '../i18n';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -121,11 +122,13 @@ export default function DailyGameHost({
     );
   };
 
-  const onShare = () => {
+  const onShare = async () => {
     const r = resultRef.current;
     if (!r) return;
     track('daily_shared', { mode });
-    Share.share({ message: buildShareMessage(r, streak, language) }).catch(() => {});
+    // Carry the player's referral code so a shared result doubles as an invite.
+    const info = await getReferralInfo();
+    Share.share({ message: buildShareMessage(r, streak, language, info?.code) }).catch(() => {});
   };
 
   // Exit helper for screens that navigate via setGameMode('menu').

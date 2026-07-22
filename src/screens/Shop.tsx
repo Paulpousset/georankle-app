@@ -307,7 +307,8 @@ export default function Shop({ onBack, onEditAvatar }: ShopProps) {
   // Sections react to the active filter (and to ownership for 'notOwned').
   const sections = useMemo<ShopSection[]>(() => {
     return LAYER_ORDER.map((cat) => {
-      const all = getCategoryParts(cat).filter((p) => !p.isDefault);
+      // Exclusive story rewards are earned, not sold — never list them here.
+      const all = getCategoryParts(cat).filter((p) => !p.isDefault && !p.exclusive);
       const ownedCount = all.filter((p) => owned.has(p.id)).length;
       const parts = all
         .filter((p) => {

@@ -87,7 +87,7 @@ const MODES: Record<ModeKey, ModeDef> = {
   regions: { key: 'regions', fr: 'Défis Pays', en: 'Country Challenges', icon: Map, accent: PALETTE.oceanBlue, rounds: 'config', defaultRounds: 5, unitFr: 'rounds', unitEn: 'rounds' },
 };
 
-const MODE_ORDER: ModeKey[] = ['capital', 'flag', 'guess', 'classic', 'streak', 'higherlower', 'silhouette', 'borders', 'globe', 'regions'];
+const MODE_ORDER: ModeKey[] = ['globe', 'regions', 'guess', 'borders', 'silhouette', 'higherlower', 'classic', 'streak', 'capital', 'flag'];
 
 /**
  * Modes that inherently play one question per turn, so players alternate

@@ -118,6 +118,7 @@ function Toast({
   return (
     <Animated.View
       style={{
+        alignSelf: 'stretch',
         opacity: anim,
         transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [-12, 0] }) }],
       }}

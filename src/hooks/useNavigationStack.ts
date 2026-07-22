@@ -12,6 +12,7 @@ export type Page =
   | { name: 'avatar' }
   | { name: 'shop' }
   | { name: 'daily' }
+  | { name: 'story' }
   | { name: 'admin-notifications' }
   | { name: 'matchmaking'; mode: MatchMode }
   | { name: 'custom-matchmaking' }

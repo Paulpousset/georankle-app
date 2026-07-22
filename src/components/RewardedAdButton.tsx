@@ -7,8 +7,8 @@
  * daily cap is spent — so shipping it visible-nowhere is safe today.
  */
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Text, TouchableOpacity } from 'react-native';
-import { PlayCircle } from 'lucide-react-native';
+import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
+import { Play } from 'lucide-react-native';
 
 import {
   REWARDED_COINS,
@@ -18,7 +18,7 @@ import {
   showRewardedAd,
 } from '../lib/monetization';
 import { track } from '../lib/analytics';
-import { getColors, PALETTE } from '../theme/colors';
+import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -100,41 +100,59 @@ export function RewardedAdButton({ context, onEarned }: RewardedAdButtonProps) {
     `Watch an ad: ${REWARDED_COINS} coins${counter}`,
   );
 
+  const GOLD = '#f5b301';
+  const INK = '#2c1810';
+
   return (
     <TouchableOpacity
       onPress={onPress}
       disabled={busy}
+      activeOpacity={0.85}
       {...a11yButton(label, { disabled: busy })}
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
+        gap: 10,
         backgroundColor: c.surface,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: PALETTE.forestGreen,
-        paddingVertical: 10,
-        paddingHorizontal: 14,
+        borderRadius: 14,
+        borderWidth: 1.5,
+        borderColor: GOLD,
+        paddingVertical: 8,
+        paddingHorizontal: 10,
         opacity: busy ? 0.6 : 1,
       }}
     >
-      {busy ? (
-        <ActivityIndicator size="small" color={PALETTE.forestGreen} />
-      ) : (
-        <PlayCircle color={PALETTE.forestGreen} size={18} />
-      )}
-      <Text style={{ fontFamily: FONTS.heading, color: c.text, fontSize: 13 }}>
+      {/* Gold play medallion */}
+      <View
+        style={{
+          width: 30,
+          height: 30,
+          borderRadius: 15,
+          backgroundColor: GOLD,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {busy ? (
+          <ActivityIndicator size="small" color={INK} />
+        ) : (
+          <Play color={INK} size={15} fill={INK} />
+        )}
+      </View>
+      <Text style={{ flex: 1, fontFamily: FONTS.heading, color: c.text, fontSize: 14 }}>
         {tr(language, 'Regarder une pub', 'Watch an ad')}
       </Text>
-      <ScoreText style={{ color: '#ffd700', fontFamily: FONTS.monoBold, fontSize: 13 }}>
-        +{REWARDED_COINS}
-      </ScoreText>
       {remaining !== null && (
         <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 11 }}>
           {remaining}/{REWARDED_DAILY_CAP}
         </Text>
       )}
+      {/* Gold reward chip */}
+      <View style={{ backgroundColor: GOLD, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 3 }}>
+        <ScoreText style={{ color: INK, fontFamily: FONTS.monoBold, fontSize: 14 }}>
+          +{REWARDED_COINS}
+        </ScoreText>
+      </View>
     </TouchableOpacity>
   );
 }

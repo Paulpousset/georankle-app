@@ -97,6 +97,17 @@ export default function AvatarEditor({ onBack, onOpenShop }: AvatarEditorProps) 
 
   const selectPart = (part: CosmeticPart) => {
     if (!isOwned(part)) {
+      if (part.exclusive) {
+        showAlert(
+          tr(language, 'Récompense du Mode Histoire', 'Story Mode reward'),
+          tr(
+            language,
+            'Débloque ce cosmétique en atteignant un jalon du Mode Histoire.',
+            'Unlock this cosmetic by reaching a Story Mode milestone.',
+          ),
+        );
+        return;
+      }
       onOpenShop();
       return;
     }
@@ -252,6 +263,8 @@ export default function AvatarEditor({ onBack, onOpenShop }: AvatarEditorProps) 
                 const partName = language === 'fr' ? part.nameFr : part.nameEn;
                 const tileLabel = ownedPart
                   ? partName
+                  : part.exclusive
+                  ? tr(language, `${partName}, récompense du Mode Histoire`, `${partName}, Story Mode reward`)
                   : tr(language, `${partName}, verrouillé, ${part.price} pièces`, `${partName}, locked, ${part.price} coins`);
                 return (
                   <TouchableOpacity
@@ -277,7 +290,9 @@ export default function AvatarEditor({ onBack, onOpenShop }: AvatarEditorProps) 
                     {!ownedPart && (
                       <View style={styles.lockRow}>
                         <Lock size={11} color={c.textFaint} />
-                        <Text style={[styles.lockPrice, { color: c.textFaint }]}>{part.price}</Text>
+                        <Text style={[styles.lockPrice, { color: c.textFaint }]}>
+                          {part.exclusive ? tr(language, 'Histoire', 'Story') : part.price}
+                        </Text>
                       </View>
                     )}
                   </TouchableOpacity>

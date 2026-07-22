@@ -33,16 +33,16 @@ interface CompleteDailyResult {
 
 /** The solo modes that have a daily challenge (mirrors MainMenu's solo list). */
 export const DAILY_MODES: GameMode[] = [
-  'classic',
-  'streak',
-  'guess',
   'globe',
   'regions',
+  'guess',
+  'borders',
+  'silhouette',
+  'higherlower',
+  'classic',
+  'streak',
   'quiz-capital',
   'quiz-flag',
-  'higherlower',
-  'silhouette',
-  'borders',
 ];
 
 /** Day index 0 maps to this UTC date — only affects the displayed "#N". */

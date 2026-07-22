@@ -9,9 +9,11 @@ import { getColors } from '../theme/colors';
 interface AuthModalProps {
   visible: boolean;
   onClose: () => void;
+  /** Which auth screen to open on: 'login' (default) or 'signup' (banner CTA). */
+  initialMode?: 'login' | 'signup';
 }
 
-export function AuthModal({ visible, onClose }: AuthModalProps) {
+export function AuthModal({ visible, onClose, initialMode = 'login' }: AuthModalProps) {
   const { isDarkMode } = useTheme();
   const { language } = useLanguage();
   const c = getColors(isDarkMode);
@@ -45,7 +47,14 @@ export function AuthModal({ visible, onClose }: AuthModalProps) {
             >
               <X color={c.textMuted} size={20} />
             </TouchableOpacity>
-            <Auth language={language} onAuthSuccess={onClose} />
+            {/* Key on open+mode so re-opening resets Auth to the requested screen
+                (its internal `mode` state otherwise persists across opens). */}
+            <Auth
+              key={`${visible ? 'open' : 'closed'}-${initialMode}`}
+              language={language}
+              onAuthSuccess={onClose}
+              initialMode={initialMode}
+            />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

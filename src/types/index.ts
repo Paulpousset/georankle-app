@@ -162,6 +162,13 @@ export interface CosmeticPart {
   swatch?: string;
   /** ISO date the item was added to the catalog — drives the "NEW" badge. */
   addedAt?: string;
+  /**
+   * Story-mode reward: not sold in the shop and never seeded into
+   * `cosmetic_prices` (so it can't be bought or featured). Granted for free by
+   * `complete_story_level` when a milestone is first cleared, then equippable
+   * like any owned item.
+   */
+  exclusive?: boolean;
 }
 
 /** A discounted multi-item pack sold in the shop (mirrored in cosmetic_bundles). */

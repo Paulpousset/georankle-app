@@ -63,6 +63,14 @@ interface GlobeStyle {
   scan?: boolean;
   /** Star-shaped glints on the surface (gold). */
   sparkle?: boolean;
+  /** Story-exclusive: glowing tectonic rifts across the crust (fractured). */
+  rift?: boolean;
+  riftColor?: string;
+  /** Story-exclusive: a spiral-galaxy of stars ON the globe (galaxy world). */
+  galaxy?: boolean;
+  galaxyColor?: string;
+  /** Story-exclusive: a golden crown resting on the globe (crowned world). */
+  crown?: boolean;
 }
 
 const GLOBE_STYLES: Record<string, GlobeStyle> = {
@@ -84,6 +92,10 @@ const GLOBE_STYLES: Record<string, GlobeStyle> = {
   cyber:     { ocean: ['#0a1420', '#060d18', '#03070f'], land: 'none', stroke: '#c04df0', grat: '#3af0a0', wire: true, cyber: true, atmo: '#c04df0', scan: true },
   eclipse:   { ocean: ['#0c0c14', '#060608', '#020203'], land: '#0a0a10', stroke: '#1a1a26', grat: '#0c0c14', corona: true },
   biolum:    { ocean: ['#04141c', '#020c14', '#01060a'], land: '#062018', stroke: '#2ff0c0', grat: '#04141c', biolum: true, atmo: '#2ff0c0' },
+  // ── Mode Histoire : globes EXCLUSIFS à effet inédit ──
+  st_fractured: { ocean: ['#243a5c', '#132038', '#070d1a'], land: '#16263f', stroke: '#ff7a3a', grat: '#1a2c48', rift: true, riftColor: '#ff8a3a', atmo: '#ff7a3a', terminator: true },
+  st_galaxy:    { ocean: ['#241a52', '#140f2e', '#060418'], land: 'none', stroke: '#b8a0ff', grat: '#2a1f5a', wire: true, galaxy: true, galaxyColor: '#d8c8ff', atmo: '#9a7cff' },
+  st_crowned:   { ocean: ['#ffe7a4', '#e0a93a', '#8a5a14'], land: '#caa23a', stroke: '#7a5212', grat: '#8a5a14', atmo: '#ffd700', terminator: true, sparkle: true, crown: true },
 };
 
 const POLITICAL_PALETTE = [
@@ -130,12 +142,19 @@ interface WorldAvatarProps {
   style?: StyleProp<ViewStyle>;
   /** Animate movable elements (satellite orbit, globe spin, pulses, blinks). */
   animate?: boolean;
+  /**
+   * Clip the whole avatar (cosmos backdrop, orbit, satellite) to a circle so it
+   * fits a round frame edge-to-edge without relying on the parent's
+   * overflow:hidden (which doesn't clip SVG reliably on web). Leave off for the
+   * square preview tiles (shop / editor swatches, rounded-square profile card).
+   */
+  round?: boolean;
   /** Reserved — kept for API parity with the old <Avatar3D>. */
   interactive?: boolean;
   spin?: boolean;
 }
 
-function WorldAvatarBase({ config, size, style, animate = false }: WorldAvatarProps) {
+function WorldAvatarBase({ config, size, style, animate = false, round = false }: WorldAvatarProps) {
   const layers = config?.layers;
 
   // Animation clock (seconds) — only ticks when `animate` is on.
@@ -238,6 +257,39 @@ function WorldAvatarBase({ config, size, style, animate = false }: WorldAvatarPr
   const surfaceDeco = useMemo(() => {
     const cracks: string[] = [];
     const dots: { x: number; y: number; rad: number; o: number }[] = [];
+    const rifts: string[] = [];
+    const galaxyDots: { x: number; y: number; rad: number; o: number }[] = [];
+    if (gs.rift) {
+      // Jagged tectonic rifts radiating across the crust.
+      const rng = makeRng(13);
+      for (let i = 0; i < 5; i++) {
+        const a = rng() * Math.PI * 2;
+        let px = cx + Math.cos(a) * r * 0.2, py = cy + Math.sin(a) * r * 0.2;
+        let d = `M${px.toFixed(1)},${py.toFixed(1)}`;
+        const steps = 3 + Math.floor(rng() * 3);
+        for (let k = 0; k < steps; k++) {
+          px += Math.cos(a) * r * 0.28 + (rng() - 0.5) * r * 0.22;
+          py += Math.sin(a) * r * 0.28 + (rng() - 0.5) * r * 0.22;
+          d += ` L${px.toFixed(1)},${py.toFixed(1)}`;
+        }
+        rifts.push(d);
+      }
+    }
+    if (gs.galaxy) {
+      // A two-arm spiral of stars projected onto the disc.
+      const rng = makeRng(31);
+      for (let i = 0; i < 60; i++) {
+        const t = i / 60;
+        const ang = t * 7 + (i % 2 ? Math.PI : 0);
+        const rad = t * r * 0.92 + (rng() - 0.5) * r * 0.06;
+        galaxyDots.push({
+          x: cx + Math.cos(ang) * rad,
+          y: cy + Math.sin(ang) * rad * 0.92,
+          rad: Math.max(0.6, size * 0.012 * (1 - t)),
+          o: 0.4 + rng() * 0.5,
+        });
+      }
+    }
     if (gs.lava) {
       const rng = makeRng(9);
       for (let i = 0; i < 7; i++) {
@@ -260,8 +312,8 @@ function WorldAvatarBase({ config, size, style, animate = false }: WorldAvatarPr
         dots.push({ x: cx + Math.cos(a) * rad, y: cy + Math.sin(a) * rad, rad: 0.6 + rng() * (size * 0.01), o: 0.25 + rng() * 0.5 });
       }
     }
-    return { cracks, dots };
-  }, [gs.lava, gs.cyber, gs.biolum, r, cx, cy, size]);
+    return { cracks, dots, rifts, galaxyDots };
+  }, [gs.lava, gs.cyber, gs.biolum, gs.rift, gs.galaxy, r, cx, cy, size]);
 
   // Cloud banks (per-style flag) — deterministic ellipses over the globe.
   const clouds = useMemo(() => {
@@ -434,6 +486,8 @@ function WorldAvatarBase({ config, size, style, animate = false }: WorldAvatarPr
       case 'solareclipse': return ['#241436', '#050208'];
       case 'supernova': return ['#2a1030', '#070310'];
       case 'goldrain': return ['#141024', '#060410'];
+      case 'st_aurorastorm': return ['#062a3a', '#02101e'];
+      case 'st_embersky': return ['#1a0a08', '#050202'];
       default: return ['#0b1230', '#05060f'];
     }
   })();
@@ -442,6 +496,17 @@ function WorldAvatarBase({ config, size, style, animate = false }: WorldAvatarPr
   const pulse = animate ? 0.5 + 0.5 * Math.sin(t * Math.PI) : 0.5;
 
   const AURORA_COLORS = ['#3fe0a0', '#43c6e0', '#9a6af0'];
+  const AURORA_STORM_COLORS = ['#2ff0a0', '#8f7cff', '#43c6e0'];
+
+  // Story-exclusive cosmos: fixed decorative sets (no memo needed).
+  const stormBands = [0.30, 0.44, 0.58].map((y, i) => ({
+    y: size * y,
+    color: AURORA_STORM_COLORS[i % AURORA_STORM_COLORS.length],
+  }));
+  const emberSpecks = Array.from({ length: 22 }, (_, i) => {
+    const rng = makeRng(i * 41 + 7);
+    return { x: rng() * size, y: size * (0.4 + rng() * 0.6), r: 0.6 + rng() * (size * 0.012), o: 0.35 + rng() * 0.5 };
+  });
 
   // Tilted Saturn ring arcs: back (upper) half drawn behind the globe, front
   // (lower) half above it. rotation applied via <G rotation>.
@@ -611,6 +676,50 @@ function WorldAvatarBase({ config, size, style, animate = false }: WorldAvatarPr
             ))}
           </>
         );
+      case 'st_laurel': {
+        // Story-exclusive: two laurel branches curving into a wreath.
+        const leaf = (base: number, dir: number) =>
+          Array.from({ length: 7 }).map((_, i) => {
+            const a = base + dir * (0.18 + i * 0.16);
+            const lx = cx + Math.cos(a) * ringR;
+            const ly = cy + Math.sin(a) * ringR;
+            const rot = ((a * 180) / Math.PI) + (dir > 0 ? 60 : 120);
+            return (
+              <Ellipse
+                key={`lf${dir}${i}`}
+                cx={lx} cy={ly} rx={size * 0.05} ry={size * 0.02}
+                fill="#4fae5a" stroke="#2f7a3a" strokeWidth={0.5}
+                rotation={rot} originX={lx} originY={ly}
+              />
+            );
+          });
+        return (
+          <>
+            <Circle cx={cx} cy={cy} r={ringR} fill="none" stroke="#2f7a3a" strokeWidth={size * 0.012} strokeOpacity={0.5} />
+            {leaf(-Math.PI / 2, -1)}
+            {leaf(-Math.PI / 2, 1)}
+            <Circle cx={cx} cy={cy + ringR} r={size * 0.02} fill="#ffcf4a" />
+          </>
+        );
+      }
+      case 'st_compass': {
+        // Story-exclusive: a golden cardinal ring with N·E·S·O gems.
+        const card: [string, number, number][] = [['N', 0, -1], ['E', 1, 0], ['S', 0, 1], ['O', -1, 0]];
+        return (
+          <>
+            <Circle cx={cx} cy={cy} r={ringR} fill="none" stroke="#e0a93a" strokeWidth={size * 0.02} strokeOpacity={0.9} />
+            <Circle cx={cx} cy={cy} r={ringR * 0.9} fill="none" stroke="#e0a93a" strokeWidth={size * 0.006} strokeOpacity={0.5} strokeDasharray={`${size * 0.015},${size * 0.02}`} />
+            {card.map(([L, dx, dy], i) => (
+              <G key={`cd${i}`}>
+                <Circle cx={cx + dx * ringR} cy={cy + dy * ringR} r={size * 0.055} fill="#12203a" stroke="#ffd700" strokeWidth={1.2} />
+                <SvgText x={cx + dx * ringR} y={cy + dy * ringR + size * 0.025} textAnchor="middle" fontSize={size * 0.07} fontWeight="bold" fill="#ffd700">
+                  {L}
+                </SvgText>
+              </G>
+            ))}
+          </>
+        );
+      }
       default:
         return null;
     }
@@ -676,6 +785,11 @@ function WorldAvatarBase({ config, size, style, animate = false }: WorldAvatarPr
           <ClipPath id={`clip_${uid}`}>
             <Circle cx={cx} cy={cy} r={r} />
           </ClipPath>
+          {round && (
+            <ClipPath id={`round_${uid}`}>
+              <Circle cx={cx} cy={cy} r={size / 2} />
+            </ClipPath>
+          )}
           <ClipPath id={`half_top_${uid}`}>
             <Rect x={0} y={0} width={size} height={cy} />
           </ClipPath>
@@ -684,6 +798,7 @@ function WorldAvatarBase({ config, size, style, animate = false }: WorldAvatarPr
           </ClipPath>
         </Defs>
 
+        <G clipPath={round ? `url(#round_${uid})` : undefined}>
         {/* ── Cosmos backdrop ── */}
         <Rect x={0} y={0} width={size} height={size} fill={`url(#cos_${uid})`} />
 
@@ -714,6 +829,27 @@ function WorldAvatarBase({ config, size, style, animate = false }: WorldAvatarPr
         )}
         {cosmosStyle === 'sunrise' && (
           <Circle cx={cx} cy={size * 1.02} r={size * 0.5} fill="#ffd27a" fillOpacity={0.55} />
+        )}
+        {cosmosStyle === 'st_aurorastorm' && (
+          <>
+            {stormBands.map((bd, i) => (
+              <Path
+                key={`as${i}`}
+                d={`M${-size * 0.1},${bd.y} q${size * 0.3},${-size * 0.14} ${size * 0.55},0 q${size * 0.3},${size * 0.14} ${size * 0.6},0 l0,${size * 0.09} q${-size * 0.3},${size * 0.14} ${-size * 0.6},0 q${-size * 0.25},${-size * 0.14} ${-size * 0.55},0 Z`}
+                fill={bd.color}
+                fillOpacity={0.4 + 0.18 * pulse}
+              />
+            ))}
+          </>
+        )}
+        {cosmosStyle === 'st_embersky' && (
+          <>
+            <Ellipse cx={cx} cy={size * 1.05} rx={size * 0.7} ry={size * 0.4} fill="#c0341a" fillOpacity={0.5} />
+            <Ellipse cx={cx} cy={size * 1.08} rx={size * 0.42} ry={size * 0.26} fill="#ff8a3a" fillOpacity={0.5} />
+            {emberSpecks.map((e, i) => (
+              <Circle key={`es${i}`} cx={e.x} cy={e.y} r={e.r} fill="#ff9a3a" fillOpacity={e.o} />
+            ))}
+          </>
         )}
         {cosmosStyle === 'galaxy' && (
           <>
@@ -858,6 +994,18 @@ function WorldAvatarBase({ config, size, style, animate = false }: WorldAvatarPr
             <Circle key={`sd${i}`} cx={p.x} cy={p.y} r={p.rad} fill={gs.cyber ? '#3af0a0' : '#5affd8'} fillOpacity={p.o} />
           ))}
 
+          {/* story-exclusive: fractured rifts (glow under + bright core) */}
+          {gs.rift && surfaceDeco.rifts.map((d, i) => (
+            <G key={`rf${i}`}>
+              <Path d={d} fill="none" stroke={gs.riftColor} strokeWidth={3.2} strokeOpacity={0.28} strokeLinecap="round" strokeLinejoin="round" />
+              <Path d={d} fill="none" stroke="#fff2c8" strokeWidth={1} strokeOpacity={0.9} strokeLinecap="round" strokeLinejoin="round" />
+            </G>
+          ))}
+          {/* story-exclusive: galaxy stars */}
+          {gs.galaxy && surfaceDeco.galaxyDots.map((p, i) => (
+            <Circle key={`gx${i}`} cx={p.x} cy={p.y} r={p.rad} fill={gs.galaxyColor} fillOpacity={p.o} />
+          ))}
+
           {/* night-side city lights — v2: soft urban halo under each dot */}
           {cityDots.map((p, i) => (
             <G key={`c${i}`}>
@@ -896,6 +1044,25 @@ function WorldAvatarBase({ config, size, style, animate = false }: WorldAvatarPr
         <Circle cx={cx} cy={cy} r={r} fill="none" stroke={shade(gs.ocean[0], 0.3)} strokeWidth={1.2} strokeOpacity={0.5} />
         <Circle cx={cx - r * 0.27} cy={cy - r * 0.3} r={r * 0.18} fill="white" fillOpacity={gs.terminator ? 0.3 : 0.22} />
 
+        {/* story-exclusive: a golden crown resting on the crowned world */}
+        {gs.crown && (() => {
+          const cw = r * 0.9, cyTop = cy - r * 0.62, bh = r * 0.34;
+          const px = (u: number) => cx + u * cw;
+          const py = (u: number) => cyTop - u * bh;
+          return (
+            <G>
+              <Path
+                d={`M${px(-0.5)},${py(0)} L${px(-0.34)},${py(0.9)} L${px(-0.17)},${py(0.28)} L${px(0)},${py(1.05)} L${px(0.17)},${py(0.28)} L${px(0.34)},${py(0.9)} L${px(0.5)},${py(0)} Z`}
+                fill="#ffcf4a" stroke="#8a5a12" strokeWidth={1} strokeLinejoin="round"
+              />
+              <Rect x={px(-0.5)} y={py(0)} width={cw} height={bh * 0.28} fill="#e0a93a" stroke="#8a5a12" strokeWidth={1} />
+              <Circle cx={px(-0.34)} cy={py(0.95)} r={r * 0.05} fill="#c0341a" />
+              <Circle cx={px(0)} cy={py(1.12)} r={r * 0.055} fill="#3a7bd0" />
+              <Circle cx={px(0.34)} cy={py(0.95)} r={r * 0.05} fill="#2a8a4f" />
+            </G>
+          );
+        })()}
+
         {/* ── Emblem — a landmark planted on the globe at its real country ── */}
         {emblem && emblem.id !== 'emblem_none' && (
           <>
@@ -921,6 +1088,7 @@ function WorldAvatarBase({ config, size, style, animate = false }: WorldAvatarPr
             </G>
           );
         })()}
+        </G>
       </Svg>
     </View>
   );

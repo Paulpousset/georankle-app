@@ -21,7 +21,7 @@ import { log } from './log';
 import { supabase } from './supabase';
 
 export type PendingOp =
-  | { id: string; type: 'coins'; gameMode: string; ts: number }
+  | { id: string; type: 'coins'; gameMode: string; score: number; ts: number }
   | {
       id: string;
       type: 'daily';
@@ -30,12 +30,14 @@ export type PendingOp =
       score: number;
       grid: string | null;
       ts: number;
-    };
+    }
+  | { id: string; type: 'story-level'; level: number; score: number; stars: number; ts: number };
 
 /** Op shape as enqueued by callers (id/ts are filled in here). */
 export type NewOp =
-  | { type: 'coins'; gameMode: string }
-  | { type: 'daily'; date: string; mode: string; score: number; grid: string | null };
+  | { type: 'coins'; gameMode: string; score: number }
+  | { type: 'daily'; date: string; mode: string; score: number; grid: string | null }
+  | { type: 'story-level'; level: number; score: number; stars: number };
 
 const STORAGE_KEY = 'sync:queue';
 
@@ -85,9 +87,13 @@ function dedupe(ops: PendingOp[]): PendingOp[] {
   const out: PendingOp[] = [];
   for (const op of ops) {
     if (op.type === 'coins') {
-      const existing = out.find((o) => o.type === 'coins' && o.gameMode === op.gameMode);
+      const existing = out.find(
+        (o) => o.type === 'coins' && o.gameMode === op.gameMode,
+      ) as Extract<PendingOp, { type: 'coins' }> | undefined;
       if (!existing) out.push(op);
-    } else {
+      // Keep the best-scoring attempt so the retry credits the higher reward.
+      else if (op.score > existing.score) existing.score = op.score;
+    } else if (op.type === 'daily') {
       const existing = out.find(
         (o) => o.type === 'daily' && o.date === op.date && o.mode === op.mode,
       ) as Extract<PendingOp, { type: 'daily' }> | undefined;
@@ -95,6 +101,17 @@ function dedupe(ops: PendingOp[]): PendingOp[] {
       else if (op.score > existing.score) {
         existing.score = op.score;
         existing.grid = op.grid;
+      }
+    } else {
+      // story-level: at most one op per level, keeping the best score/stars
+      // (the RPC is idempotent per (user, level) and keeps the max anyway).
+      const existing = out.find(
+        (o) => o.type === 'story-level' && o.level === op.level,
+      ) as Extract<PendingOp, { type: 'story-level' }> | undefined;
+      if (!existing) out.push(op);
+      else {
+        existing.score = Math.max(existing.score, op.score);
+        existing.stars = Math.max(existing.stars, op.stars);
       }
     }
   }
@@ -124,15 +141,27 @@ type ReplayOutcome = 'ok' | 'retry' | 'drop';
 /** Replay one op against its RPC. */
 async function replay(op: PendingOp): Promise<ReplayOutcome> {
   try {
-    const { error } =
-      op.type === 'coins'
-        ? await supabase.rpc('award_solo_coins', { p_game_mode: op.gameMode })
-        : await supabase.rpc('complete_daily', {
-            p_date: op.date,
-            p_mode: op.mode,
-            p_score: op.score,
-            p_grid: op.grid ?? '',
-          });
+    let error;
+    if (op.type === 'coins') {
+      // `op.score` may be absent on ops queued by a pre-scoring app version.
+      ({ error } = await supabase.rpc('award_solo_coins', {
+        p_game_mode: op.gameMode,
+        p_score: op.score ?? 0,
+      }));
+    } else if (op.type === 'daily') {
+      ({ error } = await supabase.rpc('complete_daily', {
+        p_date: op.date,
+        p_mode: op.mode,
+        p_score: op.score,
+        p_grid: op.grid ?? '',
+      }));
+    } else {
+      ({ error } = await supabase.rpc('complete_story_level', {
+        p_level: op.level,
+        p_score: op.score,
+        p_stars: op.stars,
+      }));
+    }
     if (!error) return 'ok';
     if (isPermanentRpcError(error)) {
       log.error('syncQueue: dropping permanently rejected op', error, op);

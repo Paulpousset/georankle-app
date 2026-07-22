@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, ScrollView, Share, Text, TouchableOpacity, View } from 'react-native';
+import { AppState, Linking, Platform, ScrollView, Share, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import {
@@ -38,6 +38,8 @@ import {
   type DailyState,
 } from '../lib/daily';
 import { buildShareMessage } from '../lib/share';
+import { getReferralInfo } from '../lib/referral';
+import { SITE_URL } from '../lib/links';
 import { track } from '../lib/analytics';
 import { commonStyles as styles } from '../theme/commonStyles';
 import { PALETTE, getColors } from '../theme/colors';
@@ -137,8 +139,10 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
   const streak = state?.streak ?? 0;
   const todayCount = state?.todayCount ?? 0;
 
-  const shareResult = (result: DailyResult) => {
-    Share.share({ message: buildShareMessage(result, streak, language) }).catch(() => {});
+  const shareResult = async (result: DailyResult) => {
+    // Carry the player's referral code so a shared result doubles as an invite.
+    const info = await getReferralInfo();
+    Share.share({ message: buildShareMessage(result, streak, language, info?.code) }).catch(() => {});
   };
 
   return (
@@ -362,6 +366,25 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
       {/* "How to play" card opened from a mode's "?" button — plain close, so
           consulting the rules here never marks the mode as seen. */}
       <ModeIntroCard mode={helpMode} onDismiss={() => setHelpMode(null)} />
+      {/* Web players (Wordle-style entry): one-tap path to install the full app. */}
+      {Platform.OS === 'web' ? (
+        <TouchableOpacity
+          onPress={() => Linking.openURL(`${SITE_URL}/invite.html`)}
+          style={{
+            marginHorizontal: 16,
+            marginBottom: 10,
+            paddingVertical: 12,
+            borderRadius: 12,
+            backgroundColor: c.accent,
+            alignItems: 'center',
+          }}
+          {...a11yButton(tr(language, "Installer l'app GeoG", 'Install the GeoG app'))}
+        >
+          <Text style={{ color: '#fff', fontFamily: FONTS.heading, fontSize: 15 }}>
+            {tr(language, "📲 Installe l'app — gratuit", '📲 Get the free app')}
+          </Text>
+        </TouchableOpacity>
+      ) : null}
       {!user ? (
         <Text
           style={{

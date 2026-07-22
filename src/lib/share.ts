@@ -9,9 +9,7 @@
 import type { Language } from '../types';
 import type { DailyResult } from './daily';
 import { dailyModeLabel, getPuzzleNumber } from './daily';
-
-/** Public link advertised in shared results. */
-const SHARE_LINK = 'georankle.app';
+import { SITE_DOMAIN, playLink } from './links';
 
 /** One-line score summary used when a mode ships no emoji grid yet. */
 function scoreLine(result: DailyResult, language: Language): string {
@@ -49,9 +47,10 @@ export function buildShareMessage(
   result: DailyResult,
   streak: number,
   language: Language,
+  refCode?: string | null,
 ): string {
   const puzzle = getPuzzleNumber(new Date(result.date + 'T00:00:00Z'));
-  const title = `🌍 GeoRankle — ${dailyModeLabel(result.mode, language)} #${puzzle}`;
+  const title = `🌍 GeoG — ${dailyModeLabel(result.mode, language)} #${puzzle}`;
 
   const body = result.grid
     ? `${result.grid}  ${scoreLine(result, language)}`
@@ -59,7 +58,11 @@ export function buildShareMessage(
 
   const lines = [title, body];
   if (streak > 1) lines.push(`🔥 ${tr(language, 'Série', 'Streak')} ${streak}`);
-  lines.push(SHARE_LINK);
+  // Call to action + an instant-play link: tapping it drops you straight into
+  // today's challenge in the browser (no install) — and carries the referral
+  // code so playing then installing credits both players.
+  lines.push(tr(language, 'À toi de faire mieux 👇', 'Beat my score 👇'));
+  lines.push(refCode ? playLink(refCode) : SITE_DOMAIN);
 
   return lines.join('\n');
 }

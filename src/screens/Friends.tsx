@@ -28,6 +28,7 @@ import { a11yButton, ICON_HIT_SLOP } from '../lib/a11y';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
+import { ReferralCard } from '../components/ReferralCard';
 
 interface FriendsProps {
   onBack: () => void;
@@ -346,6 +347,8 @@ export default function Friends({ onBack, onOpenPlayer, onRequestsChanged }: Fri
             <Ionicons name="search" size={24} color="#fff" />
           </TouchableOpacity>
         </View>
+
+        {!searchQuery && <ReferralCard />}
 
         {searchLoading && <ActivityIndicator style={{ margin: 20 }} color={c.accent} />}
 

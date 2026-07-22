@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light" />
+  <title>GeoGames — Adresse confirmée</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      background-color: #e8d9b8;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      color: #2c1810;
+    }
+    .card {
+      width: 100%;
+      max-width: 480px;
+      background-color: #f8f2e3;
+      border: 1px solid #c4a87a;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 12px 32px rgba(44, 24, 16, 0.12);
+    }
+    .header {
+      background-color: #2a6e3f;
+      padding: 28px 24px;
+      text-align: center;
+    }
+    .header .globe { font-size: 40px; line-height: 1; }
+    .header .brand {
+      margin-top: 8px;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f2e8d0;
+    }
+    .header .tagline {
+      margin-top: 4px;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #bcd9c4;
+    }
+    .body { padding: 36px 32px 32px; text-align: center; }
+    .check {
+      width: 76px;
+      height: 76px;
+      margin: 0 auto 20px;
+      border-radius: 50%;
+      background-color: #2a6e3f;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .check svg { width: 40px; height: 40px; }
+    h1 { margin: 0 0 12px; font-size: 24px; line-height: 1.3; }
+    p { margin: 0 0 8px; font-size: 16px; line-height: 1.6; color: #4a3420; }
+    .sub { color: #7a5c38; font-size: 14px; margin-top: 16px; }
+    .en { margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2d3b3; }
+    .en h1 { font-size: 18px; }
+    .en p { font-size: 14px; }
+    .hidden { display: none; }
+    .error .check { background-color: #c04a1a; }
+    .error .header .globe { opacity: 0.9; }
+  </style>
+</head>
+<body>
+  <main class="card" id="card">
+    <div class="header">
+      <div class="globe">🌍</div>
+      <div class="brand">GeoGames</div>
+      <div class="tagline">Le monde à portée de jeu</div>
+    </div>
+
+    <!-- Succès -->
+    <div class="body" id="success">
+      <div class="check">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 12.5l5 5L20 6.5" stroke="#f2e8d0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <h1>C'est bon, votre adresse est confirmée&nbsp;! 🎉</h1>
+      <p>Votre compte GeoGames est maintenant activé.</p>
+      <p>Vous pouvez fermer cet onglet et retourner dans l'application pour vous connecter.</p>
+      <p class="sub">Bon voyage autour du monde&nbsp;! 🧭</p>
+
+      <div class="en">
+        <h1>You're all set! 🎉</h1>
+        <p>Your GeoGames account is now active. You can close this tab and open the app to sign in.</p>
+      </div>
+    </div>
+
+    <!-- Erreur (lien expiré / invalide) -->
+    <div class="body hidden" id="error">
+      <div class="check">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 7v6M12 16.5v.5" stroke="#f2e8d0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="12" cy="12" r="9" stroke="#f2e8d0" stroke-width="2.2"/>
+        </svg>
+      </div>
+      <h1>Lien expiré ou déjà utilisé</h1>
+      <p>Ce lien de confirmation n'est plus valide. Ouvrez l'application et demandez un nouvel e-mail de confirmation.</p>
+      <div class="en">
+        <h1>Link expired or already used</h1>
+        <p>This confirmation link is no longer valid. Open the app and request a new confirmation email.</p>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Supabase renvoie les erreurs dans le hash (#error=...) ou la query (?error=...).
+    (function () {
+      var hash = window.location.hash.slice(1);
+      var query = window.location.search.slice(1);
+      var params = new URLSearchParams(hash + '&' + query);
+      if (params.get('error') || params.get('error_code') || params.get('error_description')) {
+        document.getElementById('card').classList.add('error');
+        document.getElementById('success').classList.add('hidden');
+        document.getElementById('error').classList.remove('hidden');
+      }
+    })();
+  </script>
+</body>
+</html>

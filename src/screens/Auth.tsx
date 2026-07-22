@@ -1,5 +1,5 @@
 import { showAlert } from '../lib/alert';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
@@ -8,7 +8,20 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { LayoutGrid, LogIn, Lock, Mail, User, UserPlus, Zap } from 'lucide-react-native';
+import {
+  ArrowLeft,
+  Coins,
+  Globe2,
+  KeyRound,
+  LayoutGrid,
+  LogIn,
+  Lock,
+  Mail,
+  User,
+  UserPlus,
+  Users,
+  Zap,
+} from 'lucide-react-native';
 
 import { track } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
@@ -27,14 +40,19 @@ import { FONTS } from '../theme/typography';
 import { PALETTE } from '../theme/colors';
 import type { Language } from '../types';
 
-type Mode = 'login' | 'signup' | 'profile';
+type Mode = 'login' | 'signup' | 'forgot' | 'profile';
+
+/** Where the password-reset email link sends the user to set a new password. */
+const RESET_REDIRECT_URL = 'https://playgeog.com/reset-password.html';
 
 interface AuthProps {
   onAuthSuccess: () => void;
   language: Language;
+  /** Which screen to open on first mount (banner CTA opens signup). */
+  initialMode?: 'login' | 'signup';
 }
 
-const Auth = ({ onAuthSuccess, language }: AuthProps) => {
+const Auth = ({ onAuthSuccess, language, initialMode = 'login' }: AuthProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -42,10 +60,12 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
   const [bestClassic, setBestClassic] = useState<number | null>(null);
   const [bestStreak, setBestStreak] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState<Mode>('login');
+  const [resetSent, setResetSent] = useState(false);
+  const [mode, setMode] = useState<Mode>(initialMode);
 
   const passwordRef = useRef<TextInput>(null);
   const confirmRef = useRef<TextInput>(null);
+  const usernameRef = useRef<TextInput>(null);
 
   // Live inline validation. Helpers return null for an empty field; `submitted`
   // forces the email/password "required" feedback after a submit attempt.
@@ -59,6 +79,7 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
   const canSubmitLogin = isValidEmail(email) && password.length > 0;
   const canSubmitSignup =
     isValidEmail(email) &&
+    isValidUsername(username) &&
     password.length > 0 &&
     passwordErr === null &&
     password === confirmPassword &&
@@ -111,31 +132,61 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
       email: 'Email',
       password: 'Mot de passe',
       confirmPassword: 'Confirmer le mot de passe',
+      username: 'Pseudo',
       login: 'Se connecter',
       signup: "S'inscrire",
       noAccount: "Pas de compte ? S'inscrire",
       haveAccount: 'Déjà un compte ? Se connecter',
+      forgot: 'Mot de passe oublié ?',
+      resetTitle: 'Mot de passe oublié',
+      resetIntro:
+        'Saisis ton email : on t’envoie un lien pour choisir un nouveau mot de passe.',
+      sendReset: 'Envoyer le lien',
+      resetSentTitle: 'Email envoyé !',
+      resetSentBody:
+        'Vérifie ta boîte de réception (et les spams) pour réinitialiser ton mot de passe.',
+      backToLogin: 'Retour à la connexion',
       error: 'Erreur',
       success: 'Succès',
       checkEmail: "Vérifiez vos emails pour confirmer l'inscription !",
       passwordsDontMatch: 'Les mots de passe ne correspondent pas',
       invalidEmail: 'Adresse email invalide',
       invalidUsername: 'Pseudo invalide',
+      joinTitle: 'Rejoins GeoGames',
+      benefitsTitle: 'Crée ton compte pour :',
+      benefit1: 'Sauvegarder ta progression et tes records',
+      benefit2: 'Jouer en ligne en 1v1 et multijoueur',
+      benefit3: 'Gagner des pièces et débloquer la boutique',
+      benefit4: 'Te faire des amis et grimper au classement',
     },
     en: {
       email: 'Email',
       password: 'Password',
       confirmPassword: 'Confirm Password',
+      username: 'Username',
       login: 'Login',
       signup: 'Sign Up',
       noAccount: "Don't have an account? Sign up",
       haveAccount: 'Already have an account? Login',
+      forgot: 'Forgot password?',
+      resetTitle: 'Forgot password',
+      resetIntro: 'Enter your email and we’ll send you a link to choose a new password.',
+      sendReset: 'Send link',
+      resetSentTitle: 'Email sent!',
+      resetSentBody: 'Check your inbox (and spam) to reset your password.',
+      backToLogin: 'Back to login',
       error: 'Error',
       success: 'Success',
       checkEmail: 'Check your email for confirmation link!',
       passwordsDontMatch: 'Passwords do not match',
       invalidEmail: 'Invalid email address',
       invalidUsername: 'Invalid username',
+      joinTitle: 'Join GeoGames',
+      benefitsTitle: 'Create an account to:',
+      benefit1: 'Save your progress and records',
+      benefit2: 'Play online 1v1 and multiplayer',
+      benefit3: 'Earn coins and unlock the shop',
+      benefit4: 'Add friends and climb the leaderboard',
     },
   }[language];
 
@@ -187,9 +238,34 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
     setLoading(false);
   }
 
+  async function sendPasswordReset() {
+    if (!isValidEmail(email)) {
+      showAlert(t.error, t.invalidEmail);
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: RESET_REDIRECT_URL,
+    });
+    setLoading(false);
+    if (error) {
+      log.error('Password reset error:', error);
+      showAlert(t.error, error.message);
+      return;
+    }
+    // Always land on the confirmation screen — don't reveal whether the address
+    // has an account (avoids leaking which emails are registered).
+    track('password_reset_requested');
+    setResetSent(true);
+  }
+
   async function signUpWithEmail() {
     if (!isValidEmail(email)) {
       showAlert(t.error, t.invalidEmail);
+      return;
+    }
+    if (!isValidUsername(username)) {
+      showAlert(t.error, usernameErr ?? t.invalidUsername);
       return;
     }
     const pwErr = passwordError(language, password);
@@ -203,16 +279,25 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
     }
 
     setLoading(true);
+    const trimmedUsername = username.trim();
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
+      // Stash the chosen username in user metadata so it survives the
+      // email-confirmation round-trip; the profiles row is written below (session
+      // present) or by the UsernameGate right after the confirmed first login.
+      options: { data: { username: trimmedUsername } },
     });
 
     if (error) {
       log.error('Signup error details:', error);
       showAlert(t.error, error.message);
     } else if (data?.session) {
-      // Email confirmation disabled: the session exists, log in directly.
+      // Email confirmation disabled: the session exists, persist the username now.
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({ id: data.session.user.id, username: trimmedUsername, updated_at: new Date().toISOString() });
+      if (profileError) log.error('Username upsert error:', profileError);
       track('signed_up');
       onAuthSuccess();
     } else {
@@ -324,9 +409,90 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
               <Text style={styles.buttonText}>{language === 'fr' ? 'Déconnexion' : 'Logout'}</Text>
             </TouchableOpacity>
           </View>
+        ) : mode === 'forgot' ? (
+          <View>
+            <Text style={styles.title}>{t.resetTitle}</Text>
+
+            {resetSent ? (
+              <>
+                <View style={styles.resetIconWrap}>
+                  <Mail size={32} color={PALETTE.forestGreen} />
+                </View>
+                <Text style={styles.resetSentTitle}>{t.resetSentTitle}</Text>
+                <Text style={styles.resetIntro}>{t.resetSentBody}</Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.resetIntro}>{t.resetIntro}</Text>
+
+                <View style={styles.inputContainer}>
+                  <Mail size={20} color={PALETTE.brown} style={styles.icon} />
+                  <TextInput
+                    onChangeText={setEmail}
+                    value={email}
+                    placeholder="email@address.com"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="email-address"
+                    textContentType="emailAddress"
+                    autoComplete="email"
+                    returnKeyType="done"
+                    maxLength={254}
+                    onSubmitEditing={sendPasswordReset}
+                    style={styles.input}
+                    placeholderTextColor={PALETTE.brownLight}
+                    accessibilityLabel={t.email}
+                  />
+                </View>
+                {emailErr && <Text style={styles.fieldError}>{emailErr}</Text>}
+
+                <TouchableOpacity
+                  style={[styles.button, (loading || !isValidEmail(email)) && styles.buttonDisabled]}
+                  onPress={sendPasswordReset}
+                  disabled={loading || !isValidEmail(email)}
+                  {...a11yButton(t.sendReset, {
+                    disabled: loading || !isValidEmail(email),
+                    busy: loading,
+                  })}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="white" />
+                  ) : (
+                    <>
+                      <KeyRound size={20} color="white" />
+                      <Text style={styles.buttonText}>{t.sendReset}</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
+
+            <TouchableOpacity
+              onPress={() => {
+                setResetSent(false);
+                setMode('login');
+              }}
+              style={styles.backRow}
+              {...a11yButton(t.backToLogin)}
+            >
+              <ArrowLeft size={16} color={PALETTE.vermilion} />
+              <Text style={styles.switchText}>{t.backToLogin}</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           <View>
-            <Text style={styles.title}>{mode === 'login' ? t.login : t.signup}</Text>
+            <Text style={styles.title}>{mode === 'login' ? t.login : t.joinTitle}</Text>
+
+            {/* Value proposition — shown at signup to convert non-registered players. */}
+            {mode === 'signup' && (
+              <View style={styles.benefits}>
+                <Text style={styles.benefitsTitle}>{t.benefitsTitle}</Text>
+                <Benefit icon={<LayoutGrid size={15} color={PALETTE.forestGreen} />} label={t.benefit1} />
+                <Benefit icon={<Globe2 size={15} color={PALETTE.oceanBlue} />} label={t.benefit2} />
+                <Benefit icon={<Coins size={15} color={PALETTE.sand} />} label={t.benefit3} />
+                <Benefit icon={<Users size={15} color={PALETTE.vermilion} />} label={t.benefit4} />
+              </View>
+            )}
 
             <View style={styles.inputContainer}>
               <Mail size={20} color={PALETTE.brown} style={styles.icon} />
@@ -341,7 +507,9 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
                 autoComplete="email"
                 returnKeyType="next"
                 maxLength={254}
-                onSubmitEditing={() => passwordRef.current?.focus()}
+                onSubmitEditing={() =>
+                  mode === 'signup' ? usernameRef.current?.focus() : passwordRef.current?.focus()
+                }
                 submitBehavior="submit"
                 style={styles.input}
                 placeholderTextColor={PALETTE.brownLight}
@@ -349,6 +517,31 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
               />
             </View>
             {emailErr && <Text style={styles.fieldError}>{emailErr}</Text>}
+
+            {/* Username is required at signup so no one is left "Anonymous Player". */}
+            {mode === 'signup' && (
+              <>
+                <View style={styles.inputContainer}>
+                  <User size={20} color={PALETTE.brown} style={styles.icon} />
+                  <TextInput
+                    ref={usernameRef}
+                    onChangeText={setUsername}
+                    value={username}
+                    placeholder={t.username}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    returnKeyType="next"
+                    maxLength={USERNAME_MAX}
+                    onSubmitEditing={() => passwordRef.current?.focus()}
+                    submitBehavior="submit"
+                    style={styles.input}
+                    placeholderTextColor={PALETTE.brownLight}
+                    accessibilityLabel={t.username}
+                  />
+                </View>
+                {usernameErr && <Text style={styles.fieldError}>{usernameErr}</Text>}
+              </>
+            )}
 
             <View style={styles.inputContainer}>
               <Lock size={20} color={PALETTE.brown} style={styles.icon} />
@@ -401,6 +594,20 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
               </>
             )}
 
+            {/* Forgot-password entry point — login only. */}
+            {mode === 'login' && (
+              <TouchableOpacity
+                onPress={() => {
+                  setResetSent(false);
+                  setMode('forgot');
+                }}
+                style={styles.forgotRow}
+                {...a11yButton(t.forgot)}
+              >
+                <Text style={styles.forgotText}>{t.forgot}</Text>
+              </TouchableOpacity>
+            )}
+
             <TouchableOpacity
               style={[styles.button, (loading || !canSubmit) && styles.buttonDisabled]}
               onPress={() => (mode === 'login' ? signInWithEmail() : signUpWithEmail())}
@@ -447,6 +654,16 @@ const Auth = ({ onAuthSuccess, language }: AuthProps) => {
     </View>
   );
 };
+
+/** A single benefit row in the signup value-proposition list. */
+function Benefit({ icon, label }: { icon: ReactNode; label: string }) {
+  return (
+    <View style={styles.benefitRow}>
+      <View style={styles.benefitIcon}>{icon}</View>
+      <Text style={styles.benefitText}>{label}</Text>
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
   container: { padding: 20, width: '100%', maxWidth: 400, alignSelf: 'center' },
@@ -502,6 +719,58 @@ const styles = StyleSheet.create({
   buttonDisabled: { opacity: 0.5 },
   buttonText: { color: 'white', fontSize: 16, fontFamily: FONTS.monoBold },
   switchText: { marginTop: 20, color: PALETTE.vermilion, textAlign: 'center', fontSize: 14, fontFamily: FONTS.mono },
+  // Forgot-password link, right-aligned above the login button.
+  forgotRow: { alignSelf: 'flex-end', marginTop: -4, marginBottom: 4, paddingVertical: 4 },
+  forgotText: { color: PALETTE.oceanBlue, fontSize: 13, fontFamily: FONTS.mono, textDecorationLine: 'underline' },
+  // Reset-password screen.
+  resetIntro: {
+    fontSize: 14,
+    fontFamily: FONTS.mono,
+    color: PALETTE.brown,
+    textAlign: 'center',
+    lineHeight: 21,
+    marginBottom: 20,
+  },
+  resetIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: PALETTE.parchment,
+    borderWidth: 1,
+    borderColor: PALETTE.tan,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  resetSentTitle: {
+    fontSize: 18,
+    fontFamily: FONTS.headingBlack,
+    color: PALETTE.forestGreen,
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  backRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 16 },
+  // Signup value proposition.
+  benefits: {
+    backgroundColor: PALETTE.parchment,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: PALETTE.tan,
+    padding: 14,
+    marginBottom: 18,
+    gap: 9,
+  },
+  benefitsTitle: {
+    fontSize: 12,
+    fontFamily: FONTS.monoBold,
+    color: PALETTE.sepia,
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  benefitRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  benefitIcon: { width: 20, alignItems: 'center' },
+  benefitText: { flex: 1, fontSize: 12.5, fontFamily: FONTS.mono, color: PALETTE.brown, lineHeight: 17 },
   statCard: {
     flex: 1,
     backgroundColor: PALETTE.parchment,

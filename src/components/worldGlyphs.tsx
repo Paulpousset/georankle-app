@@ -384,6 +384,61 @@ export function EmblemGlyph({ id, bx, by, h }: EmblemProps) {
       );
     }
 
+    // ── Mode Histoire : emblèmes EXCLUSIFS (héraldiques, sur la face par défaut) ──
+    case 'emblem_st_star': {
+      const G6 = '#e8c45a'; const ccy = by - h * 0.5;
+      const pts: [number, number][] = [];
+      for (let i = 0; i < 16; i++) { const a = i * Math.PI / 8 - Math.PI / 2; const rr = i % 2 ? 0.24 : 0.5; pts.push([Math.cos(a) * rr, 0.5 + Math.sin(a) * rr]); }
+      return (
+        <G>
+          <Circle cx={bx} cy={ccy} r={h * 0.58} fill="#ffe9a8" opacity={0.12} />
+          <Polygon points={poly(pts)} fill={G6} stroke="#8a5a12" strokeWidth={sw} strokeLinejoin="round" />
+          <Circle cx={bx} cy={ccy} r={h * 0.2} fill="#12203a" stroke={G6} strokeWidth={h * 0.022} />
+          <Circle cx={bx} cy={ccy} r={h * 0.06} fill="#c0341a" />
+        </G>
+      );
+    }
+    case 'emblem_st_summit': {
+      const R3 = '#c0341a';
+      return (
+        <G>
+          <Polygon points={poly([[-0.46, 0], [-0.06, 0.72], [0.1, 0.5], [0.46, 0]])} fill="#5a6b7a" stroke="#3f4c5a" strokeWidth={sw} strokeLinejoin="round" />
+          <Polygon points={poly([[-0.06, 0.72], [0.1, 0.5], [0.46, 0], [0.18, 0]])} fill="#455360" opacity={0.6} />
+          <Polygon points={poly([[-0.20, 0.42], [-0.06, 0.72], [0.05, 0.55], [-0.02, 0.48]])} fill="#eef4fa" />
+          <Line x1={X(-0.06)} y1={Y(0.72)} x2={X(-0.06)} y2={Y(1.2)} stroke="#8a5a12" strokeWidth={h * 0.028} strokeLinecap="round" />
+          <Polygon points={poly([[-0.06, 1.18], [0.3, 1.06], [-0.06, 0.92]])} fill={R3} stroke="#8a2a1e" strokeWidth={sw} strokeLinejoin="round" />
+        </G>
+      );
+    }
+    case 'emblem_st_worldtree': {
+      const TR = '#6a4a24', LEAF = ['#2e6e2a', '#357a2f', '#4fae5a'];
+      const canopy = [];
+      for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; const rr = h * (0.12 + (i % 3) * 0.05); canopy.push(<Circle key={i} cx={X(Math.cos(a) * 0.28)} cy={Y(1.0 + Math.sin(a) * 0.22)} r={rr} fill={LEAF[i % 3]} />); }
+      return (
+        <G>
+          <Circle cx={X(0)} cy={Y(1.0)} r={h * 0.42} fill="#1f6b3a" opacity={0.18} />
+          <Path d={`M${X(-0.05)},${Y(0)} L${X(-0.05)},${Y(0.78)} M${X(0.05)},${Y(0)} L${X(0.05)},${Y(0.78)} M${X(0)},${Y(0.5)} L${X(-0.22)},${Y(0.72)} M${X(0)},${Y(0.5)} L${X(0.22)},${Y(0.72)}`} stroke={TR} strokeWidth={h * 0.05} fill="none" strokeLinecap="round" />
+          {canopy}
+          <Path d={`M${X(-0.18)},${Y(0)} Q${X(0)},${Y(0.14)} ${X(0.18)},${Y(0)}`} stroke={TR} strokeWidth={h * 0.03} fill="none" opacity={0.6} />
+        </G>
+      );
+    }
+    case 'emblem_st_laurel': {
+      const branch = (dir: number) => Array.from({ length: 6 }).map((_, i) => {
+        const t = 0.1 + i * 0.15;
+        const bx2 = dir * (0.36 - t * 0.18), by2 = t;
+        const rot = dir > 0 ? -50 + i * 6 : 230 - i * 6;
+        return <Ellipse key={`${dir}${i}`} cx={X(bx2)} cy={Y(by2)} rx={h * 0.09} ry={h * 0.04} fill="#4fae5a" stroke="#2f7a3a" strokeWidth={sw * 0.8} rotation={rot} originX={X(bx2)} originY={Y(by2)} />;
+      });
+      return (
+        <G>
+          <Path d={`M${X(-0.34)},${Y(0)} Q${X(-0.2)},${Y(0.9)} ${X(0)},${Y(1.0)} Q${X(0.2)},${Y(0.9)} ${X(0.34)},${Y(0)}`} fill="none" stroke="#3f8a4a" strokeWidth={h * 0.02} />
+          {branch(-1)}{branch(1)}
+          <Polygon points={poly([[0, 1.28], [0.08, 1.02], [0, 0.78], [-0.08, 1.02]])} fill="#ffcf4a" stroke="#8a5a12" strokeWidth={sw} />
+        </G>
+      );
+    }
+
     case 'emblem_compass':
     default: {
       const ccy = by - h * 0.5; const G6 = '#e8c45a';
@@ -572,6 +627,43 @@ export function SatelliteGlyph({ id, cx, cy, s }: SatelliteProps) {
       );
     }
 
+    // ── Mode Histoire : satellites EXCLUSIFS ──
+    case 'sat_st_moon':
+      return (
+        <G>
+          <Circle cx={cx} cy={cy} r={s * 0.5} fill="#e2e4ec" />
+          <Path d={`M${X(0)},${Y(-0.5)} A${s * 0.5},${s * 0.5} 0 0 1 ${X(0)},${Y(0.5)} A${s * 0.32},${s * 0.5} 0 0 0 ${X(0)},${Y(-0.5)} Z`} fill="#c2c5d2" opacity={0.55} />
+          <Circle cx={X(-0.16)} cy={Y(-0.12)} r={s * 0.1} fill="#b3b6c4" />
+          <Circle cx={X(0.14)} cy={Y(0.16)} r={s * 0.07} fill="#bcbfcd" />
+          {/* golden trophy star */}
+          <Path d={`M${X(0)},${Y(-0.02)} l${s * 0.06},${s * 0.12} l${s * 0.13},${s * 0.01} l${-s * 0.1},${s * 0.09} l${s * 0.04},${s * 0.13} l${-s * 0.13},${-s * 0.07} l${-s * 0.13},${s * 0.07} l${s * 0.04},${-s * 0.13} l${-s * 0.1},${-s * 0.09} l${s * 0.13},${-s * 0.01} Z`} fill="#ffcf4a" stroke="#c99a1a" strokeWidth={s * 0.01} />
+        </G>
+      );
+    case 'sat_st_ship':
+      return (
+        <G>
+          {/* hull */}
+          <Path d={`M${X(-0.34)},${Y(-0.02)} L${X(0.34)},${Y(-0.02)} L${X(0.2)},${Y(0.24)} L${X(-0.2)},${Y(0.24)} Z`} fill="#8a5a2a" stroke="#5a3a1a" strokeWidth={s * 0.02} />
+          <Rect x={X(-0.34)} y={Y(0.02)} width={0.68 * s} height={0.05 * s} fill="#caa15a" />
+          {/* mast + sail */}
+          <Line x1={cx} y1={Y(0.24)} x2={cx} y2={Y(0.62)} stroke="#5a3a1a" strokeWidth={s * 0.03} />
+          <Path d={`M${X(0.02)},${Y(0.58)} Q${X(0.34)},${Y(0.4)} ${X(0.04)},${Y(0.26)} Z`} fill="#f0e8d8" stroke="#c4b898" strokeWidth={s * 0.012} />
+          <Path d={`M${X(-0.02)},${Y(0.56)} Q${X(-0.28)},${Y(0.4)} ${X(-0.04)},${Y(0.28)} Z`} fill="#dfe6ef" stroke="#c4b898" strokeWidth={s * 0.012} />
+          <Polygon points={poly([[0, 0.62], [0.14, 0.58], [0, 0.54]])} fill="#c0341a" />
+        </G>
+      );
+    case 'sat_st_comet':
+      return (
+        <G>
+          <Polygon points={poly([[0, 0], [1.55, -0.34], [1.75, 0.06], [1.2, 0.40]])} fill="#ffe9a8" fillOpacity={0.2} />
+          <Polygon points={poly([[0, 0], [1.35, -0.20], [1.5, 0.06], [1.05, 0.28]])} fill="#ffd97a" fillOpacity={0.4} />
+          <Polygon points={poly([[0, 0], [1.05, -0.09], [1.15, 0.05], [0.85, 0.17]])} fill="#fff2c8" fillOpacity={0.75} />
+          <Circle cx={cx} cy={cy} r={s * 0.32} fill="#ffe9a8" fillOpacity={0.5} />
+          <Circle cx={cx} cy={cy} r={s * 0.2} fill="#ffd700" />
+          <Circle cx={cx} cy={cy} r={s * 0.1} fill="#fffbe8" />
+        </G>
+      );
+
     case 'sat_comet':
     default:
       return (
@@ -595,10 +687,11 @@ export function satelliteOrient(id: string, aDeg: number): number {
     case 'sat_satellite': return aDeg - 90;   // dish faces Earth
     case 'sat_iss': return aDeg + 90;         // panels tangent
     case 'sat_comet': return aDeg - 90;       // tail trails motion
+    case 'sat_st_comet': return aDeg - 90;    // golden tail trails motion
     case 'sat_rocket': return aDeg + 180;     // nose along travel
     case 'sat_paperplane': return aDeg + 135; // nose (drawn at ~-45°) along travel
     case 'sat_shootingstar': return aDeg + 90; // tail (drawn at 180°) trails motion
-    default: return 0;                         // moon / balloon / bird / ufo stay upright
+    default: return 0;                         // moon / balloon / bird / ufo / trophy / ship stay upright
   }
 }
 
@@ -613,6 +706,8 @@ export function satelliteScale(id: string): number {
     case 'sat_shootingstar': return 0.85;
     case 'sat_paperplane': return 0.9;
     case 'sat_bird': return 0.95;
+    case 'sat_st_comet': return 0.82;
+    case 'sat_st_moon': return 0.9;
     default: return 1;
   }
 }
