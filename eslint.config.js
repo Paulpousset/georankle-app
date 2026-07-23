@@ -77,6 +77,7 @@ module.exports = [
         module: 'writable',
         process: 'readonly',
         console: 'readonly',
+        setTimeout: 'readonly',
         __dirname: 'readonly',
         document: 'readonly',
         window: 'readonly',

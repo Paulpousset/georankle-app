@@ -1,4 +1,11 @@
-import { parseReferralCode, referralLink, playLink, SITE_DOMAIN } from '../links';
+import {
+  leagueLink,
+  parseLeagueCode,
+  parseReferralCode,
+  referralLink,
+  playLink,
+  SITE_DOMAIN,
+} from '../links';
 
 describe('parseReferralCode', () => {
   it('extracts a code from the https invite link', () => {
@@ -33,5 +40,25 @@ describe('playLink', () => {
 
   it('a play link with a code still parses back to that code', () => {
     expect(parseReferralCode(playLink('A3F8C13E'))).toBe('A3F8C13E');
+  });
+});
+
+describe('leagueLink / parseLeagueCode', () => {
+  it('builds a join URL and round-trips the code, uppercased', () => {
+    expect(leagueLink('660B2111')).toBe(`https://${SITE_DOMAIN}/play?league=660B2111`);
+    expect(parseLeagueCode(leagueLink('660b2111'))).toBe('660B2111');
+    expect(parseLeagueCode('geog://play?league=660b2111')).toBe('660B2111');
+  });
+
+  it('league and referral params never cross-match', () => {
+    expect(parseReferralCode(leagueLink('660B2111'))).toBeNull();
+    expect(parseLeagueCode(playLink('A3F8C13E'))).toBeNull();
+    expect(parseLeagueCode(null)).toBeNull();
+  });
+
+  it('a single URL can carry both a referral and a league code', () => {
+    const url = `${leagueLink('660B2111')}&code=A3F8C13E`;
+    expect(parseLeagueCode(url)).toBe('660B2111');
+    expect(parseReferralCode(url)).toBe('A3F8C13E');
   });
 });

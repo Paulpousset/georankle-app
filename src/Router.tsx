@@ -27,6 +27,8 @@ import ChallengeQuiz from './screens/ChallengeQuiz';
 import ChallengeMatchmaking from './screens/ChallengeMatchmaking';
 import { getChallenge } from './data/challenges';
 import LocalParcours from './screens/LocalParcours';
+import LeagueHub from './screens/LeagueHub';
+import LeagueDetail from './screens/LeagueDetail';
 import Friends from './screens/Friends';
 import Profile from './screens/Profile';
 import PlayerProfile from './screens/PlayerProfile';
@@ -164,6 +166,32 @@ export function Router({
           user={user}
           onBack={popPage}
           onOpenPlayer={user ? openPlayer : undefined}
+        />
+      </SafeAreaProvider>
+    );
+  }
+
+  if (currentPage?.name === 'league' && user) {
+    return (
+      <SafeAreaProvider>
+        <LeagueHub
+          currentUserId={user.id}
+          onBack={popPage}
+          onOpenLeague={(league) => pushPage({ name: 'league-detail', league })}
+        />
+      </SafeAreaProvider>
+    );
+  }
+
+  if (currentPage?.name === 'league-detail' && user) {
+    return (
+      <SafeAreaProvider>
+        <LeagueDetail
+          league={currentPage.league}
+          currentUserId={user.id}
+          onBack={popPage}
+          onOpenPlayer={openPlayer}
+          onPlayDaily={(mode) => setDaily({ mode, date: getTodayUTC() })}
         />
       </SafeAreaProvider>
     );
@@ -569,6 +597,7 @@ export function Router({
         onPlayOnline={(mode) => pushPage({ name: 'matchmaking', mode })}
         onPlayCustomOnline={() => (user ? pushPage({ name: 'custom-matchmaking' }) : openAuth('login'))}
         onPlayRanked={() => (user ? pushPage({ name: 'ranked' }) : openAuth('login'))}
+        onOpenLeague={() => (user ? pushPage({ name: 'league' }) : openAuth('login'))}
         onOpenDaily={() => pushPage({ name: 'daily' })}
         onOpenStory={() => pushPage({ name: 'story' })}
         playType={playType}

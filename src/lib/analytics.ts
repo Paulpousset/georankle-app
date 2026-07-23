@@ -45,6 +45,13 @@ export type AnalyticsEvent =
   | 'daily_completed'
   | 'daily_shared'
   | 'daily_reminder_set'
+  // Leagues (friend groups over the daily challenge)
+  | 'league_opened'
+  | 'league_created'
+  | 'league_joined'
+  | 'league_left'
+  | 'league_invite_shared'
+  | 'league_reminder_set'
   // Story mode
   | 'story_opened'
   | 'story_level_started'

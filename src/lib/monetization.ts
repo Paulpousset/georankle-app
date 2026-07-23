@@ -26,6 +26,14 @@
  * it out so web bundles never touch it), and only after the flag check, so
  * nothing ad-related runs while the flag is off.
  *
+ * ── Web (AdSense) — INTEGRATED (2026-07-22) ──────────────────────────────────
+ * On web the same rewarded/interstitial entry points route to AdSense ad
+ * breaks (./adsWeb, Ad Placement API) instead of AdMob — same flags, same
+ * server-side claims, same interstitial gate. Web is ADDITIONALLY gated on the
+ * 'web_ads' flag so it goes live only once the AdSense site is approved,
+ * independently of mobile. Desktop also gets non-blocking side-rail display
+ * units (SideRailAds.web.tsx). Checklist: guide-pubs-web.md.
+ *
  * ⚠️ react-native-google-mobile-ads is pinned EXACTLY at 16.3.0: 16.4.0 pulls
  * play-services-ads 25.4.0 whose Kotlin metadata (2.3) can't be read by this
  * Expo SDK's Kotlin 2.1 toolchain — the Android build fails on
@@ -35,6 +43,7 @@
 import { Platform } from 'react-native';
 
 import { loadAdsSdk, type AdsSdk } from './adsSdk';
+import { initWebAds, showWebInterstitial, showWebRewardedAd, webAdsSupported } from './adsWeb';
 import { supabase } from './supabase';
 import { isFeatureEnabled } from './featureFlags';
 import { recordGameAndShouldShow } from './interstitialGate';
@@ -175,6 +184,11 @@ function loadAndShowAd(sdk: AdsSdk): Promise<boolean> {
  */
 export async function rewardedAdsAvailable(): Promise<boolean> {
   if (!(await isFeatureEnabled('rewarded_ads'))) return false;
+  if (Platform.OS === 'web') {
+    if (!webAdsSupported() || !(await isFeatureEnabled('web_ads'))) return false;
+    initWebAds(); // preload ad breaks so the first tap has an ad ready
+    return true;
+  }
   const sdk = loadAdsSdk();
   if (!sdk) return false;
   initAdsOnce(sdk).catch((e) => log.warn('ads SDK init failed', e));
@@ -209,6 +223,14 @@ export async function watchRewardedAd(): Promise<
   { earned: true } | { earned: false; reason: RewardedAdResult['reason'] }
 > {
   if (!(await isFeatureEnabled('rewarded_ads'))) return { earned: false, reason: 'disabled' };
+  if (Platform.OS === 'web') {
+    if (!webAdsSupported() || !(await isFeatureEnabled('web_ads'))) {
+      return { earned: false, reason: 'disabled' };
+    }
+    const outcome = await showWebRewardedAd();
+    if (outcome === 'viewed') return { earned: true };
+    return { earned: false, reason: outcome === 'dismissed' ? 'dismissed' : 'failed' };
+  }
   const sdk = loadAdsSdk();
   if (!sdk) return { earned: false, reason: 'not_implemented' };
   try {
@@ -317,8 +339,17 @@ function loadAndShowInterstitial(sdk: AdsSdk): Promise<void> {
  */
 export async function maybeShowInterstitial(): Promise<void> {
   if (!(await isFeatureEnabled('interstitial_ads'))) return;
+  // Web needs its own flag too — checked BEFORE the gate so an off switch
+  // doesn't burn gate credits.
+  const web = Platform.OS === 'web';
+  if (web && !(webAdsSupported() && (await isFeatureEnabled('web_ads')))) return;
   // Count the game & consult the gate BEFORE touching the SDK.
   if (!(await recordGameAndShouldShow())) return;
+  if (web) {
+    const shown = await showWebInterstitial();
+    track(shown ? 'interstitial_shown' : 'interstitial_failed', {});
+    return;
+  }
   const sdk = loadAdsSdk();
   if (!sdk) return;
   try {

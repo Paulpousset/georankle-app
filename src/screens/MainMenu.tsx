@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, ScrollView, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import {
-  ArrowLeft,
   BarChart3,
   CalendarDays,
   ChevronRight,
@@ -12,6 +11,7 @@ import {
   HelpCircle,
   Info,
   LayoutGrid,
+  Lock,
   LogIn,
   Map,
   Monitor,
@@ -32,6 +32,7 @@ import {
   Zap,
 } from 'lucide-react-native';
 import { AtlasFlame } from '../components/AtlasIcons';
+import { MenuGlobe } from '../components/MenuGlobe';
 import type { ComponentType } from 'react';
 
 import type { GameMode, MatchMode } from '../types';
@@ -43,6 +44,8 @@ import { tr } from '../i18n';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getLocalState } from '../lib/daily';
+import { getStorySnapshot } from '../lib/story';
+import { STORY_LEVEL_COUNT } from '../data/story';
 import { a11yButton, a11yImage, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
 import { NotificationDot } from '../components/NotificationDot';
@@ -157,7 +160,37 @@ function ModeCard({ icon: Icon, accent, tint, title, subtitle, isDarkMode, onPre
   );
 }
 
-interface PlayTypeCardProps {
+/** Seconds until the next daily challenge (UTC midnight). */
+function secondsToNextDaily(): number {
+  const now = new Date();
+  const next = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
+  return Math.max(0, Math.floor((next - now.getTime()) / 1000));
+}
+
+/** Live HH:MM:SS countdown to the next daily — isolated so the 1s tick only
+ *  re-renders this small block, never the whole menu. */
+function DailyCountdown({ color, labelColor, language }: { color: string; labelColor: string; language: 'fr' | 'en' }) {
+  const [left, setLeft] = useState(secondsToNextDaily);
+  useEffect(() => {
+    const id = setInterval(() => setLeft(secondsToNextDaily()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
+  const text = `${pad(Math.floor(left / 3600))}:${pad(Math.floor((left % 3600) / 60))}:${pad(left % 60)}`;
+  return (
+    <View
+      style={{ alignItems: 'center' }}
+      {...a11yImage(tr(language, `Prochain défi dans ${text}`, `Next challenge in ${text}`))}
+    >
+      <Text style={{ fontFamily: FONTS.monoBold, color, fontSize: 13, fontVariant: ['tabular-nums'] }}>{text}</Text>
+      <Text style={{ fontFamily: FONTS.mono, color: labelColor, fontSize: 7, letterSpacing: 1 }}>
+        {tr(language, 'PROCHAIN DÉFI', 'NEXT CHALLENGE')}
+      </Text>
+    </View>
+  );
+}
+
+interface ModeTileProps {
   icon: ComponentType<{ color: string; size: number }>;
   accent: string;
   tint: string;
@@ -165,11 +198,11 @@ interface PlayTypeCardProps {
   subtitle: string;
   isDarkMode: boolean;
   onPress: () => void;
-  /** Show a notification dot on the card (e.g. a pending online invite). */
-  notify?: boolean;
+  onHelp?: () => void;
 }
 
-function PlayTypeCard({ icon: Icon, accent, tint, title, subtitle, isDarkMode, onPress, notify = false }: PlayTypeCardProps) {
+/** Compact 2-column grid tile for the solo mode list. */
+function ModeTile({ icon: Icon, accent, tint, title, subtitle, isDarkMode, onPress, onHelp }: ModeTileProps) {
   const c = getColors(isDarkMode);
   const { language } = useLanguage();
   return (
@@ -179,30 +212,142 @@ function PlayTypeCard({ icon: Icon, accent, tint, title, subtitle, isDarkMode, o
         styles.countryCard,
         !isDarkMode && styles.countryCardLight,
         {
-          padding: 22,
-          alignItems: 'center',
-          gap: 10,
+          width: '48.4%',
+          padding: 13,
+          alignItems: 'flex-start',
+          gap: 8,
           borderBottomWidth: 3,
           borderBottomColor: accent,
         },
       ]}
-      {...a11yButton(title, { hint: tr(language, 'Choisir ce mode de jeu', 'Choose this play mode') })}
+      {...a11yButton(title, { hint: tr(language, 'Démarrer ce mode', 'Start this mode') })}
     >
-      <NotificationDot show={notify} />
-      <View style={{ backgroundColor: tint, padding: 16, borderRadius: 16 }}>
-        <Icon color={accent} size={32} />
+      {onHelp && (
+        <TouchableOpacity
+          onPress={onHelp}
+          hitSlop={ICON_HIT_SLOP}
+          style={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            width: 22,
+            height: 22,
+            borderRadius: 11,
+            borderWidth: 1,
+            borderColor: c.border,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          {...a11yButton(tr(language, `Comment jouer à ${title}`, `How to play ${title}`), {
+            hint: tr(language, 'Voir les règles de ce mode', 'See this mode’s rules'),
+          })}
+        >
+          <HelpCircle color={c.textFaint} size={13} />
+        </TouchableOpacity>
+      )}
+      <View style={{ backgroundColor: tint, padding: 9, borderRadius: 10 }}>
+        <Icon color={accent} size={20} />
       </View>
-      <Text
-        style={[
-          styles.countryName,
-          !isDarkMode && styles.countryNameLight,
-          { fontSize: 20, textAlign: 'center' },
-        ]}
-      >
-        {title}
-      </Text>
-      <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 10, textAlign: 'center' }}>{subtitle}</Text>
+      <View>
+        <Text style={[styles.countryName, !isDarkMode && styles.countryNameLight, { fontSize: 14.5, textAlign: 'left', marginBottom: 2 }]}>
+          {title}
+        </Text>
+        <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 8.5, lineHeight: 12 }}>{subtitle}</Text>
+      </View>
     </TouchableOpacity>
+  );
+}
+
+/** Segmented Solo / Local / En Ligne tab bar with a sliding thumb. */
+function PlayTabs({
+  index,
+  onSelect,
+  isDarkMode,
+  notifyOnline,
+}: {
+  index: number;
+  onSelect: (i: number) => void;
+  isDarkMode: boolean;
+  notifyOnline: boolean;
+}) {
+  const c = getColors(isDarkMode);
+  const { language } = useLanguage();
+  const [w, setW] = useState(0);
+  const [slideX] = useState(() => new Animated.Value(0));
+  const thumbColor = isDarkMode ? PALETTE.chartBlue : PALETTE.sepia;
+
+  useEffect(() => {
+    Animated.timing(slideX, {
+      toValue: (index * w) / 3,
+      duration: 220,
+      useNativeDriver: true,
+    }).start();
+  }, [index, w, slideX]);
+
+  const tabs: { icon: ComponentType<{ color: string; size: number }>; label: string; notify?: boolean }[] = [
+    { icon: User, label: 'Solo' },
+    { icon: Monitor, label: 'Local' },
+    { icon: Wifi, label: tr(language, 'En Ligne', 'Online'), notify: notifyOnline },
+  ];
+
+  return (
+    <View
+      onLayout={(e) => setW(e.nativeEvent.layout.width - 8)}
+      style={{
+        width: '100%',
+        maxWidth: 400,
+        flexDirection: 'row',
+        borderWidth: 1.5,
+        borderColor: c.border,
+        borderRadius: 14,
+        backgroundColor: isDarkMode ? c.card : PALETTE.parchmentDark,
+        padding: 4,
+        position: 'relative',
+      }}
+    >
+      {w > 0 && (
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: 4,
+            bottom: 4,
+            left: 4,
+            width: w / 3,
+            borderRadius: 10,
+            backgroundColor: thumbColor,
+            transform: [{ translateX: slideX }],
+          }}
+        />
+      )}
+      {tabs.map((t, i) => {
+        const active = i === index;
+        const TabIcon = t.icon;
+        const color = active ? '#fff' : c.textMuted;
+        return (
+          <TouchableOpacity
+            key={t.label}
+            onPress={() => onSelect(i)}
+            style={{
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              paddingVertical: 10,
+            }}
+            {...a11yButton(t.label, {
+              hint: tr(language, 'Afficher cet onglet', 'Show this tab'),
+              selected: active,
+            })}
+          >
+            <TabIcon color={color} size={15} />
+            <Text style={{ fontFamily: FONTS.monoBold, color, fontSize: 12 }}>{t.label}</Text>
+            <NotificationDot show={!!t.notify && !active} />
+          </TouchableOpacity>
+        );
+      })}
+    </View>
   );
 }
 
@@ -219,6 +364,8 @@ interface MainMenuProps {
   onPlayOnline: (mode: MatchMode) => void;
   onPlayCustomOnline: () => void;
   onPlayRanked: () => void;
+  /** Opens the friend-leagues hub (3 daily challenges, private leaderboards). */
+  onOpenLeague: () => void;
   onOpenDaily: () => void;
   onOpenStory: () => void;
   /** Which play-type sub-list is open (null = the play-type chooser). Lifted to
@@ -243,6 +390,7 @@ export function MainMenu({
   onPlayOnline,
   onPlayCustomOnline,
   onPlayRanked,
+  onOpenLeague,
   onOpenDaily,
   onOpenStory,
   playType,
@@ -261,6 +409,31 @@ export function MainMenu({
   useEffect(() => {
     getLocalState().then((s) => setDailyStreak(s.streak));
   }, []);
+
+  // Story progress for the campaign card — local snapshot, display only.
+  // `user: null` reads the device cache, which recordLevel keeps in sync.
+  const [storyLevel, setStoryLevel] = useState(0);
+  const [storyStars, setStoryStars] = useState(0);
+  useEffect(() => {
+    let mounted = true;
+    getStorySnapshot(null).then((s) => {
+      if (!mounted) return;
+      setStoryLevel(s.maxLevel);
+      setStoryStars(Object.values(s.stars).reduce((sum, n) => sum + n, 0));
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Decorative globe sizing — planet rising behind the title.
+  const { width: windowWidth } = useWindowDimensions();
+  const globeSize = Math.min(windowWidth * 0.7, 300);
+
+  // Tab index mapping: `playType` stays lifted in App (back gesture resets it
+  // to null, which shows the default Solo tab again).
+  const tabIndex = playType === 'local' ? 1 : playType === 'online' ? 2 : 0;
+  const selectTab = (i: number) => setPlayType(i === 1 ? 'local' : i === 2 ? 'online' : 'solo');
 
   // Which mode's "how to play" card is open from a "?" button (null = none).
   // Shown on demand from the menu, so it does NOT mark the mode as seen.
@@ -346,63 +519,45 @@ export function MainMenu({
           borderBottomColor: c.border,
         }}
       >
-        {playType ? (
-          <TouchableOpacity
-            onPress={() => setPlayType(null)}
-            style={[
-              styles.refreshBtn,
-              !isDarkMode && styles.refreshBtnLight,
-              { padding: 10, flexDirection: 'row', alignItems: 'center', gap: 6 },
-            ]}
-            hitSlop={ICON_HIT_SLOP}
-            {...a11yButton(tr(language, 'Retour', 'Back'))}
-          >
-            <ArrowLeft color={iconColor} size={18} />
-            <Text style={{ fontFamily: FONTS.mono, color: iconColor, fontSize: 11 }}>
-              {tr(language, 'Retour', 'Back')}
-            </Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            ref={profileRef}
-            onPress={onOpenAuth}
-            style={[
-              styles.refreshBtn,
-              !isDarkMode && styles.refreshBtnLight,
-              { padding: 10, flexDirection: 'row', alignItems: 'center', gap: 8 },
-            ]}
-            {...a11yButton(
-              isAuthenticated ? tr(language, 'Profil', 'Profile') : tr(language, 'Connexion', 'Login'),
-            )}
-          >
-            {isAuthenticated ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <View
-                  style={{
-                    width: 24,
-                    height: 24,
-                    borderRadius: 12,
-                    backgroundColor: accent,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <User color="white" size={14} />
-                </View>
-                <Text style={{ fontFamily: FONTS.mono, color: iconColor, fontSize: 11 }}>
-                  {tr(language, 'Profil', 'Profile')}
-                </Text>
+        <TouchableOpacity
+          ref={profileRef}
+          onPress={onOpenAuth}
+          style={[
+            styles.refreshBtn,
+            !isDarkMode && styles.refreshBtnLight,
+            { padding: 10, flexDirection: 'row', alignItems: 'center', gap: 8 },
+          ]}
+          {...a11yButton(
+            isAuthenticated ? tr(language, 'Profil', 'Profile') : tr(language, 'Connexion', 'Login'),
+          )}
+        >
+          {isAuthenticated ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <View
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 12,
+                  backgroundColor: accent,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <User color="white" size={14} />
               </View>
-            ) : (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <LogIn color={iconColor} size={18} />
-                <Text style={{ fontFamily: FONTS.mono, color: iconColor, fontSize: 11 }}>
-                  {tr(language, 'Connexion', 'Login')}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        )}
+              <Text style={{ fontFamily: FONTS.mono, color: iconColor, fontSize: 11 }}>
+                {tr(language, 'Profil', 'Profile')}
+              </Text>
+            </View>
+          ) : (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <LogIn color={iconColor} size={18} />
+              <Text style={{ fontFamily: FONTS.mono, color: iconColor, fontSize: 11 }}>
+                {tr(language, 'Connexion', 'Login')}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
 
         <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
           <TouchableOpacity
@@ -477,13 +632,19 @@ export function MainMenu({
         contentContainerStyle={{
           alignItems: 'center',
           paddingHorizontal: 20,
-          paddingTop: 30,
+          paddingTop: 0,
           paddingBottom: 60,
         }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero title block */}
-        <View style={{ alignItems: 'center', marginBottom: 8, position: 'relative' }}>
+        {/* Hero: the planet rises behind the title (echoes the landing page). */}
+        <MenuGlobe
+          size={globeSize}
+          isDarkMode={isDarkMode}
+          backgroundColor={c.background}
+          style={{ alignSelf: 'center' }}
+        />
+        <View style={{ alignItems: 'center', marginTop: -globeSize * 0.28, marginBottom: 8, position: 'relative' }}>
           <View style={{ position: 'absolute', right: -50, top: 0, opacity: 0.5 }}>
             <CompassRose size={44} color={c.border} />
           </View>
@@ -638,6 +799,7 @@ export function MainMenu({
               </Text>
             </View>
           </View>
+          <DailyCountdown color={c.text} labelColor={c.textFaint} language={language} />
           {dailyStreak > 0 ? (
             <View
               style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}
@@ -688,59 +850,82 @@ export function MainMenu({
               {tr(language, 'Mode Histoire', 'Story Mode')}
             </Text>
             <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 10 }}>
-              {tr(language, '300 niveaux, de plus en plus durs', '300 levels, harder and harder')}
+              {storyLevel > 0
+                ? tr(
+                    language,
+                    `Niveau ${Math.min(storyLevel + 1, STORY_LEVEL_COUNT)} / ${STORY_LEVEL_COUNT}`,
+                    `Level ${Math.min(storyLevel + 1, STORY_LEVEL_COUNT)} / ${STORY_LEVEL_COUNT}`,
+                  )
+                : tr(language, `${STORY_LEVEL_COUNT} niveaux, de plus en plus durs`, `${STORY_LEVEL_COUNT} levels, harder and harder`)}
             </Text>
+            {storyLevel > 0 && (
+              <View
+                style={{
+                  marginTop: 7,
+                  height: 5,
+                  borderRadius: 3,
+                  backgroundColor: isDarkMode ? 'rgba(74,158,255,0.18)' : 'rgba(26,74,122,0.14)',
+                  overflow: 'hidden',
+                }}
+                {...a11yImage(
+                  tr(
+                    language,
+                    `Progression : niveau ${storyLevel} sur ${STORY_LEVEL_COUNT}`,
+                    `Progress: level ${storyLevel} of ${STORY_LEVEL_COUNT}`,
+                  ),
+                )}
+              >
+                <View
+                  style={{
+                    height: '100%',
+                    width: `${Math.min(100, (storyLevel / STORY_LEVEL_COUNT) * 100)}%`,
+                    borderRadius: 3,
+                    backgroundColor: isDarkMode ? PALETTE.chartBlue : PALETTE.oceanBlue,
+                  }}
+                />
+              </View>
+            )}
           </View>
-          <View style={{ backgroundColor: PALETTE.oceanBlue, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 }}>
-            <Text style={{ fontFamily: FONTS.monoBold, color: '#fff', fontSize: 9 }}>
-              {tr(language, 'NOUVEAU', 'NEW')}
+          {storyLevel > 0 ? (
+            <Text
+              style={{ fontFamily: FONTS.monoBold, color: PALETTE.sand, fontSize: 12 }}
+              {...a11yImage(tr(language, `${storyStars} étoiles`, `${storyStars} stars`))}
+            >
+              ★ {storyStars}
             </Text>
-          </View>
+          ) : (
+            <View style={{ backgroundColor: PALETTE.oceanBlue, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 }}>
+              <Text style={{ fontFamily: FONTS.monoBold, color: '#fff', fontSize: 9 }}>
+                {tr(language, 'NOUVEAU', 'NEW')}
+              </Text>
+            </View>
+          )}
         </TouchableOpacity>
 
-        {!playType ? (
+        {/* Solo / Local / Online tab bar — replaces the old play-type chooser
+            screen, so every mode list is one tap away from launch. */}
+        <View ref={modesRef} style={{ width: '100%', maxWidth: 400, alignItems: 'center', marginBottom: 16 }}>
+          <PlayTabs
+            index={tabIndex}
+            onSelect={selectTab}
+            isDarkMode={isDarkMode}
+            notifyOnline={!!incomingInviteMode}
+          />
+        </View>
+
+        {tabIndex === 0 ? (
           <>
-            <Text style={{ fontFamily: FONTS.mono, color: c.textMuted, fontSize: 11, marginBottom: 28, textAlign: 'center' }}>
-              {tr(language, 'Comment souhaitez-vous jouer ?', 'How do you want to play?')}
-            </Text>
-            <View ref={modesRef} style={{ gap: 14, width: '100%', maxWidth: 400 }}>
-              <PlayTypeCard
-                icon={User}
-                accent={isDarkMode ? PALETTE.forestGreen : PALETTE.forestGreen}
-                tint={isDarkMode ? 'rgba(42,110,63,0.15)' : 'rgba(42,110,63,0.10)'}
-                title="Solo"
-                subtitle={tr(language, 'Jouez seul à votre rythme', 'Play alone at your own pace')}
-                isDarkMode={isDarkMode}
-                onPress={() => setPlayType('solo')}
-              />
-              <PlayTypeCard
-                icon={Monitor}
-                accent={isDarkMode ? PALETTE.chartBlue : PALETTE.oceanBlue}
-                tint={isDarkMode ? 'rgba(74,158,255,0.12)' : 'rgba(26,74,122,0.10)'}
-                title="Local"
-                subtitle={tr(language, 'Défiez des amis sur le même appareil', 'Challenge friends on the same device')}
-                isDarkMode={isDarkMode}
-                onPress={() => onPlay('local-builder')}
-              />
-              <PlayTypeCard
-                icon={Wifi}
-                accent={isDarkMode ? PALETTE.chartBlue : PALETTE.vermilion}
-                tint={isDarkMode ? 'rgba(74,158,255,0.12)' : 'rgba(192,74,26,0.10)'}
-                title={tr(language, 'En Ligne', 'Online')}
-                subtitle={tr(language, 'Affrontez des joueurs du monde entier', 'Face players from around the world')}
-                isDarkMode={isDarkMode}
-                onPress={() => (isAuthenticated ? setPlayType('online') : onOpenAuth())}
-                notify={!!incomingInviteMode}
-              />
-            </View>
-          </>
-        ) : playType === 'solo' ? (
-          <>
-            <Text style={{ fontFamily: FONTS.mono, color: c.textMuted, fontSize: 11, marginBottom: 28, textAlign: 'center' }}>
-              {tr(language, 'Choisissez votre mode de jeu', 'Choose your game mode')}
-            </Text>
-            <View style={{ gap: 12, width: '100%', maxWidth: 400 }}>
-              <ModeCard
+            <View
+              style={{
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                justifyContent: 'space-between',
+                rowGap: 11,
+                width: '100%',
+                maxWidth: 400,
+              }}
+            >
+              <ModeTile
                 icon={Globe}
                 accent={isDarkMode ? PALETTE.sand : PALETTE.vermilion}
                 tint={isDarkMode ? 'rgba(196,135,42,0.14)' : 'rgba(192,74,26,0.10)'}
@@ -750,7 +935,7 @@ export function MainMenu({
                 onPress={() => onPlay('globe')}
                 onHelp={() => setHelpMode('globe')}
               />
-              <ModeCard
+              <ModeTile
                 icon={Map}
                 accent={isDarkMode ? PALETTE.sand : PALETTE.vermilion}
                 tint={isDarkMode ? 'rgba(196,135,42,0.14)' : 'rgba(192,74,26,0.10)'}
@@ -760,7 +945,7 @@ export function MainMenu({
                 onPress={() => onPlay('regions')}
                 onHelp={() => setHelpMode('regions')}
               />
-              <ModeCard
+              <ModeTile
                 icon={Info}
                 accent={isDarkMode ? PALETTE.chartBlue : PALETTE.vermilion}
                 tint={isDarkMode ? 'rgba(74,158,255,0.12)' : 'rgba(192,74,26,0.10)'}
@@ -770,7 +955,7 @@ export function MainMenu({
                 onPress={() => onPlay('guess')}
                 onHelp={() => setHelpMode('guess')}
               />
-              <ModeCard
+              <ModeTile
                 icon={Route}
                 accent={PALETTE.sand}
                 tint={isDarkMode ? 'rgba(196,135,42,0.15)' : 'rgba(196,135,42,0.10)'}
@@ -780,7 +965,7 @@ export function MainMenu({
                 onPress={() => onPlay('borders')}
                 onHelp={() => setHelpMode('borders')}
               />
-              <ModeCard
+              <ModeTile
                 icon={Puzzle}
                 accent={PALETTE.forestGreen}
                 tint={isDarkMode ? 'rgba(42,110,63,0.15)' : 'rgba(42,110,63,0.10)'}
@@ -790,7 +975,7 @@ export function MainMenu({
                 onPress={() => onPlay('silhouette')}
                 onHelp={() => setHelpMode('silhouette')}
               />
-              <ModeCard
+              <ModeTile
                 icon={TrendingUp}
                 accent={isDarkMode ? PALETTE.chartBlue : PALETTE.oceanBlue}
                 tint={isDarkMode ? 'rgba(74,158,255,0.12)' : 'rgba(26,74,122,0.10)'}
@@ -800,7 +985,7 @@ export function MainMenu({
                 onPress={() => onPlay('higherlower')}
                 onHelp={() => setHelpMode('higherlower')}
               />
-              <ModeCard
+              <ModeTile
                 icon={LayoutGrid}
                 accent={isDarkMode ? PALETTE.forestGreen : PALETTE.forestGreen}
                 tint={isDarkMode ? 'rgba(42,110,63,0.15)' : 'rgba(42,110,63,0.10)'}
@@ -810,7 +995,7 @@ export function MainMenu({
                 onPress={() => onPlay('classic')}
                 onHelp={() => setHelpMode('classic')}
               />
-              <ModeCard
+              <ModeTile
                 icon={Zap}
                 accent={PALETTE.sand}
                 tint={isDarkMode ? 'rgba(196,135,42,0.15)' : 'rgba(196,135,42,0.10)'}
@@ -820,7 +1005,7 @@ export function MainMenu({
                 onPress={() => onPlay('streak')}
                 onHelp={() => setHelpMode('streak')}
               />
-              <ModeCard
+              <ModeTile
                 icon={Flag}
                 accent={PALETTE.sand}
                 tint={isDarkMode ? 'rgba(196,135,42,0.15)' : 'rgba(196,135,42,0.10)'}
@@ -830,7 +1015,7 @@ export function MainMenu({
                 onPress={() => onPlay('quiz-capital')}
                 onHelp={() => setHelpMode('quiz-capital')}
               />
-              <ModeCard
+              <ModeTile
                 icon={Flag}
                 accent={isDarkMode ? PALETTE.chartBlue : PALETTE.vermilion}
                 tint={isDarkMode ? 'rgba(74,158,255,0.12)' : 'rgba(192,74,26,0.10)'}
@@ -842,11 +1027,147 @@ export function MainMenu({
               />
             </View>
           </>
+        ) : tabIndex === 1 ? (
+          /* Local tab — pass-and-play on this device. */
+          <View
+            style={[
+              styles.countryCard,
+              !isDarkMode && styles.countryCardLight,
+              { width: '100%', maxWidth: 400, padding: 22, alignItems: 'center', gap: 12 },
+            ]}
+          >
+            <View
+              style={{
+                backgroundColor: isDarkMode ? 'rgba(74,158,255,0.12)' : 'rgba(26,74,122,0.10)',
+                padding: 16,
+                borderRadius: 16,
+              }}
+            >
+              <Monitor color={isDarkMode ? PALETTE.chartBlue : PALETTE.oceanBlue} size={32} />
+            </View>
+            <Text style={[styles.countryName, !isDarkMode && styles.countryNameLight, { fontSize: 20, textAlign: 'center' }]}>
+              {tr(language, 'Partie locale', 'Local game')}
+            </Text>
+            <Text
+              style={{
+                fontFamily: FONTS.mono,
+                color: c.textMuted,
+                fontSize: 11,
+                textAlign: 'center',
+                lineHeight: 17,
+                maxWidth: 300,
+              }}
+            >
+              {tr(
+                language,
+                'Composez votre partie — modes et manches — puis passez le téléphone à tour de rôle.',
+                'Build your game — modes and rounds — then pass the phone around.',
+              )}
+            </Text>
+            <TouchableOpacity
+              onPress={() => onPlay('local-builder')}
+              style={{
+                marginTop: 6,
+                height: 46,
+                paddingHorizontal: 24,
+                borderRadius: 13,
+                backgroundColor: isDarkMode ? PALETTE.chartBlue : PALETTE.oceanBlue,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+              }}
+              {...a11yButton(tr(language, 'Créer une partie locale', 'Create a local game'), {
+                hint: tr(language, 'Choisir les modes et les joueurs', 'Pick modes and players'),
+              })}
+            >
+              <Text style={{ color: '#fff', fontFamily: FONTS.monoBold, fontSize: 14 }}>
+                {tr(language, 'Créer une partie locale', 'Create a local game')}
+              </Text>
+              <ChevronRight color="#fff" size={18} />
+            </TouchableOpacity>
+          </View>
+        ) : !isAuthenticated ? (
+          /* Online tab, logged out — explain what's behind the lock. */
+          <View
+            style={[
+              styles.countryCard,
+              !isDarkMode && styles.countryCardLight,
+              { width: '100%', maxWidth: 400, padding: 22, alignItems: 'center', gap: 12 },
+            ]}
+          >
+            <View
+              style={{
+                backgroundColor: isDarkMode ? 'rgba(74,158,255,0.12)' : 'rgba(192,74,26,0.10)',
+                padding: 16,
+                borderRadius: 16,
+              }}
+            >
+              <Lock color={accent} size={32} />
+            </View>
+            <Text style={[styles.countryName, !isDarkMode && styles.countryNameLight, { fontSize: 20, textAlign: 'center' }]}>
+              {tr(language, 'Affronte le monde entier', 'Take on the whole world')}
+            </Text>
+            <Text
+              style={{
+                fontFamily: FONTS.mono,
+                color: c.textMuted,
+                fontSize: 11,
+                textAlign: 'center',
+                lineHeight: 17,
+                maxWidth: 300,
+              }}
+            >
+              {tr(
+                language,
+                'Duels, matchs à 8 joueurs et mode classé ELO — avec un compte gratuit.',
+                'Duels, 8-player matches and ranked ELO — with a free account.',
+              )}
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>
+              <TouchableOpacity
+                onPress={onOpenSignup}
+                style={{
+                  height: 46,
+                  paddingHorizontal: 20,
+                  borderRadius: 13,
+                  backgroundColor: accent,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                }}
+                {...a11yButton(tr(language, "S'inscrire", 'Sign up'))}
+              >
+                <UserPlus color="#fff" size={18} />
+                <Text style={{ color: '#fff', fontFamily: FONTS.monoBold, fontSize: 14 }}>
+                  {tr(language, "S'inscrire", 'Sign up')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={onOpenAuth}
+                style={{
+                  height: 46,
+                  paddingHorizontal: 16,
+                  borderRadius: 13,
+                  borderWidth: 1,
+                  borderColor: c.border,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                }}
+                {...a11yButton(tr(language, 'Se connecter', 'Log in'))}
+              >
+                <LogIn color={iconColor} size={16} />
+                <Text style={{ color: c.textMuted, fontFamily: FONTS.mono, fontSize: 13 }}>
+                  {tr(language, 'Connexion', 'Log in')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         ) : (
           <>
-            <Text style={{ fontFamily: FONTS.mono, color: c.textMuted, fontSize: 11, marginBottom: 28, textAlign: 'center' }}>
-              {tr(language, 'Choisissez votre mode de jeu', 'Choose your game mode')}
-            </Text>
             <View style={{ gap: 12, width: '100%', maxWidth: 400 }}>
               {/* Ranked mode — highlighted card */}
               <TouchableOpacity
@@ -880,6 +1201,40 @@ export function MainMenu({
                   </Text>
                 </View>
                 <Trophy color="#c4872a" size={20} />
+              </TouchableOpacity>
+
+              {/* Friend leagues — 3 shared daily challenges, private leaderboards */}
+              <TouchableOpacity
+                onPress={onOpenLeague}
+                style={[
+                  styles.countryCard,
+                  !isDarkMode && styles.countryCardLight,
+                  {
+                    padding: 18,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 15,
+                    borderWidth: 2,
+                    borderColor: isDarkMode ? PALETTE.chartBlue : PALETTE.oceanBlue,
+                    backgroundColor: isDarkMode ? 'rgba(74,158,255,0.12)' : 'rgba(26,74,122,0.10)',
+                  },
+                ]}
+                {...a11yButton(tr(language, 'Ligue', 'League'), {
+                  hint: tr(language, 'Créer ou rejoindre une ligue', 'Create or join a league'),
+                })}
+              >
+                <View style={{ backgroundColor: isDarkMode ? 'rgba(74,158,255,0.22)' : 'rgba(26,74,122,0.16)', padding: 12, borderRadius: 12 }}>
+                  <Users color={isDarkMode ? PALETTE.chartBlue : PALETTE.oceanBlue} size={28} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.countryName, !isDarkMode && styles.countryNameLight, { fontSize: 17, textAlign: 'left', marginBottom: 3, color: isDarkMode ? PALETTE.chartBlue : PALETTE.oceanBlue }]}>
+                    {tr(language, 'Ligue', 'League')}
+                  </Text>
+                  <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 10 }}>
+                    {tr(language, '3 défis par jour · classement privé', '3 daily challenges · private leaderboard')}
+                  </Text>
+                </View>
+                <Trophy color={isDarkMode ? PALETTE.chartBlue : PALETTE.oceanBlue} size={20} />
               </TouchableOpacity>
 
               {/* Custom game — build your own mode sequence vs a friend or stranger */}

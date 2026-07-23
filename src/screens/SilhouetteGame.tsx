@@ -129,6 +129,8 @@ export default function SilhouetteGame({
   const [correctCount, setCorrectCount] = useState(0);
   /** '🟩'/'🟥' per answered question — the daily share grid. */
   const [grid, setGrid] = useState('');
+  /** Per-question outcome, in run order — drives the end-of-run recap. */
+  const [history, setHistory] = useState<{ correct: boolean; points: number }[]>([]);
   const [gameOver, setGameOver] = useState(false);
   const [coinsEarned, setCoinsEarned] = useState<number | null>(null);
   const [coinsCapped, setCoinsCapped] = useState(false);
@@ -174,6 +176,7 @@ export default function SilhouetteGame({
       setCorrectCount((n) => n + 1);
     }
     setGrid((g) => g + (correct ? '🟩' : '🟥'));
+    setHistory((h) => [...h, { correct, points }]);
     Haptics.notificationAsync(
       correct ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Error,
     ).catch(() => {});
@@ -204,6 +207,13 @@ export default function SilhouetteGame({
       return;
     }
     setGameOver(true);
+    announce(
+      tr(
+        language,
+        `Partie terminée. Score ${finalScore}.`,
+        `Game over. Score ${finalScore}.`,
+      ),
+    );
     if (isDaily) {
       onDailyComplete?.(finalScore, finalGrid);
       return;
@@ -271,6 +281,7 @@ export default function SilhouetteGame({
     setScore(0);
     setCorrectCount(0);
     setGrid('');
+    setHistory([]);
     setGameOver(false);
     setCoinsEarned(null);
     setCoinsCapped(false);
@@ -467,8 +478,8 @@ export default function SilhouetteGame({
           )
         )}
       </ScrollView>
-      </KeyboardAvoidingView>
 
+      {/* End-of-run summary — sits BELOW the header so Home/theme stay reachable. */}
       {gameOver && !matchData && (
         <View
           style={[
@@ -476,41 +487,105 @@ export default function SilhouetteGame({
             { backgroundColor: isDarkMode ? 'rgba(10,22,40,0.96)' : 'rgba(242,232,208,0.97)' },
           ]}
         >
-          <Text style={{ fontSize: 34 }} {...a11yHidden}>
-            {grid}
-          </Text>
-          <ScoreText style={[styles.gameOverScore, { color: c.text }]}>{score}</ScoreText>
-          <Text style={{ color: c.textMuted, fontFamily: FONTS.mono, fontSize: 14, marginBottom: 16 }}>
-            {tr(language, `${correctCount} / ${run.length} bonnes réponses`, `${correctCount} / ${run.length} correct`)}
-          </Text>
-          {/* Animated coins + rewarded-ad doubler (solo only, server-credited). */}
-          <SoloCoinReward
-            coinsEarned={coinsEarned}
-            coinsCapped={coinsCapped}
-            coinsSyncFailed={coinsSyncFailed}
-            containerStyle={{ alignSelf: 'stretch', marginBottom: 24 }}
-          />
-          {isDaily ? (
+          <ScrollView
+            contentContainerStyle={styles.gameOverContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <Text style={{ fontSize: 24, textAlign: 'center' }} {...a11yHidden}>
+              {grid}
+            </Text>
+            <ScoreText style={[styles.gameOverScore, { color: c.text }]}>{score}</ScoreText>
+            <Text style={{ color: c.textMuted, fontFamily: FONTS.mono, fontSize: 14, marginBottom: 16, textAlign: 'center' }}>
+              {tr(language, `${correctCount} / ${run.length} bonnes réponses`, `${correctCount} / ${run.length} correct`)}
+            </Text>
+
+            {/* Recap: every silhouette of the run with its answer and outcome. */}
+            <View style={[styles.recapCard, { backgroundColor: c.card, borderColor: c.border }]}>
+              {run.map((q, i) => {
+                const h = history[i];
+                const name = silhouetteCountryName(q.answer, language);
+                const d = silhouettePath(q.answer, 100);
+                return (
+                  <View
+                    key={`${q.answer}-${i}`}
+                    style={[styles.recapRow, i > 0 && { borderTopWidth: 1, borderTopColor: c.border }]}
+                    accessible
+                    accessibilityLabel={
+                      h?.correct
+                        ? tr(language, `${name}, bonne réponse, +${h.points} points`, `${name}, correct, +${h.points} points`)
+                        : tr(language, `${name}, mauvaise réponse`, `${name}, wrong`)
+                    }
+                  >
+                    <View style={styles.recapShape} {...a11yHidden}>
+                      {d && (
+                        <Svg width="100%" height="100%" viewBox="0 0 100 100">
+                          <Path d={d} fill={h?.correct ? '#2a6e3f' : '#8b1a1a'} />
+                        </Svg>
+                      )}
+                    </View>
+                    <Text style={[styles.recapName, { color: c.text }]} numberOfLines={1}>
+                      {name}
+                    </Text>
+                    {h?.correct ? (
+                      <ScoreText style={{ color: '#2a6e3f', fontSize: 14, fontFamily: FONTS.monoBold }}>
+                        {`+${h.points}`}
+                      </ScoreText>
+                    ) : (
+                      <AtlasCross color="#8b1a1a" size={16} />
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+
+            {/* Animated coins + rewarded-ad doubler (solo only, server-credited). */}
+            <SoloCoinReward
+              coinsEarned={coinsEarned}
+              coinsCapped={coinsCapped}
+              coinsSyncFailed={coinsSyncFailed}
+              containerStyle={{ alignSelf: 'stretch', marginBottom: 12 }}
+            />
+            {!user && !isDaily && (
+              <Text style={{ color: c.textMuted, fontFamily: FONTS.mono, fontSize: 12, textAlign: 'center', marginBottom: 12 }}>
+                {tr(
+                  language,
+                  'Connecte-toi pour gagner des pièces et sauvegarder ton score.',
+                  'Sign in to earn coins and save your score.',
+                )}
+              </Text>
+            )}
+
+            {isDaily ? (
+              <TouchableOpacity
+                style={styles.resetBtn}
+                onPress={onShare}
+                {...a11yButton(tr(language, 'Partager', 'Share'))}
+              >
+                <Share2 color="#fff" size={20} />
+                <Text style={styles.resetBtnText}>{tr(language, 'PARTAGER', 'SHARE')}</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.resetBtn}
+                onPress={resetGame}
+                {...a11yButton(tr(language, 'Recommencer', 'Retry'))}
+              >
+                <RefreshCcw color="#fff" size={20} />
+                <Text style={styles.resetBtnText}>{tr(language, 'RECOMMENCER', 'RETRY')}</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
-              style={styles.resetBtn}
-              onPress={onShare}
-              {...a11yButton(tr(language, 'Partager', 'Share'))}
+              style={[styles.menuBtn, { backgroundColor: c.surface, borderColor: c.border }]}
+              onPress={() => setGameMode('menu')}
+              {...a11yButton(tr(language, 'Retour au menu', 'Back to menu'))}
             >
-              <Share2 color="#fff" size={20} />
-              <Text style={styles.resetBtnText}>{tr(language, 'PARTAGER', 'SHARE')}</Text>
+              <Home color={c.accent} size={18} />
+              <Text style={[styles.menuBtnText, { color: c.text }]}>{tr(language, 'MENU', 'MENU')}</Text>
             </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={styles.resetBtn}
-              onPress={resetGame}
-              {...a11yButton(tr(language, 'Recommencer', 'Retry'))}
-            >
-              <RefreshCcw color="#fff" size={20} />
-              <Text style={styles.resetBtnText}>{tr(language, 'RECOMMENCER', 'RETRY')}</Text>
-            </TouchableOpacity>
-          )}
+          </ScrollView>
         </View>
       )}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -585,12 +660,33 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+  },
+  gameOverContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    gap: 12,
+    paddingBottom: 40,
+    width: '100%',
+    maxWidth: 500,
+    alignSelf: 'center',
   },
-  gameOverScore: { fontSize: 56, fontFamily: FONTS.headingBlack, marginBottom: 4, color: '#2a6e3f' },
+  gameOverScore: { fontSize: 48, fontFamily: FONTS.headingBlack, marginBottom: 4, color: '#2a6e3f', textAlign: 'center' },
+  recapCard: {
+    alignSelf: 'stretch',
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    marginBottom: 16,
+  },
+  recapRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 8,
+  },
+  recapShape: { width: 34, height: 34 },
+  recapName: { flex: 1, fontSize: 15, fontFamily: FONTS.heading },
   resetBtn: {
     backgroundColor: '#c04a1a',
     paddingVertical: 14,
@@ -603,4 +699,15 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   resetBtnText: { color: '#fff', fontFamily: FONTS.monoBold, fontSize: 14, letterSpacing: 1 },
+  menuBtn: {
+    marginTop: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 28,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  menuBtnText: { fontFamily: FONTS.monoBold, fontSize: 14, letterSpacing: 1 },
 });

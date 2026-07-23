@@ -5,7 +5,7 @@ import { useFonts, PlayfairDisplay_700Bold, PlayfairDisplay_900Black } from '@ex
 import { SpaceMono_400Regular, SpaceMono_700Bold } from '@expo-google-fonts/space-mono';
 import { PostHogProvider } from 'posthog-react-native';
 
-import { ensureDailyReminder } from './src/lib/notifications';
+import { ensureDailyReminder, ensureLeagueReminder } from './src/lib/notifications';
 import { touchLastSeen } from './src/lib/activity';
 import type { GameMode, MatchMode } from './src/types';
 import { posthog, trackScreen } from './src/lib/analytics';
@@ -29,6 +29,7 @@ import { SwipeBack } from './src/components/SwipeBack';
 import { ModeIntroGate } from './src/components/ModeIntroModal';
 import { UsernameGate } from './src/components/UsernameGate';
 import { IncomingInviteModal } from './src/components/IncomingInviteModal';
+import { SideRailAds } from './src/components/SideRailAds';
 
 // Start crash reporting as early as possible so startup errors are captured.
 initSentry();
@@ -68,12 +69,25 @@ function AppContent() {
 
   // Viral loop: capture a referral code from the link that opened the app and
   // redeem it once a session exists — celebrate the granted coins.
-  useDeepLinks((coins) => {
-    showAlert(
-      tr(language, '🎉 Bienvenue !', '🎉 Welcome!'),
-      tr(language, `Ton ami t'a offert ${coins} pièces.`, `Your friend gifted you ${coins} coins.`),
-    );
-  });
+  useDeepLinks(
+    (coins) => {
+      showAlert(
+        tr(language, '🎉 Bienvenue !', '🎉 Welcome!'),
+        tr(language, `Ton ami t'a offert ${coins} pièces.`, `Your friend gifted you ${coins} coins.`),
+      );
+    },
+    // League invite link (`?league=CODE`) → auto-joined once a session exists.
+    (name) => {
+      showAlert(
+        tr(language, '🏆 Ligue rejointe !', '🏆 League joined!'),
+        tr(
+          language,
+          `Tu fais maintenant partie de « ${name} ». Retrouve-la dans En Ligne → Ligue.`,
+          `You are now part of “${name}”. Find it under Online → League.`,
+        ),
+      );
+    },
+  );
 
   // Auth state (user/isAdmin) and its side effects live in AuthProvider now;
   // the only UI concern left here is dismissing the login modal once a session
@@ -87,6 +101,9 @@ function AppContent() {
   // re-runs on language change so the reminder text stays localized.
   useEffect(() => {
     ensureDailyReminder(language);
+    // League reminder is opt-in (enabled from the league screens); this only
+    // re-schedules it so its text follows the language.
+    ensureLeagueReminder(language);
   }, [language]);
 
   // Keep last_seen fresh whenever the app comes to the foreground (throttled in
@@ -201,6 +218,9 @@ function AppContent() {
 
   const tree = (
     <View style={{ flex: 1 }}>
+      {/* Desktop-web-only AdSense side rails, first so everything else paints
+          above them; native/mobile: renders nothing. */}
+      <SideRailAds />
       <SwipeBack enabled={canGoBack} onBack={goBack}>
         <ScreenErrorBoundary resetKey={screenKey} onReset={recoverToMenu}>
           <Router

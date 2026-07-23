@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import type { MatchMode } from '../types';
 import type { PlayType } from '../screens/MainMenu';
+import type { League } from '../lib/league';
 import { useAuth } from '../contexts/AuthContext';
 
 /** A full-screen page kept in the navigation history (see `pageStack`). */
 export type Page =
   | { name: 'friends' }
+  | { name: 'league' }
+  | { name: 'league-detail'; league: League }
   | { name: 'profile' }
   | { name: 'player-profile'; userId: string; username?: string | null }
   | { name: 'ranked' }

@@ -43,3 +43,20 @@ export function parseReferralCode(url: string | null): string | null {
   const m = url.match(/[?&](?:code|ref)=([A-Za-z0-9]{4,16})/);
   return m ? m[1].toUpperCase() : null;
 }
+
+/**
+ * League invite link, e.g. https://playgeog.com/play?league=660B2111 — opens
+ * the web app (or deep-links into the installed app) and auto-joins the league
+ * once a session exists. The `league` param is deliberately distinct from the
+ * referral `code`/`ref` params so both loops can coexist on one URL.
+ */
+export function leagueLink(code: string): string {
+  return `${SITE_URL}/play?league=${encodeURIComponent(code)}`;
+}
+
+/** Extract a league invite code from an opening URL (`?league=`), or null. */
+export function parseLeagueCode(url: string | null): string | null {
+  if (!url) return null;
+  const m = url.match(/[?&]league=([A-Za-z0-9]{4,16})/i);
+  return m ? m[1].toUpperCase() : null;
+}

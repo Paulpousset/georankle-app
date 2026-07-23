@@ -907,6 +907,16 @@ export type Database = {
       get_daily_quests: { Args: never; Returns: Json }
       get_featured_cosmetic: { Args: never; Returns: Json }
       get_referral_info: { Args: never; Returns: Json }
+      get_my_leagues: { Args: never; Returns: Json }
+      create_league: { Args: { p_name: string }; Returns: Json }
+      join_league: { Args: { p_code: string }; Returns: Json }
+      leave_league: { Args: { p_league: string }; Returns: Json }
+      league_leaderboard: {
+        Args: { p_league: string; p_period: string }
+        Returns: Json
+      }
+      league_daily_modes: { Args: { p_date: string }; Returns: string[] }
+      is_league_member: { Args: { p_league: string; p_user: string }; Returns: boolean }
       redeem_referral: { Args: { p_code: string }; Returns: Json }
       referral_code_for: { Args: { p_user: string }; Returns: string }
       grant_iap_coins: {

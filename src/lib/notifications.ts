@@ -163,6 +163,107 @@ export async function scheduleDailyReminder(
   return run;
 }
 
+// ── League reminder (opt-in via the league screens, fixed 10:00 local) ───────
+// One global reminder covering all the user's leagues — the day's 3 drawn
+// modes are the same everywhere, so a single 10:00 nudge is enough.
+
+const LEAGUE_REMINDER_ENABLED_KEY = 'league:reminder_enabled';
+const LEAGUE_REMINDER_ID_KEY = 'league:reminder_id';
+
+/** Local hour the league reminder fires at (surfaced in the button copy). */
+export const LEAGUE_REMINDER_HOUR = 10;
+
+/** True when the user has turned the league reminder on (opt-in, default off). */
+export async function isLeagueReminderEnabled(): Promise<boolean> {
+  try {
+    return (await AsyncStorage.getItem(LEAGUE_REMINDER_ENABLED_KEY)) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Re-schedule the league reminder on launch / language change when the user
+ * opted in — same replace-any-prior semantics as ensureDailyReminder. No-ops on
+ * web and for users who never enabled it.
+ */
+export async function ensureLeagueReminder(language: 'fr' | 'en' = 'fr'): Promise<void> {
+  if (Platform.OS === 'web') return;
+  try {
+    if ((await AsyncStorage.getItem(LEAGUE_REMINDER_ENABLED_KEY)) !== '1') return;
+    await enableLeagueReminder(language);
+  } catch (e) {
+    log.debug('Ensure league reminder skipped:', e);
+  }
+}
+
+// Serializes concurrent enable calls (launch ensure + button tap), mirroring
+// the daily reminder's chain so we never stack two 10:00 notifications.
+let leagueSchedulingChain: Promise<boolean> = Promise.resolve(false);
+
+/**
+ * Turn the league reminder on: repeating local notification every day at
+ * 10:00 local time. Requests the OS permission if needed; returns false when
+ * denied (callers surface that) or on web/simulators.
+ */
+export async function enableLeagueReminder(language: 'fr' | 'en' = 'fr'): Promise<boolean> {
+  if (Platform.OS === 'web') return false;
+  const run = leagueSchedulingChain.then(
+    () => doEnableLeagueReminder(language),
+    () => doEnableLeagueReminder(language),
+  );
+  leagueSchedulingChain = run;
+  return run;
+}
+
+async function doEnableLeagueReminder(language: 'fr' | 'en'): Promise<boolean> {
+  try {
+    if (!(await ensurePermissionGranted())) return false;
+
+    // Replace any prior schedule so we never stack reminders.
+    const prior = await AsyncStorage.getItem(LEAGUE_REMINDER_ID_KEY);
+    if (prior) await Notifications.cancelScheduledNotificationAsync(prior).catch(() => {});
+
+    const id = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: language === 'fr' ? 'Ta ligue t’attend 🏆' : 'Your league is waiting 🏆',
+        body:
+          language === 'fr'
+            ? 'Les 3 défis du jour sont tombés — joue-les avant tes amis !'
+            : 'Today’s 3 challenges just dropped — play them before your friends!',
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
+        hour: LEAGUE_REMINDER_HOUR,
+        minute: 0,
+      },
+    });
+
+    await AsyncStorage.multiSet([
+      [LEAGUE_REMINDER_ENABLED_KEY, '1'],
+      [LEAGUE_REMINDER_ID_KEY, id],
+    ]);
+    return true;
+  } catch (e) {
+    log.debug('Enable league reminder skipped:', e);
+    return false;
+  }
+}
+
+/** Turn the league reminder off and cancel the scheduled notification. */
+export async function disableLeagueReminder(): Promise<void> {
+  try {
+    const id = await AsyncStorage.getItem(LEAGUE_REMINDER_ID_KEY);
+    if (id) await Notifications.cancelScheduledNotificationAsync(id).catch(() => {});
+    await AsyncStorage.multiSet([
+      [LEAGUE_REMINDER_ENABLED_KEY, '0'],
+      [LEAGUE_REMINDER_ID_KEY, ''],
+    ]);
+  } catch (e) {
+    log.debug('Disable league reminder skipped:', e);
+  }
+}
+
 async function doScheduleDailyReminder(
   time: string,
   language: 'fr' | 'en',

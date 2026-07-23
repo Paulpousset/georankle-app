@@ -53,8 +53,9 @@ import { ModeIntroCard } from '../components/ModeIntroModal';
 
 const FLAME = '#e8772e';
 
-/** Per-mode card icon + accent, mirroring the MainMenu solo list. */
-const MODE_META: Record<string, { icon: ComponentType<{ color: string; size: number }>; accent: string }> = {
+/** Per-mode card icon + accent, mirroring the MainMenu solo list. Exported for
+ *  the league screens, which render the same daily-mode cards. */
+export const MODE_META: Record<string, { icon: ComponentType<{ color: string; size: number }>; accent: string }> = {
   classic: { icon: LayoutGrid, accent: PALETTE.forestGreen },
   streak: { icon: Zap, accent: PALETTE.sand },
   guess: { icon: Info, accent: PALETTE.vermilion },

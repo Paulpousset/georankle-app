@@ -31,6 +31,7 @@ import {
   bordersScore,
   buildBordersPuzzle,
   sharesBorder,
+  shortestBorderPath,
   BORDERS_EXTRA_STEPS,
   BORDERS_MAX_MISSES,
 } from '../lib/borders';
@@ -86,7 +87,7 @@ type Highlight = {
   id: string;
   name: string;
   flag: string;
-  kind: 'start' | 'chain' | 'last' | 'target';
+  kind: 'start' | 'chain' | 'last' | 'target' | 'ideal';
 };
 
 /**
@@ -152,6 +153,7 @@ function styleFor(kind){
   if(kind==='start')return{f:PAL.selF,s:PAL.selS,lw:1.6};
   if(kind==='last')return{f:PAL.hovF,s:PAL.hovS,lw:2.2};
   if(kind==='target')return{f:GOLDF,s:GOLD,lw:1.8};
+  if(kind==='ideal')return{f:'rgba(122,74,255,0.35)',s:'#8a63e8',lw:1.6};
   return{f:PAL.okF,s:PAL.okS,lw:1.4};
 }
 
@@ -276,10 +278,34 @@ window.setHighlights=function(list,refit){
   draw();
 };
 
-var drag=null;
-canvas.addEventListener('touchstart',function(e){if(e.touches.length===1)drag={x:e.touches[0].clientX,y:e.touches[0].clientY,lon:rotLon,lat:rotLat};},{passive:true});
-canvas.addEventListener('touchmove',function(e){if(!drag||e.touches.length!==1)return;e.preventDefault();var dx=e.touches[0].clientX-drag.x,dy=e.touches[0].clientY-drag.y;rotLon=drag.lon-dx*(0.35/zoom);rotLat=Math.max(-85,Math.min(85,drag.lat+dy*(0.35/zoom)));draw();},{passive:false});
-canvas.addEventListener('touchend',function(){drag=null;},{passive:true});
+var drag=null,pinchD=null,pinchZ=null;
+function pinchStart(t1,t2){
+  pinchD=Math.hypot(t2.clientX-t1.clientX,t2.clientY-t1.clientY);
+  pinchZ=zoom;drag=null;
+}
+function pinchMove(t1,t2){
+  if(pinchD===null)return;
+  var d=Math.hypot(t2.clientX-t1.clientX,t2.clientY-t1.clientY);
+  zoom=Math.max(ZMIN,Math.min(ZMAX,pinchZ*d/pinchD));
+  R=Rb*zoom;draw();
+}
+canvas.addEventListener('touchstart',function(e){
+  if(e.touches.length===2)pinchStart(e.touches[0],e.touches[1]);
+  else if(e.touches.length===1)drag={x:e.touches[0].clientX,y:e.touches[0].clientY,lon:rotLon,lat:rotLat};
+},{passive:true});
+canvas.addEventListener('touchmove',function(e){
+  e.preventDefault();
+  if(e.touches.length===2){pinchMove(e.touches[0],e.touches[1]);return;}
+  if(!drag||e.touches.length!==1)return;
+  var dx=e.touches[0].clientX-drag.x,dy=e.touches[0].clientY-drag.y;
+  rotLon=drag.lon-dx*(0.35/zoom);rotLat=Math.max(-85,Math.min(85,drag.lat+dy*(0.35/zoom)));draw();
+},{passive:false});
+canvas.addEventListener('touchend',function(e){
+  if(e.touches.length<2)pinchD=null;
+  // One finger left after a pinch: re-anchor so rotation resumes without a jump.
+  if(e.touches.length===1)drag={x:e.touches[0].clientX,y:e.touches[0].clientY,lon:rotLon,lat:rotLat};
+  if(e.touches.length===0)drag=null;
+},{passive:true});
 canvas.addEventListener('mousedown',function(e){drag={x:e.clientX,y:e.clientY,lon:rotLon,lat:rotLat};});
 canvas.addEventListener('mousemove',function(e){if(!drag)return;var dx=e.clientX-drag.x,dy=e.clientY-drag.y;rotLon=drag.lon-dx*(0.35/zoom);rotLat=Math.max(-85,Math.min(85,drag.lat+dy*(0.35/zoom)));draw();});
 canvas.addEventListener('mouseup',function(){drag=null;});
@@ -372,6 +398,12 @@ export default function BordersGame({
   const [globeReady, setGlobeReady] = useState(false);
   const globeHtml = useMemo(() => buildBordersGlobeHtml(isDarkMode), [isDarkMode]);
 
+  /** One shortest chain start→target — revealed once the run is over. */
+  const idealPath = useMemo(
+    () => shortestBorderPath(puzzle.start, puzzle.target),
+    [puzzle.start, puzzle.target],
+  );
+
   /** The countries to paint: start, links, the current tip, and the target. */
   const highlights = useMemo<Highlight[]>(() => {
     const list: Highlight[] = chain.map((id, i) => ({
@@ -388,8 +420,16 @@ export default function BordersGame({
         kind: 'target',
       });
     }
+    // Game over: also paint the ideal route (countries the player didn't use).
+    if (outcome && idealPath) {
+      const used = new Set(list.map((h) => h.id));
+      for (const id of idealPath) {
+        if (used.has(id)) continue;
+        list.push({ id, name: countryName(id, language), flag: getFlagUrl(id), kind: 'ideal' });
+      }
+    }
     return list;
-  }, [chain, puzzle.target, language]);
+  }, [chain, puzzle.target, language, outcome, idealPath]);
 
   // Always re-frame: a fresh puzzle, a theme reload (new HTML) or an added
   // country all need the current countries painted AND centered, or the globe
@@ -550,17 +590,23 @@ export default function BordersGame({
     setCoinsSyncFailed(false);
   };
 
-  const chip = (cca3: string, kind: 'start' | 'chain' | 'target') => {
+  const chip = (cca3: string, kind: 'start' | 'chain' | 'target' | 'ideal') => {
     const palette =
       kind === 'target'
         ? { bg: 'rgba(196,135,42,0.14)', border: '#c4872a', text: '#c4872a' }
         : kind === 'start'
           ? { bg: c.surface, border: c.accent, text: c.text }
-          : {
-              bg: 'rgba(42,110,63,0.12)',
-              border: '#2a6e3f',
-              text: isDarkMode ? '#7fc49a' : '#2a6e3f',
-            };
+          : kind === 'ideal'
+            ? {
+                bg: 'rgba(122,74,255,0.10)',
+                border: '#8a63e8',
+                text: isDarkMode ? '#b39dff' : '#5a3aa8',
+              }
+            : {
+                bg: 'rgba(42,110,63,0.12)',
+                border: '#2a6e3f',
+                text: isDarkMode ? '#7fc49a' : '#2a6e3f',
+              };
     return (
       <View
         key={`${kind}-${cca3}`}
@@ -817,6 +863,55 @@ export default function BordersGame({
                     `Optimal path: ${puzzle.optimal} steps.`,
                   )}
             </Text>
+
+            {/* The ideal solution — the player's chain used `chain.length` crossings
+                (last link + 1 into the target), so equality means they nailed it. */}
+            {outcome === 'won' && chain.length === puzzle.optimal ? (
+              <Text style={{ color: '#2a6e3f', fontFamily: FONTS.monoBold, fontSize: 14, textAlign: 'center' }}>
+                {tr(language, '🏆 Tu as trouvé le chemin idéal !', '🏆 You found the ideal path!')}
+              </Text>
+            ) : (
+              idealPath && (
+                <View
+                  style={[styles.routeCard, { backgroundColor: c.card, borderColor: '#8a63e8', marginBottom: 0 }]}
+                  accessible
+                  accessibilityLabel={tr(
+                    language,
+                    `Un chemin idéal : ${idealPath.map((id) => countryName(id, language)).join(', ')}`,
+                    `An ideal path: ${idealPath.map((id) => countryName(id, language)).join(', ')}`,
+                  )}
+                >
+                  <Text
+                    style={{
+                      color: isDarkMode ? '#b39dff' : '#5a3aa8',
+                      fontFamily: FONTS.monoBold,
+                      fontSize: 12,
+                      textAlign: 'center',
+                      marginBottom: 10,
+                      letterSpacing: 0.5,
+                    }}
+                    {...a11yHidden}
+                  >
+                    {tr(
+                      language,
+                      `UN CHEMIN IDÉAL (${puzzle.optimal} ÉTAPES)`,
+                      `AN IDEAL PATH (${puzzle.optimal} STEPS)`,
+                    )}
+                  </Text>
+                  <View style={styles.routeChain} {...a11yHidden}>
+                    {idealPath.map((cca3, i) => (
+                      <Fragment key={cca3}>
+                        {i > 0 && <ArrowRight color={c.textFaint} size={15} />}
+                        {chip(
+                          cca3,
+                          i === 0 ? 'start' : i === idealPath.length - 1 ? 'target' : 'ideal',
+                        )}
+                      </Fragment>
+                    ))}
+                  </View>
+                </View>
+              )
+            )}
 
             {/* Animated coins + rewarded-ad doubler (solo only, server-credited). */}
             <SoloCoinReward
