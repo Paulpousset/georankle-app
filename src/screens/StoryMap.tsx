@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -34,7 +34,7 @@ import { WorldAvatar } from '../components/WorldAvatar';
 import { Avatar } from '../components/Avatar';
 import type { AvatarConfig } from '../types';
 
-import { STORY_LEVEL_COUNT, getStoryLevel, type StoryLevel } from '../data/story';
+import { STORY_LEVEL_COUNT, buildStoryLevels, type StoryLevel } from '../data/story';
 import { biomeForTier, type Biome, type BiomeDecor } from '../data/biomes';
 import {
   getStorySnapshot,
@@ -55,6 +55,8 @@ const NODE = 62; // medallion diameter
 const TOP_PAD = 52;
 const PER_TIER = 10;
 const RIVER_W = 52;
+/** Extra pixels above/below the viewport kept mounted while windowing the map. */
+const WINDOW_MARGIN = 400;
 
 /** Which lucide icon marks each game mode on a medallion. */
 const MODE_ICON: Record<string, LucideIcon> = {
@@ -71,6 +73,11 @@ const MODE_ICON: Record<string, LucideIcon> = {
 
 /** Milestone level → exclusive reward item id (from the shared unlock schedule). */
 const REWARD_AT = new Map(STORY_COSMETIC_UNLOCKS.map((u) => [u.level, u.itemId]));
+
+/** Stable level catalogue — one shared object per level so memoized nodes hold. */
+const LEVELS = buildStoryLevels();
+
+const EMPTY_FRIENDS: FriendPosition[] = [];
 
 interface StoryMapProps {
   user: User | null;
@@ -112,6 +119,12 @@ function rewardConfig(itemId: string): AvatarConfig {
   return cfg;
 }
 
+/** 0-based biome-band index containing absolute map y (band = PER_TIER levels). */
+function bandIndexForY(y: number, tierCount: number): number {
+  const t = ((y - TOP_PAD) / ROW_H + 0.5) / PER_TIER;
+  return Math.min(Math.max(Math.floor(t), 0), tierCount - 1);
+}
+
 /**
  * Story campaign map — a detailed, themed winding-river journey. Each 10-level
  * tier is a biome painted with a background relief, scattered decoration (varied
@@ -119,6 +132,11 @@ function rewardConfig(itemId: string): AvatarConfig {
  * medallions carry their game-mode icon; milestone levels show a floating
  * preview of the exclusive cosmetic you win there. The player's globe rides their
  * current level, friends' globes mark theirs.
+ *
+ * Rendering is WINDOWED: only the biome bands (background art + medallions)
+ * within the viewport ± WINDOW_MARGIN are mounted, and each band's SVG art is
+ * built once and cached. Mounting all 30 bands (~35k px of SVG + 300 nodes) at
+ * once froze the JS thread for seconds on open.
  */
 export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) {
   const { isDarkMode } = useTheme();
@@ -133,12 +151,14 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
   const [myName, setMyName] = useState<string | null>(null);
   const [active, setActive] = useState<StoryLevel | null>(null);
   const [adAvailable, setAdAvailable] = useState(false);
-  const [countdownMs, setCountdownMs] = useState(0);
+  const [regenAt, setRegenAt] = useState(0);
   const [view, setView] = useState<'map' | 'table'>('map');
+  const [bandRange, setBandRange] = useState({ start: 0, end: 1 });
 
   const scrollRef = useRef<ScrollView>(null);
-  const regenTarget = useRef<number>(0);
   const didAutoScroll = useRef(false);
+  const viewportH = useRef(0);
+  const bandRangeRef = useRef(bandRange);
 
   // ── Geometry ─────────────────────────────────────────────────────────────────
   const amp = Math.min(Math.max(width * 0.26, 58), 130);
@@ -176,51 +196,74 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
     [riverX],
   );
 
-  // ── Themed background (biome bands + relief + river + decor) ──────────────────
-  const background = useMemo(() => {
-    const defs: React.ReactNode[] = [];
-    const body: React.ReactNode[] = [];
-    for (let tier = 1; tier <= tierCount; tier++) {
+  // ── Windowing ─────────────────────────────────────────────────────────────────
+  const updateBandRange = useCallback(
+    (scrollY: number) => {
+      const h = viewportH.current || 700;
+      const start = bandIndexForY(scrollY - WINDOW_MARGIN, tierCount);
+      const end = bandIndexForY(scrollY + h + WINDOW_MARGIN, tierCount);
+      if (start !== bandRangeRef.current.start || end !== bandRangeRef.current.end) {
+        bandRangeRef.current = { start, end };
+        setBandRange({ start, end });
+      }
+    },
+    [tierCount],
+  );
+
+  /**
+   * Background art for the visible bands only — a handful of SVGs instead of one
+   * 35k-px canvas. Rebuilding 2-3 bands on a range change is cheap; stable keys
+   * keep reconciliation minimal.
+   */
+  const bands = useMemo(() => {
+    const out: React.ReactNode[] = [];
+    for (let tierIdx = bandRange.start; tierIdx <= bandRange.end; tierIdx++) {
+      const tier = tierIdx + 1;
       const b = biomeForTier(tier);
       const top = bandTop(tier);
       const bot = bandBottom(tier);
       const rng = makeRng(tier * 2654435761);
-
-      defs.push(
-        <LinearGradient key={`bank_${tier}`} id={`bank_${tier}`} x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={b.bank[0]} />
-          <Stop offset="1" stopColor={b.bank[1]} />
-        </LinearGradient>,
-      );
+      const body: React.ReactNode[] = [];
       body.push(<Rect key={`bg_${tier}`} x={0} y={top} width={width} height={bot - top} fill={`url(#bank_${tier})`} />);
       // Far relief for depth (behind everything else in the band).
       body.push(...drawFeature(b, top, bot, width, rng));
       // Per-tier variation overlay so same-biome repeats read differently.
       const tint = rng() < 0.5 ? '#ffffff' : '#000000';
       body.push(<Rect key={`ov_${tier}`} x={0} y={top} width={width} height={bot - top} fill={tint} opacity={0.03 + rng() * 0.04} />);
-      // The river: glow, body, shimmer.
+      // The river: glow, body, shimmer. Segments overshoot the band so adjacent
+      // bands' strokes meet seamlessly at the clip edge.
       const seg = riverSegment(top, bot);
       body.push(<Path key={`rg_${tier}`} d={seg} stroke={b.river[1]} strokeWidth={RIVER_W + 14} fill="none" strokeLinecap="round" strokeLinejoin="round" opacity={0.3} />);
       body.push(<Path key={`rv_${tier}`} d={seg} stroke={b.river[1]} strokeWidth={RIVER_W} fill="none" strokeLinecap="round" strokeLinejoin="round" />);
       body.push(<Path key={`re_${tier}`} d={seg} stroke={b.river[0]} strokeWidth={RIVER_W * 0.34} fill="none" strokeLinecap="round" strokeLinejoin="round" opacity={0.6} />);
       // Scattered small decoration on the banks.
       body.push(...drawScatter(b, top, bot, width, riverX, rng));
+      out.push(
+        <Svg
+          key={`band_${tier}`}
+          width={width}
+          height={bot - top}
+          style={{ position: 'absolute', top, left: 0 }}
+          pointerEvents="none"
+        >
+          <Defs>
+            <LinearGradient id={`bank_${tier}`} x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor={b.bank[0]} />
+              <Stop offset="1" stopColor={b.bank[1]} />
+            </LinearGradient>
+          </Defs>
+          <G transform={`translate(0, ${-top})`}>{body}</G>
+        </Svg>,
+      );
     }
-    return { defs, body };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [width, amp, centerX]);
+    return out;
+  }, [bandRange.start, bandRange.end, width, bandTop, bandBottom, riverSegment, riverX]);
 
   // ── Data loading ───────────────────────────────────────────────────────────────
   const reload = useCallback(async () => {
     const snap = await getStorySnapshot(user);
     setSnapshot(snap);
-    if (snap.lives < MAX_LIVES && snap.nextRegenMs > 0) {
-      regenTarget.current = Date.now() + snap.nextRegenMs;
-      setCountdownMs(snap.nextRegenMs);
-    } else {
-      regenTarget.current = 0;
-      setCountdownMs(0);
-    }
+    setRegenAt(snap.lives < MAX_LIVES && snap.nextRegenMs > 0 ? Date.now() + snap.nextRegenMs : 0);
   }, [user]);
 
   useEffect(() => {
@@ -242,31 +285,21 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    const id = setInterval(() => {
-      if (regenTarget.current === 0) return;
-      const remaining = regenTarget.current - Date.now();
-      if (remaining <= 0) {
-        regenTarget.current = 0;
-        void reload();
-      } else {
-        setCountdownMs(remaining);
-      }
-    }, 1000);
-    return () => clearInterval(id);
-  }, [reload]);
-
   const currentLevel = Math.min((snapshot?.maxLevel ?? 0) + 1, STORY_LEVEL_COUNT);
 
-  const onViewportLayout = useCallback(
-    (h: number) => {
-      if (didAutoScroll.current || !snapshot) return;
-      didAutoScroll.current = true;
-      const { y } = nodePos(currentLevel);
-      scrollRef.current?.scrollTo({ y: Math.max(0, y - h / 2), animated: false });
-    },
-    [snapshot, currentLevel, nodePos],
-  );
+  /** Centre the map on the player's level once snapshot + viewport are known. */
+  const tryAutoScroll = useCallback(() => {
+    if (didAutoScroll.current || !snapshot || viewportH.current === 0) return;
+    didAutoScroll.current = true;
+    const { y } = nodePos(currentLevel);
+    const target = Math.max(0, y - viewportH.current / 2);
+    scrollRef.current?.scrollTo({ y: target, animated: false });
+    updateBandRange(target);
+  }, [snapshot, currentLevel, nodePos, updateBandRange]);
+
+  useEffect(() => {
+    tryAutoScroll();
+  }, [tryAutoScroll]);
 
   // ── Actions ────────────────────────────────────────────────────────────────────
   const watchAdForLife = useCallback(async () => {
@@ -324,15 +357,21 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
       }
       setSnapshot((s) => (s ? { ...s, lives: spent.lives } : s));
       track('story_level_started', { level });
-      setActive(getStoryLevel(level));
+      setActive(LEVELS[level - 1]);
     },
     [snapshot, currentLevel, user, language, toast, offerAd],
   );
 
+  /** Leave the in-level screen; the map remounts and re-centres on the player. */
+  const closeLevel = useCallback(() => {
+    didAutoScroll.current = false;
+    setActive(null);
+  }, []);
+
   const onLevelComplete = useCallback(
     async ({ score, stars }: { score: number; stars: number }) => {
       const lvl = active?.level;
-      setActive(null);
+      closeLevel();
       if (lvl == null) return;
       const res = await recordLevel(user, lvl, score, stars);
       if (stars >= 1) {
@@ -353,7 +392,7 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
       }
       await reload();
     },
-    [active, user, language, toast, reload],
+    [active, user, language, toast, reload, closeLevel],
   );
 
   // ── Active level overlay ─────────────────────────────────────────────────────
@@ -362,7 +401,7 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
       <StoryGameHost
         level={active}
         onExit={() => {
-          setActive(null);
+          closeLevel();
           void reload();
         }}
         onLevelComplete={onLevelComplete}
@@ -379,6 +418,39 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
   }
 
   const lives = snapshot?.lives ?? 0;
+
+  // ── Visible slice of the map ───────────────────────────────────────────────────
+  const firstLevel = bandRange.start * PER_TIER + 1;
+  const lastLevel = Math.min((bandRange.end + 1) * PER_TIER, STORY_LEVEL_COUNT);
+  const nodes: React.ReactNode[] = [];
+  for (let level = firstLevel; level <= lastLevel; level++) {
+    const { x, y } = nodePos(level);
+    const meta = LEVELS[level - 1];
+    const isCurrent = level === currentLevel;
+    nodes.push(
+      <LevelNode
+        key={level}
+        level={level}
+        x={x}
+        y={y}
+        meta={meta}
+        biome={biomeForTier(meta.tier)}
+        locked={level > currentLevel}
+        isCurrent={isCurrent}
+        stars={snapshot?.stars[level] ?? 0}
+        rewardItem={REWARD_AT.get(level)}
+        rewardSide={x > centerX ? -1 : 1}
+        showBanner={level % PER_TIER === 1}
+        myAvatar={isCurrent ? myAvatar : null}
+        friends={friendsByLevel.get(level) ?? EMPTY_FRIENDS}
+        language={language}
+        isDarkMode={isDarkMode}
+        textColor={c.text}
+        onTap={onTapLevel}
+        onOpenPlayer={onOpenPlayer}
+      />,
+    );
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.background }}>
@@ -407,10 +479,8 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
           {Array.from({ length: MAX_LIVES }, (_, i) => (
             <Heart key={i} size={16} color="#e8772e" fill={i < lives ? '#e8772e' : 'transparent'} />
           ))}
-          {lives < MAX_LIVES && countdownMs > 0 ? (
-            <Text style={{ fontFamily: FONTS.mono, color: c.textMuted, fontSize: 11, marginLeft: 4 }}>
-              {fmtCountdown(countdownMs)}
-            </Text>
+          {lives < MAX_LIVES && regenAt > 0 ? (
+            <RegenCountdown key={regenAt} targetTs={regenAt} color={c.textMuted} onExpired={reload} />
           ) : null}
           <TouchableOpacity
             onPress={watchAdForLife}
@@ -433,7 +503,10 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
           return (
             <TouchableOpacity
               key={key}
-              onPress={() => setView(key)}
+              onPress={() => {
+                if (key === 'map' && view !== 'map') didAutoScroll.current = false;
+                setView(key);
+              }}
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -468,174 +541,220 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
       ) : (
       <ScrollView
         ref={scrollRef}
-        onLayout={(e) => onViewportLayout(e.nativeEvent.layout.height)}
+        onLayout={(e) => {
+          viewportH.current = e.nativeEvent.layout.height;
+          tryAutoScroll();
+        }}
+        onScroll={(e) => updateBandRange(e.nativeEvent.contentOffset.y)}
+        scrollEventThrottle={32}
         showsVerticalScrollIndicator={false}
       >
         <View style={{ height: contentHeight, width }}>
-          {/* Themed biome background + relief + river path */}
-          <Svg width={width} height={contentHeight} style={{ position: 'absolute', top: 0, left: 0 }} pointerEvents="none">
-            <Defs>{background.defs}</Defs>
-            {background.body}
-          </Svg>
-
-          {/* Level medallions + reward markers */}
-          {Array.from({ length: STORY_LEVEL_COUNT }, (_, idx) => {
-            const level = idx + 1;
-            const { x, y } = nodePos(level);
-            const meta = getStoryLevel(level);
-            const biome = biomeForTier(meta.tier);
-            const stars = snapshot?.stars[level] ?? 0;
-            const locked = level > currentLevel;
-            const isCurrent = level === currentLevel;
-            const nodeFriends = friendsByLevel.get(level) ?? [];
-            const rewardItem = REWARD_AT.get(level);
-            const ModeIcon = MODE_ICON[meta.mode] ?? Globe;
-            const ringDark = shade(biome.rim, -0.35);
-            const ringLight = shade(biome.rim, 0.28);
-
-            // Reward marker sits opposite the medallion's horizontal offset.
-            const rewardSide = x > centerX ? -1 : 1;
-
-            return (
-              <View key={level} style={{ position: 'absolute', left: x - NODE / 2, top: y }}>
-                {/* Tier banner every 10 levels */}
-                {level % PER_TIER === 1 ? (
-                  <View style={{ position: 'absolute', top: -34, left: NODE / 2 - 74, width: 148, alignItems: 'center' }}>
-                    <View style={{ backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 3, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' }}>
-                      <Text style={{ fontFamily: FONTS.mono, fontSize: 10, color: '#fff', letterSpacing: 1 }}>
-                        {tr(language, `PALIER ${meta.tier} · ${biome.nameFr.toUpperCase()}`, `TIER ${meta.tier} · ${biome.nameEn.toUpperCase()}`)}
-                      </Text>
-                    </View>
-                  </View>
-                ) : null}
-
-                {/* Reward preview — shows WHAT you win and at which level */}
-                {rewardItem ? (
-                  <RewardMarker
-                    itemId={rewardItem}
-                    level={level}
-                    side={rewardSide}
-                    language={language}
-                    dim={locked}
-                    textColor={c.text}
-                    cardBg={isDarkMode ? 'rgba(19,32,64,0.92)' : 'rgba(255,255,255,0.92)'}
-                  />
-                ) : null}
-
-                {/* Medallion */}
-                <View style={{ width: NODE, height: NODE }}>
-                  {/* drop shadow */}
-                  <View style={{ position: 'absolute', top: 6, left: NODE / 2 - 22, width: 44, height: 12, borderRadius: 6, backgroundColor: 'rgba(0,0,0,0.22)' }} />
-                  {/* outer ring */}
-                  <TouchableOpacity
-                    activeOpacity={0.85}
-                    disabled={locked}
-                    onPress={() => onTapLevel(level)}
-                    {...a11yButton(
-                      locked
-                        ? tr(language, `Niveau ${level} verrouillé`, `Level ${level} locked`)
-                        : tr(language, `Niveau ${level}, ${biome.nameFr}`, `Level ${level}, ${biome.nameEn}`),
-                    )}
-                    style={{
-                      width: NODE,
-                      height: NODE,
-                      borderRadius: NODE / 2,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: locked ? '#6b6b6b' : ringDark,
-                      borderWidth: 2,
-                      borderColor: stars >= 3 ? '#ffcf4a' : isCurrent ? '#fff' : 'rgba(255,255,255,0.5)',
-                    }}
-                  >
-                    {/* inner disc */}
-                    <View
-                      style={{
-                        width: NODE - 12,
-                        height: NODE - 12,
-                        borderRadius: (NODE - 12) / 2,
-                        backgroundColor: locked ? '#8a8a8a' : biome.rim,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      {/* top highlight */}
-                      <View style={{ position: 'absolute', top: 2, width: NODE - 20, height: (NODE - 12) / 2, borderRadius: NODE, backgroundColor: locked ? 'rgba(255,255,255,0.18)' : ringLight, opacity: 0.5 }} />
-                      {locked ? (
-                        <Lock color="#ffffffdd" size={22} />
-                      ) : (
-                        <Text style={{ fontFamily: FONTS.heading, color: biome.onRim, fontSize: 19 }}>{level}</Text>
-                      )}
-                    </View>
-                    {/* mode-icon badge */}
-                    {!locked ? (
-                      <View
-                        style={{
-                          position: 'absolute',
-                          bottom: -4,
-                          right: -4,
-                          width: 22,
-                          height: 22,
-                          borderRadius: 11,
-                          backgroundColor: ringDark,
-                          borderWidth: 1.5,
-                          borderColor: '#fff',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        <ModeIcon color="#fff" size={12} />
-                      </View>
-                    ) : null}
-                  </TouchableOpacity>
-                </View>
-
-                {/* Stars earned */}
-                {!locked && stars > 0 ? (
-                  <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 3 }}>
-                    {[1, 2, 3].map((s) => (
-                      <Star key={s} size={13} color="#ffcf4a" fill={s <= stars ? '#ffcf4a' : 'transparent'} />
-                    ))}
-                  </View>
-                ) : null}
-
-                {/* Player globe on the current level */}
-                {isCurrent ? (
-                  <View style={{ position: 'absolute', top: -46, left: NODE / 2 - 19 }} pointerEvents="none">
-                    <WorldAvatar config={myAvatar ?? DEFAULT_AVATAR_CONFIG} size={38} animate round />
-                  </View>
-                ) : null}
-
-                {/* Friends' globes on their level */}
-                {nodeFriends.length > 0 ? (
-                  <View style={{ position: 'absolute', top: NODE - 6, left: NODE, flexDirection: 'row' }}>
-                    {nodeFriends.slice(0, 3).map((f, i) => (
-                      <TouchableOpacity
-                        key={f.userId}
-                        onPress={() => onOpenPlayer?.(f.userId, f.username)}
-                        style={{ marginLeft: i === 0 ? 0 : -8 }}
-                        {...a11yButton(f.username ?? tr(language, 'Ami', 'Friend'))}
-                      >
-                        <Avatar
-                          config={f.avatarConfig ? normalizeConfig(f.avatarConfig as AvatarConfig) : null}
-                          username={f.username}
-                          size={26}
-                          ringColor={biome.rim}
-                          ringWidth={2}
-                        />
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                ) : null}
-              </View>
-            );
-          })}
+          {/* Themed biome backgrounds (one cached SVG per visible band) */}
+          {bands}
+          {/* Level medallions + reward markers (visible bands only) */}
+          {nodes}
         </View>
       </ScrollView>
       )}
     </SafeAreaView>
   );
 }
+
+// ── Lives regen countdown ──────────────────────────────────────────────────────
+
+/**
+ * Isolated 1s ticker so the countdown never re-renders the (heavy) map tree —
+ * only this tiny Text updates each second. Remounted via key={targetTs} when the
+ * regen deadline changes.
+ */
+function RegenCountdown({ targetTs, color, onExpired }: { targetTs: number; color: string; onExpired: () => void }) {
+  const [ms, setMs] = useState(() => targetTs - Date.now());
+  useEffect(() => {
+    const id = setInterval(() => {
+      const remaining = targetTs - Date.now();
+      if (remaining <= 0) {
+        clearInterval(id);
+        onExpired();
+      } else {
+        setMs(remaining);
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, [targetTs, onExpired]);
+  if (ms <= 0) return null;
+  return (
+    <Text style={{ fontFamily: FONTS.mono, color, fontSize: 11, marginLeft: 4 }}>
+      {fmtCountdown(ms)}
+    </Text>
+  );
+}
+
+// ── Level medallion ────────────────────────────────────────────────────────────
+
+interface LevelNodeProps {
+  level: number;
+  x: number;
+  y: number;
+  meta: StoryLevel;
+  biome: Biome;
+  locked: boolean;
+  isCurrent: boolean;
+  stars: number;
+  rewardItem?: string;
+  rewardSide: number;
+  showBanner: boolean;
+  myAvatar: AvatarConfig | null;
+  friends: FriendPosition[];
+  language: 'fr' | 'en';
+  isDarkMode: boolean;
+  textColor: string;
+  onTap: (level: number) => void;
+  onOpenPlayer?: (userId: string, username?: string | null) => void;
+}
+
+const LevelNode = memo(function LevelNode({
+  level, x, y, meta, biome, locked, isCurrent, stars, rewardItem, rewardSide,
+  showBanner, myAvatar, friends, language, isDarkMode, textColor, onTap, onOpenPlayer,
+}: LevelNodeProps) {
+  const ringDark = shade(biome.rim, -0.35);
+  const ringLight = shade(biome.rim, 0.28);
+  const ModeIcon = MODE_ICON[meta.mode] ?? Globe;
+
+  return (
+    <View style={{ position: 'absolute', left: x - NODE / 2, top: y }}>
+      {/* Tier banner every 10 levels */}
+      {showBanner ? (
+        <View style={{ position: 'absolute', top: -34, left: NODE / 2 - 74, width: 148, alignItems: 'center' }}>
+          <View style={{ backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 3, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' }}>
+            <Text style={{ fontFamily: FONTS.mono, fontSize: 10, color: '#fff', letterSpacing: 1 }}>
+              {tr(language, `PALIER ${meta.tier} · ${biome.nameFr.toUpperCase()}`, `TIER ${meta.tier} · ${biome.nameEn.toUpperCase()}`)}
+            </Text>
+          </View>
+        </View>
+      ) : null}
+
+      {/* Reward preview — shows WHAT you win and at which level */}
+      {rewardItem ? (
+        <RewardMarker
+          itemId={rewardItem}
+          level={level}
+          side={rewardSide}
+          language={language}
+          dim={locked}
+          textColor={textColor}
+          cardBg={isDarkMode ? 'rgba(19,32,64,0.92)' : 'rgba(255,255,255,0.92)'}
+        />
+      ) : null}
+
+      {/* Medallion */}
+      <View style={{ width: NODE, height: NODE }}>
+        {/* drop shadow */}
+        <View style={{ position: 'absolute', top: 6, left: NODE / 2 - 22, width: 44, height: 12, borderRadius: 6, backgroundColor: 'rgba(0,0,0,0.22)' }} />
+        {/* outer ring */}
+        <TouchableOpacity
+          activeOpacity={0.85}
+          disabled={locked}
+          onPress={() => onTap(level)}
+          {...a11yButton(
+            locked
+              ? tr(language, `Niveau ${level} verrouillé`, `Level ${level} locked`)
+              : tr(language, `Niveau ${level}, ${biome.nameFr}`, `Level ${level}, ${biome.nameEn}`),
+          )}
+          style={{
+            width: NODE,
+            height: NODE,
+            borderRadius: NODE / 2,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: locked ? '#6b6b6b' : ringDark,
+            borderWidth: 2,
+            borderColor: stars >= 3 ? '#ffcf4a' : isCurrent ? '#fff' : 'rgba(255,255,255,0.5)',
+          }}
+        >
+          {/* inner disc */}
+          <View
+            style={{
+              width: NODE - 12,
+              height: NODE - 12,
+              borderRadius: (NODE - 12) / 2,
+              backgroundColor: locked ? '#8a8a8a' : biome.rim,
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+            }}
+          >
+            {/* top highlight */}
+            <View style={{ position: 'absolute', top: 2, width: NODE - 20, height: (NODE - 12) / 2, borderRadius: NODE, backgroundColor: locked ? 'rgba(255,255,255,0.18)' : ringLight, opacity: 0.5 }} />
+            {locked ? (
+              <Lock color="#ffffffdd" size={22} />
+            ) : (
+              <Text style={{ fontFamily: FONTS.heading, color: biome.onRim, fontSize: 19 }}>{level}</Text>
+            )}
+          </View>
+          {/* mode-icon badge */}
+          {!locked ? (
+            <View
+              style={{
+                position: 'absolute',
+                bottom: -4,
+                right: -4,
+                width: 22,
+                height: 22,
+                borderRadius: 11,
+                backgroundColor: ringDark,
+                borderWidth: 1.5,
+                borderColor: '#fff',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <ModeIcon color="#fff" size={12} />
+            </View>
+          ) : null}
+        </TouchableOpacity>
+      </View>
+
+      {/* Stars earned */}
+      {!locked && stars > 0 ? (
+        <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 3 }}>
+          {[1, 2, 3].map((s) => (
+            <Star key={s} size={13} color="#ffcf4a" fill={s <= stars ? '#ffcf4a' : 'transparent'} />
+          ))}
+        </View>
+      ) : null}
+
+      {/* Player globe on the current level */}
+      {isCurrent ? (
+        <View style={{ position: 'absolute', top: -46, left: NODE / 2 - 19 }} pointerEvents="none">
+          <WorldAvatar config={myAvatar ?? DEFAULT_AVATAR_CONFIG} size={38} animate round />
+        </View>
+      ) : null}
+
+      {/* Friends' globes on their level */}
+      {friends.length > 0 ? (
+        <View style={{ position: 'absolute', top: NODE - 6, left: NODE, flexDirection: 'row' }}>
+          {friends.slice(0, 3).map((f, i) => (
+            <TouchableOpacity
+              key={f.userId}
+              onPress={() => onOpenPlayer?.(f.userId, f.username)}
+              style={{ marginLeft: i === 0 ? 0 : -8 }}
+              {...a11yButton(f.username ?? tr(language, 'Ami', 'Friend'))}
+            >
+              <Avatar
+                config={f.avatarConfig ? normalizeConfig(f.avatarConfig as AvatarConfig) : null}
+                username={f.username}
+                size={26}
+                ringColor={biome.rim}
+                ringWidth={2}
+              />
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+});
 
 // ── Table view: friends ranking + rewards checklist ────────────────────────────
 
@@ -990,7 +1109,8 @@ function drawScatter(
   const out: React.ReactNode[] = [];
   const count = 16 + Math.floor(rng() * 10);
   for (let i = 0; i < count; i++) {
-    const y = top + rng() * (bottom - top);
+    // Inset from the band edges so props aren't flat-cut by the per-band SVG clip.
+    const y = Math.min(bottom - 16, Math.max(top + 16, top + rng() * (bottom - top)));
     const rx = riverX(y);
     const side = rng() < 0.5 ? -1 : 1;
     const x = rx + side * (46 + rng() * (width / 2 - 62));
