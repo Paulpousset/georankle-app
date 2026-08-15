@@ -120,7 +120,8 @@ background:${uiBg};color:${uiFg};font-family:-apple-system,system-ui,sans-serif;
 font-weight:600;line-height:1;display:flex;align-items:center;justify-content:center;
 touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;}
 #zc button:active{opacity:0.55;}
-#zr{font-size:16px;display:none;}
+/* #zc #zr, not #zr: "#zc button" above is more specific and would win. */
+#zc #zr{font-size:16px;display:none;}
 </style>
 </head>
 <body>
