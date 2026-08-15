@@ -6,10 +6,20 @@
  * Every gated RPC ALSO re-checks its flag server-side, so this client cache is
  * purely cosmetic (what UI to show) — never a security boundary.
  */
+import { useEffect, useState } from 'react';
+
 import { supabase } from './supabase';
 
-/** Known flags (rows created by seasons_monetization.sql + web_ads.sql, all OFF). */
-export type FeatureFlag = 'iap' | 'rewarded_ads' | 'interstitial_ads' | 'web_ads';
+/** Known flags (rows created by seasons_monetization.sql + web_ads.sql + visuals_3d.sql + story_map_3d.sql, all OFF). */
+export type FeatureFlag =
+  | 'iap'
+  | 'rewarded_ads'
+  | 'interstitial_ads'
+  | 'web_ads'
+  | 'avatar_3d'
+  | 'globe_3d'
+  | 'menu_globe_3d'
+  | 'story_map_3d';
 
 const TTL_MS = 5 * 60 * 1000;
 
@@ -33,6 +43,23 @@ export async function fetchFeatureFlags(): Promise<Record<string, boolean>> {
 export async function isFeatureEnabled(flag: FeatureFlag): Promise<boolean> {
   const flags = await fetchFeatureFlags();
   return flags[flag] === true;
+}
+
+/** React hook over isFeatureEnabled — false until fetched (fail closed). */
+export function useFeatureFlag(flag: FeatureFlag): boolean {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    isFeatureEnabled(flag)
+      .then((v) => {
+        if (alive) setOn(v);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [flag]);
+  return on;
 }
 
 /** Test hook: drop the in-memory cache. */

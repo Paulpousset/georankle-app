@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Dimensions, Modal, Pressable, SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Image, Modal, Pressable, SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { showAlert } from '../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -24,6 +24,9 @@ import {
   normalizeConfig,
 } from '../data/cosmetics';
 import { WorldAvatar } from '../components/WorldAvatar';
+import { WorldAvatar3D, cosmeticTileSprite } from '../components/WorldAvatar3D';
+import { AvatarPreview3D } from '../components/AvatarPreview3D';
+import { useFeatureFlag } from '../lib/featureFlags';
 import { GlyphThumb } from '../components/worldGlyphs';
 import { RewardedAdButton } from '../components/RewardedAdButton';
 import { useTheme } from '../contexts/ThemeContext';
@@ -106,6 +109,9 @@ export default function Shop({ onBack, onEditAvatar }: ShopProps) {
   const { language } = useLanguage();
   const userId = user?.id ?? '';
   const c = getColors(isDarkMode);
+  // Pre-rendered 3D layer pack for tiles + live three.js scene for the preview.
+  const avatar3d = useFeatureFlag('avatar_3d');
+  const WorldRenderer = avatar3d ? WorldAvatar3D : WorldAvatar;
 
   const [balance, setBalance] = useState(0);
   const [owned, setOwned] = useState<Set<string>>(new Set());
@@ -281,13 +287,18 @@ export default function Shop({ onBack, onEditAvatar }: ShopProps) {
     if (part.category === 'globe' || part.category === 'cosmos' || part.category === 'orbit') {
       return (
         <View style={[styles.thumbRound, { width: size, height: size, borderRadius: size / 2 }]}>
-          <WorldAvatar config={tileConfig(part)} size={size} />
+          <WorldRenderer config={tileConfig(part)} size={size} />
         </View>
       );
     }
+    const sprite = avatar3d ? cosmeticTileSprite(part) : undefined;
     return (
       <View style={[styles.thumbGlyphWrap, { width: size, height: size, borderRadius: size / 2, backgroundColor: c.background, borderColor: c.border }]}>
-        <GlyphThumb id={part.id} category={part.category} size={size - 4} />
+        {sprite ? (
+          <Image source={sprite} style={{ width: size - 10, height: size - 10 }} resizeMode="contain" />
+        ) : (
+          <GlyphThumb id={part.id} category={part.category} size={size - 4} />
+        )}
       </View>
     );
   };
@@ -641,15 +652,14 @@ export default function Shop({ onBack, onEditAvatar }: ShopProps) {
               <X color={c.textMuted} size={20} />
             </TouchableOpacity>
 
-            {/* World avatar preview (pure SVG) */}
+            {/* World avatar preview — live 3D behind the avatar_3d flag, SVG otherwise */}
             <View style={[styles.avatar3dWrap, { width: PREVIEW_SIZE, height: PREVIEW_SIZE }]}>
-              {previewPart && (
-                <WorldAvatar
-                  config={previewConfig}
-                  size={PREVIEW_SIZE}
-                  animate
-                />
-              )}
+              {previewPart &&
+                (avatar3d ? (
+                  <AvatarPreview3D config={previewConfig} size={PREVIEW_SIZE} />
+                ) : (
+                  <WorldAvatar config={previewConfig} size={PREVIEW_SIZE} animate />
+                ))}
             </View>
 
             {previewPart && (

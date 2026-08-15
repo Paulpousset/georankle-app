@@ -45,6 +45,13 @@ google-service-account.json
 # region-data build cache (raw Natural Earth / france-geojson downloads, ~40MB)
 scripts/.regioncache/
 
+# asset-pipeline : tout ce qui est régénérable depuis le code versionné
+# (le .blend est GÉNÉRÉ par rigbuild/build_all.py, cf. asset-pipeline/README.md)
+asset-pipeline/out/
+asset-pipeline/textures_globe/
+asset-pipeline/avatar_rig.blend*
+__pycache__/
+
 # typescript
 *.tsbuildinfo
 

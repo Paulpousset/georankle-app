@@ -78,7 +78,8 @@
           ]
         }
       ],
-      "expo-tracking-transparency"
+      "expo-tracking-transparency",
+      "expo-asset"
     ],
     "splash": {
       "image": "./assets/splash-icon.png",

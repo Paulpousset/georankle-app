@@ -32,7 +32,7 @@ const VIEW: [number, number] = [14, 20];
 
 // ── Style tables ─────────────────────────────────────────────────────────────
 
-interface GlobeStyle {
+export interface GlobeStyle {
   ocean: [string, string, string]; // radial: lit → mid → deep
   land: string;
   stroke: string;
@@ -73,7 +73,7 @@ interface GlobeStyle {
   crown?: boolean;
 }
 
-const GLOBE_STYLES: Record<string, GlobeStyle> = {
+export const GLOBE_STYLES: Record<string, GlobeStyle> = {
   classic:   { ocean: ['#5cb3ec', '#1f6fae', '#0a2f52'], land: '#6e9e52', stroke: '#2c4a2c', grat: '#0a2f52', atmo: '#6fc0ff', terminator: true, clouds: true },
   satellite: { ocean: ['#2a78b0', '#0d3a66', '#04203c'], land: '#2f6e3a', stroke: '#143a1a', grat: '#04203c', atmo: '#6fc0ff', terminator: true, clouds: true },
   relief:    { ocean: ['#6ec0e0', '#2f7fae', '#123a52'], land: '#b89a5a', stroke: '#7a5a2a', grat: '#123a52', relief: true, atmo: '#6fc0ff', terminator: true, clouds: true },
@@ -98,13 +98,13 @@ const GLOBE_STYLES: Record<string, GlobeStyle> = {
   st_crowned:   { ocean: ['#ffe7a4', '#e0a93a', '#8a5a14'], land: '#caa23a', stroke: '#7a5212', grat: '#8a5a14', atmo: '#ffd700', terminator: true, sparkle: true, crown: true },
 };
 
-const POLITICAL_PALETTE = [
+export const POLITICAL_PALETTE = [
   '#e8a87c', '#c38d9e', '#85a392', '#e8c468', '#8aa6c1',
   '#d98c8c', '#9ec7a0', '#c9a06a', '#b0a4c9', '#7fb3b0',
 ];
 
 // Major city coordinates [lon, lat] lit up by the "night lights" globe.
-const CITY_LIGHTS: [number, number][] = [
+export const CITY_LIGHTS: [number, number][] = [
   [2, 48], [-0.1, 51], [13, 52], [12, 41], [37, 55], [28, -26], [18, -33],
   [31, 30], [55, 25], [77, 28], [116, 39], [121, 31], [139, 35], [103, 1],
   [151, -33], [-58, -34], [-46, -23], [-99, 19], [-118, 34],

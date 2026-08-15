@@ -1,0 +1,20 @@
+{
+  "name": "geog-asset-pipeline",
+  "private": true,
+  "type": "module",
+  "description": "Toolchain hors-app : vendoring three.js, rendu batch Blender des cosmétiques, conversion WebP, manifest Metro. Jamais bundlé dans l'app (deps isolées d'EAS/Metro).",
+  "scripts": {
+    "vendor:three": "node vendor-three.mjs",
+    "ids": "tsx gen_ids.mjs",
+    "manifest": "tsx gen_manifest.mjs",
+    "check": "tsx check_assets.mjs",
+    "textures": "node fetch_textures.mjs",
+    "convert": "node convert.mjs"
+  },
+  "dependencies": {
+    "esbuild": "^0.25.0",
+    "sharp": "^0.34.0",
+    "three": "^0.180.0",
+    "tsx": "^4.19.0"
+  }
+}

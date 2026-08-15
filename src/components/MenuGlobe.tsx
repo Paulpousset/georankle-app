@@ -8,12 +8,16 @@
  * shared orthographic projection + simplified world polygons from RankGlobe.
  * The spin honours the system reduce-motion setting.
  */
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo, View, type StyleProp, type ViewStyle } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AccessibilityInfo, Animated, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Svg, { Circle, Defs, G, LinearGradient, Path, RadialGradient, Rect, Stop, ClipPath } from 'react-native-svg';
 
 import rawWorldPolygons from '../../assets/world_polygons.json';
+import { buildMenuEarthHtml } from '../lib/globe3d/buildEarthHtml';
+import { useFeatureFlag } from '../lib/featureFlags';
+import { getMapPalette } from '../theme/mapPalette';
 import { graticule, project } from '../lib/globeProjection';
+import GlobeWebView, { type WebViewMessageEvent } from './GlobeWebView';
 
 /**
  * Land rings for the menu globe. The tiny `WORLD_POLYS` set used by RankGlobe
@@ -134,10 +138,58 @@ function MenuGlobeBase({ size, isDarkMode, backgroundColor, crop = 0.62, style }
     };
   }, []);
 
+  // Live 3D hero (menu_globe_3d): lazily mounted ~400 ms after the menu is
+  // interactive, cross-faded over the SVG globe which stays the instant base
+  // layer (and the whole story when the flag is off / reduce-motion is on).
+  const menu3d = useFeatureFlag('menu_globe_3d');
+  const [liveHtml, setLiveHtml] = useState<string | null>(null);
+  const [liveReady, setLiveReady] = useState(false);
+  const [liveFade] = useState(() => new Animated.Value(0));
+  const liveWebRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (!menu3d || reduceMotion) return;
+    let alive = true;
+    const timer = setTimeout(async () => {
+      try {
+        const { THREE_SRC } = await import('../vendor/threeSource');
+        if (!alive) return;
+        setLiveHtml(
+          buildMenuEarthHtml({
+            threeSrc: THREE_SRC,
+            isDark: isDarkMode,
+            pal: getMapPalette(isDarkMode),
+            polygons: rawWorldPolygons as { id: string; r: number[][][] }[],
+          }),
+        );
+      } catch {
+        /* three source unavailable — the SVG globe simply stays */
+      }
+    }, 400);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [menu3d, reduceMotion, isDarkMode]);
+
+  const onLiveMessage = useCallback(
+    (e: WebViewMessageEvent) => {
+      try {
+        if (JSON.parse(e.nativeEvent.data).type !== 'GLOBE_READY') return;
+      } catch {
+        return;
+      }
+      setLiveReady(true);
+      Animated.timing(liveFade, { toValue: 1, duration: 450, useNativeDriver: true }).start();
+    },
+    [liveFade],
+  );
+
   const rafRef = useRef<number | null>(null);
   const lastRef = useRef<number | null>(null);
   useEffect(() => {
-    if (reduceMotion) return;
+    // The SVG spin stops once the 3D layer has faded in on top of it.
+    if (reduceMotion || liveReady) return;
     const tick = (ts: number) => {
       if (lastRef.current == null) lastRef.current = ts;
       const dt = ts - lastRef.current;
@@ -152,7 +204,7 @@ function MenuGlobeBase({ size, isDarkMode, backgroundColor, crop = 0.62, style }
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
       lastRef.current = null;
     };
-  }, [reduceMotion]);
+  }, [reduceMotion, liveReady]);
 
   const landPaths = useMemo(() => {
     const paths: string[] = [];
@@ -192,11 +244,6 @@ function MenuGlobeBase({ size, isDarkMode, backgroundColor, crop = 0.62, style }
             <Stop offset="65%" stopColor={t.oceanMid} />
             <Stop offset="100%" stopColor={t.oceanDeep} />
           </RadialGradient>
-          <LinearGradient id="mg_fade" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0%" stopColor={backgroundColor} stopOpacity="0" />
-            <Stop offset="55%" stopColor={backgroundColor} stopOpacity="0" />
-            <Stop offset="100%" stopColor={backgroundColor} stopOpacity="1" />
-          </LinearGradient>
           <ClipPath id="mg_clip">
             <Circle cx={cx} cy={cy} r={r} />
           </ClipPath>
@@ -213,11 +260,45 @@ function MenuGlobeBase({ size, isDarkMode, backgroundColor, crop = 0.62, style }
           ))}
         </G>
 
-        {/* Fade the visible crop into the screen background. */}
-        <Rect x={0} y={0} width={size} height={visibleHeight} fill="url(#mg_fade)" />
+      </Svg>
+
+      {/* Live 3D layer (menu_globe_3d) — fades in over the SVG once textured. */}
+      {liveHtml ? (
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.liveWrap, { width: size, height: size, opacity: liveFade }]}
+        >
+          <GlobeWebView
+            ref={liveWebRef}
+            source={{ html: liveHtml }}
+            onMessage={onLiveMessage}
+            originWhitelist={['*']}
+            javaScriptEnabled
+            domStorageEnabled
+            scrollEnabled={false}
+            style={styles.liveWebView}
+          />
+        </Animated.View>
+      ) : null}
+
+      {/* Fade the visible crop into the screen background — above every layer. */}
+      <Svg width={size} height={visibleHeight} style={StyleSheet.absoluteFill} pointerEvents="none">
+        <Defs>
+          <LinearGradient id="mg_fade_top" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0%" stopColor={backgroundColor} stopOpacity="0" />
+            <Stop offset="55%" stopColor={backgroundColor} stopOpacity="0" />
+            <Stop offset="100%" stopColor={backgroundColor} stopOpacity="1" />
+          </LinearGradient>
+        </Defs>
+        <Rect x={0} y={0} width={size} height={visibleHeight} fill="url(#mg_fade_top)" />
       </Svg>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  liveWrap: { position: 'absolute', top: 0, left: 0 },
+  liveWebView: { flex: 1, backgroundColor: 'transparent' },
+});
 
 export const MenuGlobe = React.memo(MenuGlobeBase);

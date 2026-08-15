@@ -12,7 +12,10 @@ module.exports = [
       '.expo/**',
       'assets/**',
       'coverage/**',
+      // Node-only asset toolchain (Blender/three.js/webp) — never bundled in the app.
+      'asset-pipeline/**',
       'babel.config.js',
+      'metro.config.js',
       'eslint.config.js',
       'jest.config.js',
     ],

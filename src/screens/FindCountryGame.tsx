@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -20,6 +20,8 @@ import { getColors, PALETTE } from '../theme/colors';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getMapPalette } from '../theme/mapPalette';
+import { buildFindEarthHtml } from '../lib/globe3d/buildEarthHtml';
+import { useGlobe3d } from '../lib/globe3d/useGlobe3d';
 import { FONTS } from '../theme/typography';
 import { getFlagUrl, prefetchFlags } from '../lib/flags';
 import { createSeededRng } from '../lib/rng';
@@ -43,6 +45,8 @@ interface CountryStat {
   lat: number;
   lng: number;
   region: string;
+  /** km² — sizes the tap footprint of the dot-rendered microstates. */
+  area: number;
 }
 
 interface FindCountryGameProps {
@@ -92,8 +96,15 @@ function buildGlobeHtml(
 ): string {
   const pal = getMapPalette(isDark);
   const bg = pal.bg;
-  const dots = JSON.stringify(countries.map((c) => ({ cca3: c.cca3, lat: c.lat, lng: c.lng })));
+  // `area` (km²) sizes each dot's tap footprint — see dotFootprint() below.
+  const dots = JSON.stringify(
+    countries.map((c) => ({ cca3: c.cca3, lat: c.lat, lng: c.lng, area: c.area })),
+  );
   const polys = JSON.stringify(polygons);
+  // Zoom-control chrome — readable over both map themes without a new palette slot.
+  const uiBg = isDark ? 'rgba(19,36,63,0.88)' : 'rgba(255,255,255,0.9)';
+  const uiFg = isDark ? '#e8dcc0' : '#2c1810';
+  const dotRing = isDark ? 'rgba(10,18,33,0.9)' : 'rgba(255,255,255,0.95)';
 
   return `<!DOCTYPE html>
 <html>
@@ -103,22 +114,49 @@ function buildGlobeHtml(
 *{margin:0;padding:0;}
 html,body{width:100%;height:100%;overflow:hidden;background:${bg};}
 canvas{display:block;position:absolute;top:0;left:0;touch-action:none;}
+#zc{position:fixed;right:12px;bottom:12px;display:flex;flex-direction:column;gap:8px;z-index:5;}
+#zc button{width:44px;height:44px;padding:0;border-radius:12px;border:1px solid ${pal.rim};
+background:${uiBg};color:${uiFg};font-family:-apple-system,system-ui,sans-serif;font-size:22px;
+font-weight:600;line-height:1;display:flex;align-items:center;justify-content:center;
+touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;}
+#zc button:active{opacity:0.55;}
+#zr{font-size:16px;display:none;}
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
+<div id="zc">
+<button id="zin" type="button">+</button>
+<button id="zout" type="button">−</button>
+<button id="zr" type="button">⟲</button>
+</div>
 <script>
 var COUNTRIES=${dots};
 var POLYGONS=${polys};
 var PAL=${JSON.stringify(pal)};
+var DOTRING='${dotRing}';
 var dpr=window.devicePixelRatio||1;
 var canvas=document.getElementById('c');
 var ctx=canvas.getContext('2d');
 var W,H,cx,cy,R,Rb;
 var rotLon=0,rotLat=0,zoom=1;
-var ZMIN=0.9,ZMAX=16;
+var ZMIN=0.9,ZMAX=24;
 var sel=null,locked=false,hov=null;
 var resultMode=false,resultCorrect=null,resultPicked=null;
+// Dot-rendered microstates grow slowly with zoom: zooming in is the player's
+// tool for reaching them, so they must become a bigger target, not stay 4 px.
+function dotRadius(){return 4*Math.pow(zoom,0.25);}
+// Dot countries only outrank the polygon they sit on ONCE ZOOMED IN: at world
+// zoom the 4 px marker spans ~250 km, so giving it priority handed the Riviera
+// to Monaco and half the Pyrenees to Andorra. Below this, behaviour is exactly
+// what shipped before (polygon first, 26 px ocean snap for the islands).
+var DOT_PICK_ZOOM=2.6;
+// Tap footprint of a dot country, in px: the on-screen radius of its REAL area
+// (capped, since a coarse host polygon must keep its middle), floored at the
+// drawn marker so a 0.5 km² Vatican still gets a finger-sized target.
+function dotFootprint(c){
+  return Math.max(dotRadius()+1,R*Math.min(35,Math.sqrt((c.area||0)/Math.PI))/6371);
+}
 
 function postMsg(obj){
   var j=JSON.stringify(obj);
@@ -213,16 +251,17 @@ function drawGlobe(resultMode,correct,picked){
   ctx.save();ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.clip();
 
   ctx.strokeStyle=PAL.grat;ctx.lineWidth=0.5;
+  var gs=zoom>6?1:(zoom>2?2:3); // finer sampling when zoomed, else 3° stays cheap
   for(var la=-60;la<=60;la+=30){
     var f1=true;
-    for(var lo=-180;lo<=180;lo+=3){
+    for(var lo=-180;lo<=180;lo+=gs){
       var p=project(la,lo);if(!p){f1=true;continue;}
       if(f1){ctx.beginPath();ctx.moveTo(p.sx,p.sy);f1=false;}else ctx.lineTo(p.sx,p.sy);
     }ctx.stroke();
   }
   for(var lo2=-180;lo2<180;lo2+=30){
     var f2=true;
-    for(var la2=-88;la2<=88;la2+=3){
+    for(var la2=-88;la2<=88;la2+=gs){
       var p2=project(la2,lo2);if(!p2){f2=true;continue;}
       if(f2){ctx.beginPath();ctx.moveTo(p2.sx,p2.sy);f2=false;}else ctx.lineTo(p2.sx,p2.sy);
     }ctx.stroke();
@@ -244,21 +283,27 @@ function drawGlobe(resultMode,correct,picked){
     ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.stroke();
   }
 
+  var dr=dotRadius();
   COUNTRIES.forEach(function(c){
     if(polyMap[c.cca3]!==undefined)return;
     var p=project(c.lat,c.lng);if(!p)return;
-    var alpha=0.4+p.d*0.6,dotR=4,color,glow=false;
+    var alpha=0.4+p.d*0.6,dotR=dr,color,glow=false;
     if(resultMode){
-      if(c.cca3===correct){dotR=9;color=PAL.okS;glow=true;}
-      else if(c.cca3===picked&&c.cca3!==correct){dotR=9;color=PAL.badS;glow=true;}
+      if(c.cca3===correct){dotR=dr*2.2;color=PAL.okS;glow=true;}
+      else if(c.cca3===picked&&c.cca3!==correct){dotR=dr*2.2;color=PAL.badS;glow=true;}
       else color=PAL.dot+alpha+')';
     }else{
-      if(c.cca3===sel){dotR=9;color=PAL.selS;glow=true;}
+      if(c.cca3===sel){dotR=dr*2.2;color=PAL.selS;glow=true;}
+      else if(!locked&&c.cca3===hov){dotR=dr*1.5;color=PAL.hovS;}
       else color=PAL.dot+alpha+')';
     }
     if(glow){ctx.shadowColor=color;ctx.shadowBlur=12;}
     ctx.beginPath();ctx.arc(p.sx,p.sy,dotR,0,Math.PI*2);
     ctx.fillStyle=color;ctx.fill();ctx.shadowBlur=0;
+    // Contrasting ring: a dot sitting ON land (Vatican, Monaco, Singapour…) is
+    // otherwise nearly invisible against the land fill.
+    ctx.beginPath();ctx.arc(p.sx,p.sy,dotR+1.2,0,Math.PI*2);
+    ctx.strokeStyle=DOTRING;ctx.lineWidth=1.4;ctx.stroke();
   });
 
   ctx.restore();
@@ -276,6 +321,32 @@ function render(){
   else drawGlobe(false,null,null);
 }
 
+// Zoom keeps the geo point under the finger/cursor pinned instead of always
+// scaling about the globe centre — without it, zooming towards a microstate
+// pushed it off screen and the player had to re-pan after every pinch.
+// Iterative: nudge the centre with the same px→degree linearisation the drag
+// handler uses until the anchor projects back onto the pointer (3-4 passes).
+function anchorAt(lat,lng,px,py){
+  for(var i=0;i<6;i++){
+    var p=project(lat,lng);if(!p)return;
+    var ex=px-p.sx,ey=py-p.sy;
+    if(Math.abs(ex)<0.5&&Math.abs(ey)<0.5)return;
+    var f=57.2957795/R;
+    rotLon-=ex*f/Math.max(0.2,Math.cos(lat*Math.PI/180));
+    rotLat=Math.max(-85,Math.min(85,rotLat+ey*f));
+  }
+}
+// geo === undefined → resolve the anchor from (px,py); pass null for a plain
+// centre zoom (buttons, or a pinch that started off the globe).
+function setZoom(z,px,py,geo){
+  var anchor=geo===undefined?unproject(px,py):geo;
+  zoom=Math.max(ZMIN,Math.min(ZMAX,z));
+  R=Rb*zoom;
+  if(anchor)anchorAt(anchor.lat,anchor.lng,px,py);
+  document.getElementById('zr').style.display=zoom>1.05?'flex':'none';
+  render();
+}
+
 var drag=null;
 function onStart(x,y){drag={x:x,y:y,lon:rotLon,lat:rotLat,moved:false};}
 function onMove(x,y){
@@ -286,18 +357,32 @@ function onMove(x,y){
   rotLat=Math.max(-85,Math.min(85,drag.lat+dy*(0.35/zoom)));
   render();
 }
-function onEnd(x,y){if(drag&&!drag.moved)handleTap(x,y);drag=null;}
+var lastTap=0,lastTapX=0,lastTapY=0;
+function onEnd(x,y){
+  if(drag&&!drag.moved){
+    var now=Date.now();
+    // Double-tap zooms in on the spot — the discoverable way to reach a dot
+    // country on touch without a two-finger pinch.
+    if(now-lastTap<280&&Math.hypot(x-lastTapX,y-lastTapY)<22){
+      lastTap=0;setZoom(zoom*1.8,x,y);
+    }else{
+      lastTap=now;lastTapX=x;lastTapY=y;handleTap(x,y);
+    }
+  }
+  drag=null;
+}
 
-var pinchD=null,pinchZ=null;
+var pinchD=null,pinchZ=null,pinchGeo=null;
 function pinchStart(t1,t2){
   pinchD=Math.hypot(t2.clientX-t1.clientX,t2.clientY-t1.clientY);
   pinchZ=zoom;drag=null;
+  pinchGeo=unproject((t1.clientX+t2.clientX)/2,(t1.clientY+t2.clientY)/2);
 }
 function pinchMove(t1,t2){
   if(pinchD===null)return;
   var d=Math.hypot(t2.clientX-t1.clientX,t2.clientY-t1.clientY);
-  zoom=Math.max(ZMIN,Math.min(ZMAX,pinchZ*d/pinchD));
-  R=Rb*zoom;render();
+  // Anchoring the start midpoint to the live midpoint gives two-finger pan for free.
+  setZoom(pinchZ*d/pinchD,(t1.clientX+t2.clientX)/2,(t1.clientY+t2.clientY)/2,pinchGeo);
 }
 
 canvas.addEventListener('touchstart',function(e){
@@ -310,42 +395,84 @@ canvas.addEventListener('touchmove',function(e){
   else if(e.touches.length===1)onMove(e.touches[0].clientX,e.touches[0].clientY);
 },{passive:false});
 canvas.addEventListener('touchend',function(e){
-  if(e.touches.length<2)pinchD=null;
+  if(e.touches.length<2){pinchD=null;pinchGeo=null;}
   if(e.touches.length===0)onEnd(e.changedTouches[0].clientX,e.changedTouches[0].clientY);
 },{passive:true});
 canvas.addEventListener('mousedown',function(e){onStart(e.clientX,e.clientY);});
 canvas.addEventListener('mousemove',function(e){
   if(drag){onMove(e.clientX,e.clientY);return;}
   if(locked)return;
-  var coords=unproject(e.clientX,e.clientY);
-  var hit=coords?hitTest(coords):null;
+  var hit=pickAt(e.clientX,e.clientY);
   if(hit!==hov){hov=hit;canvas.style.cursor=hit?'pointer':'default';render();}
 });
 canvas.addEventListener('mouseup',function(e){onEnd(e.clientX,e.clientY);});
 canvas.addEventListener('wheel',function(e){
   e.preventDefault();
-  zoom=Math.max(ZMIN,Math.min(ZMAX,zoom*(e.deltaY>0?0.9:1.1)));
-  R=Rb*zoom;render();
+  setZoom(zoom*(e.deltaY>0?0.9:1.1),e.clientX,e.clientY);
 },{passive:false});
+// 1.7× per press: two taps clear DOT_PICK_ZOOM, so "+ +" is enough to unlock
+// the microstates without a pinch.
+document.getElementById('zin').addEventListener('click',function(){setZoom(zoom*1.7,cx,cy,null);});
+document.getElementById('zout').addEventListener('click',function(){setZoom(zoom/1.7,cx,cy,null);});
+document.getElementById('zr').addEventListener('click',function(){setZoom(1,cx,cy,null);});
+
+function nearestDot(tx,ty,maxD){
+  var best=null,bestD=maxD;
+  for(var i=0;i<COUNTRIES.length;i++){
+    var c=COUNTRIES[i];
+    if(polyMap[c.cca3]!==undefined)continue;
+    var p=project(c.lat,c.lng);if(!p)continue;
+    var d=Math.hypot(p.sx-tx,p.sy-ty);
+    if(d<bestD){bestD=d;best=c;}
+  }
+  return best;
+}
+// The dot whose own footprint the tap falls in (closest one relative to its
+// own radius, so Vatican beats Italy but never outranks a bigger neighbour).
+function dotInFootprint(tx,ty){
+  if(zoom<DOT_PICK_ZOOM)return null;
+  var best=null,bestRel=1,bestD=0;
+  for(var i=0;i<COUNTRIES.length;i++){
+    var c=COUNTRIES[i];
+    if(polyMap[c.cca3]!==undefined)continue;
+    var p=project(c.lat,c.lng);if(!p)continue;
+    var d=Math.hypot(p.sx-tx,p.sy-ty),rel=d/dotFootprint(c);
+    if(rel<bestRel){bestRel=rel;best=c;bestD=d;}
+  }
+  return best?{c:best,d:bestD}:null;
+}
+var centreMap={};
+COUNTRIES.forEach(function(c){centreMap[c.cca3]=c;});
+// Screen distance from a tap to a country's own centre, or Infinity.
+function centreDist(cca3,tx,ty){
+  var c=centreMap[cca3];if(!c)return Infinity;
+  var p=project(c.lat,c.lng);if(!p)return Infinity;
+  return Math.hypot(p.sx-tx,p.sy-ty);
+}
+// Dot countries win inside their own screen footprint, THEN polygons, then a
+// wider snap. Seven dots (Vatican/Saint-Marin in ITA, Monaco/Andorre in FRA,
+// Liechtenstein in CHE, Singapour in MYS, Palestine in ISR) sit inside another
+// country's ring, so a polygon-first test made them literally unselectable.
+function pickAt(tx,ty){
+  var coords=unproject(tx,ty);
+  var poly=coords?hitTest(coords):null;
+  var near=dotInFootprint(tx,ty);
+  // A tap on a country's own centre belongs to that country even when a dot's
+  // footprint covers it — our ISR ring is a coarse 9-point sliver whose middle
+  // sits under the Palestine dot, and Israel must stay selectable there.
+  if(near&&poly&&centreDist(poly,tx,ty)<near.d)return poly;
+  if(near)return near.c.cca3;
+  if(poly)return poly;
+  // Polygon miss: snap to the nearest dot within ~26px of the tap. Screen-space
+  // distance is naturally zoom-aware, so a zoomed-in tap on a big landmass can
+  // no longer grab a far-away island (a fixed 18° threshold used to do that).
+  var far=nearestDot(tx,ty,26);
+  return far?far.cca3:null;
+}
 
 function handleTap(tx,ty){
   if(locked)return;
-  var coords=unproject(tx,ty);if(!coords)return;
-  var hit=hitTest(coords);
-  if(!hit){
-    // Polygon miss: snap to the nearest dot-rendered country, but only if its
-    // on-screen position is within ~26px of the tap. Screen-space distance is
-    // naturally zoom-aware, so a zoomed-in tap on a big landmass can no longer
-    // grab a far-away island (previous fixed 18° threshold did exactly that).
-    var best=null,bestD=26;
-    COUNTRIES.forEach(function(c){
-      if(polyMap[c.cca3]!==undefined)return;
-      var p=project(c.lat,c.lng);if(!p)return;
-      var d=Math.hypot(p.sx-tx,p.sy-ty);
-      if(d<bestD){bestD=d;best=c;}
-    });
-    if(best)hit=best.cca3;
-  }
+  var hit=pickAt(tx,ty);
   if(!hit)return;
   sel=hit;render();
   postMsg({type:'COUNTRY_SELECTED',cca3:hit});
@@ -357,6 +484,9 @@ window.showResult=function(correct,picked){
   resultMode=true;resultCorrect=correct;resultPicked=picked;
   var t=COUNTRIES.find(function(c){return c.cca3===correct;});
   if(t){rotLon=t.lng;rotLat=Math.max(-60,Math.min(60,t.lat));}
+  // Cap the reveal zoom: at 24× the highlighted country fills the screen with
+  // no surrounding context, which is exactly what the player needs to learn.
+  if(zoom>6){zoom=6;R=Rb*zoom;}
   render();
 };
 
@@ -455,6 +585,31 @@ export default function FindCountryGame({
   }, [matchData?.id, user?.id]);
 
   const webViewRef = useRef<any>(null);
+  // 3D WebGL globe behind the globe_3d flag; the legacy Canvas-2D builder stays
+  // the fallback (flag off / reduce-motion). Resolved before mount so the
+  // WebView never reloads mid-game.
+  const globe3d = useGlobe3d();
+  const globeHtml = useMemo(() => {
+    if (globe3d.status === 'on') {
+      return buildFindEarthHtml({
+        threeSrc: globe3d.threeSrc,
+        isDark: isDarkMode,
+        pal: getMapPalette(isDarkMode),
+        polygons: rawWorldPolygons as unknown as WorldPolygon[],
+        dots: (rawCountriesStats as unknown as CountryStat[]).map((co) => ({
+          cca3: co.cca3,
+          lat: co.lat,
+          lng: co.lng,
+          area: co.area,
+        })),
+      });
+    }
+    return buildGlobeHtml(
+      rawCountriesStats as unknown as CountryStat[],
+      isDarkMode,
+      rawWorldPolygons as unknown as WorldPolygon[],
+    );
+  }, [globe3d, isDarkMode]);
   const current = rounds[index];
   const isCorrect = selectedCca3 === current.cca3;
   const countryName = language === 'fr' ? current.name : (current.name_en ?? current.name);
@@ -711,22 +866,18 @@ export default function FindCountryGame({
               )}
             </View>
           )}
-          <GlobeWebView
-            ref={webViewRef}
-            source={{
-                html: buildGlobeHtml(
-                  rawCountriesStats as unknown as CountryStat[],
-                  isDarkMode,
-                  rawWorldPolygons as unknown as WorldPolygon[],
-                ),
-              }}
-            onMessage={handleMessage}
-            originWhitelist={['*']}
-            javaScriptEnabled
-            domStorageEnabled
-            style={styles.webview}
-            scrollEnabled={false}
-          />
+          {globe3d.status !== 'pending' && (
+            <GlobeWebView
+              ref={webViewRef}
+              source={{ html: globeHtml }}
+              onMessage={handleMessage}
+              originWhitelist={['*']}
+              javaScriptEnabled
+              domStorageEnabled
+              style={styles.webview}
+              scrollEnabled={false}
+            />
+          )}
         </View>
 
         {/* Hint / confirm bar (playing) */}
@@ -752,9 +903,20 @@ export default function FindCountryGame({
                 </TouchableOpacity>
               </View>
             ) : (
-              <Text style={[styles.hint, { color: colors.textMuted }]}>
-                {tr(language, 'Tape sur le pays puis valide', 'Tap the country, then confirm')}
-              </Text>
+              <>
+                <Text style={[styles.hint, { color: colors.textMuted }]}>
+                  {tr(language, 'Tape sur le pays puis valide', 'Tap the country, then confirm')}
+                </Text>
+                {/* Microstates are drawn as dots and only become selectable once
+                    zoomed in — say so, the gesture is not discoverable alone. */}
+                <Text style={[styles.hintSmall, { color: colors.textMuted }]}>
+                  {tr(
+                    language,
+                    'Zoome (pincement, double-tap ou +) pour les tout petits pays',
+                    'Zoom (pinch, double-tap or +) to reach the tiny countries',
+                  )}
+                </Text>
+              </>
             )}
           </View>
         )}
@@ -879,6 +1041,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   hint: { fontSize: 14, textAlign: 'center', fontFamily: FONTS.mono },
+  hintSmall: { fontSize: 11, textAlign: 'center', fontFamily: FONTS.mono, opacity: 0.75, marginTop: 3 },
   confirmRow: {
     flexDirection: 'row',
     alignItems: 'center',

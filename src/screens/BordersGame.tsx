@@ -36,6 +36,8 @@ import {
   BORDERS_MAX_MISSES,
 } from '../lib/borders';
 import { getMapPalette } from '../theme/mapPalette';
+import { buildBordersEarthHtml } from '../lib/globe3d/buildEarthHtml';
+import { useGlobe3d } from '../lib/globe3d/useGlobe3d';
 import { getFlagUrl } from '../lib/flags';
 import { normalizeRoundScore } from '../lib/score';
 import { track } from '../lib/analytics';
@@ -396,7 +398,20 @@ export default function BordersGame({
   const webRef = useRef<any>(null);
   const scrollRef = useRef<ScrollView>(null);
   const [globeReady, setGlobeReady] = useState(false);
-  const globeHtml = useMemo(() => buildBordersGlobeHtml(isDarkMode), [isDarkMode]);
+  // 3D WebGL globe behind the globe_3d flag; legacy Canvas-2D stays the fallback.
+  const globe3d = useGlobe3d();
+  const globeHtml = useMemo(() => {
+    if (globe3d.status === 'on') {
+      return buildBordersEarthHtml({
+        threeSrc: globe3d.threeSrc,
+        isDark: isDarkMode,
+        pal: getMapPalette(isDarkMode),
+        polygons: WORLD_POLYGONS,
+        coords: COORDS,
+      });
+    }
+    return buildBordersGlobeHtml(isDarkMode);
+  }, [globe3d, isDarkMode]);
 
   /** One shortest chain start→target — revealed once the run is over. */
   const idealPath = useMemo(
@@ -737,6 +752,7 @@ export default function BordersGame({
 
         {/* Globe — the chain painted on the world (drag to rotate, pinch to zoom). */}
         <View style={[styles.globeWrap, { borderColor: c.border, backgroundColor: getMapPalette(isDarkMode).bg }]}>
+          {globe3d.status !== 'pending' && (
           <GlobeWebView
             ref={webRef}
             originWhitelist={['*']}
@@ -759,6 +775,7 @@ export default function BordersGame({
               }
             }}
           />
+          )}
         </View>
 
         {/* The journey so far: start → links → (…) → destination. */}

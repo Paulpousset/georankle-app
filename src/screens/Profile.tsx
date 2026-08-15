@@ -28,7 +28,9 @@ import { FONTS } from '../theme/typography';
 import { getRankFromElo, modeLabel } from '../lib/ranked';
 import { RankGlobe } from '../components/RankGlobe';
 import { Avatar } from '../components/Avatar';
+import { AvatarPreview3D } from '../components/AvatarPreview3D';
 import { WorldAvatar } from '../components/WorldAvatar';
+import { useFeatureFlag } from '../lib/featureFlags';
 import { deriveDefaultConfigFromSeed, normalizeConfig } from '../data/cosmetics';
 import { tr } from '../i18n';
 import { resetTutorial } from '../lib/tutorial';
@@ -402,6 +404,7 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
 
   const winRate = wins + losses > 0 ? Math.round((wins / (wins + losses)) * 100) : 0;
 
+  const avatar3d = useFeatureFlag('avatar_3d');
   // Show the 3D character unless the user opted for a photo (useCustom === false).
   // Null config (legacy users) → a deterministic default derived from the name.
   const avatar3DConfig =
@@ -455,7 +458,11 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
             <View style={styles.avatarWrap}>
               {avatar3DConfig ? (
                 <View style={{ width: 168, height: 168, borderRadius: 18, overflow: 'hidden', borderWidth: 2, borderColor: rank.color }}>
-                  <WorldAvatar config={avatar3DConfig} size={168} animate />
+                  {avatar3d ? (
+                    <AvatarPreview3D config={avatar3DConfig} size={164} />
+                  ) : (
+                    <WorldAvatar config={avatar3DConfig} size={168} animate />
+                  )}
                 </View>
               ) : (
                 <Avatar

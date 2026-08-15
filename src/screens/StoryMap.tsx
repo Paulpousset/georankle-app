@@ -1,6 +1,11 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AccessibilityInfo,
+  Animated,
+  Easing,
+  Image,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -36,6 +41,8 @@ import type { AvatarConfig } from '../types';
 
 import { STORY_LEVEL_COUNT, buildStoryLevels, type StoryLevel } from '../data/story';
 import { biomeForTier, type Biome, type BiomeDecor } from '../data/biomes';
+import { BAND_ART_H, STORY_BAND_ART, STORY_COIN_ART, STORY_COIN_LOCKED } from '../data/storyArt';
+import { useFeatureFlag } from '../lib/featureFlags';
 import {
   getStorySnapshot,
   consumeLife,
@@ -52,11 +59,39 @@ import StoryGameHost from './StoryGameHost';
 // ── Layout constants for the winding river-path ────────────────────────────────
 const ROW_H = 118; // vertical spacing per level node
 const NODE = 62; // medallion diameter
-const TOP_PAD = 52;
+// Assez de marge pour le globe du joueur qui rebondit AU-DESSUS du médaillon
+// du niveau 1 (44px + rebond 13px) sans être clippé par le bord de la carte.
+const TOP_PAD = 76;
 const PER_TIER = 10;
 const RIVER_W = 52;
+/**
+ * Sine phase per row: exactly 2 full periods per 10-level band, so the river
+ * enters and leaves every band at the same x. This is what lets ONE pre-rendered
+ * image per biome (assets/story/) tile the whole map while staying aligned with
+ * the computed node positions — the SVG fallback draws the same curve.
+ */
+const RIVER_PHASE = (2 * Math.PI) / 5;
 /** Extra pixels above/below the viewport kept mounted while windowing the map. */
 const WINDOW_MARGIN = 400;
+
+/** react-native-web has no native animated module — silence the fallback. */
+const NATIVE_ANIM = Platform.OS !== 'web';
+
+/** One-shot reduced-motion probe shared by every map animation. */
+let reduceMotionCache: boolean | null = null;
+function useReducedMotion(): boolean {
+  const [rm, setRm] = useState(reduceMotionCache ?? false);
+  useEffect(() => {
+    if (reduceMotionCache != null) return;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((v) => {
+        reduceMotionCache = v;
+        setRm(v);
+      })
+      .catch(() => {});
+  }, []);
+  return rm;
+}
 
 /** Which lucide icon marks each game mode on a medallion. */
 const MODE_ICON: Record<string, LucideIcon> = {
@@ -160,6 +195,9 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
   const viewportH = useRef(0);
   const bandRangeRef = useRef(bandRange);
 
+  /** Pre-rendered Blender band art instead of the live SVG painter. */
+  const art3d = useFeatureFlag('story_map_3d');
+
   // ── Geometry ─────────────────────────────────────────────────────────────────
   const amp = Math.min(Math.max(width * 0.26, 58), 130);
   const centerX = width / 2;
@@ -167,7 +205,7 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
   const tierCount = Math.ceil(STORY_LEVEL_COUNT / PER_TIER);
 
   const riverX = useCallback(
-    (y: number) => centerX + amp * Math.sin(((y - TOP_PAD) / ROW_H) * 0.8),
+    (y: number) => centerX + amp * Math.sin(((y - TOP_PAD) / ROW_H) * RIVER_PHASE),
     [amp, centerX],
   );
   const nodePos = useCallback(
@@ -214,8 +252,61 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
    * Background art for the visible bands only — a handful of SVGs instead of one
    * 35k-px canvas. Rebuilding 2-3 bands on a range change is cheap; stable keys
    * keep reconciliation minimal.
+   *
+   * With `story_map_3d` on, a band is ONE pre-rendered webp (GPU-composited,
+   * nothing rebuilt on scroll). The image is baked at BAND_ART_W logical px and
+   * stretched to bandW = clamp(width, 223, 500): displayed river amplitude is
+   * then 0.26·bandW, which is exactly the clamped `amp` formula above — node
+   * positions and image stay aligned at every width. Beyond 500 px (tablets,
+   * desktop web) the sides are letterboxed with the biome's ground colour.
    */
   const bands = useMemo(() => {
+    if (art3d) {
+      const bandW = Math.min(Math.max(width, 223), 500);
+      const out: React.ReactNode[] = [];
+      for (let tierIdx = bandRange.start; tierIdx <= bandRange.end; tierIdx++) {
+        const tier = tierIdx + 1;
+        const b = biomeForTier(tier);
+        // Raw band origin (row -0.5): tier 1 starts at -7px, clipped by the scroll view.
+        const imageTop = TOP_PAD + ((tier - 1) * PER_TIER - 0.5) * ROW_H;
+        out.push(
+          <View
+            key={`band_${tier}`}
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              top: bandTop(tier),
+              left: 0,
+              width,
+              height: bandBottom(tier) - bandTop(tier),
+              backgroundColor: b.bank[0],
+            }}
+          >
+            <Image
+              source={STORY_BAND_ART[b.key]}
+              resizeMode="stretch"
+              fadeDuration={0}
+              style={{
+                position: 'absolute',
+                top: imageTop - bandTop(tier),
+                left: (width - bandW) / 2,
+                width: bandW,
+                height: BAND_ART_H,
+              }}
+            />
+            <BandFx
+              biome={b}
+              tier={tier}
+              top={bandTop(tier)}
+              height={bandBottom(tier) - bandTop(tier)}
+              width={width}
+              riverX={riverX}
+            />
+          </View>,
+        );
+      }
+      return out;
+    }
     const out: React.ReactNode[] = [];
     for (let tierIdx = bandRange.start; tierIdx <= bandRange.end; tierIdx++) {
       const tier = tierIdx + 1;
@@ -255,9 +346,18 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
           <G transform={`translate(0, ${-top})`}>{body}</G>
         </Svg>,
       );
+      out.push(
+        <View
+          key={`bandfx_${tier}`}
+          pointerEvents="none"
+          style={{ position: 'absolute', top, left: 0, width, height: bot - top }}
+        >
+          <BandFx biome={b} tier={tier} top={top} height={bot - top} width={width} riverX={riverX} />
+        </View>,
+      );
     }
     return out;
-  }, [bandRange.start, bandRange.end, width, bandTop, bandBottom, riverSegment, riverX]);
+  }, [art3d, bandRange.start, bandRange.end, width, bandTop, bandBottom, riverSegment, riverX]);
 
   // ── Data loading ───────────────────────────────────────────────────────────────
   const reload = useCallback(async () => {
@@ -435,6 +535,13 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
         y={y}
         meta={meta}
         biome={biomeForTier(meta.tier)}
+        coinArt={
+          art3d
+            ? level > currentLevel
+              ? STORY_COIN_LOCKED
+              : STORY_COIN_ART[biomeForTier(meta.tier).key]
+            : undefined
+        }
         locked={level > currentLevel}
         isCurrent={isCurrent}
         stars={snapshot?.stars[level] ?? 0}
@@ -453,7 +560,9 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: c.background }}>
+    // no bottom edge: the map scrolls under the home indicator instead of
+    // leaving a background-coloured footer bar
+    <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: c.background }}>
       <StatusBar style={isDarkMode ? 'light' : 'dark'} />
 
       {/* Header: back + title + lives */}
@@ -598,6 +707,8 @@ interface LevelNodeProps {
   y: number;
   meta: StoryLevel;
   biome: Biome;
+  /** Pre-rendered medallion sprite (story_map_3d); undefined = flat SVG-era look. */
+  coinArt?: number;
   locked: boolean;
   isCurrent: boolean;
   stars: number;
@@ -614,7 +725,7 @@ interface LevelNodeProps {
 }
 
 const LevelNode = memo(function LevelNode({
-  level, x, y, meta, biome, locked, isCurrent, stars, rewardItem, rewardSide,
+  level, x, y, meta, biome, coinArt, locked, isCurrent, stars, rewardItem, rewardSide,
   showBanner, myAvatar, friends, language, isDarkMode, textColor, onTap, onOpenPlayer,
 }: LevelNodeProps) {
   const ringDark = shade(biome.rim, -0.35);
@@ -625,7 +736,8 @@ const LevelNode = memo(function LevelNode({
     <View style={{ position: 'absolute', left: x - NODE / 2, top: y }}>
       {/* Tier banner every 10 levels */}
       {showBanner ? (
-        <View style={{ position: 'absolute', top: -34, left: NODE / 2 - 74, width: 148, alignItems: 'center' }}>
+        // décalée plus haut quand le globe du joueur rebondit au-dessus du médaillon
+        <View style={{ position: 'absolute', top: isCurrent ? -96 : -34, left: NODE / 2 - 74, width: 148, alignItems: 'center' }}>
           <View style={{ backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 3, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' }}>
             <Text style={{ fontFamily: FONTS.mono, fontSize: 10, color: '#fff', letterSpacing: 1 }}>
               {tr(language, `PALIER ${meta.tier} · ${biome.nameFr.toUpperCase()}`, `TIER ${meta.tier} · ${biome.nameEn.toUpperCase()}`)}
@@ -649,8 +761,12 @@ const LevelNode = memo(function LevelNode({
 
       {/* Medallion */}
       <View style={{ width: NODE, height: NODE }}>
-        {/* drop shadow */}
-        <View style={{ position: 'absolute', top: 6, left: NODE / 2 - 22, width: 44, height: 12, borderRadius: 6, backgroundColor: 'rgba(0,0,0,0.22)' }} />
+        {/* pulsing halo marking the player's current level */}
+        {isCurrent ? <CurrentPulse gold={stars >= 3} /> : null}
+        {/* drop shadow (the 3D sprite carries its own depth) */}
+        {coinArt == null ? (
+          <View style={{ position: 'absolute', top: 6, left: NODE / 2 - 22, width: 44, height: 12, borderRadius: 6, backgroundColor: 'rgba(0,0,0,0.22)' }} />
+        ) : null}
         {/* outer ring */}
         <TouchableOpacity
           activeOpacity={0.85}
@@ -661,37 +777,69 @@ const LevelNode = memo(function LevelNode({
               ? tr(language, `Niveau ${level} verrouillé`, `Level ${level} locked`)
               : tr(language, `Niveau ${level}, ${biome.nameFr}`, `Level ${level}, ${biome.nameEn}`),
           )}
-          style={{
-            width: NODE,
-            height: NODE,
-            borderRadius: NODE / 2,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: locked ? '#6b6b6b' : ringDark,
-            borderWidth: 2,
-            borderColor: stars >= 3 ? '#ffcf4a' : isCurrent ? '#fff' : 'rgba(255,255,255,0.5)',
-          }}
+          style={
+            coinArt != null
+              ? { width: NODE, height: NODE, alignItems: 'center', justifyContent: 'center' }
+              : {
+                  width: NODE,
+                  height: NODE,
+                  borderRadius: NODE / 2,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: locked ? '#6b6b6b' : ringDark,
+                  borderWidth: 2,
+                  borderColor: stars >= 3 ? '#ffcf4a' : isCurrent ? '#fff' : 'rgba(255,255,255,0.5)',
+                }
+          }
         >
-          {/* inner disc */}
-          <View
-            style={{
-              width: NODE - 12,
-              height: NODE - 12,
-              borderRadius: (NODE - 12) / 2,
-              backgroundColor: locked ? '#8a8a8a' : biome.rim,
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden',
-            }}
-          >
-            {/* top highlight */}
-            <View style={{ position: 'absolute', top: 2, width: NODE - 20, height: (NODE - 12) / 2, borderRadius: NODE, backgroundColor: locked ? 'rgba(255,255,255,0.18)' : ringLight, opacity: 0.5 }} />
-            {locked ? (
-              <Lock color="#ffffffdd" size={22} />
-            ) : (
-              <Text style={{ fontFamily: FONTS.heading, color: biome.onRim, fontSize: 19 }}>{level}</Text>
-            )}
-          </View>
+          {coinArt != null ? (
+            <>
+              {/* contact shadow at the coin's base so it sits ON the ground */}
+              <View style={{ position: 'absolute', top: NODE - 9, left: NODE / 2 - 24, width: 48, height: 13, borderRadius: 7, backgroundColor: 'rgba(0,0,0,0.28)' }} />
+              {/* 3D coin sprite — the rim/face and (when locked) the padlock are baked in */}
+              <Image source={coinArt} fadeDuration={0} style={{ position: 'absolute', width: NODE, height: NODE }} />
+              {/* current / 3-star affordance ring over the sprite */}
+              {(isCurrent || stars >= 3) ? (
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute',
+                    width: NODE + 6,
+                    height: NODE + 6,
+                    borderRadius: (NODE + 6) / 2,
+                    borderWidth: 2.5,
+                    borderColor: stars >= 3 ? '#ffcf4a' : '#fff',
+                  }}
+                />
+              ) : null}
+              {!locked ? (
+                <Text style={{ fontFamily: FONTS.heading, color: shade(biome.rim, -0.45), fontSize: 19 }}>
+                  {level}
+                </Text>
+              ) : null}
+            </>
+          ) : (
+            /* inner disc */
+            <View
+              style={{
+                width: NODE - 12,
+                height: NODE - 12,
+                borderRadius: (NODE - 12) / 2,
+                backgroundColor: locked ? '#8a8a8a' : biome.rim,
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+              }}
+            >
+              {/* top highlight */}
+              <View style={{ position: 'absolute', top: 2, width: NODE - 20, height: (NODE - 12) / 2, borderRadius: NODE, backgroundColor: locked ? 'rgba(255,255,255,0.18)' : ringLight, opacity: 0.5 }} />
+              {locked ? (
+                <Lock color="#ffffffdd" size={22} />
+              ) : (
+                <Text style={{ fontFamily: FONTS.heading, color: biome.onRim, fontSize: 19 }}>{level}</Text>
+              )}
+            </View>
+          )}
           {/* mode-icon badge */}
           {!locked ? (
             <View
@@ -724,10 +872,10 @@ const LevelNode = memo(function LevelNode({
         </View>
       ) : null}
 
-      {/* Player globe on the current level */}
+      {/* Player globe bouncing ABOVE the current medallion */}
       {isCurrent ? (
-        <View style={{ position: 'absolute', top: -46, left: NODE / 2 - 19 }} pointerEvents="none">
-          <WorldAvatar config={myAvatar ?? DEFAULT_AVATAR_CONFIG} size={38} animate round />
+        <View style={{ position: 'absolute', top: -62, left: NODE / 2 - 22 }} pointerEvents="none">
+          <BouncingGlobe config={myAvatar ?? DEFAULT_AVATAR_CONFIG} />
         </View>
       ) : null}
 
@@ -1034,6 +1182,255 @@ function RewardMarker({
           {name}
         </Text>
       </View>
+    </View>
+  );
+}
+
+// ── Map animations ─────────────────────────────────────────────────────────────
+
+/** Loops an Animated.Value 0→1→0 forever (phase-shifted via delay). */
+function useLoop(duration: number, delay = 0, enabled = true): Animated.Value {
+  const [v] = useState(() => new Animated.Value(0));
+  useEffect(() => {
+    if (!enabled) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.timing(v, { toValue: 1, duration, easing: Easing.inOut(Easing.sin), useNativeDriver: NATIVE_ANIM }),
+        Animated.timing(v, { toValue: 0, duration, easing: Easing.inOut(Easing.sin), useNativeDriver: NATIVE_ANIM }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [v, duration, delay, enabled]);
+  return v;
+}
+
+/**
+ * The player's globe, riding ABOVE the current medallion with a happy bounce —
+ * squash-and-stretch shadow included. Static when reduce-motion is on.
+ */
+function BouncingGlobe({ config }: { config: AvatarConfig }) {
+  const rm = useReducedMotion();
+  const [v] = useState(() => new Animated.Value(0));
+  useEffect(() => {
+    if (rm) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(v, { toValue: 1, duration: 430, easing: Easing.out(Easing.quad), useNativeDriver: NATIVE_ANIM }),
+        Animated.timing(v, { toValue: 0, duration: 430, easing: Easing.in(Easing.quad), useNativeDriver: NATIVE_ANIM }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [v, rm]);
+  const ty = v.interpolate({ inputRange: [0, 1], outputRange: [0, -13] });
+  const shScale = v.interpolate({ inputRange: [0, 1], outputRange: [1, 0.55] });
+  const shOp = v.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.12] });
+  return (
+    <View style={{ alignItems: 'center' }} pointerEvents="none">
+      <Animated.View style={{ transform: [{ translateY: ty }] }}>
+        <WorldAvatar config={config} size={44} animate round />
+      </Animated.View>
+      <Animated.View
+        style={{
+          marginTop: -4,
+          width: 26,
+          height: 7,
+          borderRadius: 4,
+          backgroundColor: '#000',
+          opacity: shOp,
+          transform: [{ scaleX: shScale }],
+        }}
+      />
+    </View>
+  );
+}
+
+/** Soft pulsing halo marking the CURRENT level's medallion. */
+function CurrentPulse({ gold }: { gold: boolean }) {
+  const rm = useReducedMotion();
+  const v = useLoop(900, 0, !rm);
+  const scale = v.interpolate({ inputRange: [0, 1], outputRange: [1, 1.16] });
+  const op = v.interpolate({ inputRange: [0, 1], outputRange: [0.65, 0.15] });
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        width: NODE + 14,
+        height: NODE + 14,
+        left: -7,
+        top: -7,
+        borderRadius: (NODE + 14) / 2,
+        borderWidth: 3,
+        borderColor: gold ? '#ffcf4a' : '#ffffff',
+        opacity: op,
+        transform: [{ scale }],
+      }}
+    />
+  );
+}
+
+/** One animated ambient sprite (water glint, ember, snow, star, firefly). */
+function FxDot({
+  x, y, w, h, color, radius, mode, duration, delay, drift = 0, rot = 0, enabled,
+}: {
+  x: number; y: number; w: number; h: number; color: string; radius: number;
+  mode: 'twinkle' | 'rise' | 'fall';
+  duration: number; delay: number; drift?: number; rot?: number; enabled: boolean;
+}) {
+  const v = useLoop(duration, delay, enabled);
+  const op = v.interpolate({
+    inputRange: [0, 0.25, 0.75, 1],
+    outputRange: mode === 'twinkle' ? [0.05, 0.7, 0.7, 0.05] : [0, 0.8, 0.55, 0],
+  });
+  const ty = mode === 'rise'
+    ? v.interpolate({ inputRange: [0, 1], outputRange: [0, -46] })
+    : mode === 'fall'
+      ? v.interpolate({ inputRange: [0, 1], outputRange: [0, 52] })
+      : v.interpolate({ inputRange: [0, 1], outputRange: [0, drift] });
+  const tx = mode === 'twinkle'
+    ? v.interpolate({ inputRange: [0, 1], outputRange: [0, drift * 0.6] })
+    : v.interpolate({ inputRange: [0, 1], outputRange: [0, drift] });
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        left: x,
+        top: y,
+        width: w,
+        height: h,
+        borderRadius: radius,
+        backgroundColor: color,
+        opacity: op,
+        transform: [{ translateX: tx }, { translateY: ty }, { rotate: `${rot}deg` }],
+      }}
+    />
+  );
+}
+
+/** Cartoon cloud drifting across the band (three soft lobes). */
+function DriftCloud({ x, y, s, width, duration, delay, enabled }: {
+  x: number; y: number; s: number; width: number; duration: number; delay: number; enabled: boolean;
+}) {
+  const v = useLoop(duration, delay, enabled);
+  const tx = v.interpolate({ inputRange: [0, 1], outputRange: [0, Math.min(90, width * 0.2)] });
+  return (
+    <Animated.View pointerEvents="none" style={{ position: 'absolute', left: x, top: y, opacity: 0.55, transform: [{ translateX: tx }] }}>
+      <View style={{ width: 46 * s, height: 16 * s, borderRadius: 10 * s, backgroundColor: '#fff' }} />
+      <View style={{ position: 'absolute', left: 8 * s, top: -8 * s, width: 24 * s, height: 16 * s, borderRadius: 9 * s, backgroundColor: '#fff' }} />
+      <View style={{ position: 'absolute', left: 24 * s, top: -5 * s, width: 18 * s, height: 13 * s, borderRadius: 8 * s, backgroundColor: '#fff' }} />
+    </Animated.View>
+  );
+}
+
+/**
+ * Ambient life for one biome band: glints drifting on the (baked) river, plus a
+ * per-biome touch — rising embers (volcano), falling snow (tundra), twinkling
+ * stars (cosmos), fireflies (jungle), drifting clouds (open-sky biomes).
+ * Deterministic per tier; a handful of native-driver loops per visible band.
+ */
+function BandFx({
+  biome, tier, top, height, width, riverX,
+}: {
+  biome: Biome; tier: number; top: number; height: number; width: number;
+  riverX: (y: number) => number;
+}) {
+  const rm = useReducedMotion();
+  const fx = useMemo(() => {
+    const rng = makeRng(tier * 977 + 13);
+    const out: React.ReactNode[] = [];
+    if (biome.key !== 'cosmos') {
+      // Reflets d'eau : petites barres claires sur la rivière, dérive aval.
+      for (let i = 0; i < 6; i++) {
+        const y = 30 + ((i + 0.4 * rng()) * (height - 60)) / 6;
+        const x = riverX(top + y) + (rng() - 0.5) * (RIVER_W * 0.5);
+        // tangente de la sinusoïde pour incliner le reflet dans le courant
+        const slope = (riverX(top + y + 6) - riverX(top + y - 6)) / 12;
+        out.push(
+          <FxDot
+            key={`gl${i}`}
+            x={x - 9}
+            y={y}
+            w={14 + rng() * 9}
+            h={2.6}
+            radius={2}
+            color={biome.key === 'volcan' ? '#ffd9a0' : '#ffffff'}
+            mode="twinkle"
+            duration={1500 + rng() * 900}
+            delay={rng() * 1800}
+            drift={10 + rng() * 8}
+            rot={Math.atan(slope) * (180 / Math.PI)}
+            enabled={!rm}
+          />,
+        );
+      }
+    }
+    const addDots = (
+      n: number, mode: 'twinkle' | 'rise' | 'fall', color: string, size: [number, number],
+      dur: [number, number],
+    ) => {
+      for (let i = 0; i < n; i++) {
+        const y = 24 + rng() * (height - 60);
+        const x = 12 + rng() * (width - 24);
+        const r = size[0] + rng() * (size[1] - size[0]);
+        out.push(
+          <FxDot
+            key={`${mode}${color}${i}`}
+            x={x}
+            y={y}
+            w={r}
+            h={r}
+            radius={r / 2}
+            color={color}
+            mode={mode}
+            duration={dur[0] + rng() * (dur[1] - dur[0])}
+            delay={rng() * 2200}
+            drift={(rng() - 0.5) * 16}
+            enabled={!rm}
+          />,
+        );
+      }
+    };
+    switch (biome.key) {
+      case 'volcan':
+        addDots(5, 'rise', '#ff9a3a', [4, 7], [2200, 3400]);
+        break;
+      case 'glace':
+        addDots(6, 'fall', '#ffffff', [3.5, 6], [2600, 4200]);
+        break;
+      case 'cosmos':
+        addDots(8, 'twinkle', '#ffffff', [2.5, 5], [1200, 2600]);
+        break;
+      case 'jungle':
+        addDots(4, 'twinkle', '#d8ff5a', [4, 6], [1600, 2800]);
+        break;
+      default:
+        break;
+    }
+    if (['prairie', 'savane', 'desert', 'archipel'].includes(biome.key)) {
+      for (let i = 0; i < 2; i++) {
+        out.push(
+          <DriftCloud
+            key={`cl${i}`}
+            x={20 + rng() * (width * 0.5)}
+            y={40 + rng() * (height * 0.5)}
+            s={0.8 + rng() * 0.7}
+            width={width}
+            duration={5200 + rng() * 2600}
+            delay={rng() * 2400}
+            enabled={!rm}
+          />,
+        );
+      }
+    }
+    return out;
+  }, [biome, tier, top, height, width, riverX, rm]);
+  return (
+    <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, width, height }}>
+      {fx}
     </View>
   );
 }

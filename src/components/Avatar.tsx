@@ -3,7 +3,9 @@ import { Image, Text, View } from 'react-native';
 
 import type { AvatarConfig } from '../types';
 import { DEFAULT_AVATAR_CONFIG } from '../data/cosmetics';
+import { useFeatureFlag } from '../lib/featureFlags';
 import { WorldAvatar } from './WorldAvatar';
+import { WorldAvatar3D } from './WorldAvatar3D';
 import { FONTS } from '../theme/typography';
 
 interface AvatarProps {
@@ -43,6 +45,9 @@ function initials(name: string | null | undefined): string {
  */
 function AvatarBase({ config, photoUrl, username, size, ringColor, ringWidth = 3 }: AvatarProps) {
   const radius = size / 2;
+  // Pre-rendered 3D layer pack (falls back to SVG per-avatar when layers are missing).
+  const avatar3d = useFeatureFlag('avatar_3d');
+  const WorldRenderer = avatar3d ? WorldAvatar3D : WorldAvatar;
 
   // Contextual ring colour (e.g. online status) drawn as an outer border.
   const ring = ringColor;
@@ -64,7 +69,7 @@ function AvatarBase({ config, photoUrl, username, size, ringColor, ringWidth = 3
           backgroundColor: '#05060f',
         }}
       >
-        <WorldAvatar config={worldConfig} size={size} round />
+        <WorldRenderer config={worldConfig} size={size} round />
       </View>
     );
   }

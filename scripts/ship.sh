@@ -23,6 +23,13 @@ if [ -z "${SKIP_CHECKS:-}" ]; then
   if ! npm test -- --ci; then
     echo -e "${RED}❌ tests ont échoué — déploiement annulé.${NC}"; exit 1
   fi
+  # Pack cosmétique 3D : ids du catalogue ↔ fichiers rendus (no-op tant que le
+  # pack n'est pas rendu ; bloquant dès qu'il existe et diverge).
+  if [ -d asset-pipeline/node_modules ]; then
+    if ! (cd asset-pipeline && npm run check); then
+      echo -e "${RED}❌ pack cosmétique incohérent (asset-pipeline/check_assets) — déploiement annulé.${NC}"; exit 1
+    fi
+  fi
   echo -e "${GREEN}✅ Pré-vol OK${NC}"
 else
   echo "⏭️  SKIP_CHECKS=1 — pré-vol ignoré"

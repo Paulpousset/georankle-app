@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { showAlert } from '../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -11,6 +11,9 @@ import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { tr } from '../i18n';
 import { WorldAvatar } from '../components/WorldAvatar';
+import { WorldAvatar3D, cosmeticTileSprite } from '../components/WorldAvatar3D';
+import { AvatarPreview3D } from '../components/AvatarPreview3D';
+import { useFeatureFlag } from '../lib/featureFlags';
 import { GlyphThumb } from '../components/worldGlyphs';
 import {
   DEFAULT_AVATAR_CONFIG,
@@ -62,6 +65,9 @@ function tileConfig(part: CosmeticPart): AvatarConfig {
 export default function AvatarEditor({ onBack, onOpenShop }: AvatarEditorProps) {
   const { user } = useAuth();
   const { isDarkMode } = useTheme();
+  // Pre-rendered 3D layer pack for swatches + live three.js scene for the preview.
+  const avatar3d = useFeatureFlag('avatar_3d');
+  const WorldRenderer = avatar3d ? WorldAvatar3D : WorldAvatar;
   const { language } = useLanguage();
   const userId = user?.id ?? '';
   const c = getColors(isDarkMode);
@@ -157,14 +163,19 @@ export default function AvatarEditor({ onBack, onOpenShop }: AvatarEditorProps) 
     if (part.category === 'globe' || part.category === 'cosmos' || part.category === 'orbit') {
       return (
         <View style={{ width: 56, height: 56, borderRadius: 28, overflow: 'hidden', backgroundColor: '#05060f', opacity: op }}>
-          <WorldAvatar config={tileConfig(part)} size={56} />
+          <WorldRenderer config={tileConfig(part)} size={56} />
         </View>
       );
     }
     if (part.category === 'emblem' || part.category === 'satellite') {
+      const sprite = avatar3d ? cosmeticTileSprite(part) : undefined;
       return (
         <View style={{ width: 56, height: 56, borderRadius: 28, overflow: 'hidden', backgroundColor: c.background, borderWidth: 1, borderColor: c.border, alignItems: 'center', justifyContent: 'center', opacity: op }}>
-          <GlyphThumb id={part.id} category={part.category} size={52} />
+          {sprite ? (
+            <Image source={sprite} style={{ width: 46, height: 46 }} resizeMode="contain" />
+          ) : (
+            <GlyphThumb id={part.id} category={part.category} size={52} />
+          )}
         </View>
       );
     }
@@ -206,7 +217,11 @@ export default function AvatarEditor({ onBack, onOpenShop }: AvatarEditorProps) 
           {/* Live preview — the composed world avatar */}
           <View style={styles.previewWrap}>
             <View style={[styles.previewViewport, { borderColor: c.border }]}>
-              <WorldAvatar config={config} size={200} animate />
+              {avatar3d ? (
+                <AvatarPreview3D config={config} size={200} />
+              ) : (
+                <WorldAvatar config={config} size={200} animate />
+              )}
             </View>
           </View>
 

@@ -1,0 +1,44 @@
+{
+  "$comment": "SOURCE DE VÉRITÉ partagée entre le rig Blender (render_layers.py) et les scènes three.js (buildAvatarHtml.ts). Toute retouche caméra/lumière doit passer par ici pour que les couches pré-rendues et la preview live restent superposables. DA: PRO CARTOON (matériaux toon à paliers, contours épais, couleurs saturées) — pas de photoréalisme.",
+  "camera": {
+    "fovDeg": 20,
+    "distance": 9.15,
+    "$comment": "fov 20° à d=9.15 → le globe (r=1) occupe ~62% du cadre, comme l'avatar SVG (r=0.33×size) — recadré 25/07 sur demande Paul (pas assez zoomé). Toutes les couches (globe/anneaux/emblème) partagent cette caméra pour rester superposables."
+  },
+  "globe": {
+    "radius": 1.0,
+    "defaultFace": { "lat": 15, "lng": 10 },
+    "$comment": "Face Europe/Afrique vers la caméra, comme le WorldAvatar SVG actuel."
+  },
+  "lights": {
+    "key":  { "azimuthDeg": -35, "elevationDeg": 30, "intensity": 3.0, "color": "#fff4e0" },
+    "fill": { "azimuthDeg": 60,  "elevationDeg": -10, "intensity": 0.6, "color": "#bcd4ff" },
+    "rim":  { "azimuthDeg": 160, "elevationDeg": 25, "intensity": 1.8, "color": "#9fc0ff" }
+  },
+  "rings": {
+    "tiltDeg": 22,
+    "innerRadius": 1.26,
+    "outerRadius": 1.55
+  },
+  "satellite": {
+    "orbitRadiusX": 1.35,
+    "orbitRadiusY": 0.52,
+    "orbitTiltDeg": 18,
+    "$comment": "Le satellite est rendu SEUL et centré (256px) ; la trajectoire est appliquée à l'exécution (transforms RN / three.js)."
+  },
+  "emblem": {
+    "anchorLat": 52,
+    "anchorLng": 4,
+    "scale": 0.46,
+    "$comment": "Monument planté à un ancrage canonique face caméra (haut du globe, silhouette dégagée), occlusion par sphère holdout ; sortie = monument + ombre de contact uniquement. La passe sprite (rendu solo serré, monument droit) sert à la preview live three.js."
+  },
+  "render": {
+    "layerSize": 512,
+    "satelliteSize": 256,
+    "spriteSize": 320,
+    "cosmosSize": 512,
+    "samples": 48,
+    "$comment": "Matériaux émission pure -> 48 samples suffisent (anti-aliasing seulement), view transform Standard imposé par render_layers.py.",
+    "filmTransparent": true
+  }
+}
