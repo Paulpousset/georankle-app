@@ -110,10 +110,26 @@ function buildBordersGlobeHtml(isDark: boolean): string {
 *{margin:0;padding:0;}
 html,body{width:100%;height:100%;overflow:hidden;background:${pal.bg};}
 canvas{display:block;position:absolute;top:0;left:0;touch-action:none;}
+#zc{position:fixed;right:10px;bottom:10px;display:flex;flex-direction:column;gap:6px;z-index:5;}
+#zc button{width:40px;height:40px;padding:0;border-radius:11px;border:1px solid ${pal.rim};
+background:${isDark ? 'rgba(19,36,63,0.88)' : 'rgba(255,255,255,0.9)'};
+color:${isDark ? '#e8dcc0' : '#2c1810'};font-family:-apple-system,system-ui,sans-serif;
+font-size:20px;font-weight:600;line-height:1;display:flex;align-items:center;justify-content:center;
+touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;}
+#zc button:active{opacity:0.55;}
+/* #zc #zr, not #zr: "#zc button" above is more specific and would win.
+   Unlike the other globes it is ALWAYS visible: here the view is lost by
+   ROTATING away (nothing but ocean is drawn), not only by zooming in. */
+#zc #zr{font-size:15px;}
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
+<div id="zc">
+<button id="zin" type="button">+</button>
+<button id="zout" type="button">−</button>
+<button id="zr" type="button">⟲</button>
+</div>
 <script>
 var POLYGONS=${polys};
 var COORDS=${coords};
@@ -124,7 +140,7 @@ var canvas=document.getElementById('c');
 var ctx=canvas.getContext('2d');
 var W,H,cx,cy,R,Rb;
 var rotLon=0,rotLat=20,zoom=1;
-var ZMIN=0.9,ZMAX=16;
+var ZMIN=0.9,ZMAX=8;
 var highlights=[];
 var polyMap={};
 POLYGONS.forEach(function(p,i){polyMap[p.id]=i;});
@@ -311,16 +327,30 @@ canvas.addEventListener('touchend',function(e){
 canvas.addEventListener('mousedown',function(e){drag={x:e.clientX,y:e.clientY,lon:rotLon,lat:rotLat};});
 canvas.addEventListener('mousemove',function(e){if(!drag)return;var dx=e.clientX-drag.x,dy=e.clientY-drag.y;rotLon=drag.lon-dx*(0.35/zoom);rotLat=Math.max(-85,Math.min(85,drag.lat+dy*(0.35/zoom)));draw();});
 canvas.addEventListener('mouseup',function(){drag=null;});
-canvas.addEventListener('wheel',function(e){e.preventDefault();zoom=Math.max(ZMIN,Math.min(ZMAX,zoom*(e.deltaY>0?0.9:1.1)));R=Rb*zoom;draw();},{passive:false});
+canvas.addEventListener('wheel',function(e){e.preventDefault();setZoom(zoom*(e.deltaY>0?0.9:1.1));},{passive:false});
+
+function setZoom(z){zoom=Math.max(ZMIN,Math.min(ZMAX,z));R=Rb*zoom;draw();}
+// ⟲ — re-centre AND re-zoom on the countries in play. The only landmasses drawn
+// are the chain and the target, so a drag that rotates them off-screen leaves
+// nothing but ocean: without this button the globe looks permanently blank.
+function recenter(){frame();draw();}
+document.getElementById('zin').addEventListener('click',function(){setZoom(zoom*1.7);});
+document.getElementById('zout').addEventListener('click',function(){setZoom(zoom/1.7);});
+document.getElementById('zr').addEventListener('click',recenter);
 
 function setup(){
-  W=window.innerWidth;H=window.innerHeight;
-  if(!W||!H){requestAnimationFrame(setup);return;}
+  var w=window.innerWidth,h=window.innerHeight;
+  if(!w||!h){requestAnimationFrame(setup);return;}
+  if(w===W&&h===H)return; // resize fired with nothing to do
+  W=w;H=h;
   Rb=Math.min(W,H)/2*0.9;R=Rb*zoom;
   canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';
   ctx.scale(dpr,dpr);cx=W/2;cy=H/2;
   draw();postMsg({type:'GLOBE_READY'});
 }
+// A rotation / keyboard-driven resize must re-fit the canvas, or the globe is
+// drawn for the old viewport and can end up entirely outside the visible box.
+window.addEventListener('resize',setup);
 requestAnimationFrame(setup);
 </script>
 </body>

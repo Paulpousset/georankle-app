@@ -323,6 +323,10 @@ function onMove(x,y){
   render();
 }
 function onEnd(x,y){if(drag&&!drag.moved)handleTap(x,y);drag=null;}
+// A touch tap is followed by synthesised mouse events, so every tap reached
+// onEnd twice (same pick posted twice). Ignore the mouse path just after a touch.
+var lastTouch=0;
+function fromTouch(){return Date.now()-lastTouch<700;}
 
 var pinchD=null,pinchZ=null;
 function pinchStart(t1,t2){
@@ -337,27 +341,30 @@ function pinchMove(t1,t2){
 }
 
 canvas.addEventListener('touchstart',function(e){
+  lastTouch=Date.now();
   if(e.touches.length===2)pinchStart(e.touches[0],e.touches[1]);
   else onStart(e.touches[0].clientX,e.touches[0].clientY);
 },{passive:true});
 canvas.addEventListener('touchmove',function(e){
-  e.preventDefault();
+  e.preventDefault();lastTouch=Date.now();
   if(e.touches.length===2)pinchMove(e.touches[0],e.touches[1]);
   else if(e.touches.length===1)onMove(e.touches[0].clientX,e.touches[0].clientY);
 },{passive:false});
 canvas.addEventListener('touchend',function(e){
+  lastTouch=Date.now();
   if(e.touches.length<2)pinchD=null;
   if(e.touches.length===0)onEnd(e.changedTouches[0].clientX,e.changedTouches[0].clientY);
 },{passive:true});
-canvas.addEventListener('mousedown',function(e){onStart(e.clientX,e.clientY);});
+canvas.addEventListener('mousedown',function(e){if(fromTouch())return;onStart(e.clientX,e.clientY);});
 canvas.addEventListener('mousemove',function(e){
+  if(fromTouch())return;
   if(drag){onMove(e.clientX,e.clientY);return;}
   if(locked)return;
   var coords=unproject(e.clientX,e.clientY);
   var hit=findRegion(coords);
   if(hit!==hov){hov=hit;canvas.style.cursor=hit?'pointer':'default';render();}
 });
-canvas.addEventListener('mouseup',function(e){onEnd(e.clientX,e.clientY);});
+canvas.addEventListener('mouseup',function(e){if(fromTouch())return;onEnd(e.clientX,e.clientY);});
 canvas.addEventListener('wheel',function(e){
   e.preventDefault();
   zoom=Math.max(ZMIN,Math.min(ZMAX,zoom*(e.deltaY>0?0.9:1.1)));

@@ -19,11 +19,27 @@ export type Globe3dState =
   | { status: 'off' }
   | { status: 'on'; threeSrc: string };
 
+/**
+ * Longest the caller may sit on `pending` (= an empty globe box). The flag
+ * fetch has no timeout of its own, so on a dead/flaky network it could hang for
+ * the whole TCP timeout and the player would stare at a blank panel.
+ */
+const RESOLVE_TIMEOUT_MS = 2500;
+
 export function useGlobe3d(): Globe3dState {
   const [state, setState] = useState<Globe3dState>({ status: 'pending' });
 
   useEffect(() => {
     let alive = true;
+    // First answer wins: a late flag fetch must never swap the renderer under a
+    // game already running on the 2D fallback.
+    let settled = false;
+    const settle = (next: Globe3dState) => {
+      if (settled || !alive) return;
+      settled = true;
+      setState(next);
+    };
+    const timer = setTimeout(() => settle({ status: 'off' }), RESOLVE_TIMEOUT_MS);
     (async () => {
       try {
         const [on, reduceMotion] = await Promise.all([
@@ -31,17 +47,18 @@ export function useGlobe3d(): Globe3dState {
           AccessibilityInfo.isReduceMotionEnabled().catch(() => false),
         ]);
         if (!on || reduceMotion) {
-          if (alive) setState({ status: 'off' });
+          settle({ status: 'off' });
           return;
         }
         const { THREE_SRC } = await import('../../vendor/threeSource');
-        if (alive) setState({ status: 'on', threeSrc: THREE_SRC });
+        settle({ status: 'on', threeSrc: THREE_SRC });
       } catch {
-        if (alive) setState({ status: 'off' });
+        settle({ status: 'off' });
       }
     })();
     return () => {
       alive = false;
+      clearTimeout(timer);
     };
   }, []);
 

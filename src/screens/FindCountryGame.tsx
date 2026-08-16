@@ -349,6 +349,12 @@ function setZoom(z,px,py,geo){
 }
 
 var drag=null;
+// A touch tap is followed by SYNTHESISED mouse events (touchend, then
+// mousedown/mouseup a few ms later). Both paths reach onEnd, so a single tap
+// used to look like a double-tap and zoomed the globe by itself on every pick.
+// Ignore the mouse path for a moment after any touch.
+var lastTouch=0;
+function fromTouch(){return Date.now()-lastTouch<700;}
 function onStart(x,y){drag={x:x,y:y,lon:rotLon,lat:rotLat,moved:false};}
 function onMove(x,y){
   if(!drag)return;
@@ -387,26 +393,29 @@ function pinchMove(t1,t2){
 }
 
 canvas.addEventListener('touchstart',function(e){
+  lastTouch=Date.now();
   if(e.touches.length===2)pinchStart(e.touches[0],e.touches[1]);
   else onStart(e.touches[0].clientX,e.touches[0].clientY);
 },{passive:true});
 canvas.addEventListener('touchmove',function(e){
-  e.preventDefault();
+  e.preventDefault();lastTouch=Date.now();
   if(e.touches.length===2)pinchMove(e.touches[0],e.touches[1]);
   else if(e.touches.length===1)onMove(e.touches[0].clientX,e.touches[0].clientY);
 },{passive:false});
 canvas.addEventListener('touchend',function(e){
+  lastTouch=Date.now();
   if(e.touches.length<2){pinchD=null;pinchGeo=null;}
   if(e.touches.length===0)onEnd(e.changedTouches[0].clientX,e.changedTouches[0].clientY);
 },{passive:true});
-canvas.addEventListener('mousedown',function(e){onStart(e.clientX,e.clientY);});
+canvas.addEventListener('mousedown',function(e){if(fromTouch())return;onStart(e.clientX,e.clientY);});
 canvas.addEventListener('mousemove',function(e){
+  if(fromTouch())return;
   if(drag){onMove(e.clientX,e.clientY);return;}
   if(locked)return;
   var hit=pickAt(e.clientX,e.clientY);
   if(hit!==hov){hov=hit;canvas.style.cursor=hit?'pointer':'default';render();}
 });
-canvas.addEventListener('mouseup',function(e){onEnd(e.clientX,e.clientY);});
+canvas.addEventListener('mouseup',function(e){if(fromTouch())return;onEnd(e.clientX,e.clientY);});
 canvas.addEventListener('wheel',function(e){
   e.preventDefault();
   setZoom(zoom*(e.deltaY>0?0.9:1.1),e.clientX,e.clientY);

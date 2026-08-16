@@ -41,6 +41,12 @@ interface CoreOptions {
   initial?: { rotLat?: number; rotLon?: number; zoom?: number; fit?: number };
   interactive?: boolean;
   spin?: boolean;
+  /**
+   * Keep the ⟲ button visible even at zoom 1, and hand it to the game via
+   * window.__recenter. Borders needs it: only the countries in play are ever
+   * drawn, so a drag alone — no zoom — can leave nothing but blank ocean.
+   */
+  resetAlways?: boolean;
   /** Transparent page background (decorative overlays composited over app UI). */
   transparentBg?: boolean;
 }
@@ -56,6 +62,7 @@ function core(opts: CoreOptions, gameJs: string): string {
     initial: { rotLat: 0, rotLon: 0, zoom: 1, fit: 0.88, ...(opts.initial ?? {}) },
     interactive: opts.interactive !== false,
     spin: !!opts.spin,
+    resetAlways: !!opts.resetAlways,
   };
   return `<!DOCTYPE html>
 <html>
@@ -73,7 +80,7 @@ font-size:22px;font-weight:600;line-height:1;display:flex;align-items:center;jus
 touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;}
 #zc button:active{opacity:0.55;}
 /* #zc #zr, not #zr: "#zc button" above is more specific and would win. */
-#zc #zr{font-size:16px;display:none;}
+#zc #zr{font-size:16px;display:${opts.resetAlways ? 'flex' : 'none'};}
 </style>
 </head>
 <body>
@@ -339,6 +346,12 @@ function onMoveDrag(x,y){if(!drag)return;
   rotLat=Math.max(-85,Math.min(85,drag.lat+dy*(0.35/zoom)));
   applyRotation();}
 var lastTap=0,lastTapX=0,lastTapY=0;
+// A touch tap is followed by SYNTHESISED mouse events (touchend, then
+// mousedown/mouseup a few ms later). Both paths reach onEnd, so a single tap
+// looked like a double-tap and zoomed the globe by itself on every pick.
+// Ignore the mouse path for a moment after any touch.
+var lastTouch=0;
+function fromTouch(){return Date.now()-lastTouch<700;}
 function onEnd(x,y){
   if(drag&&!drag.moved){
     var now=Date.now();
@@ -372,36 +385,42 @@ function setZoom(z,px,py,geo){
   updateCamera();
   if(anchor)anchorAt(anchor.lat,anchor.lng,px,py);
   var zr=document.getElementById('zr');
-  if(zr)zr.style.display=zoom>1.05?'flex':'none';
+  if(zr&&!D.resetAlways)zr.style.display=zoom>1.05?'flex':'none';
   if(onZoomCb)onZoomCb();}
 if(D.interactive){
   var pinchGeo=null;
   document.addEventListener('touchstart',function(e){
+    lastTouch=Date.now();
     if(e.touches.length===2){pinchD=Math.hypot(e.touches[1].clientX-e.touches[0].clientX,e.touches[1].clientY-e.touches[0].clientY);pinchZ=zoom;drag=null;
       syncMatrices();pinchGeo=unproject((e.touches[0].clientX+e.touches[1].clientX)/2,(e.touches[0].clientY+e.touches[1].clientY)/2);}
     else onStart(e.touches[0].clientX,e.touches[0].clientY);},{passive:true});
-  document.addEventListener('touchmove',function(e){e.preventDefault();
+  document.addEventListener('touchmove',function(e){e.preventDefault();lastTouch=Date.now();
     if(e.touches.length===2&&pinchD!==null){
       var d=Math.hypot(e.touches[1].clientX-e.touches[0].clientX,e.touches[1].clientY-e.touches[0].clientY);
       // Anchoring the start midpoint to the live one gives two-finger pan for free.
       setZoom(pinchZ*d/pinchD,(e.touches[0].clientX+e.touches[1].clientX)/2,(e.touches[0].clientY+e.touches[1].clientY)/2,pinchGeo);}
     else if(e.touches.length===1)onMoveDrag(e.touches[0].clientX,e.touches[0].clientY);},{passive:false});
   document.addEventListener('touchend',function(e){
+    lastTouch=Date.now();
     if(e.touches.length<2){pinchD=null;pinchGeo=null;}
     if(e.touches.length===1)drag={x:e.touches[0].clientX,y:e.touches[0].clientY,lon:rotLon,lat:rotLat,moved:true};
     if(e.touches.length===0)onEnd(e.changedTouches[0].clientX,e.changedTouches[0].clientY);},{passive:true});
-  document.addEventListener('mousedown',function(e){onStart(e.clientX,e.clientY);});
+  document.addEventListener('mousedown',function(e){if(fromTouch())return;onStart(e.clientX,e.clientY);});
   document.addEventListener('mousemove',function(e){
+    if(fromTouch())return;
     if(drag){onMoveDrag(e.clientX,e.clientY);return;}
     if(onHoverCb)onHoverCb(e.clientX,e.clientY);});
-  document.addEventListener('mouseup',function(e){onEnd(e.clientX,e.clientY);});
+  document.addEventListener('mouseup',function(e){if(fromTouch())return;onEnd(e.clientX,e.clientY);});
   document.addEventListener('wheel',function(e){e.preventDefault();setZoom(zoom*(e.deltaY>0?0.9:1.1),e.clientX,e.clientY);},{passive:false});
   var zin=document.getElementById('zin');
   if(zin){
     // 1.7× per press: two taps clear DOT_PICK_ZOOM in find mode.
     zin.addEventListener('click',function(){setZoom(zoom*1.7);});
     document.getElementById('zout').addEventListener('click',function(){setZoom(zoom/1.7);});
-    document.getElementById('zr').addEventListener('click',function(){setZoom(1);});
+    // The game can own the reset (borders re-frames on the chain); otherwise
+    // ⟲ is just "back to world zoom".
+    document.getElementById('zr').addEventListener('click',function(){
+      if(window.__recenter)window.__recenter();else setZoom(1);});
   }
 }
 
@@ -678,6 +697,9 @@ window.setHighlights=function(list,refit){
   rebuildFlags();
   if(refit)frame();
   needsRender=true;};
+// ⟲ re-frames on the countries in play rather than only resetting the zoom:
+// only they are drawn, so a drag can leave the view on empty ocean.
+window.__recenter=function(){frame();needsRender=true;};
 function gameInit(){rotLat=20;applyRotation();}`;
   return core(
     {
@@ -687,6 +709,7 @@ function gameInit(){rotLat=20;applyRotation();}`;
       polygons: opts.polygons,
       maxDpr: opts.maxDpr,
       interactive: true,
+      resetAlways: true,
       initial: { rotLat: 20, fit: 0.9 },
     },
     gameJs,
