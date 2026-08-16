@@ -35,15 +35,44 @@ Tout ce qui suit se fait dans un navigateur avec ton compte Google. Les fichiers
 2. **Politique > Contenu de l'application** : déroule chaque formulaire avec les réponses de `questionnaires.md` (Data safety, IARC, public cible 13+, pas de pub, app access avec compte de test…).
 3. **Croissance > Paramètres de la fiche** : catégorie **Quiz**, e-mail de contact, URL de confidentialité `https://geogames-mu.vercel.app/privacy.html`.
 
-## Étape 4 — Service account : donner la clé à Claude (~10 min, une fois)
+## Étape 4 — Service account : automatiser l'envoi sur Play (~10 min, une fois)
 
-> Permet `eas submit` automatique pour toutes les mises à jour futures.
+> Tant que ce n'est pas fait, chaque release Android se termine par un upload **manuel** du `.aab`
+> dans la Play Console (c'est le cas depuis la v5.2.0). Une fois la clé en place,
+> `eas build --auto-submit` envoie tout seul, comme iOS.
 
-1. https://console.cloud.google.com → crée (ou choisis) un projet, ex. `geog-play`
-2. **IAM et administration > Comptes de service** → **Créer un compte de service** → nom `eas-submit` → Créer → (pas de rôle projet nécessaire) → OK
-3. Sur le compte créé : **Clés > Ajouter une clé > JSON** → un fichier `.json` se télécharge
-4. Play Console → **Utilisateurs et autorisations** → **Inviter un utilisateur** → colle l'e-mail du compte de service (`eas-submit@geog-play.iam.gserviceaccount.com`) → Autorisations de l'app : GeoG → coche **« Gérer les releases en test »** (et « Publier en production » si tu veux automatiser jusqu'au bout) → Inviter
-5. Renomme le fichier téléchargé en `google-service-account.json` et mets-le dans `georankle-app/` (il est gitignoré). Dis-le à Claude.
+1. https://console.cloud.google.com/projectcreate → crée (ou choisis) un projet, ex. `geog-play`
+2. **IAM et administration > Comptes de service** → **Créer un compte de service** → nom `eas-submit`
+   → Créer → **aucun rôle projet n'est nécessaire** (les droits viennent de la Play Console, étape 5) → OK
+3. Sur le compte créé : **Gérer les clés > Ajouter une clé > Créer une clé > JSON** → un `.json` se télécharge.
+   **Copie aussi l'e-mail du compte** (`eas-submit@geog-play.iam.gserviceaccount.com`) — il sert à l'étape 5.
+4. ⚠️ **Étape la plus souvent oubliée** — active l'API, sinon l'envoi échoue en 403 :
+   https://console.cloud.google.com/apis/library/androidpublisher.googleapis.com → **Activer**
+   (vérifie que le projet sélectionné en haut est bien `geog-play`).
+5. Play Console → **Utilisateurs et autorisations** → **Inviter un utilisateur** → colle l'e-mail du compte
+   de service → **Autorisations de l'app : GeoG**, puis coche :
+   - *Accès à l'app* : **Afficher les informations sur l'application (lecture seule)**
+   - *Applications en brouillon* : **Modifier et supprimer les brouillons**
+   - *Releases* : **Gérer les releases sur les canaux de test** (+ **Publier en production** seulement si tu
+     veux qu'`eas submit` puisse pousser en prod ; `eas.json` vise `internal` aujourd'hui)
+   - *Présence sur le Store* : **Gérer la présence sur le Store**
+
+   → **Inviter l'utilisateur**.
+6. Donne la clé à EAS — **une des deux** options :
+   - **Recommandé — clé stockée chez EAS** (rien sur le disque, marche depuis n'importe quelle machine) :
+     `eas credentials --platform android` → profil `production` → *Google Service Account* →
+     *Upload a Google Service Account Key* → chemin du `.json`.
+     Puis **retire** la ligne `"serviceAccountKeyPath"` de `eas.json` (sinon elle a la priorité et EAS
+     cherchera un fichier local).
+   - **Fichier local** (ce que `eas.json` attend actuellement) : renomme le `.json` en
+     `google-service-account.json` et mets-le dans `georankle-app/`. Il est gitignoré — **ne le commite
+     jamais**, c'est une clé de publication.
+
+> Si l'envoi échoue avec *« The project id used to call the Google Play Developer API has not been linked »*,
+> c'est un vieux compte Play : Play Console → **Paramètres > Accès à l'API** → lie le projet Cloud `geog-play`.
+
+**Vérifier que ça marche** (sans refaire de build) :
+`eas submit --platform android --profile production --latest`
 
 ## Étape 5 — Firebase : activer les push Android (~10 min, une fois)
 
