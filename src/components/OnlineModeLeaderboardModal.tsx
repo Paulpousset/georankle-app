@@ -22,6 +22,7 @@ const MODE_LABELS: Record<MatchMode, [string, string]> = {
   higherlower: ['Plus ou Moins', 'Higher or Lower'],
   silhouette: ['Silhouette', 'Silhouette'],
   borders: ['Frontières', 'Borders'],
+  languages: ['Langues', 'Languages'],
 };
 
 interface Props {

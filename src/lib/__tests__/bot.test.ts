@@ -113,6 +113,39 @@ describe('makeBotProfile', () => {
   });
 });
 
+describe('point-based quiz modes are simulated on their own scale', () => {
+  // Regression guard for an incident that already shipped once: a quiz mode
+  // falling through to the `default:` arm is simulated on the globe scale
+  // (1000 per hit), which normalizes to the ceiling — the human loses the round
+  // before playing it. Nothing in the type system catches this.
+  const QUIZ_MODES: MatchMode[] = ['silhouette', 'languages'];
+  const N = 5;
+
+  it('keeps raw scores inside the N×5 points band', () => {
+    for (const mode of QUIZ_MODES) {
+      for (let seed = 0; seed < 40; seed++) {
+        const { score } = simulateBotRound(mode, { roundsPerSet: N }, 1500, createSeededRng(seed));
+        expect({ mode, ok: score >= 0 && score <= N * 5 }).toEqual({ mode, ok: true });
+      }
+    }
+  });
+
+  it('does not normalize to a near-certain win for the bot', () => {
+    for (const mode of QUIZ_MODES) {
+      const scores = Array.from({ length: 40 }, (_, seed) =>
+        normalizeRoundScore(
+          mode,
+          simulateBotRound(mode, { roundsPerSet: N }, 1500, createSeededRng(seed)).score,
+          { numQuestions: N, maxPointsPerQuestion: 5 },
+        ),
+      );
+      const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+      // A mid-rated bot must land mid-table, not pinned at the ceiling.
+      expect({ mode, tooStrong: avg > ROUND_SCORE_MAX * 0.9 }).toEqual({ mode, tooStrong: false });
+    }
+  });
+});
+
 describe('makeBotAvatarConfig', () => {
   it('is deterministic for a fixed rng seed', () => {
     expect(makeBotAvatarConfig(createSeededRng(11))).toEqual(makeBotAvatarConfig(createSeededRng(11)));

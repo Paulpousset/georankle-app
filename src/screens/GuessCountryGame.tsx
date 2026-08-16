@@ -59,6 +59,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { tr } from '../i18n';
 import { a11yButton, announce, a11yImage, a11yHidden, ICON_HIT_SLOP } from '../lib/a11y';
+import { useStageWidth } from '../lib/stage';
 
 /** Atlas line-icon per comparison category (rendered white on the colored tile). */
 const CAT_ICONS: Record<CatId, ComponentType<AtlasIconProps>> = {
@@ -156,7 +157,7 @@ export default function GuessCountryGame({
   const { language } = useLanguage();
   const isOnline = !!matchData;
   const isPlayer1 = matchData?.player1_id === user?.id;
-  const { width } = useWindowDimensions();
+  const width = useStageWidth();
 
   const [target, setTarget] = useState<{ country: any; stats: any }>(() => {
     if (dailySeed != null) {

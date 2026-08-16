@@ -30,6 +30,14 @@ if [ -z "${SKIP_CHECKS:-}" ]; then
       echo -e "${RED}❌ pack cosmétique incohérent (asset-pipeline/check_assets) — déploiement annulé.${NC}"; exit 1
     fi
   fi
+  # Extraits parlés du mode Langues : chaque phrase des langues `audio: true`
+  # doit être en ligne. Ignoré tant que la variante audio est éteinte (le flag
+  # languages_audio reste le garde-fou d'activation).
+  if [ -n "${EXPO_PUBLIC_SUPABASE_URL:-}" ] && [ -n "${CHECK_LANG_AUDIO:-}" ]; then
+    if ! node scripts/check_language_audio.mjs; then
+      echo -e "${RED}❌ extraits audio « Langues » manquants — déploiement annulé.${NC}"; exit 1
+    fi
+  fi
   echo -e "${GREEN}✅ Pré-vol OK${NC}"
 else
   echo "⏭️  SKIP_CHECKS=1 — pré-vol ignoré"

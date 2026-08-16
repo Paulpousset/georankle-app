@@ -43,6 +43,7 @@ export const DAILY_MODES: GameMode[] = [
   'streak',
   'quiz-capital',
   'quiz-flag',
+  'languages',
 ];
 
 /** Day index 0 maps to this UTC date — only affects the displayed "#N". */
@@ -325,6 +326,8 @@ export function dailyModeLabel(mode: GameMode, language: Language): string {
       return 'Silhouette';
     case 'borders':
       return tr(language, 'Frontières', 'Borders');
+    case 'languages':
+      return tr(language, 'Langues', 'Languages');
     default:
       return mode;
   }

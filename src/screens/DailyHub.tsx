@@ -10,6 +10,7 @@ import {
   Globe,
   HelpCircle,
   Info,
+  Languages,
   LayoutGrid,
   Map,
   Puzzle,
@@ -34,9 +35,11 @@ import {
   getPuzzleNumber,
   getTodayUTC,
   msUntilNextPuzzle,
+  seedFor,
   type DailyResult,
   type DailyState,
 } from '../lib/daily';
+import { variantForSeed } from '../lib/languages';
 import { buildShareMessage } from '../lib/share';
 import { getReferralInfo } from '../lib/referral';
 import { SITE_URL } from '../lib/links';
@@ -66,6 +69,7 @@ export const MODE_META: Record<string, { icon: ComponentType<{ color: string; si
   higherlower: { icon: TrendingUp, accent: PALETTE.chartBlue },
   silhouette: { icon: Puzzle, accent: PALETTE.forestGreen },
   borders: { icon: Route, accent: PALETTE.sand },
+  languages: { icon: Languages, accent: PALETTE.oceanBlue },
 };
 
 interface DailyHubProps {
@@ -139,6 +143,9 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
   const puzzle = getPuzzleNumber();
   const streak = state?.streak ?? 0;
   const todayCount = state?.todayCount ?? 0;
+  // Read the date as a plain value, not off dayRef: refs must not be touched
+  // during render, and this only feeds a label.
+  const todayUTC = getTodayUTC();
 
   const shareResult = async (result: DailyResult) => {
     // Carry the player's referral code so a shared result doubles as an invite.
@@ -295,6 +302,13 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
                   ) : (
                     <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 11 }}>
                       {tr(language, 'À jouer', 'To play')}
+                      {/* Langues alternates written/spoken by day — say which,
+                          so the player knows whether they need sound. */}
+                      {mode === 'languages'
+                        ? variantForSeed(seedFor(todayUTC, mode)) === 'audio'
+                          ? tr(language, ' · à l’oreille', ' · by ear')
+                          : tr(language, ' · à l’écrit', ' · written')
+                        : ''}
                     </Text>
                   )}
                 </View>

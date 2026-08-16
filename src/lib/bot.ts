@@ -92,7 +92,8 @@ export function simulateBotRound(
       }
       break;
     }
-    case 'silhouette': {
+    case 'silhouette':
+    case 'languages': {
       // CARRÉ/DUO/CASH quiz like versus: raw = per-question points (max n×5).
       // Simulating on the globe scale (1000/hit) made the normalized bot score
       // clamp to the maximum — an auto-lost round for the player in ranked.

@@ -1,0 +1,172 @@
+/*
+ * Feuille de style commune aux pages éditoriales (guides, à propos, contact,
+ * 404). Reprend les tokens de landing.html — même parchemin, même typographie
+ * d'atlas — mais avec un corps de texte en serif : ces pages sont faites pour
+ * être lues longuement, là où la landing est faite pour être parcourue.
+ */
+
+:root {
+  --parchment: #f2e8d0;
+  --parchment-dark: #e8d9b8;
+  --surface: #f8f2e3;
+  --sepia: #2c1810;
+  --brown: #7a5c38;
+  --brown-light: #a08060;
+  --tan: #c4a87a;
+  --vermilion: #c04a1a;
+  --forest: #2a6e3f;
+  --ocean: #1a4a7a;
+  --sand: #c4872a;
+  --serif: "Playfair Display", Georgia, serif;
+  --body: Georgia, "Iowan Old Style", "Times New Roman", serif;
+  --mono: "Space Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --frame: 2px solid var(--tan);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --parchment: #0a1628;
+    --parchment-dark: #132040;
+    --surface: #1a2d50;
+    --sepia: #d8e8f4;
+    --brown: #7aa0c4;
+    --brown-light: #7aa0c4;
+    --tan: #2d4a70;
+    --vermilion: #e2703a;
+    --forest: #4bab6a;
+    --ocean: #6ba8e0;
+    --sand: #d9a54a;
+  }
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+
+body {
+  background: var(--parchment);
+  color: var(--sepia);
+  font-family: var(--body);
+  font-size: 18px;
+  line-height: 1.75;
+}
+
+/* ---------- navigation ---------- */
+
+nav {
+  position: sticky; top: 0; z-index: 20;
+  background: color-mix(in srgb, var(--parchment) 92%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: var(--frame);
+}
+.nav-in {
+  max-width: 1100px; margin: 0 auto; padding: 10px 20px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+}
+.nav-logo { display: flex; align-items: center; gap: 9px; text-decoration: none; color: var(--sepia); }
+.nav-logo b { font-family: var(--serif); font-size: 21px; letter-spacing: .5px; }
+.nav-logo img { border-radius: 7px; }
+.nav-links { display: flex; align-items: center; gap: 18px; font-family: var(--mono); font-size: 13px; }
+.nav-links a { color: var(--brown); text-decoration: none; }
+.nav-links a:hover { color: var(--vermilion); }
+.nav-cta {
+  background: var(--vermilion); color: #fff !important;
+  padding: 7px 15px; border-radius: 4px; font-weight: 700;
+}
+@media (max-width: 620px) { .nav-links a:not(.nav-cta) { display: none; } }
+
+/* ---------- mise en page article ---------- */
+
+.wrap { max-width: 760px; margin: 0 auto; padding: 0 20px; }
+
+.breadcrumb {
+  font-family: var(--mono); font-size: 12px; color: var(--brown-light);
+  margin: 26px 0 14px; letter-spacing: .3px;
+}
+.breadcrumb a { color: var(--brown); text-decoration: none; }
+.breadcrumb a:hover { text-decoration: underline; }
+
+article header { border-bottom: var(--frame); padding-bottom: 22px; margin-bottom: 30px; }
+
+h1 {
+  font-family: var(--serif); font-weight: 900;
+  font-size: clamp(30px, 5.2vw, 46px); line-height: 1.12;
+  letter-spacing: -.5px; margin-bottom: 14px;
+}
+.standfirst { font-size: 20px; color: var(--brown); line-height: 1.6; }
+.meta { font-family: var(--mono); font-size: 12px; color: var(--brown-light); margin-top: 14px; }
+
+h2 {
+  font-family: var(--serif); font-weight: 700;
+  font-size: clamp(23px, 3.4vw, 30px); line-height: 1.25;
+  margin: 44px 0 14px; padding-top: 6px;
+}
+h3 { font-family: var(--serif); font-weight: 700; font-size: 21px; margin: 30px 0 10px; }
+
+p { margin-bottom: 18px; }
+article ul, article ol { margin: 0 0 20px 22px; }
+article li { margin-bottom: 9px; }
+strong { color: var(--sepia); }
+a { color: var(--ocean); text-decoration: underline; text-underline-offset: 2px; }
+a:hover { color: var(--vermilion); }
+
+/* ---------- encarts ---------- */
+
+.card {
+  background: var(--surface); border: var(--frame); border-radius: 6px;
+  padding: 20px 22px; margin: 28px 0;
+}
+.card h3 { margin-top: 0; }
+.card p:last-child, .card ul:last-child { margin-bottom: 0; }
+
+.tip { border-left: 4px solid var(--forest); }
+.warn { border-left: 4px solid var(--vermilion); }
+
+.label {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 1.4px;
+  text-transform: uppercase; color: var(--brown-light); display: block; margin-bottom: 8px;
+}
+
+/* tableaux : scrollables seuls, la page ne défile jamais horizontalement */
+.table-wrap { overflow-x: auto; margin: 24px 0; border: var(--frame); border-radius: 6px; }
+table { border-collapse: collapse; width: 100%; font-size: 16px; background: var(--surface); }
+th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--tan); }
+th { font-family: var(--mono); font-size: 12px; text-transform: uppercase; letter-spacing: .8px; color: var(--brown); }
+tbody tr:last-child td { border-bottom: 0; }
+
+/* ---------- appel au jeu ---------- */
+
+.play-cta {
+  background: var(--surface); border: var(--frame); border-radius: 6px;
+  padding: 24px; margin: 36px 0; text-align: center;
+}
+.play-cta h3 { margin: 0 0 8px; }
+.play-cta p { color: var(--brown); margin-bottom: 16px; }
+.btn {
+  display: inline-block; background: var(--vermilion); color: #fff;
+  font-family: var(--mono); font-weight: 700; font-size: 14px;
+  padding: 12px 26px; border-radius: 4px; text-decoration: none;
+}
+.btn:hover { color: #fff; opacity: .9; }
+
+/* ---------- liste des guides ---------- */
+
+.guide-grid { display: grid; gap: 18px; margin: 30px 0; }
+@media (min-width: 720px) { .guide-grid { grid-template-columns: 1fr 1fr; } }
+.guide-card {
+  display: block; background: var(--surface); border: var(--frame); border-radius: 6px;
+  padding: 20px; text-decoration: none; color: var(--sepia);
+}
+.guide-card:hover { border-color: var(--vermilion); color: var(--sepia); }
+.guide-card h3 { margin: 0 0 8px; font-size: 20px; }
+.guide-card p { color: var(--brown); font-size: 16px; margin: 0; line-height: 1.55; }
+
+/* ---------- pied de page ---------- */
+
+footer {
+  border-top: var(--frame); margin-top: 60px; padding: 30px 20px 40px;
+  text-align: center; font-family: var(--mono); font-size: 12px; color: var(--brown-light);
+}
+.f-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 18px; margin-bottom: 14px; }
+.f-links a { color: var(--brown); text-decoration: none; }
+.f-links a:hover { color: var(--vermilion); }
+footer p { margin-bottom: 6px; }

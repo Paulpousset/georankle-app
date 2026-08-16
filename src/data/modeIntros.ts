@@ -7,7 +7,7 @@
  * that actually matter, rendered as a short checklist under the blurb.
  */
 import type { ComponentType } from 'react';
-import { Flag, Globe, Info, LayoutGrid, Map, Monitor, Puzzle, Route, Swords, TrendingUp, Zap } from 'lucide-react-native';
+import { Flag, Globe, Info, Languages, LayoutGrid, Map, Monitor, Puzzle, Route, Swords, TrendingUp, Zap } from 'lucide-react-native';
 
 import { PALETTE } from '../theme/colors';
 import type { GameMode } from '../types';
@@ -73,6 +73,19 @@ export const MODE_INTROS: Partial<Record<GameMode, ModeIntro>> = {
       { fr: 'Observez les côtes, les péninsules et les îles : ce sont les meilleurs indices.', en: 'Look at coastlines, peninsulas and islands — they are the best clues.' },
       { fr: 'DUO = 1 pt, CARRÉ = 3 pts, CASH = 5 pts : plus c’est risqué, plus ça rapporte.', en: 'DUO = 1 pt, CARRÉ = 3 pts, CASH = 5 pts: the riskier the call, the bigger the reward.' },
       { fr: 'Les mauvaises réponses viennent souvent du même continent : méfiez-vous des voisins !', en: 'Wrong options often come from the same continent — beware of neighbours!' },
+    ],
+  },
+  languages: {
+    icon: Languages,
+    accent: PALETTE.oceanBlue,
+    titleFr: 'Langues',
+    titleEn: 'Languages',
+    bodyFr: 'Une phrase du quotidien s’affiche — ou se fait entendre — et vous devez nommer sa langue. Choisissez votre difficulté à chaque question : DUO (2 choix), CARRÉ (4 choix) ou CASH (à écrire).',
+    bodyEn: 'An everyday phrase appears — or is read out loud — and you name the language it is in. Pick a difficulty each question: DUO (2 options), CARRÉ (4 options) or CASH (type it).',
+    tips: [
+      { fr: 'Les accents trahissent : ã et ç pour le portugais, ñ pour l’espagnol, ř pour le tchèque.', en: 'Diacritics give it away: ã and ç for Portuguese, ñ for Spanish, ř for Czech.' },
+      { fr: 'DUO = 1 pt, CARRÉ = 3 pts, CASH = 5 pts : plus c’est risqué, plus ça rapporte.', en: 'DUO = 1 pt, CARRÉ = 3 pts, CASH = 5 pts: the riskier the call, the bigger the reward.' },
+      { fr: 'En CARRÉ, une des mauvaises réponses est toujours une langue cousine : lisez bien.', en: 'In CARRÉ one wrong option is always a close relative — read carefully.' },
     ],
   },
   borders: {

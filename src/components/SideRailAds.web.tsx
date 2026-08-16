@@ -15,13 +15,24 @@ import {
   WEB_AD_CLIENT,
   WEB_SIDE_RAIL_SLOTS,
   ensureAdsScript,
+  railOffset,
   railSize,
   webAdsSupported,
   type RailSize,
 } from '../lib/adsWeb';
 import { isFeatureEnabled } from '../lib/featureFlags';
 
-function RailUnit({ slot, size, side }: { slot: string; size: RailSize; side: 'left' | 'right' }) {
+function RailUnit({
+  slot,
+  size,
+  side,
+  offset,
+}: {
+  slot: string;
+  size: RailSize;
+  side: 'left' | 'right';
+  offset: number;
+}) {
   useEffect(() => {
     ensureAdsScript();
     try {
@@ -38,7 +49,7 @@ function RailUnit({ slot, size, side }: { slot: string; size: RailSize; side: 'l
         position: 'fixed',
         top: '50%',
         transform: 'translateY(-50%)',
-        [side]: 16,
+        [side]: offset,
         width: size.width,
         height: size.height,
         overflow: 'hidden',
@@ -85,15 +96,29 @@ export function SideRailAds() {
   const size = railSize(dims.w, dims.h);
   if (!enabled || !size) return null;
 
+  const offset = railOffset(dims.w, size);
+
   return (
     <>
       {/* key remounts the <ins> when the size bucket changes — AdSense fills a
           given <ins> exactly once, so a resize needs a fresh element. */}
       {WEB_SIDE_RAIL_SLOTS.left ? (
-        <RailUnit key={`l${size.width}`} slot={WEB_SIDE_RAIL_SLOTS.left} size={size} side="left" />
+        <RailUnit
+          key={`l${size.width}`}
+          slot={WEB_SIDE_RAIL_SLOTS.left}
+          size={size}
+          side="left"
+          offset={offset}
+        />
       ) : null}
       {WEB_SIDE_RAIL_SLOTS.right ? (
-        <RailUnit key={`r${size.width}`} slot={WEB_SIDE_RAIL_SLOTS.right} size={size} side="right" />
+        <RailUnit
+          key={`r${size.width}`}
+          slot={WEB_SIDE_RAIL_SLOTS.right}
+          size={size}
+          side="right"
+          offset={offset}
+        />
       ) : null}
     </>
   );

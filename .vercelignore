@@ -13,7 +13,8 @@ store-listing
 *.sql
 *.md
 supabase
-scripts
+scripts/*
+!scripts/postbuild-web.mjs
 test-utils
 __tests__
 __mocks__

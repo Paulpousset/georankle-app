@@ -1,0 +1,2677 @@
+{
+  "_readme": [
+    "Corpus du mode « Langues » — 31 langues vivantes x 10 phrases.",
+    "",
+    "SOURCE UNIQUE : ce fichier est lu par l'app (src/data/languages.ts) ET par le",
+    "pipeline audio (scripts/gen_language_audio.mjs). Ne jamais dupliquer le corpus",
+    "dans un .ts : le script Node ne saurait pas le lire.",
+    "",
+    "RÈGLES DE RÉDACTION (vérifiées par src/lib/__tests__/languages.test.ts) :",
+    "1. 5 à 12 mots (scripts à espaces) / 8 à 60 caractères (han, kana-kanji, thai).",
+    "2. Registre du quotidien. Une seule proposition.",
+    "3. INTERDIT : noms propres, gentilés, monnaies, plats ou objets nationaux",
+    "   (« sushi », « fjord », « sauna »), fêtes locales. La phrase doit être",
+    "   identifiable par sa LANGUE, jamais par sa culture.",
+    "4. INTERDIT : un emprunt international comme unique mot porteur (« taxi »).",
+    "5. Les 10 thèmes sont communs à toutes les langues (parapluie, sel, enfants,",
+    "   train manqué, café froid, boutique fermée, surmenage, réveil, sentier,",
+    "   rendez-vous) mais les formulations sont LIBRES et indépendantes — ce ne sont",
+    "   pas des traductions mot à mot, sinon le joueur mémorise une structure au",
+    "   lieu d'apprendre une langue.",
+    "6. SHIBBOLETH obligatoire sur les paires proches : chaque phrase pt porte un",
+    "   marqueur qui l'exclut de es (ão, nh, lh, você, ç) ; chaque phrase cs porte",
+    "   ř/ů/ě (absents du pl) ; chaque phrase uk porte і/ї/є (absents du ru).",
+    "   Sans ça la question est objectivement injuste.",
+    "7. Diacritiques natifs TOUJOURS conservés (c'est l'indice de la variante Texte)",
+    "   et phonèmes typiques présents (c'est l'indice de la variante Audio).",
+    "",
+    "AJOUTER UNE LANGUE = une entrée ici. Aucun écran à écrire.",
+    "AJOUTER UNE PHRASE = un id NEUF (`code-NN`), jamais réattribué : l'id pilote le",
+    "nom du fichier audio.",
+    "",
+    "`audio: false` retire chirurgicalement une langue de la variante Audio (TTS de",
+    "mauvaise qualité). Le garde-fou de ship reste le feature flag `languages_audio`."
+  ],
+  "version": 1,
+  "languages": [
+    {
+      "code": "fr",
+      "nameFr": "Français",
+      "nameEn": "French",
+      "endonym": "Français",
+      "family": "romance",
+      "branch": "gallo-romance",
+      "script": "latin",
+      "tier": 1,
+      "flagCca3": "FRA",
+      "audio": true,
+      "ttsModel": "eleven_multilingual_v2",
+      "phrases": [
+        {
+          "id": "fr-01",
+          "text": "Je vais chercher du pain avant que la boulangerie ferme."
+        },
+        {
+          "id": "fr-02",
+          "text": "Il pleut depuis ce matin et j'ai oublié mon parapluie."
+        },
+        {
+          "id": "fr-03",
+          "text": "Peux-tu me passer le sel, s'il te plaît ?"
+        },
+        {
+          "id": "fr-04",
+          "text": "Nous avons manqué le dernier train de la soirée."
+        },
+        {
+          "id": "fr-05",
+          "text": "Elle travaille beaucoup trop et ne dort presque plus."
+        },
+        {
+          "id": "fr-06",
+          "text": "Les enfants jouent dans le jardin depuis deux heures."
+        },
+        {
+          "id": "fr-07",
+          "text": "Le café est déjà froid, je vais en refaire."
+        },
+        {
+          "id": "fr-08",
+          "text": "Personne n'a su expliquer pourquoi la boutique était fermée."
+        },
+        {
+          "id": "fr-09",
+          "text": "Ce chemin monte doucement jusqu'au sommet de la colline."
+        },
+        {
+          "id": "fr-10",
+          "text": "On se retrouve devant la gare à midi ?"
+        }
+      ]
+    },
+    {
+      "code": "es",
+      "nameFr": "Espagnol",
+      "nameEn": "Spanish",
+      "endonym": "Español",
+      "family": "romance",
+      "branch": "ibero-romance",
+      "script": "latin",
+      "tier": 1,
+      "aliases": [
+        "castillan",
+        "castellano",
+        "castilian"
+      ],
+      "flagCca3": "ESP",
+      "audio": true,
+      "ttsModel": "eleven_multilingual_v2",
+      "phrases": [
+        {
+          "id": "es-01",
+          "text": "¿Puedes cerrar la ventana? Hace mucho frío aquí."
+        },
+        {
+          "id": "es-02",
+          "text": "Mañana tengo que levantarme muy temprano para trabajar."
+        },
+        {
+          "id": "es-03",
+          "text": "El niño se quedó dormido en el sillón."
+        },
+        {
+          "id": "es-04",
+          "text": "No encuentro las llaves por ningún lado."
+        },
+        {
+          "id": "es-05",
+          "text": "Llevo dos horas esperando y todavía no ha llegado."
+        },
+        {
+          "id": "es-06",
+          "text": "La comida estaba deliciosa, aunque un poco salada."
+        },
+        {
+          "id": "es-07",
+          "text": "Siempre olvido dónde dejo el teléfono por las mañanas."
+        },
+        {
+          "id": "es-08",
+          "text": "Hoy hace un día precioso para salir a caminar."
+        },
+        {
+          "id": "es-09",
+          "text": "El sendero sube despacio hasta lo alto del cerro."
+        },
+        {
+          "id": "es-10",
+          "text": "¿Sabes si abren la tienda los domingos?"
+        }
+      ]
+    },
+    {
+      "code": "pt",
+      "nameFr": "Portugais",
+      "nameEn": "Portuguese",
+      "endonym": "Português",
+      "family": "romance",
+      "branch": "ibero-romance",
+      "script": "latin",
+      "tier": 1,
+      "phoneticNeighbors": [
+        "ru",
+        "pl"
+      ],
+      "flagCca3": "PRT",
+      "audio": true,
+      "ttsModel": "eleven_multilingual_v2",
+      "phrases": [
+        {
+          "id": "pt-01",
+          "text": "Você não vai acreditar no que aconteceu ontem à noite."
+        },
+        {
+          "id": "pt-02",
+          "text": "Você não está com fome? Vamos comer alguma coisa."
+        },
+        {
+          "id": "pt-03",
+          "text": "As crianças não querem dormir cedo nas férias."
+        },
+        {
+          "id": "pt-04",
+          "text": "Preciso lavar a roupa hoje, senão não terei nada limpo."
+        },
+        {
+          "id": "pt-05",
+          "text": "Ele trabalha o dia inteiro e ainda estuda à noite."
+        },
+        {
+          "id": "pt-06",
+          "text": "Não consigo encontrar o meu casaco em lugar nenhum."
+        },
+        {
+          "id": "pt-07",
+          "text": "A viagem foi longa e cansativa, mas não me arrependo."
+        },
+        {
+          "id": "pt-08",
+          "text": "Amanhã cedo eu ligo para você, está bem?"
+        },
+        {
+          "id": "pt-09",
+          "text": "Ninguém soube explicar por que a loja não abriu hoje."
+        },
+        {
+          "id": "pt-10",
+          "text": "O caminho sobe devagar até o alto da montanha."
+        }
+      ]
+    },
+    {
+      "code": "it",
+      "nameFr": "Italien",
+      "nameEn": "Italian",
+      "endonym": "Italiano",
+      "family": "romance",
+      "branch": "italo-romance",
+      "script": "latin",
+      "tier": 1,
+      "flagCca3": "ITA",
+      "audio": true,
+      "ttsModel": "eleven_multilingual_v2",
+      "phrases": [
+        {
+          "id": "it-01",
+          "text": "Non riesco a trovare gli occhiali da nessuna parte."
+        },
+        {
+          "id": "it-02",
+          "text": "Domani mattina devo alzarmi molto presto per lavorare."
+        },
+        {
+          "id": "it-03",
+          "text": "Il caffè è già freddo, ne faccio un altro."
+        },
+        {
+          "id": "it-04",
+          "text": "Che bella giornata per fare una passeggiata insieme!"
+        },
+        {
+          "id": "it-05",
+          "text": "I bambini giocano in giardino da più di un'ora."
+        },
+        {
+          "id": "it-06",
+          "text": "Ho dimenticato l'ombrello e adesso piove parecchio."
+        },
+        {
+          "id": "it-07",
+          "text": "Mi puoi passare il sale, per favore?"
+        },
+        {
+          "id": "it-08",
+          "text": "Abbiamo perso l'ultimo treno della serata."
+        },
+        {
+          "id": "it-09",
+          "text": "Questa strada sale dolcemente fino alla cima."
+        },
+        {
+          "id": "it-10",
+          "text": "Nessuno sapeva spiegare perché il negozio fosse chiuso."
+        }
+      ]
+    },
+    {
+      "code": "ro",
+      "nameFr": "Roumain",
+      "nameEn": "Romanian",
+      "endonym": "Română",
+      "family": "romance",
+      "branch": "eastern-romance",
+      "script": "latin",
+      "tier": 2,
+      "phoneticNeighbors": [
+        "it",
+        "ru"
+      ],
+      "flagCca3": "ROU",
+      "audio": true,
+      "ttsModel": "eleven_multilingual_v2",
+      "phrases": [
+        {
+          "id": "ro-01",
+          "text": "Nu găsesc cheile nicăieri prin casă."
+        },
+        {
+          "id": "ro-02",
+          "text": "Mâine trebuie să mă trezesc foarte devreme."
+        },
+        {
+          "id": "ro-03",
+          "text": "Copiii se joacă în grădină de două ore."
+        },
+        {
+          "id": "ro-04",
+          "text": "Plouă de azi-dimineață și mi-am uitat umbrela."
+        },
+        {
+          "id": "ro-05",
+          "text": "Cafeaua s-a răcit deja, o să fac alta."
+        },
+        {
+          "id": "ro-06",
+          "text": "Îmi place foarte mult să citesc seara târziu."
+        },
+        {
+          "id": "ro-07",
+          "text": "Am pierdut ultimul tren spre casă."
+        },
+        {
+          "id": "ro-08",
+          "text": "Poți să închizi fereastra? E prea frig aici."
+        },
+        {
+          "id": "ro-09",
+          "text": "Nimeni nu știa de ce s-a închis magazinul."
+        },
+        {
+          "id": "ro-10",
+          "text": "Drumul acesta urcă încet până în vârful dealului."
+        }
+      ]
+    },
+    {
+      "code": "en",
+      "nameFr": "Anglais",
+      "nameEn": "English",
+      "endonym": "English",
+      "family": "germanic",
+      "branch": "west-germanic",
+      "script": "latin",
+      "tier": 1,
+      "flagCca3": "GBR",
+      "audio": true,
+      "ttsModel": "eleven_multilingual_v2",
+      "phrases": [
+        {
+          "id": "en-01",
+          "text": "I forgot my umbrella and now it is pouring outside."
+        },
+        {
+          "id": "en-02",
+          "text": "Could you pass me the salt, please?"
+        },
+        {
+          "id": "en-03",
+          "text": "The children have been playing in the garden for hours."
+        },
+        {
+          "id": "en-04",
+          "text": "We missed the last train home last night."
+        },
+        {
+          "id": "en-05",
+          "text": "This coffee has gone cold, time to make another."
+        },
+        {
+          "id": "en-06",
+          "text": "Nobody could explain why the shop had closed."
+        },
+        {
+          "id": "en-07",
+          "text": "She works far too much and hardly sleeps anymore."
+        },
+        {
+          "id": "en-08",
+          "text": "Tomorrow morning we have to get up very early."
+        },
+        {
+          "id": "en-09",
+          "text": "The path climbs gently up towards the top."
+        },
+        {
+          "id": "en-10",
+          "text": "Shall we meet outside the station at noon?"
+        }
+      ]
+    },
+    {
+      "code": "de",
+      "nameFr": "Allemand",
+      "nameEn": "German",
+      "endonym": "Deutsch",
+      "family": "germanic",
+      "branch": "west-germanic",
+      "script": "latin",
+      "tier": 1,
+      "flagCca3": "DEU",
+      "audio": true,
+      "ttsModel": "eleven_multilingual_v2",
+      "phrases": [
+        {
+          "id": "de-01",
+          "text": "Ich habe meinen Schirm vergessen und jetzt regnet es."
+        },
+        {
+          "id": "de-02",
+          "text": "Könntest du mir bitte das Salz reichen?"
+        },
+        {
+          "id": "de-03",
+          "text": "Die Kinder spielen schon seit Stunden im Garten."
+        },
+        {
+          "id": "de-04",
+          "text": "Wir haben gestern den letzten Zug verpasst."
+        },
+        {
+          "id": "de-05",
+          "text": "Der Kaffee ist kalt geworden, ich koche neuen."
+        },
+        {
+          "id": "de-06",
+          "text": "Niemand konnte erklären, warum der Laden geschlossen war."
+        },
+        {
+          "id": "de-07",
+          "text": "Sie arbeitet viel zu viel und schläft kaum noch."
+        },
+        {
+          "id": "de-08",
+          "text": "Morgen muss ich sehr früh aufstehen."
+        },
+        {
+          "id": "de-09",
+          "text": "Der Weg steigt langsam bis zum Gipfel an."
+        },
+        {
+          "id": "de-10",
+          "text": "Treffen wir uns um zwölf vor dem Bahnhof?"
+        }
+      ]
+    },
+    {
+      "code": "nl",
+      "nameFr": "Néerlandais",
+      "nameEn": "Dutch",
+      "endonym": "Nederlands",
+      "family": "germanic",
+      "branch": "west-germanic",
+      "script": "latin",
+      "tier": 2,
+      "phoneticNeighbors": [
+        "de",
+        "da"
+      ],
+      "aliases": [
+        "hollandais",
+        "holland"
+      ],
+      "flagCca3": "NLD",
+      "audio": true,
+      "ttsModel": "eleven_multilingual_v2",
+      "phrases": [
+        {
+          "id": "nl-01",
+          "text": "Ik ben mijn paraplu vergeten en nu regent het hard."
+        },
+        {
+          "id": "nl-02",
+          "text": "Kun je mij het zout even aangeven?"
+        },
+        {
+          "id": "nl-03",
+          "text": "De kinderen spelen al uren in de tuin."
+        },
+        {
+          "id": "nl-04",
+          "text": "We hebben gisteren de laatste trein gemist."
+        },
+        {
+          "id": "nl-05",
+          "text": "De koffie is koud geworden, ik zet nieuwe."
+        },
+        {
+          "id": "nl-06",
+          "text": "Niemand kon uitleggen waarom de winkel gesloten was."
+        },
+        {
+          "id": "nl-07",
+          "text": "Zij werkt veel te veel en slaapt bijna niet meer."
+        },
+        {
+          "id": "nl-08",
+          "text": "Morgen moet ik heel vroeg opstaan."
+        },
+        {
+          "id": "nl-09",
+          "text": "Het pad loopt langzaam omhoog naar de top."
+        },
+        {
+          "id": "nl-10",
+          "text": "Zullen we om twaalf uur bij het station afspreken?"
+        }
+      ]
+    },
+    {
+      "code": "sv",
+      "nameFr": "Suédois",
+      "nameEn": "Swedish",
+      "endonym": "Svenska",
+      "family": "germanic",
+      "branch": "north-germanic",
+      "script": "latin",
+      "tier": 2,
+      "flagCca3": "SWE",
+      "audio": true,
+      "ttsModel": "eleven_multilingual_v2",
+      "phrases": [
+        {
+          "id": "sv-01",
+          "text": "Jag glömde paraplyet och nu regnar det ordentligt."
+        },
+        {
+          "id": "sv-02",
+          "text": "Kan du skicka saltet, tack?"
+        },
+        {
+          "id": "sv-03",
+          "text": "Barnen har lekt i trädgården i flera timmar."
+        },
+        {
+          "id": "sv-04",
+          "text": "Vi missade det sista tåget hem igår."
+        },
+        {
+          "id": "sv-05",
+          "text": "Kaffet har blivit kallt, jag kokar nytt."
+        },
+        {
+          "id": "sv-06",
+          "text": "Ingen kunde förklara varför affären hade stängt."
+        },
+        {
+          "id": "sv-07",
+          "text": "Hon arbetar alldeles för mycket och sover knappt."
+        },
+        {
+          "id": "sv-08",
+          "text": "Imorgon måste jag stiga upp väldigt tidigt."
+        },
+        {
+          "id": "sv-09",
+          "text": "Stigen klättrar långsamt upp mot toppen."
+        },
+        {
+          "id": "sv-10",
+          "text": "Ska vi ses utanför stationen klockan tolv?"
+        }
+      ]
+    },
+    {
+      "code": "da",
+      "nameFr": "Danois",
+      "nameEn": "Danish",
+      "endonym": "Dansk",
+      "family": "germanic",
+      "branch": "north-germanic",
+      "script": "latin",
+      "tier": 2,
+      "phoneticNeighbors": [
+        "nl",
+        "sv"
+      ],
+      "flagCca3": "DNK",
+      "audio": true,
+      "ttsModel": "eleven_multilingual_v2",
+      "phrases": [
+        {
+          "id": "da-01",
+          "text": "Jeg glemte min paraply, og nu regner det kraftigt."
+        },
+        {
+          "id": "da-02",
+          "text": "Kan du række mig saltet, tak?"
+        },
+        {
+          "id": "da-03",
+          "text": "Børnene har leget i haven i flere timer."
+        },
+        {
+          "id": "da-04",
+          "text": "Vi nåede ikke det sidste tog hjem i går."
+        },
+        {
+          "id": "da-05",
+          "text": "Kaffen er blevet kold, jeg laver en ny."
+        },
+        {
+          "id": "da-06",
+          "text": "Ingen kunne forklare, hvorfor butikken var lukket."
+        },
+        {
+          "id": "da-07",
+          "text": "Hun arbejder alt for meget og sover næsten ikke."
+        },
+        {
+          "id": "da-08",
+          "text": "I morgen skal jeg stå meget tidligt op."
+        },
+        {
+          "id": "da-09",
+          "text": "Stien stiger langsomt op mod toppen."
+        },
+        {
+          "id": "da-10",
+          "text": "Skal vi mødes uden for stationen klokken tolv?"
+        }
+      ]
+    },
+    {
+      "code": "ru",
+      "nameFr": "Russe",
+      "nameEn": "Russian",
+      "endonym": "Русский",
+      "family": "slavic",
+      "branch": "east-slavic",
+      "script": "cyrillic",
+      "tier": 1,
+      "flagCca3": "RUS",
+      "audio": true,
+      "ttsModel": "eleven_multilingual_v2",
+      "phrases": [
+        {
+          "id": "ru-01",
+          "text": "Я забыл зонт, а на улице сильный дождь."
+        },
+        {
+          "id": "ru-02",
+          "text": "Передай мне, пожалуйста, соль и перец."
+        },
+        {
+          "id": "ru-03",
+          "text": "Дети играют во дворе уже несколько часов."
+        },
+        {
+          "id": "ru-04",
+          "text": "Мы вчера опоздали на последний поезд."
+        },
+        {
+          "id": "ru-05",
+          "text": "Кофе совсем остыл, я заварю новый."
+        },
+        {
+          "id": "ru-06",
+          "text": "Никто не мог объяснить, почему магазин закрыт."
+        },
+        {
+          "id": "ru-07",
+          "text": "Она слишком много работает и почти не спит."
+        },
+        {
+          "id": "ru-08",
+          "text": "Завтра мне нужно встать очень рано."
+        },
+        {
+          "id": "ru-09",
+          "text": "Тропинка медленно поднимается к вершине холма."
+        },
+        {
+          "id": "ru-10",
+          "text": "Встретимся у вокзала в двенадцать часов?"
+        }
+      ]
+    },
+    {
+      "code": "uk",
+      "nameFr": "Ukrainien",
+      "nameEn": "Ukrainian",
+      "endonym": "Українська",
+      "family": "slavic",
+      "branch": "east-slavic",
+      "script": "cyrillic",
+      "tier": 2,
+      "flagCca3": "UKR",
+      "audio": true,
+      "ttsModel": "eleven_multilingual_v2",
+      "phrases": [
+        {
+          "id": "uk-01",
+          "text": "Я забув парасольку, а надворі сильний дощ."
+        },
+        {
+          "id": "uk-02",
+          "text": "Передай мені сіль, будь ласка."
+        },
+        {
+          "id": "uk-03",
+          "text": "Діти вже кілька годин граються у дворі."
+        },
+        {
+          "id": "uk-04",
+          "text": "Ми вчора запізнилися на останній потяг."
+        },
+        {
+          "id": "uk-05",
+          "text": "Кава зовсім охолола, я заварю нову."
+        },
+        {
+          "id": "uk-06",
+          "text": "Ніхто не міг пояснити, чому крамниця зачинена."
+        },
+        {
+          "id": "uk-07",
+          "text": "Вона надто багато працює і майже не спить."
+        },
+        {
+          "id": "uk-08",
+          "text": "Завтра мені треба встати дуже рано."
+        },
+        {
+          "id": "uk-09",
+          "text": "Стежка поволі піднімається до вершини пагорба."
+        },
+        {
+          "id": "uk-10",
+          "text": "Зустрінемося біля вокзалу о дванадцятій?"
+        }
+      ]
+    },
+    {
+      "code": "pl",
+      "nameFr": "Polonais",
+      "nameEn": "Polish",
+      "endonym": "Polski",
+      "family": "slavic",
+      "branch": "west-slavic",
+      "script": "latin",
+      "tier": 1,
+      "flagCca3": "POL",
+      "audio": true,
+      "ttsModel": "eleven_multilingual_v2",
+      "phrases": [
+        {
+          "id": "pl-01",
+          "text": "Zapomniałem parasola, a na dworze mocno pada."
+        },
+        {
+          "id": "pl-02",
+          "text": "Podaj mi proszę sól, stoi tuż obok ciebie."
+        },
+        {
+          "id": "pl-03",
+          "text": "Dzieci bawią się w ogrodzie już kilka godzin."
+        },
+        {
+          "id": "pl-04",
+          "text": "Wczoraj spóźniliśmy się na ostatni pociąg."
+        },
+        {
+          "id": "pl-05",
+          "text": "Kawa zupełnie wystygła, zaparzę nową."
+        },
+        {
+          "id": "pl-06",
+          "text": "Nikt nie potrafił wyjaśnić, dlaczego sklep był zamknięty."
+        },
+        {
+          "id": "pl-07",
+          "text": "Ona pracuje o wiele za dużo i prawie nie śpi."
+        },
+        {
+          "id": "pl-08",
+          "text": "Jutro muszę wstać bardzo wcześnie."
+        },
+        {
+          "id": "pl-09",
+          "text": "Ścieżka powoli wspina się na szczyt wzgórza."
+        },
+        {
+          "id": "pl-10",
+          "text": "Spotkamy się przed dworcem o dwunastej?"
+        }
+      ]
+    },
+    {
+      "code": "cs",
+      "nameFr": "Tchèque",
+      "nameEn": "Czech",
+      "endonym": "Čeština",
+      "family": "slavic",
+      "branch": "west-slavic",
+      "script": "latin",
+      "tier": 2,
+      "aliases": [
+        "tchequie",
+        "czechia"
+      ],
+      "flagCca3": "CZE",
+      "audio": true,
+      "ttsModel": "eleven_multilingual_v2",
+      "phrases": [
+        {
+          "id": "cs-01",
+          "text": "Zapomněl jsem deštník a venku silně prší."
+        },
+        {
+          "id": "cs-02",
+          "text": "Podej mi prosím sůl, stojí hned vedle tebe."
+        },
+        {
+          "id": "cs-03",
+          "text": "Děti si hrají na zahradě už několik hodin."
+        },
+        {
+          "id": "cs-04",
+          "text": "Včera večer jsme zmeškali poslední vlak domů."
+        },
+        {
+          "id": "cs-05",
+          "text": "Káva úplně vystydla, uvařím novou."
+        },
+        {
+          "id": "cs-06",
+          "text": "Nikdo nedokázal vysvětlit, proč byl obchod zavřený."
+        },
+        {
+          "id": "cs-07",
+          "text": "Pracuje příliš mnoho a skoro vůbec nespí."
+        },
+        {
+          "id": "cs-08",
+          "text": "Zítra musím vstát dřív než obvykle."
+        },
+        {
+          "id": "cs-09",
+          "text": "Cesta se pomalu zvedá směrem k vrcholu kopce."
+        },
+        {
+          "id": "cs-10",
+          "text": "Sejdeme se ve dvanáct před nádražím?"
+        }
+      ]
+    },
+    {
+      "code": "el",
+      "nameFr": "Grec",
+      "nameEn": "Greek",
+      "endonym": "Ελληνικά",
+      "family": "hellenic",
+      "branch": "hellenic",
+      "script": "greek",
+      "tier": 1,
+      "phoneticNeighbors": [
+        "tr",
+        "ro"
+      ],
+      "flagCca3": "GRC",
+      "audio": true,
+      "ttsModel": "eleven_multilingual_v2",
+      "phrases": [
+        {
+          "id": "el-01",
+          "text": "Ξέχασα την ομπρέλα μου και τώρα βρέχει πολύ."
+        },
+        {
+          "id": "el-02",
+          "text": "Μου δίνεις το αλάτι, σε παρακαλώ;"
+        },
+        {
+          "id": "el-03",
+          "text": "Τα παιδιά παίζουν στον κήπο εδώ και ώρες."
+        },
+        {
+          "id": "el-04",
+          "text": "Χθες χάσαμε το τελευταίο τρένο."
+        },
+        {
+          "id": "el-05",
+          "text": "Ο καφές κρύωσε, θα φτιάξω καινούριο."
+        },
+        {
+          "id": "el-06",
+          "text": "Κανείς δεν μπορούσε να εξηγήσει γιατί έκλεισε το μαγαζί."
+        },
+        {
+          "id": "el-07",
+          "text": "Δουλεύει πάρα πολύ και σχεδόν δεν κοιμάται."
+        },
+        {
+          "id": "el-08",
+          "text": "Αύριο πρέπει να ξυπνήσω πολύ νωρίς."
+        },
+        {
+          "id": "el-09",
+          "text": "Το μονοπάτι ανεβαίνει αργά προς την κορυφή."
+        },
+        {
+          "id": "el-10",
+          "text": "Θα βρεθούμε στις δώδεκα έξω από τον σταθμό;"
+        }
+      ]
+    },
+    {
+      "code": "tr",
+      "nameFr": "Turc",
+      "nameEn": "Turkish",
+      "endonym": "Türkçe",
+      "family": "turkic",
+      "branch": "oghuz",
+      "script": "latin",
+      "tier": 1,
+      "flagCca3": "TUR",
+      "audio": true,
+      "ttsModel": "eleven_multilingual_v2",
+      "phrases": [
+        {
+          "id": "tr-01",
+          "text": "Şemsiyemi unuttum ve dışarıda yağmur çok kuvvetli."
+        },
+        {
+          "id": "tr-02",
+          "text": "Tuzu bana uzatır mısın, lütfen?"
+        },
+        {
+          "id": "tr-03",
+          "text": "Çocuklar saatlerdir bahçede koşup oynuyorlar."
+        },
+        {
+          "id": "tr-04",
+          "text": "Dün akşam son treni kaçırdık."
+        },
+        {
+          "id": "tr-05",
+          "text": "Kahve tamamen soğumuş, yenisini yapacağım."
+        },
+        {
+          "id": "tr-06",
+          "text": "Dükkânın neden kapandığını kimse açıklayamadı."
+        },
+        {
+          "id": "tr-07",
+          "text": "Çok fazla çalışıyor ve neredeyse hiç uyumuyor."
+        },
+        {
+          "id": "tr-08",
+          "text": "Yarın çok erken kalkmam gerekiyor."
+        },
+        {
+          "id": "tr-09",
+          "text": "Patika yavaş yavaş tepeye doğru yükseliyor."
+        },
+        {
+          "id": "tr-10",
+          "text": "Saat on ikide istasyonun önünde buluşalım mı?"
+        }
+      ]
+    },
+    {
+      "code": "fi",
+      "nameFr": "Finnois",
+      "nameEn": "Finnish",
+      "endonym": "Suomi",
+      "family": "uralic",
+      "branch": "finnic",
+      "script": "latin",
+      "tier": 2,
+      "phoneticNeighbors": [
+        "hu"
+      ],
+      "aliases": [
+        "finlandais"
+      ],
+      "flagCca3": "FIN",
+      "audio": true,
+      "ttsModel": "eleven_multilingual_v2",
+      "phrases": [
+        {
+          "id": "fi-01",
+          "text": "Unohdin sateenvarjoni ja nyt sataa kaatamalla."
+        },
+        {
+          "id": "fi-02",
+          "text": "Voisitko ojentaa minulle suolan, kiitos?"
+        },
+        {
+          "id": "fi-03",
+          "text": "Lapset ovat leikkineet puutarhassa jo tunteja."
+        },
+        {
+          "id": "fi-04",
+          "text": "Myöhästyimme eilen illalla viimeisestä junasta."
+        },
+        {
+          "id": "fi-05",
+          "text": "Kahvi on jäähtynyt, keitän uutta."
+        },
+        {
+          "id": "fi-06",
+          "text": "Kukaan ei osannut selittää, miksi kauppa oli kiinni."
+        },
+        {
+          "id": "fi-07",
+          "text": "Hän tekee aivan liikaa töitä eikä nuku juuri lainkaan."
+        },
+        {
+          "id": "fi-08",
+          "text": "Huomenna minun täytyy herätä hyvin aikaisin."
+        },
+        {
+          "id": "fi-09",
+          "text": "Polku nousee hitaasti kohti huippua."
+        },
+        {
+          "id": "fi-10",
+          "text": "Tavataanko aseman edessä kello kaksitoista?"
+        }
+      ]
+    },
+    {
+      "code": "hu",
+      "nameFr": "Hongrois",
+      "nameEn": "Hungarian",
+      "endonym": "Magyar",
+      "family": "uralic",
+      "branch": "ugric",
+      "script": "latin",
+      "tier": 2,
+      "phoneticNeighbors": [
+        "fi"
+      ],
+      "aliases": [
+        "magyar"
+      ],
+      "flagCca3": "HUN",
+      "audio": true,
+      "ttsModel": "eleven_v3",
+      "phrases": [
+        {
+          "id": "hu-01",
+          "text": "Otthon felejtettem az esernyőmet, és most nagyon esik."
+        },
+        {
+          "id": "hu-02",
+          "text": "Ide adnád a sót, kérlek?"
+        },
+        {
+          "id": "hu-03",
+          "text": "A gyerekek már órák óta játszanak a kertben."
+        },
+        {
+          "id": "hu-04",
+          "text": "Tegnap lekéstük az utolsó vonatot."
+        },
+        {
+          "id": "hu-05",
+          "text": "A kávé teljesen kihűlt, főzök egy újat."
+        },
+        {
+          "id": "hu-06",
+          "text": "Senki sem tudta megmagyarázni, miért zárt be a bolt."
+        },
+        {
+          "id": "hu-07",
+          "text": "Túl sokat dolgozik, és szinte alig alszik."
+        },
+        {
+          "id": "hu-08",
+          "text": "Holnap nagyon korán kell kelnem."
+        },
+        {
+          "id": "hu-09",
+          "text": "Az ösvény lassan emelkedik a csúcs felé."
+        },
+        {
+          "id": "hu-10",
+          "text": "Találkozzunk tizenkettőkor az állomás előtt?"
+        }
+      ]
+    },
+    {
+      "code": "ar",
+      "nameFr": "Arabe",
+      "nameEn": "Arabic",
+      "endonym": "العربية",
+      "family": "semitic",
+      "branch": "central-semitic",
+      "script": "arabic",
+      "tier": 1,
+      "flagCca3": "SAU",
+      "audio": true,
+      "ttsModel": "eleven_multilingual_v2",
+      "phrases": [
+        {
+          "id": "ar-01",
+          "text": "نسيت مظلتي والمطر غزير في الخارج."
+        },
+        {
+          "id": "ar-02",
+          "text": "هل يمكنك أن تناولني الملح من فضلك؟"
+        },
+        {
+          "id": "ar-03",
+          "text": "يلعب الأطفال في الحديقة منذ ساعات."
+        },
+        {
+          "id": "ar-04",
+          "text": "فاتنا آخر قطار أمس في المساء."
+        },
+        {
+          "id": "ar-05",
+          "text": "بردت القهوة تماما، سأعد كوبا جديدا."
+        },
+        {
+          "id": "ar-06",
+          "text": "لم يستطع أحد أن يفسر سبب إغلاق المتجر."
+        },
+        {
+          "id": "ar-07",
+          "text": "تعمل كثيرا جدا ولا تكاد تنام."
+        },
+        {
+          "id": "ar-08",
+          "text": "غدا يجب أن أستيقظ باكرا جدا."
+        },
+        {
+          "id": "ar-09",
+          "text": "يرتفع الطريق ببطء نحو قمة التل."
+        },
+        {
+          "id": "ar-10",
+          "text": "هل نلتقي أمام المحطة عند الظهر؟"
+        }
+      ]
+    },
+    {
+      "code": "he",
+      "nameFr": "Hébreu",
+      "nameEn": "Hebrew",
+      "endonym": "עברית",
+      "family": "semitic",
+      "branch": "central-semitic",
+      "script": "hebrew",
+      "tier": 2,
+      "phoneticNeighbors": [
+        "ar"
+      ],
+      "aliases": [
+        "ivrit"
+      ],
+      "flagCca3": "ISR",
+      "audio": true,
+      "ttsModel": "eleven_v3",
+      "phrases": [
+        {
+          "id": "he-01",
+          "text": "שכחתי את המטרייה שלי ועכשיו יורד גשם חזק."
+        },
+        {
+          "id": "he-02",
+          "text": "אפשר להעביר לי את המלח, בבקשה?"
+        },
+        {
+          "id": "he-03",
+          "text": "הילדים משחקים בגינה כבר כמה שעות."
+        },
+        {
+          "id": "he-04",
+          "text": "פספסנו אתמול את הרכבת האחרונה."
+        },
+        {
+          "id": "he-05",
+          "text": "הקפה התקרר לגמרי, אכין חדש."
+        },
+        {
+          "id": "he-06",
+          "text": "אף אחד לא ידע להסביר למה החנות נסגרה."
+        },
+        {
+          "id": "he-07",
+          "text": "היא עובדת יותר מדי וכמעט לא ישנה."
+        },
+        {
+          "id": "he-08",
+          "text": "מחר אני צריך לקום מוקדם מאוד."
+        },
+        {
+          "id": "he-09",
+          "text": "השביל עולה לאט לכיוון הפסגה."
+        },
+        {
+          "id": "he-10",
+          "text": "ניפגש בשתים עשרה מול התחנה?"
+        }
+      ]
+    },
+    {
+      "code": "hi",
+      "nameFr": "Hindi",
+      "nameEn": "Hindi",
+      "endonym": "हिन्दी",
+      "family": "indo-iranian",
+      "branch": "indo-aryan",
+      "script": "devanagari",
+      "tier": 1,
+      "flagCca3": "IND",
+      "audio": true,
+      "ttsModel": "eleven_multilingual_v2",
+      "phrases": [
+        {
+          "id": "hi-01",
+          "text": "मैं अपनी छतरी भूल गया और अब तेज़ बारिश हो रही है।"
+        },
+        {
+          "id": "hi-02",
+          "text": "क्या आप मुझे नमक दे सकते हैं?"
+        },
+        {
+          "id": "hi-03",
+          "text": "बच्चे घंटों से बगीचे में खेल रहे हैं।"
+        },
+        {
+          "id": "hi-04",
+          "text": "हम कल आखिरी ट्रेन नहीं पकड़ पाए।"
+        },
+        {
+          "id": "hi-05",
+          "text": "कॉफ़ी पूरी तरह ठंडी हो गई है।"
+        },
+        {
+          "id": "hi-06",
+          "text": "कोई नहीं बता सका कि दुकान क्यों बंद थी।"
+        },
+        {
+          "id": "hi-07",
+          "text": "वह बहुत ज़्यादा काम करती है और मुश्किल से सोती है।"
+        },
+        {
+          "id": "hi-08",
+          "text": "कल मुझे बहुत जल्दी उठना है।"
+        },
+        {
+          "id": "hi-09",
+          "text": "रास्ता धीरे धीरे चोटी की ओर चढ़ता है।"
+        },
+        {
+          "id": "hi-10",
+          "text": "क्या हम बारह बजे स्टेशन के सामने मिलें?"
+        }
+      ]
+    },
+    {
+      "code": "fa",
+      "nameFr": "Persan",
+      "nameEn": "Persian",
+      "endonym": "فارسی",
+      "family": "indo-iranian",
+      "branch": "iranian",
+      "script": "arabic",
+      "tier": 2,
+      "phoneticNeighbors": [
+        "ar",
+        "hi"
+      ],
+      "aliases": [
+        "farsi",
+        "iranien"
+      ],
+      "flagCca3": "IRN",
+      "audio": true,
+      "ttsModel": "eleven_v3",
+      "phrases": [
+        {
+          "id": "fa-01",
+          "text": "چترم را فراموش کردم و بیرون باران شدیدی می‌بارد."
+        },
+        {
+          "id": "fa-02",
+          "text": "لطفا نمک را به من بدهید."
+        },
+        {
+          "id": "fa-03",
+          "text": "بچه‌ها ساعت‌هاست در باغ بازی می‌کنند."
+        },
+        {
+          "id": "fa-04",
+          "text": "دیروز آخرین قطار را از دست دادیم."
+        },
+        {
+          "id": "fa-05",
+          "text": "قهوه کاملا سرد شده است، تازه درست می‌کنم."
+        },
+        {
+          "id": "fa-06",
+          "text": "هیچ‌کس نتوانست توضیح دهد چرا مغازه بسته بود."
+        },
+        {
+          "id": "fa-07",
+          "text": "او خیلی زیاد کار می‌کند و تقریبا نمی‌خوابد."
+        },
+        {
+          "id": "fa-08",
+          "text": "فردا باید خیلی زود بیدار شوم."
+        },
+        {
+          "id": "fa-09",
+          "text": "راه به آرامی به سمت قله بالا می‌رود."
+        },
+        {
+          "id": "fa-10",
+          "text": "ساعت دوازده جلوی ایستگاه همدیگر را ببینیم؟"
+        }
+      ]
+    },
+    {
+      "code": "ta",
+      "nameFr": "Tamoul",
+      "nameEn": "Tamil",
+      "endonym": "தமிழ்",
+      "family": "dravidian",
+      "branch": "south-dravidian",
+      "script": "tamil",
+      "tier": 2,
+      "flagCca3": "IND",
+      "audio": true,
+      "ttsModel": "eleven_multilingual_v2",
+      "phrases": [
+        {
+          "id": "ta-01",
+          "text": "நான் என் குடையை மறந்துவிட்டேன், வெளியே பலமாக மழை பெய்கிறது."
+        },
+        {
+          "id": "ta-02",
+          "text": "உப்பை எனக்கு எடுத்துத் தர முடியுமா?"
+        },
+        {
+          "id": "ta-03",
+          "text": "குழந்தைகள் பல மணி நேரமாக தோட்டத்தில் விளையாடுகிறார்கள்."
+        },
+        {
+          "id": "ta-04",
+          "text": "நேற்று இரவு கடைசி ரயிலைத் தவறவிட்டோம்."
+        },
+        {
+          "id": "ta-05",
+          "text": "காபி முற்றிலும் ஆறிவிட்டது, புதிதாக செய்கிறேன்."
+        },
+        {
+          "id": "ta-06",
+          "text": "கடை ஏன் மூடப்பட்டது என்று யாராலும் விளக்க முடியவில்லை."
+        },
+        {
+          "id": "ta-07",
+          "text": "அவள் மிக அதிகமாக வேலை செய்கிறாள், தூங்குவதே இல்லை."
+        },
+        {
+          "id": "ta-08",
+          "text": "நாளை நான் மிக விரைவாக எழ வேண்டும்."
+        },
+        {
+          "id": "ta-09",
+          "text": "பாதை மெதுவாக உச்சியை நோக்கி ஏறுகிறது."
+        },
+        {
+          "id": "ta-10",
+          "text": "பன்னிரண்டு மணிக்கு நிலையத்தின் முன் சந்திக்கலாமா?"
+        }
+      ]
+    },
+    {
+      "code": "zh",
+      "nameFr": "Chinois",
+      "nameEn": "Chinese",
+      "endonym": "中文",
+      "family": "sino-tibetan",
+      "branch": "sinitic",
+      "script": "han",
+      "tier": 1,
+      "aliases": [
+        "mandarin",
+        "putonghua"
+      ],
+      "flagCca3": "CHN",
+      "audio": true,
+      "ttsModel": "eleven_multilingual_v2",
+      "phrases": [
+        {
+          "id": "zh-01",
+          "text": "我忘了带伞，外面下着大雨。"
+        },
+        {
+          "id": "zh-02",
+          "text": "请把盐递给我，谢谢。"
+        },
+        {
+          "id": "zh-03",
+          "text": "孩子们已经在花园里玩了好几个小时。"
+        },
+        {
+          "id": "zh-04",
+          "text": "我们昨天错过了最后一班火车。"
+        },
+        {
+          "id": "zh-05",
+          "text": "咖啡已经完全凉了，我再泡一杯。"
+        },
+        {
+          "id": "zh-06",
+          "text": "没有人能解释商店为什么关门了。"
+        },
+        {
+          "id": "zh-07",
+          "text": "她工作太多了，几乎不睡觉。"
+        },
+        {
+          "id": "zh-08",
+          "text": "明天我必须很早起床。"
+        },
+        {
+          "id": "zh-09",
+          "text": "这条小路慢慢通向山顶。"
+        },
+        {
+          "id": "zh-10",
+          "text": "我们十二点在车站前面见面好吗？"
+        }
+      ]
+    },
+    {
+      "code": "ja",
+      "nameFr": "Japonais",
+      "nameEn": "Japanese",
+      "endonym": "日本語",
+      "family": "japonic",
+      "branch": "japonic",
+      "script": "kana-kanji",
+      "tier": 1,
+      "phoneticNeighbors": [
+        "ko"
+      ],
+      "aliases": [
+        "nihongo"
+      ],
+      "flagCca3": "JPN",
+      "audio": true,
+      "ttsModel": "eleven_multilingual_v2",
+      "phrases": [
+        {
+          "id": "ja-01",
+          "text": "傘を忘れてしまって、外は大雨です。"
+        },
+        {
+          "id": "ja-02",
+          "text": "塩を取ってもらえますか。"
+        },
+        {
+          "id": "ja-03",
+          "text": "子供たちは何時間も庭で遊んでいます。"
+        },
+        {
+          "id": "ja-04",
+          "text": "昨日、最終電車に乗り遅れました。"
+        },
+        {
+          "id": "ja-05",
+          "text": "コーヒーがすっかり冷めたので、淹れ直します。"
+        },
+        {
+          "id": "ja-06",
+          "text": "なぜ店が閉まっていたのか誰にも分かりませんでした。"
+        },
+        {
+          "id": "ja-07",
+          "text": "彼女は働きすぎで、ほとんど眠っていません。"
+        },
+        {
+          "id": "ja-08",
+          "text": "明日はとても早く起きなければなりません。"
+        },
+        {
+          "id": "ja-09",
+          "text": "道はゆっくりと頂上へ登っていきます。"
+        },
+        {
+          "id": "ja-10",
+          "text": "十二時に駅の前で会いましょうか。"
+        }
+      ]
+    },
+    {
+      "code": "ko",
+      "nameFr": "Coréen",
+      "nameEn": "Korean",
+      "endonym": "한국어",
+      "family": "koreanic",
+      "branch": "koreanic",
+      "script": "hangul",
+      "tier": 1,
+      "phoneticNeighbors": [
+        "ja"
+      ],
+      "flagCca3": "KOR",
+      "audio": true,
+      "ttsModel": "eleven_multilingual_v2",
+      "phrases": [
+        {
+          "id": "ko-01",
+          "text": "우산을 깜빡했는데 밖에 비가 아주 많이 옵니다."
+        },
+        {
+          "id": "ko-02",
+          "text": "저기 있는 소금 좀 건네주시겠어요?"
+        },
+        {
+          "id": "ko-03",
+          "text": "아이들이 몇 시간째 정원에서 놀고 있어요."
+        },
+        {
+          "id": "ko-04",
+          "text": "어제 저녁에 마지막 기차를 놓쳤습니다."
+        },
+        {
+          "id": "ko-05",
+          "text": "커피가 완전히 식었으니 새로 끓일게요."
+        },
+        {
+          "id": "ko-06",
+          "text": "가게가 왜 문을 닫았는지 아무도 설명하지 못했어요."
+        },
+        {
+          "id": "ko-07",
+          "text": "그녀는 일을 너무 많이 해서 거의 자지 못해요."
+        },
+        {
+          "id": "ko-08",
+          "text": "내일은 아주 일찍 일어나야 합니다."
+        },
+        {
+          "id": "ko-09",
+          "text": "이 길은 천천히 정상까지 올라갑니다."
+        },
+        {
+          "id": "ko-10",
+          "text": "열두 시에 역 앞에서 만날까요?"
+        }
+      ]
+    },
+    {
+      "code": "id",
+      "nameFr": "Indonésien",
+      "nameEn": "Indonesian",
+      "endonym": "Bahasa Indonesia",
+      "family": "austronesian",
+      "branch": "malayo-polynesian",
+      "script": "latin",
+      "tier": 2,
+      "phoneticNeighbors": [
+        "fil",
+        "sw"
+      ],
+      "flagCca3": "IDN",
+      "audio": true,
+      "ttsModel": "eleven_multilingual_v2",
+      "phrases": [
+        {
+          "id": "id-01",
+          "text": "Saya lupa membawa payung dan sekarang hujan sangat deras."
+        },
+        {
+          "id": "id-02",
+          "text": "Bisakah kamu memberikan garam itu kepada saya?"
+        },
+        {
+          "id": "id-03",
+          "text": "Anak-anak sudah bermain di taman selama berjam-jam."
+        },
+        {
+          "id": "id-04",
+          "text": "Kemarin kami ketinggalan kereta terakhir."
+        },
+        {
+          "id": "id-05",
+          "text": "Kopinya sudah dingin sekali, saya akan membuat yang baru."
+        },
+        {
+          "id": "id-06",
+          "text": "Tidak ada yang bisa menjelaskan mengapa toko itu tutup."
+        },
+        {
+          "id": "id-07",
+          "text": "Dia bekerja terlalu banyak dan hampir tidak pernah tidur."
+        },
+        {
+          "id": "id-08",
+          "text": "Besok saya harus bangun sangat pagi."
+        },
+        {
+          "id": "id-09",
+          "text": "Jalan setapak itu perlahan naik menuju puncak."
+        },
+        {
+          "id": "id-10",
+          "text": "Bagaimana kalau kita bertemu di depan stasiun pukul dua belas?"
+        }
+      ]
+    },
+    {
+      "code": "fil",
+      "nameFr": "Filipino",
+      "nameEn": "Filipino",
+      "endonym": "Wikang Filipino",
+      "family": "austronesian",
+      "branch": "malayo-polynesian",
+      "script": "latin",
+      "tier": 2,
+      "phoneticNeighbors": [
+        "id",
+        "es"
+      ],
+      "aliases": [
+        "tagalog",
+        "philippin",
+        "tagalo"
+      ],
+      "flagCca3": "PHL",
+      "audio": true,
+      "ttsModel": "eleven_multilingual_v2",
+      "phrases": [
+        {
+          "id": "fil-01",
+          "text": "Nakalimutan ko ang payong ko at malakas ang ulan."
+        },
+        {
+          "id": "fil-02",
+          "text": "Maaari mo bang iabot sa akin ang asin?"
+        },
+        {
+          "id": "fil-03",
+          "text": "Ilang oras nang naglalaro ang mga bata sa hardin."
+        },
+        {
+          "id": "fil-04",
+          "text": "Hindi namin naabutan ang huling tren kahapon."
+        },
+        {
+          "id": "fil-05",
+          "text": "Malamig na ang kape, gagawa ako ng bago."
+        },
+        {
+          "id": "fil-06",
+          "text": "Walang makapagpaliwanag kung bakit sarado ang tindahan."
+        },
+        {
+          "id": "fil-07",
+          "text": "Sobrang dami niyang trabaho at halos hindi na natutulog."
+        },
+        {
+          "id": "fil-08",
+          "text": "Bukas ay kailangan kong gumising nang napakaaga."
+        },
+        {
+          "id": "fil-09",
+          "text": "Dahan-dahang paakyat ang daan patungo sa tuktok."
+        },
+        {
+          "id": "fil-10",
+          "text": "Magkita tayo sa harap ng istasyon nang alas dose?"
+        }
+      ]
+    },
+    {
+      "code": "vi",
+      "nameFr": "Vietnamien",
+      "nameEn": "Vietnamese",
+      "endonym": "Tiếng Việt",
+      "family": "austroasiatic",
+      "branch": "vietic",
+      "script": "latin",
+      "tier": 2,
+      "phoneticNeighbors": [
+        "th",
+        "zh"
+      ],
+      "flagCca3": "VNM",
+      "audio": true,
+      "ttsModel": "eleven_v3",
+      "phrases": [
+        {
+          "id": "vi-01",
+          "text": "Tôi quên mang ô và bây giờ trời mưa rất to."
+        },
+        {
+          "id": "vi-02",
+          "text": "Bạn có thể đưa giúp tôi lọ muối không?"
+        },
+        {
+          "id": "vi-03",
+          "text": "Bọn trẻ đã chơi ngoài vườn suốt mấy tiếng đồng hồ."
+        },
+        {
+          "id": "vi-04",
+          "text": "Hôm qua chúng tôi lỡ chuyến tàu cuối cùng."
+        },
+        {
+          "id": "vi-05",
+          "text": "Cà phê nguội hẳn rồi, để tôi pha ly khác."
+        },
+        {
+          "id": "vi-06",
+          "text": "Không ai giải thích được vì sao cửa hàng đóng cửa."
+        },
+        {
+          "id": "vi-07",
+          "text": "Cô ấy làm việc quá nhiều và gần như không ngủ."
+        },
+        {
+          "id": "vi-08",
+          "text": "Ngày mai tôi phải dậy thật sớm."
+        },
+        {
+          "id": "vi-09",
+          "text": "Con đường lên dốc chầm chậm về phía đỉnh."
+        },
+        {
+          "id": "vi-10",
+          "text": "Mười hai giờ gặp nhau trước nhà ga nhé?"
+        }
+      ]
+    },
+    {
+      "code": "th",
+      "nameFr": "Thaï",
+      "nameEn": "Thai",
+      "endonym": "ภาษาไทย",
+      "family": "tai-kadai",
+      "branch": "tai",
+      "script": "thai",
+      "tier": 2,
+      "phoneticNeighbors": [
+        "vi",
+        "zh"
+      ],
+      "aliases": [
+        "thailandais"
+      ],
+      "flagCca3": "THA",
+      "audio": true,
+      "ttsModel": "eleven_v3",
+      "phrases": [
+        {
+          "id": "th-01",
+          "text": "ฉันลืมร่มไว้ที่บ้าน ตอนนี้ฝนตกหนักมาก"
+        },
+        {
+          "id": "th-02",
+          "text": "ช่วยส่งเกลือให้หน่อยได้ไหม"
+        },
+        {
+          "id": "th-03",
+          "text": "เด็กๆ เล่นอยู่ในสวนมาหลายชั่วโมงแล้ว"
+        },
+        {
+          "id": "th-04",
+          "text": "เมื่อวานเราพลาดรถไฟขบวนสุดท้าย"
+        },
+        {
+          "id": "th-05",
+          "text": "กาแฟเย็นหมดแล้ว เดี๋ยวชงใหม่"
+        },
+        {
+          "id": "th-06",
+          "text": "ไม่มีใครอธิบายได้ว่าทำไมร้านถึงปิด"
+        },
+        {
+          "id": "th-07",
+          "text": "เธอทำงานหนักเกินไปและแทบไม่ได้นอน"
+        },
+        {
+          "id": "th-08",
+          "text": "พรุ่งนี้ฉันต้องตื่นเช้ามาก"
+        },
+        {
+          "id": "th-09",
+          "text": "ทางเดินค่อยๆ ไต่ขึ้นไปสู่ยอดเขา"
+        },
+        {
+          "id": "th-10",
+          "text": "เจอกันหน้าสถานีตอนเที่ยงไหม"
+        }
+      ]
+    },
+    {
+      "code": "sw",
+      "nameFr": "Swahili",
+      "nameEn": "Swahili",
+      "endonym": "Kiswahili",
+      "family": "niger-congo",
+      "branch": "bantu",
+      "script": "latin",
+      "tier": 2,
+      "phoneticNeighbors": [
+        "id"
+      ],
+      "aliases": [
+        "kiswahili"
+      ],
+      "flagCca3": "TZA",
+      "audio": true,
+      "ttsModel": "eleven_v3",
+      "phrases": [
+        {
+          "id": "sw-01",
+          "text": "Nilisahau mwavuli wangu na sasa mvua inanyesha sana."
+        },
+        {
+          "id": "sw-02",
+          "text": "Tafadhali unaweza kunipa chumvi na pilipili?"
+        },
+        {
+          "id": "sw-03",
+          "text": "Watoto wamekuwa wakicheza bustanini kwa saa nyingi."
+        },
+        {
+          "id": "sw-04",
+          "text": "Jana tulikosa treni ya mwisho."
+        },
+        {
+          "id": "sw-05",
+          "text": "Kahawa imepoa kabisa, nitatengeneza nyingine."
+        },
+        {
+          "id": "sw-06",
+          "text": "Hakuna aliyeweza kueleza kwa nini duka lilifungwa."
+        },
+        {
+          "id": "sw-07",
+          "text": "Anafanya kazi nyingi mno na halali karibu kabisa."
+        },
+        {
+          "id": "sw-08",
+          "text": "Kesho lazima niamke mapema sana."
+        },
+        {
+          "id": "sw-09",
+          "text": "Njia inapanda taratibu kuelekea kilele."
+        },
+        {
+          "id": "sw-10",
+          "text": "Tukutane mbele ya stesheni saa sita mchana?"
+        }
+      ]
+    },
+    {
+      "code": "ca",
+      "nameFr": "Catalan",
+      "nameEn": "Catalan",
+      "endonym": "Català",
+      "family": "romance",
+      "branch": "occitano-romance",
+      "script": "latin",
+      "tier": 2,
+      "phoneticNeighbors": [
+        "es",
+        "it"
+      ],
+      "flagCca3": "ESP",
+      "phrases": [
+        {
+          "id": "ca-01",
+          "text": "He oblidat el paraigua i ara plou molt."
+        },
+        {
+          "id": "ca-02",
+          "text": "Em pots passar la sal, si us plau?"
+        },
+        {
+          "id": "ca-03",
+          "text": "Els nens fa hores que juguen al jardí."
+        },
+        {
+          "id": "ca-04",
+          "text": "Ahir vam perdre l'últim tren cap a casa."
+        },
+        {
+          "id": "ca-05",
+          "text": "El cafè s'ha refredat, en faré un altre."
+        },
+        {
+          "id": "ca-06",
+          "text": "Ningú sabia explicar per què la botiga era tancada."
+        },
+        {
+          "id": "ca-07",
+          "text": "Treballa massa i gairebé no dorm."
+        },
+        {
+          "id": "ca-08",
+          "text": "Demà m'he de llevar molt aviat."
+        },
+        {
+          "id": "ca-09",
+          "text": "El camí puja a poc a poc fins al cim."
+        },
+        {
+          "id": "ca-10",
+          "text": "Ens trobem davant l'estació a les dotze?"
+        }
+      ],
+      "audio": false,
+      "ttsModel": "eleven_v3"
+    },
+    {
+      "code": "is",
+      "nameFr": "Islandais",
+      "nameEn": "Icelandic",
+      "endonym": "Íslenska",
+      "family": "germanic",
+      "branch": "north-germanic",
+      "script": "latin",
+      "tier": 2,
+      "phoneticNeighbors": [
+        "da",
+        "sv"
+      ],
+      "flagCca3": "ISL",
+      "phrases": [
+        {
+          "id": "is-01",
+          "text": "Ég gleymdi regnhlífinni og nú rignir mikið."
+        },
+        {
+          "id": "is-02",
+          "text": "Geturðu rétt mér saltið, takk?"
+        },
+        {
+          "id": "is-03",
+          "text": "Börnin hafa leikið sér í garðinum í marga tíma."
+        },
+        {
+          "id": "is-04",
+          "text": "Við misstum af síðasta strætónum í gær."
+        },
+        {
+          "id": "is-05",
+          "text": "Kaffið er orðið kalt, ég helli upp á nýtt."
+        },
+        {
+          "id": "is-06",
+          "text": "Enginn gat útskýrt hvers vegna búðin var lokuð."
+        },
+        {
+          "id": "is-07",
+          "text": "Hún vinnur alltof mikið og sefur varla."
+        },
+        {
+          "id": "is-08",
+          "text": "Á morgun þarf ég að vakna mjög snemma."
+        },
+        {
+          "id": "is-09",
+          "text": "Stígurinn liggur hægt upp að tindinum."
+        },
+        {
+          "id": "is-10",
+          "text": "Eigum við að hittast fyrir utan stöðina klukkan tólf?"
+        }
+      ],
+      "audio": false,
+      "ttsModel": "eleven_v3"
+    },
+    {
+      "code": "cy",
+      "nameFr": "Gallois",
+      "nameEn": "Welsh",
+      "endonym": "Cymraeg",
+      "family": "celtic",
+      "branch": "brythonic",
+      "script": "latin",
+      "tier": 3,
+      "phoneticNeighbors": [
+        "en"
+      ],
+      "flagCca3": "GBR",
+      "phrases": [
+        {
+          "id": "cy-01",
+          "text": "Anghofiais fy ymbarél ac mae'n bwrw glaw yn drwm."
+        },
+        {
+          "id": "cy-02",
+          "text": "Allwch chi basio'r halen i mi, os gwelwch yn dda?"
+        },
+        {
+          "id": "cy-03",
+          "text": "Mae'r plant wedi bod yn chwarae yn yr ardd ers oriau."
+        },
+        {
+          "id": "cy-04",
+          "text": "Collon ni'r bws olaf neithiwr."
+        },
+        {
+          "id": "cy-05",
+          "text": "Mae'r coffi wedi oeri, gwnaf un arall."
+        },
+        {
+          "id": "cy-06",
+          "text": "Doedd neb yn gallu esbonio pam roedd y siop ar gau."
+        },
+        {
+          "id": "cy-07",
+          "text": "Mae hi'n gweithio gormod o lawer ac yn prin cysgu."
+        },
+        {
+          "id": "cy-08",
+          "text": "Yfory mae'n rhaid i mi godi'n gynnar iawn."
+        },
+        {
+          "id": "cy-09",
+          "text": "Mae'r llwybr yn dringo'n araf tuag at y copa."
+        },
+        {
+          "id": "cy-10",
+          "text": "Wnawn ni gwrdd o flaen yr orsaf am hanner dydd?"
+        }
+      ],
+      "audio": false,
+      "ttsModel": "eleven_v3"
+    },
+    {
+      "code": "sq",
+      "nameFr": "Albanais",
+      "nameEn": "Albanian",
+      "endonym": "Shqip",
+      "family": "albanian",
+      "branch": "albanian",
+      "script": "latin",
+      "tier": 3,
+      "phoneticNeighbors": [
+        "el",
+        "it"
+      ],
+      "flagCca3": "ALB",
+      "phrases": [
+        {
+          "id": "sq-01",
+          "text": "Harrova çadrën dhe tani po bie shi i madh."
+        },
+        {
+          "id": "sq-02",
+          "text": "A mund të ma japësh kripën, të lutem?"
+        },
+        {
+          "id": "sq-03",
+          "text": "Fëmijët po luajnë në kopsht prej orësh."
+        },
+        {
+          "id": "sq-04",
+          "text": "Dje humbëm trenin e fundit për në shtëpi."
+        },
+        {
+          "id": "sq-05",
+          "text": "Kafeja u ftoh fare, do të bëj një tjetër."
+        },
+        {
+          "id": "sq-06",
+          "text": "Askush nuk mund të shpjegonte pse dyqani ishte mbyllur."
+        },
+        {
+          "id": "sq-07",
+          "text": "Ajo punon shumë më tepër se duhet dhe gati nuk fle."
+        },
+        {
+          "id": "sq-08",
+          "text": "Nesër duhet të zgjohem shumë herët."
+        },
+        {
+          "id": "sq-09",
+          "text": "Shtegu ngjitet ngadalë drejt majës."
+        },
+        {
+          "id": "sq-10",
+          "text": "A takohemi para stacionit në orën dymbëdhjetë?"
+        }
+      ],
+      "audio": false,
+      "ttsModel": "eleven_v3"
+    },
+    {
+      "code": "lt",
+      "nameFr": "Lituanien",
+      "nameEn": "Lithuanian",
+      "endonym": "Lietuvių",
+      "family": "baltic",
+      "branch": "eastern-baltic",
+      "script": "latin",
+      "tier": 3,
+      "phoneticNeighbors": [
+        "pl",
+        "ru"
+      ],
+      "flagCca3": "LTU",
+      "phrases": [
+        {
+          "id": "lt-01",
+          "text": "Pamiršau skėtį, o lauke smarkiai lyja."
+        },
+        {
+          "id": "lt-02",
+          "text": "Ar gali paduoti man druskos, prašau?"
+        },
+        {
+          "id": "lt-03",
+          "text": "Vaikai jau kelias valandas žaidžia sode."
+        },
+        {
+          "id": "lt-04",
+          "text": "Vakar pavėlavome į paskutinį traukinį."
+        },
+        {
+          "id": "lt-05",
+          "text": "Kava visiškai atvėso, išvirsiu naujos."
+        },
+        {
+          "id": "lt-06",
+          "text": "Niekas negalėjo paaiškinti, kodėl parduotuvė uždaryta."
+        },
+        {
+          "id": "lt-07",
+          "text": "Ji dirba per daug ir beveik nemiega."
+        },
+        {
+          "id": "lt-08",
+          "text": "Rytoj turiu keltis labai anksti."
+        },
+        {
+          "id": "lt-09",
+          "text": "Takas lėtai kyla į viršūnę."
+        },
+        {
+          "id": "lt-10",
+          "text": "Susitinkame prieš stotį dvyliktą valandą?"
+        }
+      ],
+      "audio": false,
+      "ttsModel": "eleven_v3"
+    },
+    {
+      "code": "bg",
+      "nameFr": "Bulgare",
+      "nameEn": "Bulgarian",
+      "endonym": "Български",
+      "family": "slavic",
+      "branch": "south-slavic",
+      "script": "cyrillic",
+      "tier": 2,
+      "phoneticNeighbors": [
+        "ru",
+        "uk"
+      ],
+      "flagCca3": "BGR",
+      "phrases": [
+        {
+          "id": "bg-01",
+          "text": "Забравих чадъра си, а навън вали силно."
+        },
+        {
+          "id": "bg-02",
+          "text": "Може ли да ми подадеш солта, моля?"
+        },
+        {
+          "id": "bg-03",
+          "text": "Децата играят в градината вече няколко часа."
+        },
+        {
+          "id": "bg-04",
+          "text": "Вчера изпуснахме последния влак за къщи."
+        },
+        {
+          "id": "bg-05",
+          "text": "Кафето изстина съвсем, ще си направя ново."
+        },
+        {
+          "id": "bg-06",
+          "text": "Никой не можеше да обясни защо магазинът беше затворен."
+        },
+        {
+          "id": "bg-07",
+          "text": "Работи прекалено много и почти не спи през нощта."
+        },
+        {
+          "id": "bg-08",
+          "text": "Утре сутринта трябва да стана много рано."
+        },
+        {
+          "id": "bg-09",
+          "text": "Пътеката се изкачва бавно към върха."
+        },
+        {
+          "id": "bg-10",
+          "text": "Ще се видим ли пред гарата в дванадесет?"
+        }
+      ],
+      "audio": false,
+      "ttsModel": "eleven_v3"
+    },
+    {
+      "code": "mn",
+      "nameFr": "Mongol",
+      "nameEn": "Mongolian",
+      "endonym": "Монгол",
+      "family": "mongolic",
+      "branch": "mongolic",
+      "script": "cyrillic",
+      "tier": 3,
+      "phoneticNeighbors": [
+        "ru"
+      ],
+      "flagCca3": "MNG",
+      "phrases": [
+        {
+          "id": "mn-01",
+          "text": "Би шүхрээ мартчихаж, гадаа их бороо орж байна."
+        },
+        {
+          "id": "mn-02",
+          "text": "Давс, чинжүүг надад дамжуулж өгөөч."
+        },
+        {
+          "id": "mn-03",
+          "text": "Хүүхдүүд цэцэрлэгт хэдэн цаг тоглож байна."
+        },
+        {
+          "id": "mn-04",
+          "text": "Бид өчигдөр сүүлийн галт тэргэнд хоцорсон."
+        },
+        {
+          "id": "mn-05",
+          "text": "Кофе бүрэн хөрчихсөн тул шинээр хийе."
+        },
+        {
+          "id": "mn-06",
+          "text": "Дэлгүүр яагаад хаагдсаныг хэн ч тайлбарлаж чадсангүй."
+        },
+        {
+          "id": "mn-07",
+          "text": "Тэр хэт их ажиллаж, бараг унтдаггүй."
+        },
+        {
+          "id": "mn-08",
+          "text": "Маргааш өглөө би маш эрт босох ёстой."
+        },
+        {
+          "id": "mn-09",
+          "text": "Зам аажмаар оргил өөд өгсөж байна."
+        },
+        {
+          "id": "mn-10",
+          "text": "Арван хоёр цагт буудлын өмнө уулзах уу?"
+        }
+      ],
+      "audio": false,
+      "ttsModel": "eleven_v3"
+    },
+    {
+      "code": "bn",
+      "nameFr": "Bengali",
+      "nameEn": "Bengali",
+      "endonym": "বাংলা",
+      "family": "indo-iranian",
+      "branch": "eastern-indo-aryan",
+      "script": "bengali",
+      "tier": 2,
+      "aliases": [
+        "bangla"
+      ],
+      "phoneticNeighbors": [
+        "hi"
+      ],
+      "flagCca3": "BGD",
+      "phrases": [
+        {
+          "id": "bn-01",
+          "text": "আমি আমার ছাতা ভুলে গেছি, আর বাইরে খুব বৃষ্টি হচ্ছে।"
+        },
+        {
+          "id": "bn-02",
+          "text": "তুমি কি আমাকে লবণটা দিতে পারবে?"
+        },
+        {
+          "id": "bn-03",
+          "text": "বাচ্চারা কয়েক ঘণ্টা ধরে বাগানে খেলছে।"
+        },
+        {
+          "id": "bn-04",
+          "text": "গতকাল আমরা শেষ ট্রেনটা ধরতে পারিনি।"
+        },
+        {
+          "id": "bn-05",
+          "text": "কফিটা একদম ঠান্ডা হয়ে গেছে, নতুন করে বানাবো।"
+        },
+        {
+          "id": "bn-06",
+          "text": "দোকানটা কেন বন্ধ ছিল কেউ ব্যাখ্যা করতে পারল না।"
+        },
+        {
+          "id": "bn-07",
+          "text": "সে খুব বেশি কাজ করে আর প্রায় ঘুমায় না।"
+        },
+        {
+          "id": "bn-08",
+          "text": "আগামীকাল আমাকে খুব ভোরে উঠতে হবে।"
+        },
+        {
+          "id": "bn-09",
+          "text": "পথটা ধীরে ধীরে চূড়ার দিকে উঠে গেছে।"
+        },
+        {
+          "id": "bn-10",
+          "text": "আমরা কি বারোটায় স্টেশনের সামনে দেখা করব?"
+        }
+      ],
+      "audio": false,
+      "ttsModel": "eleven_v3"
+    },
+    {
+      "code": "ka",
+      "nameFr": "Géorgien",
+      "nameEn": "Georgian",
+      "endonym": "ქართული",
+      "family": "kartvelian",
+      "branch": "karto-zan",
+      "script": "georgian",
+      "tier": 3,
+      "phoneticNeighbors": [
+        "hy"
+      ],
+      "flagCca3": "GEO",
+      "phrases": [
+        {
+          "id": "ka-01",
+          "text": "ქოლგა დამავიწყდა და გარეთ ძლიერი წვიმაა."
+        },
+        {
+          "id": "ka-02",
+          "text": "მარილი და პილპილი გადმომეცი, თუ შეიძლება."
+        },
+        {
+          "id": "ka-03",
+          "text": "ბავშვები უკვე რამდენიმე საათია ბაღში თამაშობენ."
+        },
+        {
+          "id": "ka-04",
+          "text": "გუშინ საღამოს ბოლო მატარებელი გამოგვრჩა."
+        },
+        {
+          "id": "ka-05",
+          "text": "ყავა სულ გაცივდა, ახალს გავაკეთებ."
+        },
+        {
+          "id": "ka-06",
+          "text": "ვერავინ ახსნა, რატომ იყო მაღაზია დაკეტილი."
+        },
+        {
+          "id": "ka-07",
+          "text": "ის ძალიან ბევრს მუშაობს და თითქმის არ სძინავს."
+        },
+        {
+          "id": "ka-08",
+          "text": "ხვალ ძალიან ადრე უნდა ავდგე."
+        },
+        {
+          "id": "ka-09",
+          "text": "ბილიკი ნელა ადის მთის მწვერვალისკენ."
+        },
+        {
+          "id": "ka-10",
+          "text": "თორმეტ საათზე სადგურის წინ შევხვდეთ?"
+        }
+      ],
+      "audio": false,
+      "ttsModel": "eleven_v3"
+    },
+    {
+      "code": "hy",
+      "nameFr": "Arménien",
+      "nameEn": "Armenian",
+      "endonym": "Հայերեն",
+      "family": "armenian",
+      "branch": "armenian",
+      "script": "armenian",
+      "tier": 3,
+      "phoneticNeighbors": [
+        "ka",
+        "fa"
+      ],
+      "flagCca3": "ARM",
+      "phrases": [
+        {
+          "id": "hy-01",
+          "text": "Մոռացել եմ հովանոցս, իսկ դրսում ուժեղ անձրև է գալիս։"
+        },
+        {
+          "id": "hy-02",
+          "text": "Կարող ես աղը փոխանցել ինձ։"
+        },
+        {
+          "id": "hy-03",
+          "text": "Երեխաները ժամերով խաղում են այգում։"
+        },
+        {
+          "id": "hy-04",
+          "text": "Երեկ երեկոյան ուշացանք վերջին գնացքից։"
+        },
+        {
+          "id": "hy-05",
+          "text": "Սուրճը լրիվ սառել է, նորը կպատրաստեմ։"
+        },
+        {
+          "id": "hy-06",
+          "text": "Ոչ ոք չկարողացավ բացատրել, թե ինչու էր խանութը փակ։"
+        },
+        {
+          "id": "hy-07",
+          "text": "Նա չափազանց շատ է աշխատում և գրեթե չի քնում։"
+        },
+        {
+          "id": "hy-08",
+          "text": "Վաղը պետք է շատ շուտ արթնանամ։"
+        },
+        {
+          "id": "hy-09",
+          "text": "Արահետը դանդաղ բարձրանում է դեպի գագաթը։"
+        },
+        {
+          "id": "hy-10",
+          "text": "Ժամը տասներկուսին կայարանի դիմաց հանդիպենք։"
+        }
+      ],
+      "audio": false,
+      "ttsModel": "eleven_v3"
+    },
+    {
+      "code": "am",
+      "nameFr": "Amharique",
+      "nameEn": "Amharic",
+      "endonym": "አማርኛ",
+      "family": "semitic",
+      "branch": "ethiosemitic",
+      "script": "ethiopic",
+      "tier": 3,
+      "phoneticNeighbors": [
+        "ar",
+        "he"
+      ],
+      "flagCca3": "ETH",
+      "phrases": [
+        {
+          "id": "am-01",
+          "text": "ጃንጥላዬን ረሳሁ፣ ውጭ ደግሞ ኃይለኛ ዝናብ እየዘነበ ነው።"
+        },
+        {
+          "id": "am-02",
+          "text": "እባክህ ጨውን እና በርበሬውን አቀብለኝ።"
+        },
+        {
+          "id": "am-03",
+          "text": "ልጆቹ ለብዙ ሰዓታት በአትክልቱ ስፍራ ሲጫወቱ ቆይተዋል።"
+        },
+        {
+          "id": "am-04",
+          "text": "ትናንት ማታ የመጨረሻውን ባቡር አመለጠን።"
+        },
+        {
+          "id": "am-05",
+          "text": "ቡናው ሙሉ በሙሉ ቀዝቅዟል፣ አዲስ አዘጋጃለሁ።"
+        },
+        {
+          "id": "am-06",
+          "text": "ሱቁ ለምን እንደተዘጋ ማንም ሊያስረዳ አልቻለም።"
+        },
+        {
+          "id": "am-07",
+          "text": "እሷ በጣም ብዙ ትሰራለች እንቅልፍም አትተኛም።"
+        },
+        {
+          "id": "am-08",
+          "text": "ነገ በጣም ማልጄ መነሳት አለብኝ።"
+        },
+        {
+          "id": "am-09",
+          "text": "መንገዱ ቀስ በቀስ ወደ ጫፉ ይወጣል።"
+        },
+        {
+          "id": "am-10",
+          "text": "አስራ ሁለት ሰዓት ላይ ጣቢያው ፊት ለፊት እንገናኝ።"
+        }
+      ],
+      "audio": false,
+      "ttsModel": "eleven_v3"
+    },
+    {
+      "code": "te",
+      "nameFr": "Télougou",
+      "nameEn": "Telugu",
+      "endonym": "తెలుగు",
+      "family": "dravidian",
+      "branch": "south-central-dravidian",
+      "script": "telugu",
+      "tier": 3,
+      "aliases": [
+        "telugu"
+      ],
+      "phoneticNeighbors": [
+        "ta",
+        "ml"
+      ],
+      "flagCca3": "IND",
+      "phrases": [
+        {
+          "id": "te-01",
+          "text": "నేను నా గొడుగు మర్చిపోయాను, బయట బాగా వర్షం పడుతోంది."
+        },
+        {
+          "id": "te-02",
+          "text": "దయచేసి ఉప్పు నాకు కొంచెం అందించగలరా?"
+        },
+        {
+          "id": "te-03",
+          "text": "పిల్లలు చాలా గంటలుగా తోటలో ఆడుతున్నారు."
+        },
+        {
+          "id": "te-04",
+          "text": "నిన్న మేము చివరి రైలును కోల్పోయాము."
+        },
+        {
+          "id": "te-05",
+          "text": "కాఫీ పూర్తిగా చల్లారిపోయింది, కొత్తది చేస్తాను."
+        },
+        {
+          "id": "te-06",
+          "text": "దుకాణం ఎందుకు మూసివేశారో ఎవరూ వివరించలేకపోయారు."
+        },
+        {
+          "id": "te-07",
+          "text": "ఆమె చాలా ఎక్కువగా పని చేస్తుంది, నిద్రపోవడమే లేదు."
+        },
+        {
+          "id": "te-08",
+          "text": "రేపు నేను చాలా తొందరగా లేవాలి."
+        },
+        {
+          "id": "te-09",
+          "text": "దారి నెమ్మదిగా శిఖరం వైపు ఎక్కుతోంది."
+        },
+        {
+          "id": "te-10",
+          "text": "పన్నెండు గంటలకు స్టేషన్ ముందు కలుద్దామా?"
+        }
+      ],
+      "audio": false,
+      "ttsModel": "eleven_v3"
+    },
+    {
+      "code": "ml",
+      "nameFr": "Malayalam",
+      "nameEn": "Malayalam",
+      "endonym": "മലയാളം",
+      "family": "dravidian",
+      "branch": "south-dravidian",
+      "script": "malayalam",
+      "tier": 3,
+      "phoneticNeighbors": [
+        "ta",
+        "te"
+      ],
+      "flagCca3": "IND",
+      "phrases": [
+        {
+          "id": "ml-01",
+          "text": "ഞാൻ എന്റെ കുട മറന്നു, പുറത്ത് ശക്തമായി മഴ പെയ്യുന്നു."
+        },
+        {
+          "id": "ml-02",
+          "text": "ദയവായി ആ ഉപ്പ് എനിക്ക് എടുത്തുതരാമോ?"
+        },
+        {
+          "id": "ml-03",
+          "text": "കുട്ടികൾ മണിക്കൂറുകളായി പുറത്തെ തോട്ടത്തിൽ കളിക്കുന്നു."
+        },
+        {
+          "id": "ml-04",
+          "text": "ഇന്നലെ ഞങ്ങൾക്ക് അവസാന ട്രെയിൻ നഷ്ടമായി."
+        },
+        {
+          "id": "ml-05",
+          "text": "കാപ്പി പൂർണ്ണമായും തണുത്തു, പുതിയത് ഉണ്ടാക്കാം."
+        },
+        {
+          "id": "ml-06",
+          "text": "കട എന്തുകൊണ്ട് അടച്ചിരുന്നുവെന്ന് ആർക്കും വിശദീകരിക്കാനായില്ല."
+        },
+        {
+          "id": "ml-07",
+          "text": "അവൾ വളരെ കൂടുതൽ ജോലി ചെയ്യുന്നു, ഉറങ്ങാറേയില്ല."
+        },
+        {
+          "id": "ml-08",
+          "text": "നാളെ എനിക്ക് വളരെ നേരത്തെ എഴുന്നേൽക്കണം."
+        },
+        {
+          "id": "ml-09",
+          "text": "വഴി പതുക്കെ മലയുടെ കൊടുമുടിയിലേക്ക് കയറുന്നു."
+        },
+        {
+          "id": "ml-10",
+          "text": "പന്ത്രണ്ട് മണിക്ക് സ്റ്റേഷന് മുന്നിൽ കാണാമോ?"
+        }
+      ],
+      "audio": false,
+      "ttsModel": "eleven_v3"
+    },
+    {
+      "code": "my",
+      "nameFr": "Birman",
+      "nameEn": "Burmese",
+      "endonym": "မြန်မာဘာသာ",
+      "family": "sino-tibetan",
+      "branch": "lolo-burmese",
+      "script": "myanmar",
+      "tier": 3,
+      "aliases": [
+        "birman",
+        "myanmar"
+      ],
+      "phoneticNeighbors": [
+        "th",
+        "vi"
+      ],
+      "flagCca3": "MMR",
+      "phrases": [
+        {
+          "id": "my-01",
+          "text": "ထီးမေ့ကျန်ခဲ့ပြီး အပြင်မှာ မိုးသည်းနေတယ်။"
+        },
+        {
+          "id": "my-02",
+          "text": "ဆားလေး ပေးပါဦး။"
+        },
+        {
+          "id": "my-03",
+          "text": "ကလေးတွေ ဥယျာဉ်ထဲမှာ နာရီနဲ့ချီ ကစားနေကြတယ်။"
+        },
+        {
+          "id": "my-04",
+          "text": "မနေ့က နောက်ဆုံးရထားကို လွတ်သွားတယ်။"
+        },
+        {
+          "id": "my-05",
+          "text": "ကော်ဖီ အေးသွားပြီ၊ အသစ်ပြန်ဖျော်မယ်။"
+        },
+        {
+          "id": "my-06",
+          "text": "ဆိုင်ဘာကြောင့်ပိတ်ထားလဲ ဘယ်သူမှ မရှင်းပြနိုင်ဘူး။"
+        },
+        {
+          "id": "my-07",
+          "text": "သူမ အလုပ်များလွန်းပြီး အိပ်ချိန်မရဘူး။"
+        },
+        {
+          "id": "my-08",
+          "text": "မနက်ဖြန် အရမ်းစောစော ထရမယ်။"
+        },
+        {
+          "id": "my-09",
+          "text": "လမ်းက တောင်ထိပ်ဆီ တဖြည်းဖြည်း တက်သွားတယ်။"
+        },
+        {
+          "id": "my-10",
+          "text": "ဆယ့်နှစ်နာရီမှာ ဘူတာရှေ့ တွေ့ကြမလား။"
+        }
+      ],
+      "audio": false,
+      "ttsModel": "eleven_v3"
+    }
+  ]
+}

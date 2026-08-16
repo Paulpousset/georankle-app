@@ -42,6 +42,7 @@ import VersusCapitals from './VersusCapitals';
 import StreakGame from './StreakGame';
 import HigherLowerGame from './HigherLowerGame';
 import SilhouetteGame from './SilhouetteGame';
+import LanguagesGame from './LanguagesGame';
 import BordersGame from './BordersGame';
 import GuessCountryGame from './GuessCountryGame';
 import FindCountryGame from './FindCountryGame';
@@ -448,6 +449,8 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
         return <HigherLowerGame setGameMode={quit} user={null} {...common} />;
       case 'silhouette':
         return <SilhouetteGame setGameMode={quit} user={null} {...common} />;
+      case 'languages':
+        return <LanguagesGame setGameMode={quit} user={null} {...common} />;
       case 'borders':
         return <BordersGame setGameMode={quit} user={null} {...common} />;
       case 'guess':

@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 
 import { supabase } from './supabase';
 
-/** Known flags (rows created by seasons_monetization.sql + web_ads.sql + visuals_3d.sql + story_map_3d.sql, all OFF). */
+/** Known flags (rows created by seasons_monetization.sql + web_ads.sql + visuals_3d.sql + story_map_3d.sql + languages_mode.sql, all OFF). */
 export type FeatureFlag =
   | 'iap'
   | 'rewarded_ads'
@@ -19,7 +19,13 @@ export type FeatureFlag =
   | 'avatar_3d'
   | 'globe_3d'
   | 'menu_globe_3d'
-  | 'story_map_3d';
+  | 'story_map_3d'
+  // Hides the Langues mode everywhere in the UI.
+  | 'languages_mode'
+  // Disables only its audio variant, so bad TTS can be pulled without pulling
+  // the whole mode. Deterministic draws (daily, league) are NEVER flag-gated:
+  // a flag fails closed offline, which would desync them.
+  | 'languages_audio';
 
 const TTL_MS = 5 * 60 * 1000;
 

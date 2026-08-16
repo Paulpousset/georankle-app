@@ -12,6 +12,8 @@ module.exports = [
       '.expo/**',
       'assets/**',
       'coverage/**',
+      // Static web assets servis tels quels (site de contenu, scripts navigateur).
+      'public/**',
       // Node-only asset toolchain (Blender/three.js/webp) — never bundled in the app.
       'asset-pipeline/**',
       'babel.config.js',

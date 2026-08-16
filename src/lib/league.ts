@@ -8,9 +8,9 @@
  * leaderboards (day / month / total) are server-side aggregations of those
  * rows, normalised to 0-1000 per mode (see leagues.sql `league_norm_score`).
  *
- * ⚠️ `LEAGUE_MODE_POOL` order and the FNV-1a draw below are mirrored EXACTLY by
+ * ⚠️ The pools and the FNV-1a draw below are mirrored EXACTLY by
  * `league_daily_modes` in leagues.sql. Changing either side breaks the
- * client/server parity for the whole history — never reorder the pool.
+ * client/server parity for the whole history — never reorder a pool.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -18,8 +18,25 @@ import type { AvatarConfig, GameMode } from '../types';
 import { supabase } from './supabase';
 import { track } from './analytics';
 
-/** Frozen draw pool — mirrors the `pool` array in leagues.sql, same order. */
-export const LEAGUE_MODE_POOL: GameMode[] = [
+/**
+ * The pool is VERSIONED BY DATE, never edited in place.
+ *
+ * The draw is `fnv1a(...) % pool.length`, so appending one entry would turn
+ * every `% 10` into a `% 11` — for past dates too. And `league_leaderboard`
+ * filters historical rows through `league_daily_modes(puzzle_date)`, so every
+ * month/total standing ever computed would silently change. Dating the switch
+ * keeps history frozen while letting the pool grow.
+ *
+ * Side benefit: until the cutover date, an old client, a new client and the
+ * server all still compute the v1 draw — so the SQL and the app release can go
+ * out in any order, and stragglers catch up on their own.
+ */
+
+/** UTC date (inclusive) from which poolV2 applies. FROZEN once shipped. */
+export const LEAGUE_POOL_V2_FROM = '2026-09-15';
+
+/** FROZEN FOREVER — never reorder, never append. */
+const LEAGUE_MODE_POOL_V1: GameMode[] = [
   'globe',
   'regions',
   'guess',
@@ -31,6 +48,25 @@ export const LEAGUE_MODE_POOL: GameMode[] = [
   'quiz-capital',
   'quiz-flag',
 ];
+
+/** V2 = V1 in the SAME order, new modes appended. Keep it a strict prefix. */
+const LEAGUE_MODE_POOL_V2: GameMode[] = [...LEAGUE_MODE_POOL_V1, 'languages'];
+
+/**
+ * The pool in force on a date. Lexicographic comparison on `YYYY-MM-DD` is
+ * chronological — no Date parsing, no timezone, and trivially reproducible in
+ * SQL, which is what keeps the two implementations honest.
+ */
+export function leaguePoolFor(date: string): GameMode[] {
+  return date >= LEAGUE_POOL_V2_FROM ? LEAGUE_MODE_POOL_V2 : LEAGUE_MODE_POOL_V1;
+}
+
+/** The pool in force today — what the screens list. */
+export const LEAGUE_MODE_POOL = LEAGUE_MODE_POOL_V2;
+
+/** Test/parity hooks. */
+export const __LEAGUE_POOL_V1 = LEAGUE_MODE_POOL_V1;
+export const __LEAGUE_POOL_V2 = LEAGUE_MODE_POOL_V2;
 
 /** How many modes are drawn each day. */
 export const LEAGUE_MODES_PER_DAY = 3;
@@ -50,7 +86,7 @@ function fnv1a(s: string): number {
  * Fisher-Yates seeded per (date, pick index). Mirrors SQL `league_daily_modes`.
  */
 export function leagueModesFor(date: string): GameMode[] {
-  const pool = [...LEAGUE_MODE_POOL];
+  const pool = [...leaguePoolFor(date)];
   const picked: GameMode[] = [];
   for (let k = 0; k < LEAGUE_MODES_PER_DAY; k++) {
     const idx = fnv1a(`${date}:league:${k}`) % pool.length;

@@ -44,6 +44,7 @@ import FindCountryGame from './FindCountryGame';
 import FindRegionGame from './FindRegionGame';
 import HigherLowerGame from './HigherLowerGame';
 import SilhouetteGame from './SilhouetteGame';
+import LanguagesGame from './LanguagesGame';
 import BordersGame from './BordersGame';
 import { ClassicGame } from './ClassicGame';
 
@@ -60,6 +61,7 @@ const VERSUS_QUESTIONS = 5;
 const GLOBE_ROUNDS = 5;
 const REGION_ROUNDS = 5;
 const SILHOUETTE_QUESTIONS = 5; // SilhouetteGame's online default session length
+const LANGUAGES_QUESTIONS_ONLINE = 5; // LanguagesGame's online default session length
 
 interface PlayerProfile {
   username: string | null;
@@ -256,7 +258,8 @@ export default function BotMatch({ user, match, bot, onExit }: BotMatchProps) {
       : mode === 'globe' ? GLOBE_ROUNDS
         : mode === 'regions' ? REGION_ROUNDS
           : mode === 'silhouette' ? SILHOUETTE_QUESTIONS
-            : 1;
+            : mode === 'languages' ? LANGUAGES_QUESTIONS_ONLINE
+              : 1;
   // Regions rounds carry their own seeded country/level (stored on the match at
   // creation; fall back to a deterministic pick for any malformed row).
   const regionPick: RankedRegionPick =
@@ -385,6 +388,8 @@ export default function BotMatch({ user, match, bot, onExit }: BotMatchProps) {
         );
       case 'silhouette':
         return <SilhouetteGame setGameMode={quit} user={null} {...common} />;
+      case 'languages':
+        return <LanguagesGame setGameMode={quit} user={null} {...common} />;
       case 'borders':
         return <BordersGame setGameMode={quit} user={null} {...common} />;
       case 'higherlower':

@@ -57,7 +57,7 @@ interface AdminNotificationsProps {
   onBack: () => void;
 }
 
-const MODES: MatchMode[] = ['classic', 'streak', 'versus', 'globe', 'guess', 'higherlower', 'silhouette', 'borders'];
+const MODES: MatchMode[] = ['classic', 'streak', 'versus', 'globe', 'guess', 'higherlower', 'silhouette', 'borders', 'languages'];
 
 /** Flat UI choice; mapped to the richer `Segment` union on send. */
 type SegChoice = 'everyone' | 'inactive' | 'users' | 'played_mode' | 'never_online';

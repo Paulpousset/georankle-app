@@ -10,6 +10,7 @@ import {
   Globe,
   HelpCircle,
   Info,
+  Languages,
   LayoutGrid,
   Lock,
   LogIn,
@@ -33,6 +34,7 @@ import {
 } from 'lucide-react-native';
 import { AtlasFlame } from '../components/AtlasIcons';
 import { MenuGlobe } from '../components/MenuGlobe';
+import { useFeatureFlag } from '../lib/featureFlags';
 import type { ComponentType } from 'react';
 
 import type { GameMode, MatchMode } from '../types';
@@ -52,6 +54,7 @@ import { NotificationDot } from '../components/NotificationDot';
 import { OnboardingTutorial, ONBOARDING_STEPS, type TutorialRect } from '../components/OnboardingTutorial';
 import { ModeIntroCard } from '../components/ModeIntroModal';
 import { getHasSeenTutorial, setHasSeenTutorial } from '../lib/tutorial';
+import { useStageWidth } from '../lib/stage';
 
 export type PlayType = 'solo' | 'local' | 'online';
 
@@ -427,7 +430,7 @@ export function MainMenu({
   }, []);
 
   // Decorative globe sizing — planet rising behind the title.
-  const { width: windowWidth } = useWindowDimensions();
+  const windowWidth = useStageWidth();
   const globeSize = Math.min(windowWidth * 0.7, 300);
 
   // Tab index mapping: `playType` stays lifted in App (back gesture resets it
@@ -438,6 +441,10 @@ export function MainMenu({
   // Which mode's "how to play" card is open from a "?" button (null = none).
   // Shown on demand from the menu, so it does NOT mark the mode as seen.
   const [helpMode, setHelpMode] = useState<GameMode | null>(null);
+
+  // Remote kill-switch for the Langues mode: hides its tile until the flag is
+  // flipped on. Fails closed, so the mode simply stays invisible.
+  const languagesMode = useFeatureFlag('languages_mode');
 
   // Sign-up nudge for logged-out players. Dismissible for the session only, so
   // it reappears next launch — a gentle, repeatable conversion prompt.
@@ -975,6 +982,18 @@ export function MainMenu({
                 onPress={() => onPlay('silhouette')}
                 onHelp={() => setHelpMode('silhouette')}
               />
+              {languagesMode && (
+                <ModeTile
+                  icon={Languages}
+                  accent={isDarkMode ? PALETTE.chartBlue : PALETTE.oceanBlue}
+                  tint={isDarkMode ? 'rgba(74,158,255,0.12)' : 'rgba(26,74,122,0.10)'}
+                  title={tr(language, 'Langues', 'Languages')}
+                  subtitle={tr(language, 'De quelle langue vient cette phrase ?', 'Which language is this phrase?')}
+                  isDarkMode={isDarkMode}
+                  onPress={() => onPlay('languages')}
+                  onHelp={() => setHelpMode('languages')}
+                />
+              )}
               <ModeTile
                 icon={TrendingUp}
                 accent={isDarkMode ? PALETTE.chartBlue : PALETTE.oceanBlue}
@@ -1328,6 +1347,19 @@ export function MainMenu({
                 onLeaderboard={() => onOpenOnlineModeLeaderboard('silhouette', PALETTE.forestGreen)}
                 notify={incomingInviteMode === 'silhouette'}
               />
+              {languagesMode && (
+                <ModeCard
+                  icon={Languages}
+                  accent={isDarkMode ? PALETTE.chartBlue : PALETTE.oceanBlue}
+                  tint={isDarkMode ? 'rgba(74,158,255,0.12)' : 'rgba(26,74,122,0.10)'}
+                  title={tr(language, 'Langues', 'Languages')}
+                  subtitle={tr(language, 'Les mêmes phrases pour les deux joueurs', 'Same phrases for both players')}
+                  isDarkMode={isDarkMode}
+                  onPress={() => onPlayOnline('languages')}
+                  onLeaderboard={() => onOpenOnlineModeLeaderboard('languages', isDarkMode ? PALETTE.chartBlue : PALETTE.oceanBlue)}
+                  notify={incomingInviteMode === 'languages'}
+                />
+              )}
               <ModeCard
                 icon={TrendingUp}
                 accent={isDarkMode ? PALETTE.chartBlue : PALETTE.oceanBlue}

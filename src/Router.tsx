@@ -19,6 +19,7 @@ import VersusCapitals from './screens/VersusCapitals';
 import GuessCountryGame from './screens/GuessCountryGame';
 import HigherLowerGame from './screens/HigherLowerGame';
 import SilhouetteGame from './screens/SilhouetteGame';
+import LanguagesFlow from './screens/LanguagesFlow';
 import BordersGame from './screens/BordersGame';
 import FindCountryGame from './screens/FindCountryGame';
 import RegionGameFlow from './screens/RegionGameFlow';
@@ -428,6 +429,19 @@ export function Router({
     return (
       <SafeAreaProvider>
         <SilhouetteGame
+          setGameMode={(mode) => { resetMatchState(); setGameMode(mode); }}
+          user={user}
+          matchData={matchData}
+          onRoundComplete={matchData ? handleRoundComplete : undefined}
+        />
+      </SafeAreaProvider>
+    );
+  }
+
+  if (gameMode === 'languages') {
+    return (
+      <SafeAreaProvider>
+        <LanguagesFlow
           setGameMode={(mode) => { resetMatchState(); setGameMode(mode); }}
           user={user}
           matchData={matchData}

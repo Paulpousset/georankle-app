@@ -29,6 +29,7 @@ const MODE_LABELS: Record<MatchMode, [string, string]> = {
   higherlower: ['Plus ou Moins', 'Higher or Lower'],
   silhouette: ['Silhouette', 'Silhouette'],
   borders: ['Frontières', 'Borders'],
+  languages: ['Langues', 'Languages'],
 };
 
 /** Shape of the `apply_ranked_result` RPC payload (returned as JSONB). */

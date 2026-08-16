@@ -21,6 +21,8 @@
  */
 import { Platform } from 'react-native';
 
+import { STAGE_MAX_WIDTH } from './stage';
+
 /**
  * Google publisher id — same publisher as the AdMob account
  * (pub-2429865520138981); AdMob sign-up provisions the matching AdSense
@@ -178,16 +180,36 @@ export interface RailSize {
   height: 600;
 }
 
+/** Marge minimale entre un rail et la colonne de jeu (et le bord de fenêtre). */
+const RAIL_MARGIN = 30;
+
 /**
  * Which standard AdSense skyscraper fits the current viewport, or null when
- * the rails must be hidden. Pure — unit-tested. The math: game content is
- * centered at ≤600px, so each gutter is (width − 600) / 2; a rail only shows
- * when it fits with ≥100px of breathing room, guaranteeing it NEVER overlaps
- * the content (the "non-blocking" contract).
+ * the rails must be hidden. Pure — unit-tested.
+ *
+ * La géométrie : DesktopStage borne le jeu à STAGE_MAX_WIDTH, centré. Chaque
+ * gouttière vaut donc (largeur − STAGE_MAX_WIDTH) / 2, et un rail ne s'affiche
+ * que s'il y tient avec RAIL_MARGIN de chaque côté — il ne peut donc jamais
+ * chevaucher le jeu.
+ *
+ * ⚠️ Avant le 16/08/2026 ce calcul supposait un contenu centré à 600px alors
+ * que le jeu occupait toute la largeur : les rails étaient rendus mais
+ * intégralement recouverts, donc jamais vus. Ne pas revenir en arrière sans
+ * vérifier que DesktopStage est bien monté.
  */
 export function railSize(windowWidth: number, windowHeight: number): RailSize | null {
   if (windowHeight < 660) return null; // 600px unit + margins doesn't fit
-  if (windowWidth >= 1520) return { width: 300, height: 600 }; // half-page
-  if (windowWidth >= 1120) return { width: 160, height: 600 }; // wide skyscraper
+  const gutter = (windowWidth - STAGE_MAX_WIDTH) / 2;
+  if (gutter >= 300 + RAIL_MARGIN * 2) return { width: 300, height: 600 }; // half-page
+  if (gutter >= 160 + RAIL_MARGIN * 2) return { width: 160, height: 600 }; // wide skyscraper
   return null;
+}
+
+/**
+ * Distance entre le bord de la fenêtre et le rail : le rail est centré dans sa
+ * gouttière, ce qui l'écarte autant du jeu que du bord de l'écran.
+ */
+export function railOffset(windowWidth: number, size: RailSize): number {
+  const gutter = (windowWidth - STAGE_MAX_WIDTH) / 2;
+  return Math.max(RAIL_MARGIN, Math.round((gutter - size.width) / 2));
 }

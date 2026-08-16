@@ -100,6 +100,10 @@ function modeName(mode: MatchMode, lang: Language): string {
   if (mode === 'guess') return lang === 'fr' ? 'Devine le Pays' : 'Guess Country';
   if (mode === 'regions') return lang === 'fr' ? 'Défis Pays' : 'Country Challenges';
   if (mode === 'challenge') return lang === 'fr' ? 'Quiz Pays' : 'Country Quiz';
+  if (mode === 'silhouette') return 'Silhouette';
+  if (mode === 'borders') return lang === 'fr' ? 'Frontières' : 'Borders';
+  if (mode === 'higherlower') return lang === 'fr' ? 'Plus ou Moins' : 'Higher or Lower';
+  if (mode === 'languages') return lang === 'fr' ? 'Langues' : 'Languages';
   return 'Versus';
 }
 

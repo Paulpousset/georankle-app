@@ -35,7 +35,7 @@ DECLARE
   reward     int;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'not authenticated'; END IF;
-  IF p_game_mode NOT IN ('classic','streak','versus','globe','guess','regions','quiz-capital','quiz-flag','higherlower','silhouette','borders') THEN
+  IF p_game_mode NOT IN ('classic','streak','versus','globe','guess','regions','quiz-capital','quiz-flag','higherlower','silhouette','borders','languages') THEN
     RAISE EXCEPTION 'bad game mode';
   END IF;
 

@@ -4,7 +4,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import type { GameMode, Match } from '../types';
 import type { StoryLevel } from '../data/story';
-import { starsForScore } from '../data/story';
+import { starsForScore, languageTierForLevel } from '../data/story';
+import { variantForSeed } from '../lib/languages';
 import { pickBandCountries } from '../lib/matchCountries';
 import { track } from '../lib/analytics';
 
@@ -12,6 +13,7 @@ import { ClassicGame } from './ClassicGame';
 import StreakGame from './StreakGame';
 import HigherLowerGame from './HigherLowerGame';
 import SilhouetteGame from './SilhouetteGame';
+import LanguagesGame from './LanguagesGame';
 import BordersGame from './BordersGame';
 import GuessCountryGame from './GuessCountryGame';
 import FindCountryGame from './FindCountryGame';
@@ -88,6 +90,20 @@ export default function StoryGameHost({ level, onExit, onLevelComplete }: StoryG
           user={null}
           matchData={match}
           onRoundComplete={handleComplete}
+        />
+      );
+      break;
+    case 'languages':
+      screen = (
+        <LanguagesGame
+          setGameMode={quit as (m: GameMode) => void}
+          user={null}
+          matchData={match}
+          onRoundComplete={handleComplete}
+          // Obscurity ramps through the language tiers, since the notoriety
+          // band has no meaning for a mode with no answer country.
+          maxTier={languageTierForLevel(level.level)}
+          variant={variantForSeed(level.seed)}
         />
       );
       break;

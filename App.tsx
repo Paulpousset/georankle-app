@@ -30,6 +30,7 @@ import { ModeIntroGate } from './src/components/ModeIntroModal';
 import { UsernameGate } from './src/components/UsernameGate';
 import { IncomingInviteModal } from './src/components/IncomingInviteModal';
 import { SideRailAds } from './src/components/SideRailAds';
+import { DesktopStage } from './src/components/DesktopStage';
 
 // Start crash reporting as early as possible so startup errors are captured.
 initSentry();
@@ -218,29 +219,34 @@ function AppContent() {
 
   const tree = (
     <View style={{ flex: 1 }}>
-      {/* Desktop-web-only AdSense side rails, first so everything else paints
-          above them; native/mobile: renders nothing. */}
+      {/* Rails publicitaires desktop, rendus AVANT le jeu pour rester derrière
+          lui. Ils vivent dans les gouttières dégagées par DesktopStage — sans
+          cette mise en scène ils étaient intégralement recouverts. Le composant
+          s'auto-désactive hors web, sous le seuil de largeur, et tant que le
+          flag serveur `web_ads` est à false. Voir guide-pubs-web.md. */}
       <SideRailAds />
-      <SwipeBack enabled={canGoBack} onBack={goBack}>
-        <ScreenErrorBoundary resetKey={screenKey} onReset={recoverToMenu}>
-          <Router
-            nav={nav}
-            matchEngine={match}
-            gameMode={gameMode}
-            setGameMode={setGameMode}
-            daily={daily}
-            setDaily={setDaily}
-            showAuthModal={showAuthModal}
-            setShowAuthModal={setShowAuthModal}
-            showLeaderboard={showLeaderboard}
-            setShowLeaderboard={setShowLeaderboard}
-            onlineLeaderboard={onlineLeaderboard}
-            setOnlineLeaderboard={setOnlineLeaderboard}
-            pendingFriendCount={social.pendingFriendCount}
-            refreshFriendCount={social.refreshFriendCount}
-          />
-        </ScreenErrorBoundary>
-      </SwipeBack>
+      <DesktopStage>
+        <SwipeBack enabled={canGoBack} onBack={goBack}>
+          <ScreenErrorBoundary resetKey={screenKey} onReset={recoverToMenu}>
+            <Router
+              nav={nav}
+              matchEngine={match}
+              gameMode={gameMode}
+              setGameMode={setGameMode}
+              daily={daily}
+              setDaily={setDaily}
+              showAuthModal={showAuthModal}
+              setShowAuthModal={setShowAuthModal}
+              showLeaderboard={showLeaderboard}
+              setShowLeaderboard={setShowLeaderboard}
+              onlineLeaderboard={onlineLeaderboard}
+              setOnlineLeaderboard={setOnlineLeaderboard}
+              pendingFriendCount={social.pendingFriendCount}
+              refreshFriendCount={social.refreshFriendCount}
+            />
+          </ScreenErrorBoundary>
+        </SwipeBack>
+      </DesktopStage>
       {/* First-play "how to play" popup for whichever mode is on screen. */}
       <ModeIntroGate mode={introMode} />
       {/* Force a username on any logged-in account that lacks one (legacy

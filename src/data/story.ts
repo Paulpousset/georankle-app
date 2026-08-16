@@ -68,16 +68,35 @@ export function storySeedFor(level: number): number {
 /** Modes whose answer country we can bias by notoriety via roundCountries. */
 const BAND_MODES: ReadonlySet<GameMode> = new Set(['guess', 'globe', 'quiz-capital', 'quiz-flag']);
 
-/** The pool of modes available at a given level (grows with progression). */
+/**
+ * The pool of modes available at a given level (grows with progression).
+ *
+ * ⚠️ Adding a mode here changes modeForLevel for EVERY level at or above its
+ * threshold, including ones players have already cleared: story_progress stores
+ * stars per level and not the mode, so nothing is corrupted, but replaying an
+ * old level can now serve a different game. Pick thresholds accordingly.
+ */
 function unlockedModes(level: number): GameMode[] {
   const modes: GameMode[] = ['quiz-flag', 'quiz-capital', 'guess'];
   if (level >= 8) modes.push('globe');
   if (level >= 25) modes.push('higherlower');
   if (level >= 45) modes.push('silhouette');
+  if (level >= 60) modes.push('languages');
   if (level >= 80) modes.push('borders');
   if (level >= 120) modes.push('streak');
   if (level >= 160) modes.push('classic');
   return modes;
+}
+
+/**
+ * Story difficulty ramp for « Langues ». The notoriety band (difficultyBand)
+ * means nothing here — there is no answer country — so obscurity is ramped
+ * through the language tiers instead: mainstream languages early, traps late.
+ */
+export function languageTierForLevel(level: number): 1 | 2 | 3 {
+  if (level <= 100) return 1;
+  if (level <= 200) return 2;
+  return 3;
 }
 
 /** Deterministic single mode for a level (same for everyone). */
@@ -98,6 +117,8 @@ function matchModeOf(mode: GameMode): MatchMode {
       return 'globe';
     case 'silhouette':
       return 'silhouette';
+    case 'languages':
+      return 'languages';
     case 'borders':
       return 'borders';
     case 'higherlower':

@@ -40,6 +40,9 @@ export type AnalyticsEvent =
   | 'mode_intro_seen'
   | 'challenge_started'
   | 'challenge_completed'
+  // Langues: a clip could not be played and the question fell back to text.
+  // Watch this rate — a spike means the Storage bucket or the CDN is unhappy.
+  | 'language_audio_fallback'
   // Daily challenge
   | 'daily_opened'
   | 'daily_completed'

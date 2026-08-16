@@ -25,6 +25,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   LEAGUE_MODE_POOL,
   LEAGUE_MODES_PER_DAY,
+  LEAGUE_POOL_V2_FROM,
+  __LEAGUE_POOL_V1,
+  __LEAGUE_POOL_V2,
   createLeague,
   fetchLeagueLeaderboard,
   getMyLeagues,
@@ -63,14 +66,37 @@ describe('leagueModesFor', () => {
 
   it('matches the frozen fixtures mirrored by leagues.sql', () => {
     // Recomputing these means the algorithm changed → SQL parity is broken.
+    // These three predate LEAGUE_POOL_V2_FROM and must NEVER move: they are the
+    // proof that adding a mode did not rewrite the league history.
     expect(leagueModesFor('2026-07-23')).toEqual(['quiz-capital', 'classic', 'globe']);
     expect(leagueModesFor('2026-07-24')).toEqual(['regions', 'higherlower', 'silhouette']);
     expect(leagueModesFor('2026-01-01')).toEqual(['globe', 'quiz-capital', 'streak']);
-    expect(leagueModesFor('2027-03-15')).toEqual(['guess', 'classic', 'quiz-capital']);
+    // Post-cutover vector (v2 pool). Changed once, on purpose, when 'languages'
+    // was appended — cross-checked against languages_league.sql.
+    expect(leagueModesFor('2027-03-15')).toEqual(['regions', 'guess', 'classic']);
   });
 
-  it('never reorders the pool (frozen — mirrors leagues.sql)', () => {
-    expect(LEAGUE_MODE_POOL).toEqual([
+  it('switches pools exactly on the cutover date', () => {
+    expect(LEAGUE_POOL_V2_FROM).toBe('2026-09-15');
+    // Last v1 day / first v2 day — the pair the SQL must reproduce verbatim.
+    expect(leagueModesFor('2026-09-14')).toEqual(['quiz-capital', 'regions', 'higherlower']);
+    expect(leagueModesFor('2026-09-15')).toEqual(['globe', 'quiz-flag', 'higherlower']);
+  });
+
+  it('never draws a v2-only mode before the cutover, and draws it after', () => {
+    const day = (base: number, i: number) => new Date(base + i * 86400000).toISOString().slice(0, 10);
+    const before = Date.UTC(2025, 0, 1);
+    const after = Date.UTC(2026, 8, 15);
+    for (let i = 0; i < 300; i++) {
+      expect(leagueModesFor(day(before, i))).not.toContain('languages');
+    }
+    const drawn = Array.from({ length: 300 }, (_, i) => leagueModesFor(day(after, i)));
+    expect(drawn.some((modes) => modes.includes('languages'))).toBe(true);
+  });
+
+  it('keeps v1 frozen and v2 a strict superset of it (mirrors leagues.sql)', () => {
+    // Appending to V2 is safe; touching V1 or reordering either rewrites history.
+    expect(__LEAGUE_POOL_V1).toEqual([
       'globe',
       'regions',
       'guess',
@@ -82,7 +108,14 @@ describe('leagueModesFor', () => {
       'quiz-capital',
       'quiz-flag',
     ]);
+    expect(__LEAGUE_POOL_V2.slice(0, __LEAGUE_POOL_V1.length)).toEqual(__LEAGUE_POOL_V1);
+    expect(__LEAGUE_POOL_V2).toContain('languages');
+    expect(new Set(__LEAGUE_POOL_V2).size).toBe(__LEAGUE_POOL_V2.length);
+    // The exported pool is the one in force today.
+    expect(LEAGUE_MODE_POOL).toEqual(__LEAGUE_POOL_V2);
   });
+  // The "every league mode must also be a daily mode" invariant lives in
+  // modeRegistry.test.ts, which already mocks daily.ts's Supabase/Sentry chain.
 });
 
 describe('RPC wrappers', () => {

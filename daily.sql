@@ -70,7 +70,7 @@ DECLARE
   bonus       int := 0;
 BEGIN
   IF uid IS NULL THEN RAISE EXCEPTION 'not authenticated'; END IF;
-  IF p_mode NOT IN ('classic','streak','guess','globe','regions','quiz-capital','quiz-flag','higherlower','silhouette','borders') THEN
+  IF p_mode NOT IN ('classic','streak','guess','globe','regions','quiz-capital','quiz-flag','higherlower','silhouette','borders','languages') THEN
     RAISE EXCEPTION 'bad game mode';
   END IF;
 

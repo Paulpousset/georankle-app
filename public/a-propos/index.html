@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>À propos de GeoG : qui fait le jeu, avec quelles données</title>
+  <meta name="description" content="GeoG est un jeu de géographie indépendant. Qui le développe, d'où viennent les 195 pays et les données chiffrées, comment les erreurs sont corrigées et comment le projet est financé." />
+  <link rel="canonical" href="https://playgeog.com/a-propos/" />
+  <link rel="icon" href="/favicon.ico" />
+  <meta name="theme-color" content="#f2e8d0" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="GeoG" />
+  <meta property="og:title" content="À propos de GeoG" />
+  <meta property="og:description" content="Un jeu de géographie indépendant : qui le fait, avec quelles données, et comment il est financé." />
+  <meta property="og:url" content="https://playgeog.com/a-propos/" />
+  <meta property="og:image" content="https://playgeog.com/og-invite.png" />
+  <meta property="og:locale" content="fr_FR" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/guides.css" />
+  <!-- Publicités : emplacements injectés par ads-content.js, uniquement au-dessus
+       de 1120px. Aucune annonce sur mobile, et la bibliothèque AdSense n'est même
+       pas chargée en dessous de ce seuil. -->
+  <script defer src="/ads-content.js"></script>
+</head>
+<body>
+
+  <nav>
+    <div class="nav-in">
+      <a class="nav-logo" href="/">
+        <img src="/icon-512.png" alt="Logo GeoG" width="30" height="30" />
+        <b>GeoG</b>
+      </a>
+      <div class="nav-links">
+        <a href="/guides/">Guides</a>
+        <a href="/a-propos/">À propos</a>
+        <a class="nav-cta" href="/play">Jouer</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <p class="breadcrumb"><a href="/">Accueil</a> › À propos</p>
+
+    <article>
+      <header>
+        <h1>À propos de GeoG</h1>
+        <p class="standfirst">Un jeu de géographie indépendant, gratuit, jouable dans le navigateur comme sur mobile — et une base de données de 195 pays construite à la main.</p>
+      </header>
+
+      <h2>Le projet</h2>
+
+      <p>GeoG est né d'une frustration simple : les quiz de géographie en ligne posent tous les mêmes questions, sur les mêmes trente pays, avec la même interface. Passé la première semaine, on tourne en rond.</p>
+
+      <p>L'idée a donc été de construire un entraînement qui couvre <strong>l'ensemble des 195 pays</strong>, du plus évident au plus confidentiel, et qui varie les angles d'attaque : reconnaître un drapeau, retrouver une capitale, localiser un pays sur un globe en trois dimensions, identifier une silhouette, relier deux États de frontière en frontière, classer cinq pays selon un critère caché. Douze modes de jeu au total, chacun sollicitant une forme de mémoire différente.</p>
+
+      <p>S'y ajoute un <strong>défi du jour</strong> : une série identique pour tous les joueurs du monde, renouvelée chaque jour à minuit UTC. C'est le format qui, à l'usage, fait le plus progresser — quelques minutes quotidiennes valent mieux qu'une longue séance hebdomadaire, comme l'explique notre guide sur <a href="/guides/reviser-la-geographie/">la méthode de révision</a>.</p>
+
+      <h2>Qui développe GeoG</h2>
+
+      <p>GeoG est développé et maintenu par <strong>Paul Pousset</strong>, développeur indépendant en France. Il n'y a ni studio, ni équipe éditoriale, ni investisseur derrière le projet : c'est un travail individuel, ce qui explique le rythme des mises à jour et la possibilité d'écrire directement à la personne qui code le jeu — voir la <a href="/contact/">page contact</a>.</p>
+
+      <h2>D'où viennent les données</h2>
+
+      <p>La qualité d'un jeu de géographie tient entièrement à la qualité de sa base. Celle de GeoG est assemblée à partir de trois types de sources, puis vérifiée manuellement.</p>
+
+      <ul>
+        <li><strong>La liste des pays</strong> suit les 193 États membres de l'ONU auxquels s'ajoutent les deux États observateurs, le Saint-Siège et la Palestine. Ce choix, ses alternatives et ses limites sont détaillés dans notre guide <a href="/guides/combien-de-pays-dans-le-monde/">Combien de pays y a-t-il dans le monde ?</a></li>
+        <li><strong>Les indicateurs chiffrés</strong> — population, superficie, densité, PIB, PIB par habitant, espérance de vie, couverture forestière, émissions de CO₂ par habitant, taux d'alphabétisation et une vingtaine d'autres — proviennent des séries publiques de la <strong>Banque mondiale</strong>, reprises à leur année disponible la plus récente.</li>
+        <li><strong>Les données non chiffrées</strong> — capitales, drapeaux, contours géographiques, frontières terrestres, langues — sont compilées à partir de références publiques et relues à la main, cas par cas, notamment pour les situations ambiguës : pays à plusieurs capitales, enclaves, territoires disputés.</li>
+      </ul>
+
+      <p>Toute la chaîne est reconstructible : un même script régénère la base de jeu à partir des sources, ce qui permet de rafraîchir les indicateurs sans reprendre le travail éditorial.</p>
+
+      <div class="card tip">
+        <span class="label">Une erreur ?</span>
+        <p>Les données de géographie vieillissent et les cas limites se discutent. Si une réponse vous semble fausse ou datée, signalez-la : les corrections sont intégrées à la mise à jour suivante. C'est le moyen le plus efficace d'améliorer le jeu.</p>
+      </div>
+
+      <h2>Les partis pris</h2>
+
+      <p><strong>Pas de compte obligatoire.</strong> Le défi du jour se joue immédiatement, sans inscription. Le compte ne sert qu'à ce qui l'exige réellement : sauvegarder sa progression, jouer en ligne contre d'autres, apparaître au classement.</p>
+
+      <p><strong>Un style plutôt qu'un template.</strong> L'interface emprunte aux atlas du XIX<sup>e</sup> siècle — parchemin, rose des vents, typographie gravée. C'est un choix assumé : un jeu de géographie devrait donner envie de regarder la carte.</p>
+
+      <p><strong>Le doute plutôt que la fausse certitude.</strong> Quand une question admet plusieurs réponses défendables — capitale constitutionnelle contre siège du gouvernement, par exemple — le jeu privilégie la formulation qui n'induit pas en erreur, quitte à écarter la question.</p>
+
+      <h2>Comment le projet est financé</h2>
+
+      <p>GeoG est gratuit et le restera. Le développement est financé par la publicité, sous deux formes :</p>
+
+      <ul>
+        <li>des <strong>vidéos optionnelles</strong>, que le joueur choisit explicitement de regarder pour obtenir des pièces ou une vie supplémentaire — jamais imposées ;</li>
+        <li>de la <strong>publicité display</strong> sur les pages de contenu du site, comme celle que vous lisez.</li>
+      </ul>
+
+      <p>Aucune donnée de jeu n'est vendue. Le détail de ce qui est collecté, pourquoi, et comment supprimer son compte figure dans la <a href="/privacy.html">politique de confidentialité</a>.</p>
+
+      <h2>Où jouer</h2>
+
+      <p>Dans le navigateur sur <a href="/play">playgeog.com/play</a>, sans installation, ou dans l'application native sur <a href="https://apps.apple.com/app/id6779650018">iPhone et iPad</a> et sur <a href="https://play.google.com/store/apps/details?id=com.paulpousset.geog">Android</a>. La progression est synchronisée entre les plateformes dès lors qu'on utilise un compte.</p>
+
+      <div class="play-cta">
+        <h3>Le plus simple reste d'essayer</h3>
+        <p>Trois minutes, aucune inscription, le même défi que tous les autres joueurs du jour.</p>
+        <a class="btn" href="/play">Jouer au défi du jour</a>
+      </div>
+    </article>
+  </div>
+
+  <footer>
+    <div class="f-links">
+      <a href="/">Accueil</a>
+      <a href="/guides/">Guides</a>
+      <a href="/play">Jouer</a>
+      <a href="/a-propos/">À propos</a>
+      <a href="/contact/">Contact</a>
+      <a href="/privacy.html">Confidentialité</a>
+    </div>
+    <p>GeoG — jeu de géographie gratuit : quiz, drapeaux, capitales et pays du monde.</p>
+    <p style="opacity:.7;">47°N 2°E · Fait avec ✦ pour les explorateurs.</p>
+  </footer>
+
+</body>
+</html>

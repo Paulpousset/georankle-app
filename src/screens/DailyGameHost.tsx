@@ -6,6 +6,7 @@ import type { User } from '@supabase/supabase-js';
 
 import type { GameMode } from '../types';
 import { completeDaily, seedFor, type DailyResult } from '../lib/daily';
+import { variantForSeed } from '../lib/languages';
 import { buildShareMessage } from '../lib/share';
 import { getReferralInfo } from '../lib/referral';
 import { track } from '../lib/analytics';
@@ -17,6 +18,7 @@ import { ClassicGame } from './ClassicGame';
 import StreakGame from './StreakGame';
 import HigherLowerGame from './HigherLowerGame';
 import SilhouetteGame from './SilhouetteGame';
+import LanguagesFlow from './LanguagesFlow';
 import BordersGame from './BordersGame';
 import GuessCountryGame from './GuessCountryGame';
 import FindCountryGame from './FindCountryGame';
@@ -175,6 +177,18 @@ export default function DailyGameHost({
       <SilhouetteGame
         setGameMode={exitOnMenu}
         user={user}
+        onDailyScoreChange={reportScore}
+        {...common}
+      />
+    );
+  } else if (mode === 'languages') {
+    screen = (
+      <LanguagesFlow
+        setGameMode={exitOnMenu}
+        user={user}
+        // The variant is derived from the day's seed, NOT chosen by the player:
+        // everyone must face the same puzzle for the shared grid to mean anything.
+        variant={variantForSeed(seed)}
         onDailyScoreChange={reportScore}
         {...common}
       />

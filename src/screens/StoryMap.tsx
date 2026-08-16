@@ -55,6 +55,7 @@ import {
 } from '../lib/story';
 import { rewardedAdsAvailable, watchRewardedAd } from '../lib/monetization';
 import StoryGameHost from './StoryGameHost';
+import { useStageWidth } from '../lib/stage';
 
 // ── Layout constants for the winding river-path ────────────────────────────────
 const ROW_H = 118; // vertical spacing per level node
@@ -178,7 +179,7 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
   const { language } = useLanguage();
   const toast = useToast();
   const c = getColors(isDarkMode);
-  const { width } = useWindowDimensions();
+  const width = useStageWidth();
 
   const [snapshot, setSnapshot] = useState<StorySnapshot | null>(null);
   const [friends, setFriends] = useState<FriendPosition[]>([]);
@@ -920,7 +921,7 @@ function StoryTable({
 }) {
   const c = colors;
   const myMax = snapshot?.maxLevel ?? 0;
-  const { width } = useWindowDimensions();
+  const width = useStageWidth();
   const [preview, setPreview] = useState<{ itemId: string; level: number } | null>(null);
 
   const catLabel = (category: string) =>

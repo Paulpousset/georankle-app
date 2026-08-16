@@ -11,6 +11,7 @@ import { isSmallScreen } from '../theme/spacing';
 import { formatMatchScore } from '../lib/match';
 import { a11yButton, announce } from '../lib/a11y';
 import { ScoreText } from './ScoreText';
+import { useStageWidth } from '../lib/stage';
 
 export interface RoundSummaryData {
   roundNumber: number;
@@ -44,7 +45,7 @@ interface RoundSummaryProps {
 export function RoundSummary({ data, gameMode, onContinue }: RoundSummaryProps) {
   const { isDarkMode } = useTheme();
   const { language } = useLanguage();
-  const { width } = useWindowDimensions();
+  const width = useStageWidth();
   const [countdown, setCountdown] = useState(5);
   const c = getColors(isDarkMode);
 

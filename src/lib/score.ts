@@ -82,7 +82,8 @@ export function normalizeRoundScore(
     }
 
     case 'silhouette':
-    case 'challenge': {
+    case 'challenge':
+    case 'languages': {
       // CARRÉ/DUO/CASH quiz: raw = sum of per-question points; the ceiling is
       // every question answered the hardest way (CASH = 5 pts). Both players face
       // the same seeded questions, so this is a fair monotonic mapping.

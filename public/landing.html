@@ -283,6 +283,8 @@
     /* reveal on scroll */
     .rv { opacity:0; transform:translateY(26px); transition:opacity .7s ease, transform .7s ease; transition-delay:var(--d, 0s); }
     .rv.in { opacity:1; transform:none; }
+    /* Cartes de guides : la carte elle-même est un lien. */
+    a.mode-card { display:block; text-decoration:none; color:inherit; }
     @media (prefers-reduced-motion:reduce) {
       .rv { opacity:1; transform:none; transition:none; }
       .marquee-track, .btn-main::after, .compass, .globe-tag, .scroll-hint span::after { animation:none !important; }
@@ -441,6 +443,18 @@
     footer a { color:var(--brown); text-decoration:none; }
     footer a:hover { color:var(--vermilion); }
   </style>
+
+  <!--
+    Sans JavaScript, l'observateur qui ajoute la classe .in ne tourne jamais :
+    toute la page resterait en opacity:0, donc vide pour un lecteur ou un robot
+    qui n'exécute pas les scripts. Ce repli garantit que le contenu est
+    toujours affiché.
+  -->
+  <noscript>
+    <style>
+      .rv { opacity:1 !important; transform:none !important; }
+    </style>
+  </noscript>
 </head>
 <body class="grain">
 
@@ -453,6 +467,7 @@
       <div class="nav-links">
         <a href="#modes">Modes</a>
         <a href="#enligne">En ligne</a>
+        <a href="/guides/">Guides</a>
         <a href="#faq">FAQ</a>
         <a class="nav-cta" href="/play">Jouer</a>
       </div>
@@ -636,6 +651,38 @@
     </div>
   </section>
 
+  <!-- ══ GUIDES ══ -->
+  <section class="sec" id="guides">
+    <div class="wrap">
+      <div class="sec-head rv">
+        <p class="overline">Les guides</p>
+        <h2>Comprendre avant de retenir</h2>
+        <p>Pourquoi le nombre de pays du monde n'est pas fixe, d'où viennent les couleurs des drapeaux, comment réviser sans y passer ses soirées : nos guides de géographie, en accès libre.</p>
+      </div>
+      <div class="modes-grid">
+        <a class="mode-card rv" style="--mc:#c04a1a; --d:.0s" href="/guides/combien-de-pays-dans-le-monde/"><div class="mode-card-in">
+          <h3>Combien de pays dans le monde ?</h3><p>193, 195, 197, 249 : aucun de ces chiffres n'est faux. Ce que compte chaque source.</p>
+        </div></a>
+        <a class="mode-card rv" style="--mc:#1a4a7a; --d:.06s" href="/guides/drapeaux-du-monde/"><div class="mode-card-in">
+          <h3>Les drapeaux du monde</h3><p>Croix nordiques, couleurs panafricaines, croissants : les familles, les sosies et les cas uniques.</p>
+        </div></a>
+        <a class="mode-card rv" style="--mc:#2a6e3f; --d:.12s" href="/guides/capitales-du-monde/"><div class="mode-card-in">
+          <h3>Les capitales et leurs pièges</h3><p>Canberra plutôt que Sydney, trois capitales en Afrique du Sud, des villes bâties dans le désert.</p>
+        </div></a>
+        <a class="mode-card rv" style="--mc:#c4872a; --d:.18s" href="/guides/frontieres-terrestres/"><div class="mode-card-in">
+          <h3>Les frontières terrestres</h3><p>14 voisins pour la Chine et la Russie, deux pays doublement enclavés, un village en 30 morceaux.</p>
+        </div></a>
+        <a class="mode-card rv" style="--mc:#7a5c38; --d:.24s" href="/guides/memoriser-les-drapeaux/"><div class="mode-card-in">
+          <h3>Mémoriser les drapeaux</h3><p>Familles, rappel actif, répétition espacée : un plan sur 4 semaines, 15 minutes par jour.</p>
+        </div></a>
+        <a class="mode-card rv" style="--mc:#1a4a7a; --d:.3s" href="/guides/reviser-la-geographie/"><div class="mode-card-in">
+          <h3>Réviser la géographie</h3><p>L'ordre d'apprentissage, la mémoire des cartes, et les confusions à traiter en priorité.</p>
+        </div></a>
+      </div>
+      <p class="rv" style="text-align:center; margin-top:22px;"><a href="/guides/">Voir tous les guides →</a></p>
+    </div>
+  </section>
+
   <!-- ══ FAQ ══ -->
   <section class="sec" id="faq">
     <div class="wrap">
@@ -700,6 +747,9 @@
   <footer>
     <div class="f-links">
       <a href="/play">Jouer</a>
+      <a href="/guides/">Guides</a>
+      <a href="/a-propos/">À propos</a>
+      <a href="/contact/">Contact</a>
       <a href="https://apps.apple.com/app/id6779650018">App Store</a>
       <a href="https://play.google.com/store/apps/details?id=com.paulpousset.geog">Google Play</a>
       <a href="/privacy.html">Confidentialité</a>
