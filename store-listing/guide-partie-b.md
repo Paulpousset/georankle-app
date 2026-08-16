@@ -68,11 +68,33 @@ Tout ce qui suit se fait dans un navigateur avec ton compte Google. Les fichiers
      `google-service-account.json` et mets-le dans `georankle-app/`. Il est gitignoré — **ne le commite
      jamais**, c'est une clé de publication.
 
-> Si l'envoi échoue avec *« The project id used to call the Google Play Developer API has not been linked »*,
-> c'est un vieux compte Play : Play Console → **Paramètres > Accès à l'API** → lie le projet Cloud `geog-play`.
+**Fait le 16/08/2026** — le compte en place est **`was-submit@geog-play.iam.gserviceaccount.com`**
+(projet Cloud `geog-play`, n° `4015161892`). Le `was-` est une faute de frappe à la création : sans
+importance, mais c'est bien cet e-mail-là qu'il faut inviter si tu refais la manip.
 
 **Vérifier que ça marche** (sans refaire de build) :
 `eas submit --platform android --profile production --latest`
+
+### Si ça échoue : « The service account is missing the necessary permissions »
+
+Ce message du CLI couvre **trois causes différentes** et ne dit pas laquelle :
+API `androidpublisher` désactivée · projet Cloud non lié au compte développeur · droits manquants dans
+la Play Console. Pour trancher en 10 secondes au lieu de tout re-vérifier au hasard, appelle l'API
+directement — le script `play_diag.py` (voir l'historique de la session du 16/08) signe un JWT avec la
+clé, l'échange contre un jeton, puis tente d'ouvrir un edit sur l'app :
+
+- **échec dès l'échange du jeton** → la clé est mauvaise ou révoquée ;
+- **jeton OK, puis `403 PERMISSION_DENIED` sur l'edit** → clé et API sont bonnes, c'est la Play Console
+  (droits de l'app ou projet Cloud non lié) ;
+- **erreur mentionnant `SERVICE_DISABLED`** → l'API de l'étape 4 n'est pas activée.
+
+Deux pages à vérifier dans ce cas : **Utilisateurs et autorisations** (le compte doit être *Actif*, avec
+GeoG listé dans *Autorisations de l'app* — l'écran a deux niveaux et il faut valider par **Inviter
+l'utilisateur** tout en bas, sinon rien n'est enregistré) et **Paramètres > Accès à l'API** (le projet
+Cloud `geog-play` doit y figurer comme projet lié).
+
+⚠️ Ce n'est **pas** un problème de propagation : les droits Play prennent effet en quelques secondes.
+Si ça refuse encore après 2-3 minutes, c'est qu'il manque vraiment quelque chose.
 
 ## Étape 5 — Firebase : activer les push Android (~10 min, une fois)
 
