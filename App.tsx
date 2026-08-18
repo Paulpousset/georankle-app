@@ -9,6 +9,7 @@ import { ensureDailyReminder, ensureLeagueReminder } from './src/lib/notificatio
 import { touchLastSeen } from './src/lib/activity';
 import type { GameMode, MatchMode } from './src/types';
 import { posthog, trackScreen } from './src/lib/analytics';
+import { modeLabel } from './src/lib/ranked';
 import { initSentry, Sentry } from './src/lib/sentry';
 import { showAlert } from './src/lib/alert';
 import { tr } from './src/i18n';
@@ -31,9 +32,32 @@ import { UsernameGate } from './src/components/UsernameGate';
 import { IncomingInviteModal } from './src/components/IncomingInviteModal';
 import { SideRailAds } from './src/components/SideRailAds';
 import { DesktopStage } from './src/components/DesktopStage';
+import { UiScaleProvider } from './src/components/UiScaleProvider';
+import { WebHoverStyles } from './src/components/WebHoverStyles';
 
 // Start crash reporting as early as possible so startup errors are captured.
 initSentry();
+
+/**
+ * Nom lisible du mode à l'écran, pour la barre de marque du web ordinateur.
+ * `modeLabel` couvre les modes jouables en ligne ; les trois écrans qui n'en
+ * sont pas (menu, quiz solo, constructeur de partie locale) sont nommés ici
+ * avec les mêmes mots que leurs tuiles dans le menu.
+ */
+function stageModeLabel(mode: GameMode, language: 'fr' | 'en'): string {
+  switch (mode) {
+    case 'menu':
+      return '';
+    case 'quiz-capital':
+      return tr(language, 'Capitales', 'Capitals');
+    case 'quiz-flag':
+      return tr(language, 'Drapeaux', 'Flags');
+    case 'local-builder':
+      return tr(language, 'Partie perso', 'Custom game');
+    default:
+      return modeLabel(mode, language);
+  }
+}
 
 function AppContent() {
   // Theme/language are read from context inside each screen now; AppContent only
@@ -204,6 +228,12 @@ function AppContent() {
       ? gameMode
       : null;
 
+  // Ce qui s'écrit à droite de la barre de marque, sur le web en grand écran
+  // uniquement (DesktopStage est inerte partout ailleurs) : où l'on est.
+  const stageBrand = daily
+    ? `${tr(language, 'Défi du jour', 'Daily challenge')} · ${stageModeLabel(daily.mode, language)}`
+    : stageModeLabel(gameMode, language);
+
   // Wrap the whole app so an edge swipe-right goes back, mirroring the in-app
   // back button. Disabled when there's nowhere to go (menu, or a live match).
   // Identity of the screen currently routed, so the per-screen error boundary
@@ -225,7 +255,7 @@ function AppContent() {
           s'auto-désactive hors web, sous le seuil de largeur, et tant que le
           flag serveur `web_ads` est à false. Voir guide-pubs-web.md. */}
       <SideRailAds />
-      <DesktopStage>
+      <DesktopStage brand={stageBrand}>
         <SwipeBack enabled={canGoBack} onBack={goBack}>
           <ScreenErrorBoundary resetKey={screenKey} onReset={recoverToMenu}>
             <Router
@@ -301,17 +331,25 @@ function App() {
   // (key flip) to force a fresh measure once fonts are actually ready.
   return (
     <SafeAreaProvider key={fontsLoaded ? 'fonts-ready' : 'fonts-pending'}>
-      <ThemeProvider>
-        <LanguageProvider>
-          <AuthProvider>
-            <NetworkProvider>
-              <ToastProvider>
-                <AppContent />
-              </ToastProvider>
-            </NetworkProvider>
-          </AuthProvider>
-        </LanguageProvider>
-      </ThemeProvider>
+      {/* Agrandit l'app sur les grands écrans web (inerte sur natif) et publie
+          le facteur : tout ce qui se dimensionne à la fenêtre doit en tenir
+          compte — voir src/lib/uiScale.ts. */}
+      <UiScaleProvider>
+        <ThemeProvider>
+          {/* Survol à la souris sur le web ordinateur (inerte sur natif) : une
+              feuille de style unique accordée au thème — voir lib/webHover.ts. */}
+          <WebHoverStyles />
+          <LanguageProvider>
+            <AuthProvider>
+              <NetworkProvider>
+                <ToastProvider>
+                  <AppContent />
+                </ToastProvider>
+              </NetworkProvider>
+            </AuthProvider>
+          </LanguageProvider>
+        </ThemeProvider>
+      </UiScaleProvider>
     </SafeAreaProvider>
   );
 }

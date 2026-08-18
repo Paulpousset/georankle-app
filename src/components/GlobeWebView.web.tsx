@@ -7,7 +7,8 @@ export interface WebViewMessageEvent {
 
 interface Props {
   source: { html?: string; uri?: string };
-  onMessage: (e: WebViewMessageEvent) => void;
+  /** Optional, like react-native-webview's: a read-only frame posts nothing back. */
+  onMessage?: (e: WebViewMessageEvent) => void;
   style?: object;
   originWhitelist?: string[];
   javaScriptEnabled?: boolean;
@@ -71,7 +72,7 @@ const GlobeWebView = forwardRef<Handle, Props>(function GlobeWebView(
     const onMsg = (e: MessageEvent) => {
       if (e.source === iframe.contentWindow) {
         const data = typeof e.data === 'string' ? e.data : JSON.stringify(e.data);
-        onMessageRef.current({ nativeEvent: { data } });
+        onMessageRef.current?.({ nativeEvent: { data } });
       }
     };
     window.addEventListener('message', onMsg);

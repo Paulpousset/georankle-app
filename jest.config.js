@@ -5,9 +5,19 @@
  * the same way the app does (also future-proofs component/render tests). The
  * current suite focuses on pure business logic in src/lib, src/data and src/i18n.
  */
+const expoPreset = require('jest-expo/jest-preset');
+
 module.exports = {
   preset: 'jest-expo',
   testMatch: ['**/__tests__/**/*.test.{ts,tsx}'],
+  // jest-expo transforms the usual media assets but not .glb (the 3D cosmetic
+  // models), so importing data/cosmeticModels.gen.ts had Jest parse a binary.
+  // Spread the preset's own transforms — a bare `transform` key would replace
+  // them and take every image/font asset down with it.
+  transform: {
+    ...expoPreset.transform,
+    '^.+\\.glb$': 'jest-expo/src/preset/assetFileTransformer.js',
+  },
   collectCoverageFrom: [
     'src/lib/**/*.ts',
     'src/data/**/*.ts',

@@ -18,6 +18,7 @@ import {
   Flag,
   Globe,
   Info,
+  Landmark,
   Languages,
   LayoutGrid,
   Map,
@@ -44,7 +45,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { a11yButton, announce, a11yImage, a11yHidden, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
-import type { GameMode, Match, MatchMode } from '../types';
+import type { GameMode, Language, Match, MatchMode } from '../types';
 
 import VersusCapitals from './VersusCapitals';
 import StreakGame from './StreakGame';
@@ -53,6 +54,9 @@ import SilhouetteGame from './SilhouetteGame';
 import LanguagesGame from './LanguagesGame';
 import BordersGame from './BordersGame';
 import GuessCountryGame from './GuessCountryGame';
+import ChallengeQuiz from './ChallengeQuiz';
+import ChallengePicker from './ChallengePicker';
+import { getChallenge, type Challenge } from '../data/challenges';
 import FindCountryGame from './FindCountryGame';
 import FindRegionGame from './FindRegionGame';
 import RegionCountryPicker, { type RegionPick } from './RegionCountryPicker';
@@ -60,7 +64,7 @@ import { ClassicGame, type ClassicSessionResult } from './ClassicGame';
 
 // ─── Mode catalogue ───────────────────────────────────────────────────────────
 
-type ModeKey = 'capital' | 'flag' | 'classic' | 'streak' | 'guess' | 'globe' | 'regions' | 'higherlower' | 'silhouette' | 'borders' | 'languages';
+type ModeKey = 'capital' | 'flag' | 'classic' | 'streak' | 'guess' | 'globe' | 'regions' | 'challenge' | 'higherlower' | 'silhouette' | 'borders' | 'languages';
 
 interface ModeDef {
   key: ModeKey;
@@ -88,9 +92,10 @@ const MODES: Record<ModeKey, ModeDef> = {
   borders: { key: 'borders', fr: 'Frontières', en: 'Borders', icon: Route, accent: PALETTE.sand, rounds: 'fixed', defaultRounds: 1, unitFr: '1 trajet', unitEn: '1 route' },
   globe: { key: 'globe', fr: 'Globe Géo', en: 'Geo Globe', icon: Globe, accent: PALETTE.oceanBlue, rounds: 'config', defaultRounds: 5, unitFr: 'rounds', unitEn: 'rounds' },
   regions: { key: 'regions', fr: 'Défis Pays', en: 'Country Challenges', icon: Map, accent: PALETTE.oceanBlue, rounds: 'config', defaultRounds: 5, unitFr: 'rounds', unitEn: 'rounds' },
+  challenge: { key: 'challenge', fr: 'Quiz Pays', en: 'Country Quiz', icon: Landmark, accent: PALETTE.chartBlue, rounds: 'config', defaultRounds: 5, unitFr: 'questions', unitEn: 'questions' },
 };
 
-const MODE_ORDER: ModeKey[] = ['globe', 'regions', 'guess', 'borders', 'silhouette', 'languages', 'higherlower', 'classic', 'streak', 'capital', 'flag'];
+const MODE_ORDER: ModeKey[] = ['globe', 'regions', 'challenge', 'guess', 'borders', 'silhouette', 'languages', 'higherlower', 'classic', 'streak', 'capital', 'flag'];
 
 /**
  * Modes that inherently play one question per turn, so players alternate
@@ -113,11 +118,18 @@ function toMatchMode(mode: ModeKey): MatchMode {
     case 'higherlower': return 'higherlower';
     case 'silhouette': return 'silhouette';
     case 'languages': return 'languages';
+    case 'challenge': return 'challenge';
     case 'borders': return 'borders';
     case 'guess': return 'guess';
     case 'globe': return 'globe';
     default: return 'versus';
   }
+}
+
+/** "Capitales des États" for a manche's quiz id (empty if the id went stale). */
+function quizLabel(id: string, lang: Language): string {
+  const ch = getChallenge(id);
+  return ch ? (lang === 'fr' ? ch.titleFr : ch.titleEn) : '';
 }
 
 function versusType(mode: ModeKey): string | undefined {
@@ -160,6 +172,8 @@ interface Manche {
   rounds: number;
   /** For the 'regions' mode: one or more countries/levels (a mix) chosen at build time. */
   region?: RegionPick[];
+  /** For the 'challenge' mode: which country quiz, chosen at build time. */
+  challengeId?: string;
 }
 
 type Step =
@@ -204,6 +218,7 @@ export default function LocalParcours({
   const [scores, setScores] = useState<number[][]>([]);
   const [step, setStep] = useState<Step>({ phase: 'builder' });
   const [pickingRegion, setPickingRegion] = useState(false);
+  const [pickingChallenge, setPickingChallenge] = useState(false);
   const handledKey = useRef<string>('');
   // Captured Rankle (classic) sessions, keyed `${mancheIdx}-${playerIdx}`, so a
   // player's "ideal game" can be reviewed from the end screens.
@@ -245,6 +260,8 @@ export default function LocalParcours({
   const addManche = (mode: ModeKey) => {
     // 'regions' needs a country + level chosen first — open the picker.
     if (mode === 'regions') { setPickingRegion(true); return; }
+    // 'challenge' likewise needs its quiz chosen up front.
+    if (mode === 'challenge') { setPickingChallenge(true); return; }
     setManches((prev) => [...prev, { id: newMancheId(), mode, rounds: MODES[mode].defaultRounds }]);
   };
 
@@ -252,6 +269,11 @@ export default function LocalParcours({
     setPickingRegion(false);
     if (region.length === 0) return;
     setManches((prev) => [...prev, { id: newMancheId(), mode: 'regions', rounds: MODES.regions.defaultRounds, region }]);
+  };
+
+  const addChallengeManche = (ch: Challenge) => {
+    setPickingChallenge(false);
+    setManches((prev) => [...prev, { id: newMancheId(), mode: 'challenge', rounds: MODES.challenge.defaultRounds, challengeId: ch.id }]);
   };
 
   const removeManche = (idx: number) =>
@@ -522,6 +544,19 @@ export default function LocalParcours({
             onRoundComplete={handleRoundComplete}
           />
         );
+      case 'challenge': {
+        const ch = manche.challengeId ? getChallenge(manche.challengeId) : undefined;
+        if (!ch) return null;
+        return (
+          <ChallengeQuiz
+            key={key}
+            challenge={ch}
+            matchData={match}
+            onRoundComplete={handleRoundComplete}
+            onExit={quit}
+          />
+        );
+      }
       case 'classic':
         return (
           <ClassicGame
@@ -548,6 +583,16 @@ export default function LocalParcours({
         onPick={addRegionManche}
         onBack={() => setPickingRegion(false)}
         title={tr(language, 'Pays de la manche', 'Round country')}
+      />
+    );
+  }
+
+  if (pickingChallenge) {
+    return (
+      <ChallengePicker
+        onPick={addChallengeManche}
+        onBack={() => setPickingChallenge(false)}
+        title={tr(language, 'Quiz de la manche', 'Round quiz')}
       />
     );
   }
@@ -720,6 +765,7 @@ export default function LocalParcours({
                       {m.region?.length
                         ? ` · ${m.region.map((p) => (language === 'fr' ? p.name : (p.name_en ?? p.name))).join(', ')}`
                         : ''}
+                      {m.challengeId ? ` · ${quizLabel(m.challengeId, language)}` : ''}
                     </Text>
                     <TouchableOpacity
                       onPress={() => moveManche(i, -1)}

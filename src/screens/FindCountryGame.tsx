@@ -19,9 +19,10 @@ import type { GameMode, Match } from '../types';
 import { getColors, PALETTE } from '../theme/colors';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { getMapPalette } from '../theme/mapPalette';
+import { getMapPalette, type MapPalette } from '../theme/mapPalette';
 import { buildFindEarthHtml } from '../lib/globe3d/buildEarthHtml';
-import { useGlobe3d } from '../lib/globe3d/useGlobe3d';
+import { skinMapPalette, useGameGlobeSkin } from '../lib/globeSkin';
+import { GlobePickerModal } from '../components/GlobePickerModal';
 import { FONTS } from '../theme/typography';
 import { getFlagUrl, prefetchFlags } from '../lib/flags';
 import { createSeededRng } from '../lib/rng';
@@ -89,12 +90,20 @@ interface WorldPolygon {
   r: number[][][];
 }
 
-function buildGlobeHtml(
+/**
+ * Legacy Canvas-2D globe (the fallback when `globe_3d` is off / reduce-motion).
+ * Exported so the "Globes en jeu" screen can preview the exact renderer a real
+ * game would use instead of faking it with the 3D one.
+ *
+ * `pal` carries the shop-globe skin: a canvas orthographic globe can't sample an
+ * equirect texture, so here a skin is only a palette (see skinMapPalette).
+ */
+export function buildGlobeHtml(
   countries: CountryStat[],
   isDark: boolean,
   polygons: WorldPolygon[],
+  pal: MapPalette = getMapPalette(isDark),
 ): string {
-  const pal = getMapPalette(isDark);
   const bg = pal.bg;
   // `area` (km²) sizes each dot's tap footprint — see dotFootprint() below.
   const dots = JSON.stringify(
@@ -489,14 +498,19 @@ function handleTap(tx,ty){
 }
 
 window.resetRound=function(){sel=null;locked=false;hov=null;resultMode=false;resultCorrect=null;resultPicked=null;canvas.style.cursor='default';render();};
+// Reveal: straight back to the world view, centred on the answer (same rule as
+// the 3D builder).
+function frameReveal(correct){
+  var t=COUNTRIES.find(function(c){return c.cca3===correct;});
+  if(t){rotLon=t.lng;rotLat=Math.max(-60,Math.min(60,t.lat));}
+  zoom=1;R=Rb;
+  var zr=document.getElementById('zr');
+  if(zr)zr.style.display='none';
+}
 window.showResult=function(correct,picked){
   locked=true;hov=null;canvas.style.cursor='default';
   resultMode=true;resultCorrect=correct;resultPicked=picked;
-  var t=COUNTRIES.find(function(c){return c.cca3===correct;});
-  if(t){rotLon=t.lng;rotLat=Math.max(-60,Math.min(60,t.lat));}
-  // Cap the reveal zoom: at 24× the highlighted country fills the screen with
-  // no surrounding context, which is exactly what the player needs to learn.
-  if(zoom>6){zoom=6;R=Rb*zoom;}
+  frameReveal(correct);
   render();
 };
 
@@ -595,16 +609,19 @@ export default function FindCountryGame({
   }, [matchData?.id, user?.id]);
 
   const webViewRef = useRef<any>(null);
-  // 3D WebGL globe behind the globe_3d flag; the legacy Canvas-2D builder stays
-  // the fallback (flag off / reduce-motion). Resolved before mount so the
-  // WebView never reloads mid-game.
-  const globe3d = useGlobe3d();
+  // The planet the player is wearing (texture, relief, cosmos, satellite) AND
+  // the renderer that can draw it — resolved together before mount, so the page
+  // never hot-swaps mid-round. `choose` is the in-game picker.
+  const globeSkin = useGameGlobeSkin();
+  const [pickerOpen, setPickerOpen] = useState(false);
   const globeHtml = useMemo(() => {
-    if (globe3d.status === 'on') {
+    if (globeSkin.status === 'pending') return null;
+    const pal = skinMapPalette(getMapPalette(isDarkMode), globeSkin.key);
+    if (globeSkin.threeSrc) {
       return buildFindEarthHtml({
-        threeSrc: globe3d.threeSrc,
+        threeSrc: globeSkin.threeSrc,
         isDark: isDarkMode,
-        pal: getMapPalette(isDarkMode),
+        pal,
         polygons: rawWorldPolygons as unknown as WorldPolygon[],
         dots: (rawCountriesStats as unknown as CountryStat[]).map((co) => ({
           cca3: co.cca3,
@@ -612,14 +629,16 @@ export default function FindCountryGame({
           lng: co.lng,
           area: co.area,
         })),
+        skin: globeSkin.skin,
       });
     }
     return buildGlobeHtml(
       rawCountriesStats as unknown as CountryStat[],
       isDarkMode,
       rawWorldPolygons as unknown as WorldPolygon[],
+      pal,
     );
-  }, [globe3d, isDarkMode]);
+  }, [globeSkin, isDarkMode]);
   const current = rounds[index];
   const isCorrect = selectedCca3 === current.cca3;
   const countryName = language === 'fr' ? current.name : (current.name_en ?? current.name);
@@ -829,7 +848,28 @@ export default function FindCountryGame({
               <Text style={[styles.scoreLabel, { color: PALETTE.sand }]}>{score} pts</Text>
             )}
           </View>
+          {/* Swap the planet you play on. Only between guesses: the pick rebuilds
+              the globe page, which would wipe a result reveal. */}
+          <TouchableOpacity
+            onPress={() => setPickerOpen(true)}
+            disabled={phase !== 'playing'}
+            style={[styles.backBtn, { opacity: phase === 'playing' ? 1 : 0.35 }]}
+            hitSlop={ICON_HIT_SLOP}
+            {...a11yButton(tr(language, 'Choisir le globe', 'Pick the globe'))}
+          >
+            <AtlasGlobe color={colors.textMuted} size={20} />
+          </TouchableOpacity>
         </View>
+
+        <GlobePickerModal
+          visible={pickerOpen}
+          onClose={() => setPickerOpen(false)}
+          current={globeSkin.status === 'ready' ? globeSkin.key : null}
+          onPick={(key) => {
+            setSelectedCca3(null);
+            globeSkin.choose(key);
+          }}
+        />
 
         {/* Country name prompt */}
         <View
@@ -876,7 +916,7 @@ export default function FindCountryGame({
               )}
             </View>
           )}
-          {globe3d.status !== 'pending' && (
+          {globeHtml && (
             <GlobeWebView
               ref={webViewRef}
               source={{ html: globeHtml }}

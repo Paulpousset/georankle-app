@@ -56,6 +56,25 @@ const LAUNCH_SET = [
   'ZAF', 'NGA', 'EGY', 'MAR', // Africa
 ];
 
+// Natural Earth labels some sibling divisions identically — a federal district
+// and the state next to it, a capital city and the province around it. The game
+// prompt is just the name ("Trouve Washington"), so two same-named regions make
+// one of them unwinnable: the player taps D.C., the answer was the state.
+// Keyed by the id NE resolves to (iso_3166_2), value = [name_fr, name_en].
+// buildRegions() fails the build if a duplicate survives this map.
+const NAME_OVERRIDES = {
+  'US-WA': ['État de Washington', 'Washington (state)'],
+  'US-DC': ['Washington D.C.', 'Washington, D.C.'],
+  'AR-B': ['Buenos Aires (province)', 'Buenos Aires (province)'],
+  'AR-C': ['Buenos Aires (ville)', 'Buenos Aires (city)'],
+  // NE swaps the two Moscow ISO codes, so these follow the geometry, not the id:
+  // RU-MOW carries the oblast polygon, RU-MOS the city one.
+  'RU-MOW': ['oblast de Moscou', 'Moscow Oblast'],
+  'RU-MOS': ['Moscou (ville)', 'Moscow (city)'],
+  // NE names the krai like the republic it surrounds.
+  'RU-ALT': ["kraï de l'Altaï", 'Altai Krai'],
+};
+
 // Simplification: Douglas-Peucker epsilon in degrees, then round to 2 decimals.
 const EPS = 0.032;
 const MIN_RING_PTS = 4;        // discard rings that collapse below this
@@ -235,11 +254,13 @@ function buildFromNE(ne, cca3, stats) {
   const types = {};
   for (const f of feats) {
     const p = f.properties;
-    const name = p.name_fr || p.name || p.name_en;
-    const name_en = p.name_en || p.name || name;
+    let name = p.name_fr || p.name || p.name_en;
+    let name_en = p.name_en || p.name || name;
     if (!name) continue;
     const iso = (p.iso_3166_2 || '').trim();
     const id = iso || `${cca3}-${slug(name_en)}`;
+    const override = NAME_OVERRIDES[id];
+    if (override) [name, name_en] = override;
     const labelPt = Number.isFinite(p.longitude) && Number.isFinite(p.latitude)
       ? [p.longitude, p.latitude] : null;
     const reg = makeRegion(id, name, name_en, f.geometry, labelPt);
@@ -283,6 +304,20 @@ function buildFromFrance(gj, level, idPrefix, stats) {
   };
 }
 
+/** Two regions sharing a label make the game unwinnable — add a NAME_OVERRIDES entry. */
+function assertUniqueNames(file, regions) {
+  for (const key of ['name', 'name_en']) {
+    const seen = new Map();
+    for (const r of regions) seen.set(r[key], [...(seen.get(r[key]) || []), r.id]);
+    const dupes = [...seen].filter(([, ids]) => ids.length > 1);
+    if (dupes.length) {
+      throw new Error(
+        `${file}: duplicate ${key} — ${dupes.map(([n, ids]) => `"${n}" (${ids.join(', ')})`).join('; ')}`,
+      );
+    }
+  }
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 async function main() {
   console.log('Loading sources…');
@@ -299,6 +334,7 @@ async function main() {
   let totalBytes = 0;
 
   function emit(key, file, data, levelsAcc) {
+    assertUniqueNames(file, data.regions);
     const json = JSON.stringify(data);
     fs.writeFileSync(path.join(OUT, file), json);
     totalBytes += json.length;

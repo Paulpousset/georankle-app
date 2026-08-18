@@ -1,4 +1,5 @@
 import { gameData, getThemes } from '../gameData';
+import { getThemeDescription } from '../../i18n/themeDescriptions';
 
 describe('getThemes', () => {
   it('flattens every theme with its id attached', () => {
@@ -14,6 +15,28 @@ describe('getThemes', () => {
   it('preserves each theme id as a key of the raw data', () => {
     for (const t of getThemes()) {
       expect(gameData.themes[t.id]).toBeDefined();
+    }
+  });
+});
+
+describe('theme copy', () => {
+  it('explains every theme in both languages', () => {
+    // Un thème ajouté au pipeline sans description afficherait « Informations non
+    // disponibles » dans la fiche « ? » de Rankle et de Plus ou Moins.
+    const missing = getThemes()
+      .filter(
+        (t) =>
+          getThemeDescription(t.id, 'fr').startsWith('Informations non') ||
+          getThemeDescription(t.id, 'en').startsWith('Information not'),
+      )
+      .map((t) => t.id);
+    expect(missing).toEqual([]);
+  });
+
+  it('labels every theme in both languages', () => {
+    for (const t of getThemes()) {
+      expect(t.label.fr.length).toBeGreaterThan(0);
+      expect(t.label.en.length).toBeGreaterThan(0);
     }
   });
 });

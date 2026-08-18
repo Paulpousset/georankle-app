@@ -1,5 +1,6 @@
 import {
-  CHALLENGES, getChallenge, challengesByCountry, countryLabel,
+  CHALLENGES, CHALLENGE_QUESTIONS_SOLO, getChallenge, challengeForSeed, challengeLabel,
+  challengesByCountry, countryLabel,
   entityAnswer, entityPrompt, entityFlagUrl, entityAcceptedAnswers, pickDistractors,
 } from '../../data/challenges';
 import { createSeededRng } from '../rng';
@@ -103,6 +104,46 @@ describe('challenges data', () => {
 
     const fr = getChallenge('fr-region-capital')!;
     expect(entityAnswer(fr.entities.find((e) => e.promptFr === 'Normandie')!, 'fr')).toBe('Rouen');
+  });
+});
+
+describe('challengeForSeed', () => {
+  it('is deterministic — the daily/league/ranked surfaces depend on it', () => {
+    for (const seed of [0, 1, 42, 999_983, 2_147_483_646]) {
+      expect(challengeForSeed(seed).id).toBe(challengeForSeed(seed).id);
+    }
+  });
+
+  it('always returns a real challenge and eventually reaches every one', () => {
+    const seen = new Set<string>();
+    for (let s = 0; s < 400; s++) {
+      const ch = challengeForSeed(s);
+      expect(getChallenge(ch.id)).toBeDefined();
+      seen.add(ch.id);
+    }
+    // No quiz may be unreachable: one would never be playable outside the hub.
+    expect(seen.size).toBe(CHALLENGES.length);
+  });
+
+  it('every solo run has enough entities to fill it', () => {
+    // A challenge with fewer entities than CHALLENGE_QUESTIONS_SOLO silently
+    // yields a shorter daily than everyone else's — and a lower max score.
+    for (const c of CHALLENGES) {
+      expect({ id: c.id, enough: c.entities.length >= CHALLENGE_QUESTIONS_SOLO })
+        .toEqual({ id: c.id, enough: true });
+    }
+  });
+
+  it('keeps the daily length that league_norm_score is scaled to', () => {
+    // challenge_mode.sql multiplies a 'challenge' daily by 20 to reach 1000,
+    // i.e. a 50-point ceiling = 10 questions × CASH (5 pts). Changing this
+    // constant without changing the SQL silently rescales the league.
+    expect(CHALLENGE_QUESTIONS_SOLO).toBe(10);
+  });
+
+  it('labels a quiz with its country flag', () => {
+    expect(challengeLabel(getChallenge('us-state-capital')!, 'fr')).toBe('🇺🇸 Capitales des États');
+    expect(challengeLabel(getChallenge('us-state-capital')!, 'en')).toBe('🇺🇸 State capitals');
   });
 });
 

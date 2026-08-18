@@ -30,7 +30,8 @@ import { supabase } from '../lib/supabase';
 import { track } from '../lib/analytics';
 import { createSeededRng } from '../lib/rng';
 import { a11yHidden, announce } from '../lib/a11y';
-import { generateRankedModes, pickRankedRegion, type RankedRegionPick } from '../lib/ranked';
+import { generateRankedModes, pickRankedRegion, rankedChallengeSeed, type RankedRegionPick } from '../lib/ranked';
+import { challengeForSeed, CHALLENGE_QUESTIONS_ONLINE } from '../data/challenges';
 import { simulateBotRound, type BotProfile } from '../lib/bot';
 import { normalizeRoundScore } from '../lib/score';
 import { Avatar } from '../components/Avatar';
@@ -45,6 +46,7 @@ import FindRegionGame from './FindRegionGame';
 import HigherLowerGame from './HigherLowerGame';
 import SilhouetteGame from './SilhouetteGame';
 import LanguagesGame from './LanguagesGame';
+import ChallengeQuiz from './ChallengeQuiz';
 import BordersGame from './BordersGame';
 import { ClassicGame } from './ClassicGame';
 
@@ -259,7 +261,8 @@ export default function BotMatch({ user, match, bot, onExit }: BotMatchProps) {
         : mode === 'regions' ? REGION_ROUNDS
           : mode === 'silhouette' ? SILHOUETTE_QUESTIONS
             : mode === 'languages' ? LANGUAGES_QUESTIONS_ONLINE
-              : 1;
+              : mode === 'challenge' ? CHALLENGE_QUESTIONS_ONLINE
+                : 1;
   // Regions rounds carry their own seeded country/level (stored on the match at
   // creation; fall back to a deterministic pick for any malformed row).
   const regionPick: RankedRegionPick =
@@ -390,6 +393,14 @@ export default function BotMatch({ user, match, bot, onExit }: BotMatchProps) {
         return <SilhouetteGame setGameMode={quit} user={null} {...common} />;
       case 'languages':
         return <LanguagesGame setGameMode={quit} user={null} {...common} />;
+      case 'challenge':
+        return (
+          <ChallengeQuiz
+            challenge={challengeForSeed(rankedChallengeSeed(seed, roundIndex + 1))}
+            onExit={onExit}
+            {...common}
+          />
+        );
       case 'borders':
         return <BordersGame setGameMode={quit} user={null} {...common} />;
       case 'higherlower':

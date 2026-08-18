@@ -7,7 +7,7 @@
  * that actually matter, rendered as a short checklist under the blurb.
  */
 import type { ComponentType } from 'react';
-import { Flag, Globe, Info, Languages, LayoutGrid, Map, Monitor, Puzzle, Route, Swords, TrendingUp, Zap } from 'lucide-react-native';
+import { Flag, Globe, Info, Landmark, Languages, LayoutGrid, Map, Monitor, Puzzle, Route, Swords, TrendingUp, Zap } from 'lucide-react-native';
 
 import { PALETTE } from '../theme/colors';
 import type { GameMode } from '../types';
@@ -138,6 +138,19 @@ export const MODE_INTROS: Partial<Record<GameMode, ModeIntro>> = {
       { fr: 'Tapez la zone de la carte qui correspond au nom affiché.', en: 'Tap the map area that matches the name shown.' },
       { fr: 'Zoomez et déplacez la carte pour viser juste.', en: 'Zoom and pan the map to aim precisely.' },
       { fr: 'Enchaînez les bonnes réponses pour un score parfait.', en: 'Chain correct answers for a perfect score.' },
+    ],
+  },
+  challenge: {
+    icon: Landmark,
+    accent: PALETTE.chartBlue,
+    titleFr: 'Quiz Pays',
+    titleEn: 'Country Quiz',
+    bodyFr: 'Un quiz sur les subdivisions d’un pays : numéros de département français, capitales des États américains, drapeaux des États, capitales des Länder, des régions italiennes… Choisissez votre difficulté à chaque question — DUO (2 choix), CARRÉ (4 choix) ou CASH (à écrire).',
+    bodyEn: 'A quiz on a country’s subdivisions: French department numbers, US state capitals, state flags, German Länder capitals, Italian regional capitals… Pick a difficulty each question — DUO (2 options), CARRÉ (4 options) or CASH (type it).',
+    tips: [
+      { fr: 'DUO = 1 pt, CARRÉ = 3 pts, CASH = 5 pts : plus c’est risqué, plus ça rapporte.', en: 'DUO = 1 pt, CARRÉ = 3 pts, CASH = 5 pts: the riskier the call, the bigger the reward.' },
+      { fr: 'En CASH, les deux langues et les graphies locales sont acceptées (Munich ou München).', en: 'In CASH both languages and local spellings are accepted (Munich or München).' },
+      { fr: 'Le quiz du jour change chaque jour et il est le même pour tout le monde.', en: 'The daily quiz changes every day and is the same for everyone.' },
     ],
   },
   'quiz-capital': {

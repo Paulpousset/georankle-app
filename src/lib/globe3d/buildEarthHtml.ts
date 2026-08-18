@@ -12,6 +12,12 @@
  * A photoreal mode (NASA Blue Marble/Black Marble via window.setTextures) is
  * kept behind `look:'photo'` — unused today, a candidate premium cosmetic.
  *
+ * SKINNED mode (`skin`, see lib/globeSkin.ts): the planet the player equipped in
+ * the shop. Its equirect texture replaces the whole cartoon coat — base sphere,
+ * continents, graticule, the lot — and the overlay is reduced to a contrast-
+ * checked outline coat so the countries stay readable and pickable on skins as
+ * extreme as Eclipse or Mars. Gameplay state colours are untouched.
+ *
  * Gameplay parity with the 2D builders is contractual:
  *  - find    : posts GLOBE_READY / COUNTRY_SELECTED{cca3} / GLOBE_ERROR, exposes
  *              window.resetRound() + window.showResult(correct,picked); same
@@ -25,6 +31,7 @@
  */
 import { CITY_LIGHTS } from '../../components/WorldAvatar';
 import type { MapPalette } from '../../theme/mapPalette';
+import type { GameGlobeSkin } from '../globeSkin';
 
 export interface WorldPolygon {
   id: string;
@@ -49,6 +56,8 @@ interface CoreOptions {
   resetAlways?: boolean;
   /** Transparent page background (decorative overlays composited over app UI). */
   transparentBg?: boolean;
+  /** Equipped shop globe worn by the planet; omitted/null = the stock look. */
+  skin?: GameGlobeSkin | null;
 }
 
 function core(opts: CoreOptions, gameJs: string): string {
@@ -58,11 +67,15 @@ function core(opts: CoreOptions, gameJs: string): string {
     look: 'cartoon',
     polys: opts.polygons ?? [],
     cities: CITY_LIGHTS,
-    maxDpr: opts.maxDpr ?? 2,
+    // 3 rather than 2 on the skinned globes: the player zooms into small
+    // countries, and capping below the device's own ratio was throwing away
+    // sharpness the screen could show.
+    maxDpr: opts.maxDpr ?? (opts.skin ? 3 : 2),
     initial: { rotLat: 0, rotLon: 0, zoom: 1, fit: 0.88, ...(opts.initial ?? {}) },
     interactive: opts.interactive !== false,
     spin: !!opts.spin,
     resetAlways: !!opts.resetAlways,
+    skin: opts.skin ?? null,
   };
   return `<!DOCTYPE html>
 <html>
@@ -111,6 +124,15 @@ window.onerror=function(m){postMsg({type:'GLOBE_ERROR',msg:String(m)});};
 
 var renderer,scene,camera,pivot,globe,globeMesh,overlayMesh,cloudMesh,atmoMesh;
 var loadedTex={},photoMode=false;
+var GRAD=null;
+// Resolved in setup(), once the mode's gameJs has declared drawBaseLand:
+//  RIG  — render the Blender rig look (pack lighting + no tone mapping)
+//  SURF — radius of the state-highlight overlay: it MUST clear the continent
+//         relief (which reaches ~1.021), or a selected country would be buried
+//         under its own mountains
+//  DOTR — the microstate markers, just above that
+//  LINER — the crisp border lines, topmost so they never sink into the relief
+var RIG=false,SURF=1.002,DOTR=1.004,LINER=1.006;
 
 // Puffy sticker clouds: clusters of overlapping circles on a transparent
 // equirect canvas, deterministic so every load looks the same.
@@ -174,8 +196,12 @@ function unproject(sx,sy){
   if(!hits.length)return null;
   return vecToLL(globeMesh.worldToLocal(hits[0].point.clone()));}
 var _pv=new THREE.Vector3();
-function projectLL(lat,lng){
-  _pv.copy(llToVec(lat,lng,1));globe.localToWorld(_pv);
+// 'r' MUST match the radius the thing is drawn at. The microstate markers ride
+// at DOTR, well above the surface once the relief is on: projecting them from
+// r=1 put their tap target several pixels away from the dot the player can see,
+// and the gap widened with the zoom — i.e. exactly when they try to reach it.
+function projectLL(lat,lng,r){
+  _pv.copy(llToVec(lat,lng,r===undefined?1:r));globe.localToWorld(_pv);
   var vis=_pv.clone().normalize().dot(camera.position.clone().normalize())>0.06;
   _pv.project(camera);
   return{sx:(_pv.x*0.5+0.5)*W,sy:(1-(_pv.y*0.5+0.5))*H,d:vis?1:0,vis:vis};}
@@ -207,11 +233,33 @@ function drawPoly(rings,fill,stroke,lw){
 var CART=D.isDark
   ?{land:'#274d68',halo:'rgba(127,216,232,0.30)',line:'#7fd8e8',grat:'rgba(160,200,255,0.12)',city:'#ffd27a'}
   :{land:'#7cc45e',halo:'rgba(255,255,255,0.60)',line:'#2e5b33',grat:'rgba(255,255,255,0.22)',city:null};
+var SKIN=D.skin;
 // states: [{id,fill,stroke,lw}] — mode-specific paint on top of the base coat.
 var overlayStates=[];
+// Borders hides every country, so its planet gets no texture at all — only a
+// graticule keeps a dark skin from reading as a featureless black panel.
+function paintSkinGraticule(){
+  overlayCtx.strokeStyle=SKIN.grat;overlayCtx.lineWidth=1.6;
+  for(var la=-60;la<=60;la+=30){overlayCtx.beginPath();
+    overlayCtx.moveTo(0,(90-la)/180*OH);overlayCtx.lineTo(OW,(90-la)/180*OH);overlayCtx.stroke();}
+  for(var lo=-180;lo<180;lo+=30){overlayCtx.beginPath();
+    overlayCtx.moveTo((lo+180)/360*OW,OH*0.03);overlayCtx.lineTo((lo+180)/360*OW,OH*0.97);overlayCtx.stroke();}
+}
+// The pack texture already draws continents, borders, coastlines and graticule
+// — it IS the art. So the overlay paints NOTHING on top of it (coat 'none', 17
+// of 20 skins) and a round looks exactly like the shop preview. Only the two
+// skins the texture leaves unplayable get a coat: Eclipse an outline, Mars an
+// outline plus a land tint (its crust carries no landmasses at all).
+function paintSkinCoat(){
+  if(SKIN.coat==='none')return;
+  POLYGONS.forEach(function(p){drawPoly(p.r,null,SKIN.halo,5);});
+  POLYGONS.forEach(function(p){drawPoly(p.r,SKIN.landCoat,SKIN.line,1.8);});
+}
 function paintOverlay(){
   overlayCtx.clearRect(0,0,OW,OH);
-  if(!photoMode){
+  if(SKIN){
+    if(D.drawBaseLand)paintSkinCoat();else paintSkinGraticule();
+  } else if(!photoMode){
     // Cartoon coat: graticule + sticker continents (white coastal halo under a
     // bold dark outline) + golden city lights at night.
     overlayCtx.strokeStyle=CART.grat;overlayCtx.lineWidth=1.6;
@@ -247,49 +295,65 @@ function initScene(){
   renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,D.maxDpr));
   renderer.setSize(W,H);
-  renderer.toneMapping=THREE.ACESFilmicToneMapping;
+  // The rig renders with NO tone mapping so the pack's cartoon colours come out
+  // exactly as authored (webp parity); ACES stays for the stock look.
+  renderer.toneMapping=RIG?THREE.NoToneMapping:THREE.ACESFilmicToneMapping;
   document.body.appendChild(renderer.domElement);
   scene=new THREE.Scene();
   camera=new THREE.PerspectiveCamera(40,W/H,0.01,60);
-  var sun=new THREE.DirectionalLight(0xfff2dd,D.isDark?1.35:2.2);
-  sun.position.set(-1.6,1.0,3.0);scene.add(sun);
-  scene.add(new THREE.AmbientLight(D.isDark?0x2a3350:0x9fb3cd,D.isDark?1.05:1.15));
-  var rim=new THREE.DirectionalLight(D.isDark?0x7a92ff:0xcfe0ff,0.7);
-  rim.position.set(2.4,0.6,-2.0);scene.add(rim);
+  if(RIG){
+    // rig.json key/fill/rim, the exact lighting the pack was baked under.
+    [[-35,30,3.0,0xfff4e0],[60,-10,0.6,0xbcd4ff],[160,25,1.8,0x9fc0ff]].forEach(function(L){
+      var az=L[0]*Math.PI/180,el=L[1]*Math.PI/180;
+      var d=new THREE.DirectionalLight(L[3],L[2]);
+      d.position.set(Math.sin(az)*Math.cos(el),Math.sin(el),Math.cos(az)*Math.cos(el));
+      scene.add(d);});
+    scene.add(new THREE.AmbientLight(0x8a94b0,0.8));
+  } else {
+    var sun=new THREE.DirectionalLight(0xfff2dd,D.isDark?1.35:2.2);
+    sun.position.set(-1.6,1.0,3.0);scene.add(sun);
+    scene.add(new THREE.AmbientLight(D.isDark?0x2a3350:0x9fb3cd,D.isDark?1.05:1.15));
+    var rim=new THREE.DirectionalLight(D.isDark?0x7a92ff:0xcfe0ff,0.7);
+    rim.position.set(2.4,0.6,-2.0);scene.add(rim);
+  }
 
   pivot=new THREE.Group();scene.add(pivot);
   globe=new THREE.Group();pivot.add(globe);
-  // Cel shading: a 3-step gradient map quantises the toon lighting into bands.
-  var gcv=document.createElement('canvas');gcv.width=3;gcv.height=1;
-  var gcx=gcv.getContext('2d');
-  ['#7a7a7a','#c4c4c4','#ffffff'].forEach(function(g,i){gcx.fillStyle=g;gcx.fillRect(i,0,1,1);});
-  var gradientMap=new THREE.CanvasTexture(gcv);
-  gradientMap.minFilter=THREE.NearestFilter;gradientMap.magFilter=THREE.NearestFilter;
+  makeGradientMap();
   globeMesh=new THREE.Mesh(new THREE.SphereGeometry(1,96,96),
-    new THREE.MeshToonMaterial({color:new THREE.Color(D.isDark?'#153564':'#2f8ad8'),gradientMap:gradientMap}));
+    new THREE.MeshToonMaterial({color:new THREE.Color(SKIN?SKIN.ocean:(D.isDark?'#153564':'#2f8ad8')),gradientMap:GRAD}));
   globe.add(globeMesh);
+  // Skin texture + Blender rig: only where the base map is allowed to be visible.
+  // Borders mode keeps its bare tinted sphere — its whole puzzle is that the
+  // countries are NOT readable off the map.
+  if(SKIN&&SKIN.texture&&D.drawBaseLand)applySkinTexture();
   overlayTex=new THREE.CanvasTexture(overlayCv);
   overlayTex.colorSpace=THREE.SRGBColorSpace;
-  overlayTex.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());
-  overlayMesh=new THREE.Mesh(new THREE.SphereGeometry(1.002,96,96),
+  // Grazing angles near the limb are where an equirect overlay smears the most;
+  // 16 costs nothing on a single sphere and keeps the highlights legible there.
+  overlayTex.anisotropy=Math.min(16,renderer.capabilities.getMaxAnisotropy());
+  overlayMesh=new THREE.Mesh(new THREE.SphereGeometry(SURF,96,96),
     new THREE.MeshBasicMaterial({map:overlayTex,transparent:true,depthWrite:false}));
   globe.add(overlayMesh);
   cloudMesh=new THREE.Mesh(new THREE.SphereGeometry(1.016,64,64),
     new THREE.MeshBasicMaterial({transparent:true,opacity:0.9,depthWrite:false}));
   cloudMesh.visible=false;globe.add(cloudMesh);
   // Clouds are decorative-only (menu): on the gameplay globes they would hide
-  // the very country the player must find.
-  if(D.look==='cartoon'&&!D.isDark&&D.spin){
+  // the very country the player must find. A skin decides for itself whether its
+  // planet has weather (Mars, Hologram and friends do not).
+  if(D.look==='cartoon'&&D.spin&&(SKIN?SKIN.clouds:!D.isDark)){
     cloudMesh.material.map=cartoonClouds();cloudMesh.material.needsUpdate=true;
     cloudMesh.material.opacity=0.8;cloudMesh.visible=true;}
+  var atmoOn=SKIN?!!SKIN.atmo:true;
   atmoMesh=new THREE.Mesh(new THREE.SphereGeometry(1.10,64,64),
     new THREE.ShaderMaterial({
-      uniforms:{c:{value:new THREE.Color(D.isDark?'#4a6aff':'#7fb8ff')},p:{value:3.6},s:{value:D.isDark?1.1:0.6}},
+      uniforms:{c:{value:new THREE.Color(SKIN&&SKIN.atmo?SKIN.atmo:(D.isDark?'#4a6aff':'#7fb8ff'))},p:{value:3.6},s:{value:SKIN?SKIN.atmoStrength:(D.isDark?1.1:0.6)}},
       vertexShader:'varying vec3 vN;varying vec3 vP;void main(){vN=normalize(normalMatrix*normal);vP=normalize((modelViewMatrix*vec4(position,1.)).xyz);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
       fragmentShader:'uniform vec3 c;uniform float p;uniform float s;varying vec3 vN;varying vec3 vP;void main(){float f=pow(1.0-abs(dot(vN,-vP)),p)*s;gl_FragColor=vec4(c,1.0)*f;}',
       blending:THREE.AdditiveBlending,side:THREE.BackSide,transparent:true,depthWrite:false}));
+  atmoMesh.visible=atmoOn;
   scene.add(atmoMesh);
-  if(D.isDark){
+  if(SKIN?SKIN.stars:D.isDark){
     var n=420,pos=new Float32Array(n*3);
     for(var i=0;i<n;i++){var u=Math.random()*2-1,a=Math.random()*Math.PI*2,rr=18;
       var sq=Math.sqrt(1-u*u);
@@ -297,7 +361,12 @@ function initScene(){
     var g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));
     scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0xbfd0ff,size:1.6,sizeAttenuation:false,transparent:true,opacity:0.8})));
   }
-  applyRotation();updateCamera();paintOverlay();
+  if(SKIN){
+    applyCosmos();
+    buildCrispLines();
+    loadSatellite((typeof THREE.GLTFLoader==='function')?new THREE.GLTFLoader():null);
+  }
+  applyRotation();updateCamera();paintOverlay();updateCrispLines();
 }
 function applyRotation(){
   pivot.rotation.x=rotLat*Math.PI/180;
@@ -310,6 +379,228 @@ function updateCamera(){
   camera.lookAt(0,0,0);
   camera.updateProjectionMatrix();
   needsRender=true;}
+
+// ── Skinned planet: the Blender rig, same assembly as <AvatarPreview3D> ──────
+// Equirect pack texture on the sphere + the shared globe_land.glb continent
+// relief (two shells: 'landtex' wears the style texture, 'landink' is the
+// outline) + the style's own props GLB (volcanoes, ice crystals, crown…).
+// Ported from lib/avatar3d/buildAvatarHtml so the planet the player bought is
+// the same object in the shop and in a round.
+
+// Rig toon ramp (parity with the pre-rendered layers).
+function makeGradientMap(){
+  if(RIG){
+    var vals=[132,210,255],d=new Uint8Array(vals.length*4);
+    for(var i=0;i<vals.length;i++){d[i*4]=d[i*4+1]=d[i*4+2]=vals[i];d[i*4+3]=255;}
+    GRAD=new THREE.DataTexture(d,vals.length,1);
+  } else {
+    var gcv=document.createElement('canvas');gcv.width=3;gcv.height=1;
+    var gcx=gcv.getContext('2d');
+    ['#7a7a7a','#c4c4c4','#ffffff'].forEach(function(g,i){gcx.fillStyle=g;gcx.fillRect(i,0,1,1);});
+    GRAD=new THREE.CanvasTexture(gcv);
+  }
+  GRAD.minFilter=THREE.NearestFilter;GRAD.magFilter=THREE.NearestFilter;GRAD.needsUpdate=true;
+}
+// Blender extras (ggKind/ggHex/ggAlpha) → three materials, verbatim from the rig.
+function remapMaterials(root){root.traverse(function(n){
+  if(!n.isMesh||!n.material)return;
+  var ud=n.material.userData||{};
+  var kind=ud.ggKind||'toon',hex=ud.ggHex||'#c8d0d8';
+  var alpha=(ud.ggAlpha!=null)?ud.ggAlpha:1;
+  n.userData.ggKind=kind;
+  if(n.material.dispose)n.material.dispose();
+  if(kind==='outline'||kind==='landink'){
+    n.material=new THREE.MeshBasicMaterial({color:new THREE.Color(kind==='landink'?SKIN.landInk:hex),side:THREE.BackSide});
+  }else if(kind==='flat'){
+    n.material=new THREE.MeshBasicMaterial({color:new THREE.Color(hex),
+      transparent:alpha<1,opacity:alpha,depthWrite:alpha>=1});
+  }else if(kind==='landtex'){
+    n.material=new THREE.MeshToonMaterial({color:0xffffff,gradientMap:GRAD});
+  }else{
+    n.material=new THREE.MeshToonMaterial({color:new THREE.Color(hex),gradientMap:GRAD});
+  }});}
+// Dark styles are self-lit in the rig: unlit material, no toon banding.
+function skinMaterial(tex){
+  return SKIN.unlit?new THREE.MeshBasicMaterial({map:tex})
+    :new THREE.MeshToonMaterial({map:tex,gradientMap:GRAD});}
+function dressLand(root,tex){
+  root.traverse(function(n){
+    if(n.isMesh&&n.userData.ggKind==='landtex'){
+      if(n.material&&n.material.dispose)n.material.dispose();
+      n.material=skinMaterial(tex);}});}
+// Props animations (pulsing lava, breathing ice crystals, crown gems).
+var propAnims=[];
+function nodesOf(root,re){var out=[];root.traverse(function(n){
+  if(n.isMesh&&re.test(n.name))out.push(n);});return out;}
+function restOf(n){
+  if(!n.userData.rest)n.userData.rest={s:n.scale.clone()};
+  return n.userData.rest;}
+function colorPulse(mesh,hexHot,freq,phase){
+  var c0=mesh.material.color.clone(),c1=new THREE.Color(hexHot);
+  propAnims.push(function(t){mesh.material.color.copy(c0).lerp(c1,0.5+0.5*Math.sin(t*freq+phase));});}
+function setupPropsAnims(p){
+  nodesOf(p,/_lv$|_lv[.]/).forEach(function(v,i){colorPulse(v,'#ffd23e',2.1,i*1.4);});
+  nodesOf(p,/^gprop_fis/).forEach(function(f,i){colorPulse(f,'#ffd23e',1.9,i*0.8);});
+  nodesOf(p,/_dp$|_dp[.]/).forEach(function(d,i){var r0=restOf(d);
+    propAnims.push(function(t){d.scale.set(r0.s.x,r0.s.y,r0.s.z*(1+0.18*Math.sin(t*2.4+i)));});});
+  nodesOf(p,/crown_gem/).forEach(function(g,i){var r0=restOf(g);
+    propAnims.push(function(t){g.scale.copy(r0.s).multiplyScalar(1+0.16*Math.max(0,Math.sin(t*3.1+i*1.1)));});});
+  nodesOf(p,/_c[0-9]/).forEach(function(c2,i){var r0=restOf(c2);
+    propAnims.push(function(t){c2.scale.copy(r0.s).multiplyScalar(1+0.05*Math.sin(t*2.2+i*1.6));});});
+}
+function applySkinTexture(){
+  new THREE.TextureLoader().load(SKIN.texture,function(t){
+    t.colorSpace=THREE.SRGBColorSpace;
+    t.wrapS=THREE.RepeatWrapping; // the relief crosses the ±180° seam (u>1)
+    t.anisotropy=Math.min(16,renderer.capabilities.getMaxAnisotropy());
+    var old=globeMesh.material;
+    globeMesh.material=skinMaterial(t);
+    if(old&&old.dispose)old.dispose();
+    needsRender=true;
+    loadRig(t);
+  },undefined,function(){/* keep the flat skin-tinted sphere */});
+}
+// ── Cosmos backdrop: the equipped sky, behind everything ────────────────────
+function applyCosmos(){
+  if(!SKIN||!SKIN.cosmos)return; // free procedural night → keep the theme colour
+  new THREE.TextureLoader().load(SKIN.cosmos,function(t){
+    t.colorSpace=THREE.SRGBColorSpace;
+    scene.background=t;needsRender=true;
+  },undefined,function(){});
+}
+
+// ── Satellite: the equipped one, on the rig's own orbit ─────────────────────
+// Tables lifted from buildAvatarHtml so it flies exactly as on the profile:
+// 'face' points the nose along the orbit, otherwise it spins slowly on itself.
+var SAT_BEHAV={
+  sat_moon:{spin:0.4},sat_st_moon:{spin:0.4},sat_satellite:{spin:0.55},
+  sat_iss:{spin:0.3},sat_ufo:{spin:1.5},
+  sat_balloon:{face:1,yaw:0},sat_paperplane:{face:1,yaw:0},
+  sat_plane:{face:1,yaw:0},sat_bird:{face:1,yaw:0},sat_rocket:{face:1,yaw:0},
+  sat_comet:{face:1,yaw:0},sat_shootingstar:{face:1,yaw:0},
+  sat_st_comet:{face:1,yaw:0},sat_st_ship:{face:1,yaw:Math.PI},
+};
+var SAT_SCALE={sat_bird:0.56,sat_plane:0.46,sat_iss:0.48,sat_st_ship:0.47,
+  sat_balloon:0.45,sat_satellite:0.44,sat_ufo:0.45,sat_paperplane:0.42,
+  sat_comet:0.50,sat_rocket:0.43,sat_shootingstar:0.50,sat_st_comet:0.50,
+  sat_moon:0.31,sat_st_moon:0.34};
+var satObj=null,satBehav=null;
+function loadSatellite(loader){
+  if(!SKIN||!SKIN.satellite||!loader)return;
+  var id=SKIN.satellite.id;
+  loader.load(SKIN.satellite.model,function(g){
+    var m=g.scene;remapMaterials(m);
+    var box=new THREE.Box3().setFromObject(m);
+    var sz=box.getSize(new THREE.Vector3());
+    var mx=Math.max(sz.x,sz.y,sz.z,0.001),mn=Math.max(0.001,Math.min(sz.x,sz.y,sz.z));
+    var target=SAT_SCALE[id]||((mx/mn<1.35)?0.30:0.40);
+    var s=target/mx;
+    m.scale.setScalar(s);
+    m.position.sub(box.getCenter(new THREE.Vector3()).multiplyScalar(s));
+    satBehav=SAT_BEHAV[id]||null;
+    satObj=new THREE.Group();satObj.add(m);
+    satObj.userData.spin=(satBehav&&satBehav.spin)||(satBehav?0:0.7);
+    // Blinking beacons / waving pennants, same as the profile.
+    nodesOf(m,/^blink/).forEach(function(b){
+      var c0=b.material.color.clone(),c1=new THREE.Color('#5a1410');
+      propAnims.push(function(t){b.material.color.copy(Math.sin(t*4.2)>0?c0:c1);});});
+    nodesOf(m,/^flag/).forEach(function(f){var r0=f.rotation.y;
+      propAnims.push(function(t){f.rotation.y=r0+Math.sin(t*5.2)*0.22;});});
+    // The satellite lives in world space, not on the globe: dragging the planet
+    // must not drag its moon along.
+    scene.add(satObj);needsRender=true;
+  },undefined,function(){});
+}
+var SAT_BASE=-Math.PI/4,SAT_SPEED=0.4,SAT_R=1.12,SAT_TILT=-16*Math.PI/180;
+function moveSatellite(t){
+  if(!satObj)return;
+  var a=SAT_BASE+t*SAT_SPEED;
+  var x=Math.cos(a)*SAT_R,zz=Math.sin(a)*SAT_R;
+  satObj.position.set(x,-Math.sin(SAT_TILT)*zz,Math.cos(SAT_TILT)*zz);
+  if(satBehav&&satBehav.face)satObj.rotation.y=-a-Math.PI/2+(satBehav.yaw||0);
+  else if(satObj.userData.spin)satObj.rotation.y=t*satObj.userData.spin;
+  needsRender=true;
+}
+
+// ── Crisp borders: real 3D lines, sharp at any zoom ─────────────────────────
+// The planet's art is a 2048×1024 equirect texture. Beautiful at world zoom,
+// but at 24× the player is looking at ~1/24th of it and everything turns to
+// mush. These line loops trace the SAME world_polygons the texture was drawn
+// from, so they land exactly on its borders and simply re-sharpen them —
+// invisible at world zoom (the texture alone, the look validated for the shop),
+// fading in as the player zooms in to hunt a small country.
+function ringSegments(rings,r,out){
+  for(var ri=0;ri<rings.length;ri++){
+    var ring=rings[ri];
+    for(var i=0;i<ring.length;i++){
+      var a=ring[i],b=ring[(i+1)%ring.length];
+      var va=llToVec(a[1],a[0],r),vb=llToVec(b[1],b[0],r);
+      out.push(va.x,va.y,va.z,vb.x,vb.y,vb.z);}}
+}
+var crispLines=null;
+function buildCrispLines(){
+  if(!SKIN||!D.drawBaseLand)return;
+  var pos=[];
+  for(var i=0;i<POLYGONS.length;i++)ringSegments(POLYGONS[i].r,LINER,pos);
+  if(!pos.length)return;
+  var g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(pos),3));
+  crispLines=new THREE.LineSegments(g,new THREE.LineBasicMaterial({
+    color:new THREE.Color(SKIN.crispLine),transparent:true,opacity:0,depthWrite:false}));
+  crispLines.visible=false;
+  globe.add(crispLines);
+}
+// Ramp: nothing below 2×, full strength by 6× — the zone where the texture
+// stops holding up and the player is picking between neighbours.
+//
+// The raised relief bows out at the same time. Extruded plateaus and lines on a
+// sphere cannot register: the higher the zoom, the further the relief's walls
+// slide off the borders drawn underneath them. Up close the map has to be a
+// map, so the planet flattens and the crisp lines land exactly on the texture.
+var landObj=null;
+function updateCrispLines(){
+  if(crispLines){
+    var k=Math.max(0,Math.min(1,(zoom-2)/4));
+    crispLines.material.opacity=k*0.75;
+    crispLines.visible=k>0.01;
+  }
+  if(landObj){
+    var flat=Math.max(0,Math.min(1,(zoom-3)/3)); // 3× → 6×
+    landObj.visible=flat<1;
+    landObj.scale.setScalar(1-0.02*flat);        // sink the crust back into the sphere
+  }
+  needsRender=true;
+}
+
+// Zoomed in on a country, an orbiting moon crossing between the camera and the
+// planet is just an obstacle — the sky belongs to the world view.
+var SAT_MAX_ZOOM=3;
+function updateSatVisibility(){
+  if(satObj&&satObj.visible!==(zoom<=SAT_MAX_ZOOM)){
+    satObj.visible=zoom<=SAT_MAX_ZOOM;needsRender=true;}
+}
+
+function loadRig(tex){
+  var loader=(typeof THREE.GLTFLoader==='function')?new THREE.GLTFLoader():null;
+  if(!loader)return; // no vendored loader → texture-only planet, still correct
+  // The GLBs are exported in a pure geo frame: +90° Y lines them up with
+  // three.SphereGeometry's UV convention. Parented to the globe group, so they rotate,
+  // zoom and re-frame with it for free.
+  if(SKIN.landModel){
+    loader.load(SKIN.landModel,function(g){
+      var land=g.scene;remapMaterials(land);dressLand(land,tex);
+      land.rotation.y=Math.PI/2;globe.add(land);
+      landObj=land;updateCrispLines();
+    },undefined,function(){});
+  }
+  if(SKIN.propsModel){
+    loader.load(SKIN.propsModel,function(g){
+      var props=g.scene;remapMaterials(props);
+      props.rotation.y=Math.PI/2;globe.add(props);
+      setupPropsAnims(props);needsRender=true;
+    },undefined,function(){});
+  }
+}
 
 window.setTextures=function(uris){
   if(D.look!=='photo')return; // cartoon look ignores photo textures
@@ -386,6 +677,7 @@ function setZoom(z,px,py,geo){
   if(anchor)anchorAt(anchor.lat,anchor.lng,px,py);
   var zr=document.getElementById('zr');
   if(zr&&!D.resetAlways)zr.style.display=zoom>1.05?'flex':'none';
+  updateCrispLines();updateSatVisibility();
   if(onZoomCb)onZoomCb();}
 if(D.interactive){
   var pinchGeo=null;
@@ -425,11 +717,16 @@ if(D.interactive){
 }
 
 // ── Loop ─────────────────────────────────────────────────────────────────────
-var frameCbs=[];
+var frameCbs=[],animClock=0;
 function loop(){
   requestAnimationFrame(loop);
   if(D.spin){rotLon+=0.05;applyRotation();}
   if(cloudMesh&&cloudMesh.visible){cloudMesh.rotation.y+=0.00035;needsRender=true;}
+  if(propAnims.length||satObj){
+    animClock+=1/60;
+    for(var a=0;a<propAnims.length;a++)propAnims[a](animClock);
+    if(satObj&&satObj.visible)moveSatellite(animClock);
+    needsRender=true;}
   for(var i=0;i<frameCbs.length;i++)frameCbs[i]();
   if(needsRender){renderer.render(scene,camera);needsRender=false;}}
 
@@ -437,6 +734,14 @@ function setup(){
   W=window.innerWidth;H=window.innerHeight;
   if(!W||!H){requestAnimationFrame(setup);return;}
   baseR=Math.min(W,H)/2*D.initial.fit;
+  // gameJs has run by now, so drawBaseLand is known.
+  RIG=!!(SKIN&&SKIN.texture&&D.drawBaseLand);
+  if(RIG&&SKIN.landModel){SURF=1.03;DOTR=1.032;}
+  // The crisp lines must hug the surface the TEXTURE is on, not the highlight
+  // overlay above it: parked at SURF they drifted visibly off the coastlines at
+  // high zoom, because the relief lifts the texture ~2% and the parallax grows
+  // with the zoom. Just above the relief's crest (~1.021) they stay glued to it.
+  LINER=(RIG&&SKIN.landModel)?1.023:SURF+0.004;
   initScene();
   if(typeof gameInit==='function')gameInit();
   loop();
@@ -470,15 +775,17 @@ export function buildFindEarthHtml(opts: {
   polygons: WorldPolygon[];
   dots: FindDot[];
   maxDpr?: number;
+  skin?: GameGlobeSkin | null;
 }): string {
   const gameJs = `
 var COUNTRIES=${JSON.stringify(opts.dots)};
 D.drawBaseLand=true;
 var sel=null,hov=null,locked=false,resultMode=false,resultCorrect=null,resultPicked=null;
-var dotsObj=null,hiDot=null;
-// Dot microstates grow slowly with zoom: zooming in is the player's tool for
-// reaching them, so they must become a bigger target.
-function dotSize(){return 9*Math.pow(zoom,0.25);}
+var dotsObj=null,dotHalo=null,activeDot=null,activeHalo=null;
+// Dot microstates grow with zoom: zooming in is the player's tool for reaching
+// them, so they must become a bigger target. Base bumped from 9 to 14 px and the
+// curve steepened — on a full-bleed textured planet the old marker was a speck.
+function dotSize(){return 14*Math.pow(zoom,0.3);}
 // Dot countries only outrank the polygon they sit on ONCE ZOOMED IN: at world
 // zoom the marker spans ~250 km, so giving it priority handed the Riviera to
 // Monaco and half the Pyrenees to Andorra. Below this, behaviour is exactly
@@ -488,13 +795,13 @@ var DOT_PICK_ZOOM=2.6;
 // (capped, since a coarse host polygon must keep its middle), floored at the
 // drawn marker so a 0.5 km² Vatican still gets a finger-sized target.
 function dotFootprint(c){
-  return Math.max(dotSize()/2+1,(baseR*zoom)*Math.min(35,Math.sqrt((c.area||0)/Math.PI))/6371);}
+  return Math.max(dotSize()/2+8,(baseR*zoom)*Math.min(35,Math.sqrt((c.area||0)/Math.PI))/6371);}
 function nearestDot(tx,ty,maxD){
   var best=null,bestD=maxD;
   for(var i=0;i<COUNTRIES.length;i++){
     var c=COUNTRIES[i];
     if(polyMap[c.cca3]!==undefined)continue;
-    var p=projectLL(c.lat,c.lng);if(!p.vis)continue;
+    var p=projectLL(c.lat,c.lng,DOTR);if(!p.vis)continue;
     var d=Math.hypot(p.sx-tx,p.sy-ty);
     if(d<bestD){bestD=d;best=c;}}
   return best;}
@@ -506,7 +813,7 @@ function dotInFootprint(tx,ty){
   for(var i=0;i<COUNTRIES.length;i++){
     var c=COUNTRIES[i];
     if(polyMap[c.cca3]!==undefined)continue;
-    var p=projectLL(c.lat,c.lng);if(!p.vis)continue;
+    var p=projectLL(c.lat,c.lng,DOTR);if(!p.vis)continue;
     var d=Math.hypot(p.sx-tx,p.sy-ty),rel=d/dotFootprint(c);
     if(rel<bestRel){bestRel=rel;best=c;bestD=d;}}
   return best?{c:best,d:bestD}:null;}
@@ -515,7 +822,7 @@ COUNTRIES.forEach(function(c){centreMap[c.cca3]=c;});
 // Screen distance from a tap to a country's own centre, or Infinity.
 function centreDist(cca3,tx,ty){
   var c=centreMap[cca3];if(!c)return Infinity;
-  var p=projectLL(c.lat,c.lng);if(!p.vis)return Infinity;
+  var p=projectLL(c.lat,c.lng,DOTR);if(!p.vis)return Infinity;
   return Math.hypot(p.sx-tx,p.sy-ty);}
 // Dot countries win inside their own screen footprint, THEN polygons, then a
 // wider 26 px snap. Seven dots (Vatican/Saint-Marin in ITA, Monaco/Andorre in
@@ -544,34 +851,75 @@ function repaintStates(){
   setOverlayStates(list);
   updateHiDot();
 }
-function dotColorState(){
+// Which dot countries are in a game state right now, and in which colour.
+// Every OTHER dot stays neutral: painting them all in the selection colour (as
+// this globe used to) meant tapping one changed nothing on screen — there was
+// no way to tell what you had picked.
+function dotStates(){
+  var out=[];
   if(resultMode){
-    if(resultCorrect&&polyMap[resultCorrect]===undefined)return{id:resultCorrect,color:PAL.okS};
-    if(resultPicked&&resultPicked!==resultCorrect&&polyMap[resultPicked]===undefined)return{id:resultPicked,color:PAL.badS};
-  } else if(sel&&polyMap[sel]===undefined)return{id:sel,color:PAL.selS};
-  return null;}
+    if(resultCorrect&&polyMap[resultCorrect]===undefined)out.push({id:resultCorrect,color:PAL.okS});
+    if(resultPicked&&resultPicked!==resultCorrect&&polyMap[resultPicked]===undefined)out.push({id:resultPicked,color:PAL.badS});
+  } else {
+    if(hov&&!locked&&hov!==sel&&polyMap[hov]===undefined)out.push({id:hov,color:PAL.hovS});
+    if(sel&&polyMap[sel]===undefined)out.push({id:sel,color:PAL.selS});
+  }
+  return out;}
+// The highlighted dots are redrawn on their own layer, bigger and in the state
+// colour, on top of the neutral ones — colour AND size, so the pick reads at a
+// glance even in a cluster like the Riviera.
 function updateHiDot(){
-  if(!hiDot)return;
-  var st=dotColorState();
-  if(!st){hiDot.visible=false;needsRender=true;return;}
-  var c=null;
-  for(var i=0;i<COUNTRIES.length;i++)if(COUNTRIES[i].cca3===st.id){c=COUNTRIES[i];break;}
-  if(!c){hiDot.visible=false;return;}
-  var v=llToVec(c.lat,c.lng,1.004);
-  hiDot.position.copy(v);hiDot.material.color=new THREE.Color(st.color);
-  hiDot.visible=true;needsRender=true;}
+  if(!activeDot)return;
+  var st=dotStates();
+  var pos=[],col=[];
+  st.forEach(function(s2){
+    var c=centreMap[s2.id];if(!c)return;
+    var v=llToVec(c.lat,c.lng,DOTR+0.001);
+    pos.push(v.x,v.y,v.z);
+    var cl=new THREE.Color(s2.color);col.push(cl.r,cl.g,cl.b);});
+  [activeHalo,activeDot].forEach(function(o){
+    o.geometry.setAttribute('position',new THREE.BufferAttribute(new Float32Array(pos),3));
+    o.geometry.setAttribute('color',new THREE.BufferAttribute(new Float32Array(col),3));
+    o.geometry.setDrawRange(0,pos.length/3);
+    o.visible=pos.length>0;});
+  // The halo keeps the contrast ring, the dot carries the state colour.
+  activeHalo.material.color.set(SKIN?SKIN.crispLine:(D.isDark?'#0a1221':'#ffffff'));
+  needsRender=true;}
 function gameInit(){
   // Dot-only microstates ride the globe as constant-screen-size points.
   var free=COUNTRIES.filter(function(c){return polyMap[c.cca3]===undefined;});
   var pos=new Float32Array(free.length*3);
-  free.forEach(function(c,i){var v=llToVec(c.lat,c.lng,1.004);
+  free.forEach(function(c,i){var v=llToVec(c.lat,c.lng,DOTR);
     pos[i*3]=v.x;pos[i*3+1]=v.y;pos[i*3+2]=v.z;});
   var g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));
-  dotsObj=new THREE.Points(g,new THREE.PointsMaterial({color:new THREE.Color(PAL.selS),size:dotSize(),sizeAttenuation:false,transparent:true,opacity:0.9,map:dotTexture(),alphaTest:0.4}));
-  globe.add(dotsObj);
-  hiDot=new THREE.Mesh(new THREE.SphereGeometry(0.014,12,12),new THREE.MeshBasicMaterial({color:0xffffff}));
-  hiDot.visible=false;globe.add(hiDot);
-  onZoomCb=function(){if(dotsObj)dotsObj.material.size=dotSize();};
+  // Contrasting ring under every marker — the 2D globe has always had one, the
+  // 3D one never did, and a vermilion speck sitting ON a green continent was
+  // simply invisible. Drawn as a second, larger point layer behind the dot.
+  var ringCol=SKIN?SKIN.crispLine:(D.isDark?'#0a1221':'#ffffff');
+  // Neutral resting colour — the opposite of the ring, so ring + dot always
+  // read as a target, and NEVER the selection colour (that one now means
+  // "this is the one you picked").
+  var restCol=(ringCol==='#ffffff'||ringCol==='#fff')?'#1b2436':'#f4f7fb';
+  dotHalo=new THREE.Points(g,new THREE.PointsMaterial({color:new THREE.Color(ringCol),
+    size:dotSize()+7,sizeAttenuation:false,transparent:true,opacity:0.95,
+    map:dotTexture(),alphaTest:0.4,depthWrite:false}));
+  dotHalo.renderOrder=6;globe.add(dotHalo);
+  dotsObj=new THREE.Points(g,new THREE.PointsMaterial({color:new THREE.Color(restCol),size:dotSize(),sizeAttenuation:false,transparent:true,opacity:1,map:dotTexture(),alphaTest:0.4,depthWrite:false}));
+  dotsObj.renderOrder=7;globe.add(dotsObj);
+  // Highlight layer: same markers, 1.8× bigger, per-point state colour.
+  activeHalo=new THREE.Points(new THREE.BufferGeometry(),new THREE.PointsMaterial({
+    color:new THREE.Color(ringCol),size:dotSize()*1.8+8,sizeAttenuation:false,
+    transparent:true,opacity:1,map:dotTexture(),alphaTest:0.4,depthWrite:false,depthTest:false}));
+  activeHalo.renderOrder=8;activeHalo.visible=false;globe.add(activeHalo);
+  activeDot=new THREE.Points(new THREE.BufferGeometry(),new THREE.PointsMaterial({
+    size:dotSize()*1.8,sizeAttenuation:false,vertexColors:true,
+    transparent:true,opacity:1,map:dotTexture(),alphaTest:0.4,depthWrite:false,depthTest:false}));
+  activeDot.renderOrder=9;activeDot.visible=false;globe.add(activeDot);
+  onZoomCb=function(){
+    if(dotsObj)dotsObj.material.size=dotSize();
+    if(dotHalo)dotHalo.material.size=dotSize()+7;
+    if(activeDot)activeDot.material.size=dotSize()*1.8;
+    if(activeHalo)activeHalo.material.size=dotSize()*1.8+8;};
   onTapCb=function(x,y){
     if(locked)return;
     var hit=pickAt(x,y);
@@ -587,14 +935,19 @@ function gameInit(){
   repaintStates();
 }
 window.resetRound=function(){sel=null;hov=null;locked=false;resultMode=false;resultCorrect=null;resultPicked=null;document.body.style.cursor='default';repaintStates();};
+// Reveal: straight back to the world view, centred on the answer. Framing the
+// answer to its own size (an earlier attempt) came out far too zoomed on small
+// countries — what the player needs to learn is WHERE it sits on the globe, not
+// a close-up of its outline.
+function frameReveal(correct){
+  var t=centreMap[correct];
+  if(t){rotLon=t.lng;rotLat=Math.max(-60,Math.min(60,t.lat));applyRotation();}
+  setZoom(1);
+}
 window.showResult=function(correct,picked){
   locked=true;hov=null;document.body.style.cursor='default';
   resultMode=true;resultCorrect=correct;resultPicked=picked;
-  var t=null;
-  for(var i=0;i<COUNTRIES.length;i++)if(COUNTRIES[i].cca3===correct){t=COUNTRIES[i];break;}
-  if(t){rotLon=t.lng;rotLat=Math.max(-60,Math.min(60,t.lat));applyRotation();}
-  // Cap the reveal zoom so the answer keeps its surrounding context.
-  if(zoom>6)setZoom(6);
+  frameReveal(correct);
   repaintStates();
 };`;
   return core(
@@ -605,6 +958,7 @@ window.showResult=function(correct,picked){
       polygons: opts.polygons,
       maxDpr: opts.maxDpr,
       interactive: true,
+      skin: opts.skin,
     },
     gameJs,
   );
@@ -619,6 +973,8 @@ export function buildBordersEarthHtml(opts: {
   polygons: WorldPolygon[];
   coords: Record<string, [number, number]>;
   maxDpr?: number;
+  /** Borders wears the skin's ocean/atmosphere only — never its land texture. */
+  skin?: GameGlobeSkin | null;
 }): string {
   const gameJs = `
 var COORDS=${JSON.stringify(opts.coords)};
@@ -711,6 +1067,7 @@ function gameInit(){rotLat=20;applyRotation();}`;
       interactive: true,
       resetAlways: true,
       initial: { rotLat: 20, fit: 0.9 },
+      skin: opts.skin,
     },
     gameJs,
   );
@@ -724,6 +1081,7 @@ export function buildMenuEarthHtml(opts: {
   pal: MapPalette;
   polygons: WorldPolygon[];
   maxDpr?: number;
+  skin?: GameGlobeSkin | null;
 }): string {
   return core(
     {
@@ -736,6 +1094,7 @@ export function buildMenuEarthHtml(opts: {
       spin: true,
       transparentBg: true,
       initial: { rotLat: 18, rotLon: 10, zoom: 1, fit: 0.98 },
+      skin: opts.skin,
     },
     'D.drawBaseLand=true;function gameInit(){}',
   );

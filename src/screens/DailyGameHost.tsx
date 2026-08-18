@@ -7,6 +7,7 @@ import type { User } from '@supabase/supabase-js';
 import type { GameMode } from '../types';
 import { completeDaily, seedFor, type DailyResult } from '../lib/daily';
 import { variantForSeed } from '../lib/languages';
+import { challengeForSeed } from '../data/challenges';
 import { buildShareMessage } from '../lib/share';
 import { getReferralInfo } from '../lib/referral';
 import { track } from '../lib/analytics';
@@ -23,6 +24,7 @@ import BordersGame from './BordersGame';
 import GuessCountryGame from './GuessCountryGame';
 import FindCountryGame from './FindCountryGame';
 import RegionGameFlow from './RegionGameFlow';
+import ChallengeQuiz from './ChallengeQuiz';
 import VersusCapitals from './VersusCapitals';
 
 interface DailyGameHostProps {
@@ -226,6 +228,21 @@ export default function DailyGameHost({
         user={user}
         onDailyScoreChange={reportScore}
         {...common}
+      />
+    );
+  } else if (mode === 'challenge') {
+    screen = (
+      <ChallengeQuiz
+        // Which of the country quizzes is played is derived from the day's seed,
+        // NOT chosen by the player — same puzzle for everyone, like the variant
+        // in Langues. The quiz's own questions are then seeded from that seed.
+        challenge={challengeForSeed(seed)}
+        onExit={requestExit}
+        onDailyScoreChange={reportScore}
+        dailySeed={seed}
+        onDailyComplete={handleComplete}
+        isDaily
+        onShare={onShare}
       />
     );
   } else if (mode === 'quiz-capital' || mode === 'quiz-flag') {

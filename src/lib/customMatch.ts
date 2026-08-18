@@ -30,11 +30,12 @@ export interface CustomRegionPick {
 }
 
 /** Builder identity for one custom round. `capital`/`flag` are both `versus`. */
-export type OnlineModeKey = 'capital' | 'flag' | 'classic' | 'streak' | 'globe' | 'guess' | 'regions' | 'higherlower' | 'silhouette' | 'borders' | 'languages';
+export type OnlineModeKey = 'capital' | 'flag' | 'classic' | 'streak' | 'globe' | 'guess' | 'regions' | 'challenge' | 'higherlower' | 'silhouette' | 'borders' | 'languages';
 
 export const ONLINE_MODE_ORDER: OnlineModeKey[] = [
   'globe',
   'regions',
+  'challenge',
   'guess',
   'borders',
   'silhouette',
@@ -55,6 +56,8 @@ interface OnlineModeMeta {
   defaultCount: number;
   /** `regions` rounds require a country/level pick before they can be added. */
   needsRegion?: boolean;
+  /** `challenge` rounds require picking WHICH country quiz is played. */
+  needsChallenge?: boolean;
   fr: string;
   en: string;
   unitFr: string;
@@ -73,6 +76,7 @@ export const ONLINE_MODES: Record<OnlineModeKey, OnlineModeMeta> = {
   borders: { key: 'borders', mode: 'borders', configurable: false, defaultCount: 1, fr: 'Frontières', en: 'Borders', unitFr: 'trajet', unitEn: 'route' },
   globe: { key: 'globe', mode: 'globe', configurable: true, defaultCount: 5, fr: 'Globe Géo', en: 'Geo Globe', unitFr: 'rounds', unitEn: 'rounds' },
   regions: { key: 'regions', mode: 'regions', configurable: true, defaultCount: 5, needsRegion: true, fr: 'Défis Pays', en: 'Country Challenges', unitFr: 'régions', unitEn: 'regions' },
+  challenge: { key: 'challenge', mode: 'challenge', configurable: true, defaultCount: 5, needsChallenge: true, fr: 'Quiz Pays', en: 'Country Quiz', unitFr: 'questions', unitEn: 'questions' },
 };
 
 /** One manche as configured in the builder. */
@@ -83,6 +87,8 @@ export interface CustomRound {
   count: number;
   /** The chosen country + level — required for `regions` rounds. */
   region?: CustomRegionPick;
+  /** The chosen quiz id (src/data/challenges.ts) — required for `challenge` rounds. */
+  challengeId?: string;
 }
 
 /** Per-round config persisted in `game_data.rounds` (read by the game screens). */
@@ -93,6 +99,8 @@ export interface CustomRoundCfg {
   count?: number;
   /** `regions` rounds: the country + level both players play this round. */
   region?: CustomRegionPick;
+  /** `challenge` rounds: the quiz both players answer this round. */
+  challengeId?: string;
 }
 
 /** Shape of the `game_data` JSONB a custom match stores. */
@@ -116,11 +124,15 @@ export const modeKeyLabel = (key: OnlineModeKey, lang: Language): string =>
   lang === 'fr' ? ONLINE_MODES[key].fr : ONLINE_MODES[key].en;
 
 let roundCounter = 0;
-export const newCustomRound = (key: OnlineModeKey, region?: CustomRegionPick): CustomRound => ({
+export const newCustomRound = (
+  key: OnlineModeKey,
+  extra?: { region?: CustomRegionPick; challengeId?: string },
+): CustomRound => ({
   id: `cr${roundCounter++}`,
   key,
   count: ONLINE_MODES[key].defaultCount,
-  ...(region ? { region } : {}),
+  ...(extra?.region ? { region: extra.region } : {}),
+  ...(extra?.challengeId ? { challengeId: extra.challengeId } : {}),
 });
 
 /** Builds a single Rankle session (themes + countries) for one round. */
@@ -163,6 +175,7 @@ export function buildCustomGameData(rounds: CustomRound[], seed: number): Custom
       ...(meta.questionType ? { questionType: meta.questionType } : {}),
       ...(meta.configurable ? { count: r.count } : {}),
       ...(r.region ? { region: r.region } : {}),
+      ...(r.challengeId ? { challengeId: r.challengeId } : {}),
     });
     perRoundCounts[i + 1] = meta.configurable ? r.count : meta.defaultCount;
     if (meta.questionType) questionTypes[i + 1] = meta.questionType;

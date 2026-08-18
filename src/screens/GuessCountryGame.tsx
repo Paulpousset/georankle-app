@@ -1,5 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import {
+  AccessibilityInfo,
+  Animated,
+  Easing,
   StyleSheet,
   Text,
   View,
@@ -93,6 +96,120 @@ function TileHint({ hint }: { hint: string }) {
   );
 }
 
+/** react-native-web has no native animated module — silence the fallback warning. */
+const NATIVE_ANIM = Platform.OS !== 'web';
+
+/** One-shot reduced-motion probe: no pop-in cascade for users who opted out. */
+let reduceMotionCache: boolean | null = null;
+function useReducedMotion(): boolean {
+  const [rm, setRm] = useState(reduceMotionCache ?? false);
+  useEffect(() => {
+    if (reduceMotionCache != null) return;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((v) => {
+        reduceMotionCache = v;
+        setRm(v);
+      })
+      .catch(() => {});
+  }, []);
+  return rm;
+}
+
+/**
+ * One category tile that pops in with a stagger (Wordle-style reveal).
+ * `animate` false → rendered at rest instantly (older cards, reduced motion).
+ */
+function RevealTile({
+  index,
+  animate,
+  style,
+  children,
+}: {
+  index: number;
+  animate: boolean;
+  style: any;
+  children: React.ReactNode;
+}) {
+  // Lazy `useState` (pas un ref) : valeur stable, lisible pendant le rendu.
+  const [anim] = useState(() => new Animated.Value(animate ? 0 : 1));
+
+  useEffect(() => {
+    if (!animate) return;
+    const a = Animated.timing(anim, {
+      toValue: 1,
+      duration: 280,
+      delay: index * 55,
+      easing: Easing.out(Easing.back(2)),
+      useNativeDriver: NATIVE_ANIM,
+    });
+    a.start();
+    return () => a.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <Animated.View
+      style={[
+        style,
+        {
+          opacity: anim.interpolate({
+            inputRange: [0, 0.5, 1],
+            outputRange: [0, 1, 1],
+            extrapolate: 'clamp',
+          }),
+          transform: [
+            { scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.55, 1] }) },
+            { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [14, 0], extrapolate: 'clamp' }) },
+          ],
+        },
+      ]}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
+/** The guess card itself slides up as its tiles start revealing. */
+function RevealCard({
+  animate,
+  style,
+  children,
+}: {
+  animate: boolean;
+  style: any;
+  children: React.ReactNode;
+}) {
+  // Lazy `useState` (pas un ref) : valeur stable, lisible pendant le rendu.
+  const [anim] = useState(() => new Animated.Value(animate ? 0 : 1));
+
+  useEffect(() => {
+    if (!animate) return;
+    const a = Animated.timing(anim, {
+      toValue: 1,
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: NATIVE_ANIM,
+    });
+    a.start();
+    return () => a.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <Animated.View
+      style={[
+        style,
+        {
+          opacity: anim,
+          transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }],
+        },
+      ]}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
 interface Props {
   onBackToMenu: () => void;
   user?: User | null;
@@ -158,6 +275,7 @@ export default function GuessCountryGame({
   const isOnline = !!matchData;
   const isPlayer1 = matchData?.player1_id === user?.id;
   const width = useStageWidth();
+  const reducedMotion = useReducedMotion();
 
   const [target, setTarget] = useState<{ country: any; stats: any }>(() => {
     if (dailySeed != null) {
@@ -526,11 +644,13 @@ export default function GuessCountryGame({
               </Text>
               <View style={[styles.previewCard, { backgroundColor: cardBg, borderColor: border }]}>
                 <View style={styles.tileGrid}>
-                  {CATEGORIES.map((cat) => {
+                  {CATEGORIES.map((cat, ci) => {
                     const Icon = CAT_ICONS[cat.id];
                     return (
-                      <View
+                      <RevealTile
                         key={cat.id}
+                        index={ci}
+                        animate={!reducedMotion}
                         style={[styles.tile, styles.tilePreview, { width: tileW }]}
                       >
                         <View style={styles.tileEmoji} {...a11yHidden}>
@@ -545,7 +665,7 @@ export default function GuessCountryGame({
                           {language === 'fr' ? cat.fr : cat.en}
                         </Text>
                         <Text style={styles.tileValue}>?</Text>
-                      </View>
+                      </RevealTile>
                     );
                   })}
                 </View>
@@ -556,9 +676,12 @@ export default function GuessCountryGame({
           {/* ── Guess cards ── */}
           {guesses.map((g, i) => {
             const guessNum = guesses.length - i;
+            // Seule la carte qui vient d'apparaître (la plus récente) s'anime.
+            const animate = !reducedMotion && i === 0;
             return (
-              <View
-                key={i}
+              <RevealCard
+                key={g.country.cca3}
+                animate={animate}
                 style={[
                   styles.guessCard,
                   {
@@ -586,12 +709,14 @@ export default function GuessCountryGame({
 
                 {/* 3×3 category grid */}
                 <View style={styles.tileGrid}>
-                  {CATEGORIES.map((cat) => {
+                  {CATEGORIES.map((cat, ci) => {
                     const cell = g.comparison[cat.id];
                     const Icon = CAT_ICONS[cat.id];
                     return (
-                      <View
+                      <RevealTile
                         key={cat.id}
+                        index={ci}
+                        animate={animate}
                         style={[
                           styles.tile,
                           {
@@ -619,11 +744,11 @@ export default function GuessCountryGame({
                           </Text>
                         )}
                         {cell?.hint && <TileHint hint={cell.hint} />}
-                      </View>
+                      </RevealTile>
                     );
                   })}
                 </View>
-              </View>
+              </RevealCard>
             );
           })}
 

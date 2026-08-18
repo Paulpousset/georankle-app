@@ -31,7 +31,7 @@ import { getFlagUrl, prefetchFlags } from '../lib/flags';
 import { getEfficiencyColor, getRankColor } from '../lib/ranks';
 import { pickLabel, tr } from '../i18n';
 import { commonStyles as styles } from '../theme/commonStyles';
-import { getColors } from '../theme/colors';
+import { getColors, RANK_COLORS } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { ThemeInfoModal } from '../components/ThemeInfoModal';
 import { a11yButton, announce, a11yHidden, ICON_HIT_SLOP } from '../lib/a11y';
@@ -81,6 +81,37 @@ function gridCell(mineRank: number, optimalRank: number): string {
 }
 
 /**
+ * Conteneur des 8 cartes de thème.
+ *
+ * Web grand écran : une simple View en deux colonnes — les 4 lignes tiennent
+ * toujours, rien ne peut déborder sur la carte du pays.
+ * Compact (natif + web mobile) : une ScrollView, parce que 8 cartes à hauteur
+ * fixe dépassent l'écran d'un iPhone SE — sans elle la 8ᵉ carte est coupée.
+ */
+function ThemesGrid({
+  wide,
+  maxWidth,
+  style,
+  children,
+}: {
+  wide: boolean;
+  maxWidth: number;
+  style: React.ComponentProps<typeof View>['style'];
+  children: React.ReactNode;
+}) {
+  if (wide) return <View style={style}>{children}</View>;
+  return (
+    <ScrollView
+      style={{ flex: 1, width: '100%', maxWidth }}
+      contentContainerStyle={style}
+      showsVerticalScrollIndicator={false}
+    >
+      {children}
+    </ScrollView>
+  );
+}
+
+/**
  * Classic GeoRankle: assign each of 8 countries to the best remaining theme,
  * then compare your total against the optimal assignment.
  */
@@ -121,6 +152,17 @@ export function ClassicGame({
   const [showThemeInfo, setShowThemeInfo] = useState<Theme | null>(null);
 
   const rngRef = useRef<(() => number) | null>(null);
+
+  // Web grand écran : la colonne de jeu fait 900 px (DesktopStage), on y met
+  // deux thèmes par ligne et on respire. Sur natif/mobile, rien ne change.
+  const wide = !isMobile;
+  /** Hauteur figée d'une carte de thème : la carte ne doit PAS grandir quand
+   *  elle est choisie, sinon la colonne déborde sur la carte du pays. */
+  const THEME_CARD_HEIGHT = wide ? 64 : 58;
+  /** Largeur du bloc « pays attribué + rang », réservée dès le départ. */
+  const SELECTION_SLOT_WIDTH = wide ? 96 : 76;
+  /** Largeur utile de la colonne de jeu. */
+  const CONTENT_MAX_WIDTH = wide ? 860 : 500;
 
   useEffect(() => {
     // Review mode: state is already seeded from reviewData; skip the live game.
@@ -671,7 +713,15 @@ export function ClassicGame({
         <View style={{ flex: 1 }}>
           {!gameOver && currentCountry ? (
             <View
-              style={{ flex: 1, paddingHorizontal: 15, paddingVertical: 10, alignItems: 'center' }}
+              style={{
+                flex: 1,
+                paddingHorizontal: 15,
+                paddingVertical: 10,
+                alignItems: 'center',
+                // Large : pays + grille forment un bloc centré (sinon la grille
+                // se centre seule et laisse un trou sous la carte du pays).
+                justifyContent: wide ? 'center' : 'flex-start',
+              }}
             >
               {!isMobile ? (
                 <View
@@ -680,9 +730,9 @@ export function ClassicGame({
                     !isDarkMode && styles.countryCardLight,
                     {
                       padding: 15,
-                      marginBottom: 10,
+                      marginBottom: 14,
                       width: '100%',
-                      maxWidth: 500,
+                      maxWidth: CONTENT_MAX_WIDTH,
                       alignItems: 'center',
                     },
                   ]}
@@ -750,15 +800,24 @@ export function ClassicGame({
                 </View>
               )}
 
-              <View
+              <ThemesGrid
+                wide={wide}
+                maxWidth={CONTENT_MAX_WIDTH}
                 style={[
                   styles.themesGrid,
                   {
-                    flex: 1,
-                    justifyContent: !isMobile ? 'center' : 'flex-start',
-                    gap: !isMobile ? 8 : 6,
                     width: '100%',
-                    maxWidth: 500,
+                    maxWidth: CONTENT_MAX_WIDTH,
+                    gap: wide ? 12 : 6,
+                    ...(wide
+                      ? {
+                          // Deux colonnes : 8 thèmes tiennent en 4 lignes, la
+                          // colonne ne peut plus mordre sur la carte du pays.
+                          flexDirection: 'row' as const,
+                          flexWrap: 'wrap' as const,
+                          justifyContent: 'space-between' as const,
+                        }
+                      : { justifyContent: 'flex-start' as const, paddingBottom: 8 }),
                   },
                 ]}
               >
@@ -775,7 +834,10 @@ export function ClassicGame({
                         {
                           padding: 10,
                           borderRadius: 12,
-                          minHeight: 45,
+                          // Hauteur FIGÉE : la carte réserve dès le départ la place
+                          // du pays attribué, elle ne grandit donc pas au clic.
+                          height: THEME_CARD_HEIGHT,
+                          width: wide ? '48.5%' : '100%',
                           borderLeftWidth: 5,
                           borderLeftColor: isUsed
                             ? getRankColor(selection.rank)
@@ -812,10 +874,10 @@ export function ClassicGame({
                         )}
                       >
                         <View style={{ marginRight: 10 }}>
-                          <ThemeIcon id={theme.id} color={c.accent} size={20} />
+                          <ThemeIcon id={theme.id} color={c.accent} size={wide ? 22 : 20} />
                         </View>
                         <Text
-                          style={[themeStyles.themeLabel, { fontSize: 14, flex: 1 }]}
+                          style={[themeStyles.themeLabel, { fontSize: wide ? 15 : 14, flex: 1 }]}
                           numberOfLines={1}
                         >
                           {pickLabel(theme.label, language)}
@@ -836,28 +898,32 @@ export function ClassicGame({
                         />
                       </TouchableOpacity>
 
-                      {isUsed && (
-                        <View style={styles.selectionInfo}>
-                          <Text
-                            style={[themeStyles.selectionCountry, { fontSize: 10 }]}
-                            numberOfLines={1}
-                          >
-                            {selection.countryName}
-                          </Text>
-                          <Text
-                            style={[
-                              styles.selectionRank,
-                              { fontSize: 18, color: getRankColor(selection.rank) },
-                            ]}
-                          >
-                            #{selection.rank}
-                          </Text>
-                        </View>
-                      )}
+                      {/* Emplacement réservé en permanence (même vide) : c'est ce
+                          qui empêche la carte de changer de gabarit au clic. */}
+                      <View style={[styles.selectionInfo, { width: SELECTION_SLOT_WIDTH }]}>
+                        {isUsed && (
+                          <>
+                            <Text
+                              style={[themeStyles.selectionCountry, { fontSize: wide ? 11 : 10 }]}
+                              numberOfLines={1}
+                            >
+                              {selection.countryName}
+                            </Text>
+                            <Text
+                              style={[
+                                styles.selectionRank,
+                                { fontSize: wide ? 20 : 18, color: getRankColor(selection.rank) },
+                              ]}
+                            >
+                              #{selection.rank}
+                            </Text>
+                          </>
+                        )}
+                      </View>
                     </View>
                   );
                 })}
-              </View>
+              </ThemesGrid>
             </View>
           ) : (
             <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 12 }}>
@@ -869,19 +935,26 @@ export function ClassicGame({
                     padding: 0,
                     overflow: 'hidden',
                     width: '100%',
-                    maxWidth: 800,
+                    maxWidth: wide ? 868 : 800,
                     alignSelf: 'center',
+                    // winCard centre ses enfants : sans ça le ScrollView se
+                    // réduit à la largeur de son contenu (~500 px) et le récap
+                    // reste étroit au milieu d'une carte large.
+                    alignItems: 'stretch',
                   },
                 ]}
               >
                 <ScrollView
-                  contentContainerStyle={{ padding: 20, paddingBottom: 16 }}
+                  contentContainerStyle={{ padding: wide ? 26 : 20, paddingBottom: 16 }}
                   showsVerticalScrollIndicator={false}
                 >
                   <View style={{ alignItems: 'center', marginBottom: 18 }}>
-                    <Trophy color={c.accent} size={44} {...a11yHidden} />
+                    <Trophy color={c.accent} size={wide ? 52 : 44} {...a11yHidden} />
                     <ScoreText
-                      style={[themeStyles.winTitle, { fontSize: 28, marginTop: 8, marginBottom: 16 }]}
+                      style={[
+                        themeStyles.winTitle,
+                        { fontSize: wide ? 34 : 28, marginTop: 8, marginBottom: 16 },
+                      ]}
                     >
                       {tr(language, 'SESSION TERMINÉE', 'SESSION FINISHED')}
                     </ScoreText>
@@ -891,13 +964,15 @@ export function ClassicGame({
                         flexDirection: 'row',
                         alignItems: 'center',
                         alignSelf: 'stretch',
-                        justifyContent: 'center',
+                        // Large : les deux chiffres occupent la carte au lieu de
+                        // se serrer au milieu d'un bloc de 868 px.
+                        justifyContent: wide ? 'space-evenly' : 'center',
                         backgroundColor: c.surface,
                         borderRadius: 16,
                         borderWidth: 1,
                         borderColor: c.border,
-                        paddingVertical: 16,
-                        gap: 24,
+                        paddingVertical: wide ? 20 : 16,
+                        gap: wide ? 0 : 24,
                       }}
                     >
                       <View style={{ alignItems: 'center' }}>
@@ -950,13 +1025,13 @@ export function ClassicGame({
                   <Text
                     style={[
                       themeStyles.summaryHeaderText,
-                      { fontSize: 11, marginBottom: 10, marginLeft: 4 },
+                      { fontSize: wide ? 13 : 11, marginBottom: 10, marginLeft: 4 },
                     ]}
                   >
                     {tr(language, 'DÉTAIL PAR THÈME', 'BREAKDOWN BY THEME')}
                   </Text>
 
-                  <View style={{ gap: 8 }}>
+                  <View style={{ gap: wide ? 12 : 8 }}>
                     {sessionThemes.map((theme) => {
                       const selection = selections[theme.id];
                       const optimal = optimalSelections[theme.id];
@@ -974,8 +1049,8 @@ export function ClassicGame({
                           style={{
                             backgroundColor: c.surface,
                             borderRadius: 12,
-                            padding: 12,
-                            borderLeftWidth: 4,
+                            padding: wide ? 16 : 12,
+                            borderLeftWidth: wide ? 5 : 4,
                             borderLeftColor: getRankColor(selection.rank),
                           }}
                         >
@@ -984,32 +1059,61 @@ export function ClassicGame({
                               flexDirection: 'row',
                               alignItems: 'center',
                               gap: 8,
-                              marginBottom: 10,
+                              marginBottom: wide ? 12 : 10,
                             }}
                           >
-                            <ThemeIcon id={theme.id} color={c.accent} size={18} />
+                            <ThemeIcon id={theme.id} color={c.accent} size={wide ? 22 : 18} />
                             <Text
-                              style={[themeStyles.rowThemeLabel, { fontSize: 15, flex: 1 }]}
+                              style={[
+                                themeStyles.rowThemeLabel,
+                                { fontSize: wide ? 18 : 15, flex: 1 },
+                              ]}
                               numberOfLines={1}
                             >
                               {pickLabel(theme.label, language)}
                             </Text>
+                            {/* Écart au choix optimal, lisible d'un coup d'œil. */}
+                            <Text
+                              style={{
+                                fontFamily: FONTS.monoBold,
+                                fontSize: wide ? 13 : 11,
+                                color:
+                                  selection.rank <= optimal.rank
+                                    ? RANK_COLORS.excellent
+                                    : c.textMuted,
+                              }}
+                            >
+                              {selection.rank <= optimal.rank
+                                ? tr(language, 'PARFAIT', 'PERFECT')
+                                : `+${selection.rank - optimal.rank}`}
+                            </Text>
                           </View>
 
-                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'stretch' }}>
                             <View style={{ flex: 1 }}>
-                              <Text style={[themeStyles.summaryHeaderText, { marginBottom: 6 }]}>
+                              <Text
+                                style={[
+                                  themeStyles.summaryHeaderText,
+                                  { marginBottom: 6, fontSize: wide ? 12 : undefined },
+                                ]}
+                              >
                                 {tr(language, 'VOTRE CHOIX', 'YOUR CHOICE')}
                               </Text>
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                              <View
+                                style={{ flexDirection: 'row', alignItems: 'center', gap: wide ? 12 : 8 }}
+                              >
                                 <Image
                                   source={{ uri: getFlagUrl(selection.cca3) }}
-                                  style={{ width: 26, height: 18, borderRadius: 3 }}
+                                  style={
+                                    wide
+                                      ? { width: 40, height: 27, borderRadius: 4 }
+                                      : { width: 26, height: 18, borderRadius: 3 }
+                                  }
                                 />
                                 <Text
                                   style={{
                                     fontFamily: FONTS.heading,
-                                    fontSize: 13,
+                                    fontSize: wide ? 18 : 13,
                                     color: c.text,
                                     flex: 1,
                                   }}
@@ -1020,7 +1124,7 @@ export function ClassicGame({
                                 <Text
                                   style={{
                                     fontFamily: FONTS.monoBold,
-                                    fontSize: 16,
+                                    fontSize: wide ? 24 : 16,
                                     color: getRankColor(selection.rank),
                                   }}
                                 >
@@ -1034,23 +1138,34 @@ export function ClassicGame({
                                 width: 1,
                                 alignSelf: 'stretch',
                                 backgroundColor: c.border,
-                                marginHorizontal: 12,
+                                marginHorizontal: wide ? 20 : 12,
                               }}
                             />
 
                             <View style={{ flex: 1 }}>
-                              <Text style={[themeStyles.summaryHeaderText, { marginBottom: 6 }]}>
-                                {tr(language, 'OPTIMAL', 'OPTIMAL')}
+                              <Text
+                                style={[
+                                  themeStyles.summaryHeaderText,
+                                  { marginBottom: 6, fontSize: wide ? 12 : undefined },
+                                ]}
+                              >
+                                {tr(language, 'MEILLEUR CHOIX', 'BEST PICK')}
                               </Text>
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                              <View
+                                style={{ flexDirection: 'row', alignItems: 'center', gap: wide ? 12 : 8 }}
+                              >
                                 <Image
                                   source={{ uri: getFlagUrl(optimal.cca3) }}
-                                  style={{ width: 26, height: 18, borderRadius: 3, opacity: 0.85 }}
+                                  style={
+                                    wide
+                                      ? { width: 40, height: 27, borderRadius: 4, opacity: 0.9 }
+                                      : { width: 26, height: 18, borderRadius: 3, opacity: 0.85 }
+                                  }
                                 />
                                 <Text
                                   style={{
-                                    fontFamily: FONTS.mono,
-                                    fontSize: 12,
+                                    fontFamily: wide ? FONTS.heading : FONTS.mono,
+                                    fontSize: wide ? 18 : 12,
                                     color: c.textMuted,
                                     flex: 1,
                                   }}
@@ -1061,7 +1176,7 @@ export function ClassicGame({
                                 <Text
                                   style={{
                                     fontFamily: FONTS.monoBold,
-                                    fontSize: 16,
+                                    fontSize: wide ? 24 : 16,
                                     color: c.textMuted,
                                   }}
                                 >

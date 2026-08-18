@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, ScrollView, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { Animated, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import {
@@ -55,11 +55,48 @@ import { OnboardingTutorial, ONBOARDING_STEPS, type TutorialRect } from '../comp
 import { ModeIntroCard } from '../components/ModeIntroModal';
 import { getHasSeenTutorial, setHasSeenTutorial } from '../lib/tutorial';
 import { useStageWidth } from '../lib/stage';
+import { hoverLift } from '../lib/webHover';
 
 export type PlayType = 'solo' | 'local' | 'online';
 
 /** Flame accent for the daily-challenge hero + streak badge. */
 const DAILY_FLAME = '#e8772e';
+
+/** Colonne de contenu du menu sur téléphone — la mise en page de référence. */
+const MENU_COL = 400;
+/**
+ * Colonne de contenu sur ordinateur (web). Le menu téléphone tient dans 400 px :
+ * sur un écran d'ordinateur, cela laissait une colonne étroite au milieu du vide,
+ * avec deux tuiles par ligne et six lignes à faire défiler. On élargit la colonne
+ * et on passe à trois tuiles Solo / deux cartes En Ligne par ligne.
+ *
+ * 720 tient dans la scène (STAGE_MAX_WIDTH 900 moins les marges du ScrollView)
+ * et reste assez étroit pour que les cartes gardent des proportions d'app.
+ */
+const MENU_COL_WIDE = 720;
+/** Gouttière entre deux tuiles/cartes de la grille élargie. */
+const MENU_GRID_GAP = 14;
+
+/**
+ * Géométrie de la grille du menu. Web uniquement : le natif (téléphone comme
+ * tablette) garde la mise en page téléphone au pixel près.
+ */
+function useMenuGrid() {
+  const stageWidth = useStageWidth();
+  const wide = Platform.OS === 'web' && stageWidth >= 780;
+  const col = wide ? MENU_COL_WIDE : MENU_COL;
+  return {
+    wide,
+    /** Largeur max de la colonne de contenu (bandeaux, grille, onglets). */
+    col,
+    /** Grandes cartes seules d'un onglet (Local, En Ligne verrouillé) : inutile de les étirer. */
+    cardCol: wide ? 480 : MENU_COL,
+    /** Tuile Solo : 3 par ligne en grand, 2 sinon. */
+    tile: wide ? (col - MENU_GRID_GAP * 2) / 3 : ('48.4%' as const),
+    /** Carte En Ligne : 2 par ligne en grand, pleine largeur sinon. */
+    card: wide ? (col - MENU_GRID_GAP) / 2 : ('100%' as const),
+  };
+}
 
 interface ModeCardProps {
   icon: ComponentType<{ color: string; size: number }>;
@@ -79,6 +116,8 @@ interface ModeCardProps {
 function ModeCard({ icon: Icon, accent, tint, title, subtitle, isDarkMode, onPress, onLeaderboard, onHelp, notify = false }: ModeCardProps) {
   const c = getColors(isDarkMode);
   const { language } = useLanguage();
+  // Deux cartes par ligne sur ordinateur, pleine largeur sur téléphone.
+  const { card: cardWidth } = useMenuGrid();
   const startHint = tr(language, 'Démarrer ce mode', 'Start this mode');
   const cardStyle = [
     styles.countryCard,
@@ -115,7 +154,12 @@ function ModeCard({ icon: Icon, accent, tint, title, subtitle, isDarkMode, onPre
 
   if (!onLeaderboard && !onHelp) {
     return (
-      <TouchableOpacity onPress={onPress} style={cardStyle} {...a11yButton(title, { hint: startHint })}>
+      <TouchableOpacity
+        onPress={onPress}
+        style={[...cardStyle, { width: cardWidth }]}
+        {...a11yButton(title, { hint: startHint })}
+        {...hoverLift}
+      >
         {inner}
         <NotificationDot show={notify} />
       </TouchableOpacity>
@@ -134,8 +178,13 @@ function ModeCard({ icon: Icon, accent, tint, title, subtitle, isDarkMode, onPre
   };
 
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-      <TouchableOpacity onPress={onPress} style={[...cardStyle, { flex: 1 }]} {...a11yButton(title, { hint: startHint })}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, width: cardWidth }}>
+      <TouchableOpacity
+        onPress={onPress}
+        style={[...cardStyle, { flex: 1 }]}
+        {...a11yButton(title, { hint: startHint })}
+        {...hoverLift}
+      >
         {inner}
         <NotificationDot show={notify} />
       </TouchableOpacity>
@@ -208,6 +257,8 @@ interface ModeTileProps {
 function ModeTile({ icon: Icon, accent, tint, title, subtitle, isDarkMode, onPress, onHelp }: ModeTileProps) {
   const c = getColors(isDarkMode);
   const { language } = useLanguage();
+  // Trois tuiles par ligne sur ordinateur, deux sur téléphone.
+  const { tile: tileWidth } = useMenuGrid();
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -215,7 +266,7 @@ function ModeTile({ icon: Icon, accent, tint, title, subtitle, isDarkMode, onPre
         styles.countryCard,
         !isDarkMode && styles.countryCardLight,
         {
-          width: '48.4%',
+          width: tileWidth,
           padding: 13,
           alignItems: 'flex-start',
           gap: 8,
@@ -224,6 +275,7 @@ function ModeTile({ icon: Icon, accent, tint, title, subtitle, isDarkMode, onPre
         },
       ]}
       {...a11yButton(title, { hint: tr(language, 'Démarrer ce mode', 'Start this mode') })}
+      {...hoverLift}
     >
       {onHelp && (
         <TouchableOpacity
@@ -275,6 +327,7 @@ function PlayTabs({
 }) {
   const c = getColors(isDarkMode);
   const { language } = useLanguage();
+  const { col: menuCol } = useMenuGrid();
   const [w, setW] = useState(0);
   const [slideX] = useState(() => new Animated.Value(0));
   const thumbColor = isDarkMode ? PALETTE.chartBlue : PALETTE.sepia;
@@ -298,7 +351,7 @@ function PlayTabs({
       onLayout={(e) => setW(e.nativeEvent.layout.width - 8)}
       style={{
         width: '100%',
-        maxWidth: 400,
+        maxWidth: menuCol,
         flexDirection: 'row',
         borderWidth: 1.5,
         borderColor: c.border,
@@ -432,6 +485,9 @@ export function MainMenu({
   // Decorative globe sizing — planet rising behind the title.
   const windowWidth = useStageWidth();
   const globeSize = Math.min(windowWidth * 0.7, 300);
+
+  // Colonne de contenu + nombre de tuiles par ligne (élargi sur ordinateur).
+  const grid = useMenuGrid();
 
   // Tab index mapping: `playType` stays lifted in App (back gesture resets it
   // to null, which shows the default Solo tab again).
@@ -676,7 +732,7 @@ export function MainMenu({
           <View
             style={{
               width: '100%',
-              maxWidth: 400,
+              maxWidth: grid.col,
               marginBottom: 18,
               borderRadius: 18,
               borderWidth: 2,
@@ -775,7 +831,7 @@ export function MainMenu({
             !isDarkMode && styles.countryCardLight,
             {
               width: '100%',
-              maxWidth: 400,
+              maxWidth: grid.col,
               padding: 18,
               marginBottom: 18,
               flexDirection: 'row',
@@ -834,7 +890,7 @@ export function MainMenu({
             !isDarkMode && styles.countryCardLight,
             {
               width: '100%',
-              maxWidth: 400,
+              maxWidth: grid.col,
               padding: 18,
               marginBottom: 18,
               flexDirection: 'row',
@@ -911,7 +967,7 @@ export function MainMenu({
 
         {/* Solo / Local / Online tab bar — replaces the old play-type chooser
             screen, so every mode list is one tap away from launch. */}
-        <View ref={modesRef} style={{ width: '100%', maxWidth: 400, alignItems: 'center', marginBottom: 16 }}>
+        <View ref={modesRef} style={{ width: '100%', maxWidth: grid.col, alignItems: 'center', marginBottom: 16 }}>
           <PlayTabs
             index={tabIndex}
             onSelect={selectTab}
@@ -926,10 +982,14 @@ export function MainMenu({
               style={{
                 flexDirection: 'row',
                 flexWrap: 'wrap',
-                justifyContent: 'space-between',
-                rowGap: 11,
+                // En grand, les tuiles ont une largeur fixe et une gouttière
+                // constante : « space-between » enverrait les deux tuiles d'une
+                // dernière ligne incomplète aux deux extrémités.
+                justifyContent: grid.wide ? 'flex-start' : 'space-between',
+                columnGap: grid.wide ? MENU_GRID_GAP : 0,
+                rowGap: grid.wide ? MENU_GRID_GAP : 11,
                 width: '100%',
-                maxWidth: 400,
+                maxWidth: grid.col,
               }}
             >
               <ModeTile
@@ -1052,7 +1112,7 @@ export function MainMenu({
             style={[
               styles.countryCard,
               !isDarkMode && styles.countryCardLight,
-              { width: '100%', maxWidth: 400, padding: 22, alignItems: 'center', gap: 12 },
+              { width: '100%', maxWidth: grid.cardCol, padding: 22, alignItems: 'center', gap: 12 },
             ]}
           >
             <View
@@ -1112,7 +1172,7 @@ export function MainMenu({
             style={[
               styles.countryCard,
               !isDarkMode && styles.countryCardLight,
-              { width: '100%', maxWidth: 400, padding: 22, alignItems: 'center', gap: 12 },
+              { width: '100%', maxWidth: grid.cardCol, padding: 22, alignItems: 'center', gap: 12 },
             ]}
           >
             <View
@@ -1187,7 +1247,7 @@ export function MainMenu({
           </View>
         ) : (
           <>
-            <View style={{ gap: 12, width: '100%', maxWidth: 400 }}>
+            <View style={{ gap: 12, width: '100%', maxWidth: grid.col }}>
               {/* Ranked mode — highlighted card */}
               <TouchableOpacity
                 onPress={onPlayRanked}
@@ -1291,6 +1351,18 @@ export function MainMenu({
               </TouchableOpacity>
 
               <View style={{ height: 1, backgroundColor: c.border, opacity: 0.5, marginVertical: 2 }} />
+
+              {/* Les modes jouables en ligne : deux par ligne sur ordinateur
+                  (useMenuGrid), une colonne sur téléphone. */}
+              <View
+                style={{
+                  flexDirection: grid.wide ? 'row' : 'column',
+                  flexWrap: 'wrap',
+                  columnGap: MENU_GRID_GAP,
+                  rowGap: 12,
+                  width: '100%',
+                }}
+              >
 
               <ModeCard
                 icon={Globe}
@@ -1404,6 +1476,7 @@ export function MainMenu({
                 onLeaderboard={() => onOpenOnlineModeLeaderboard('streak', PALETTE.sand)}
                 notify={incomingInviteMode === 'streak'}
               />
+              </View>
             </View>
           </>
         )}

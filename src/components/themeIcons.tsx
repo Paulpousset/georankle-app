@@ -36,6 +36,18 @@ import {
   AtlasPhone,
   AtlasPlane,
   AtlasPassport,
+  AtlasFootball,
+  AtlasBasketball,
+  AtlasRugby,
+  AtlasRings,
+  AtlasMonument,
+  AtlasMountain,
+  AtlasThermometer,
+  AtlasHelmet,
+  AtlasTakeoff,
+  AtlasBallot,
+  AtlasFlask,
+  AtlasPlug,
   type AtlasIconProps,
 } from './AtlasIcons';
 
@@ -71,6 +83,18 @@ export const THEME_ICONS: Record<string, IconComp> = {
   mobile_subscriptions: AtlasPhone,
   tourist_arrivals: AtlasPlane,
   passport_power: AtlasPassport,
+  fifa_ranking: AtlasFootball,
+  fiba_ranking: AtlasBasketball,
+  rugby_ranking: AtlasRugby,
+  olympic_medals: AtlasRings,
+  world_heritage: AtlasMonument,
+  highest_point: AtlasMountain,
+  avg_temperature: AtlasThermometer,
+  armed_forces: AtlasHelmet,
+  air_passengers: AtlasTakeoff,
+  women_parliament: AtlasBallot,
+  rd_expenditure: AtlasFlask,
+  electric_consumption: AtlasPlug,
 };
 
 /** Renders the line icon for a ranking theme id (nothing if the id is unknown). */

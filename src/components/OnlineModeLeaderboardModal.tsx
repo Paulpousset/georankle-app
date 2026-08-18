@@ -9,6 +9,7 @@ import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { tr } from '../i18n';
 import { a11yButton, ICON_HIT_SLOP } from '../lib/a11y';
+import { DesktopStage } from './DesktopStage';
 import type { MatchMode } from '../types';
 
 const MODE_LABELS: Record<MatchMode, [string, string]> = {
@@ -42,6 +43,9 @@ export function OnlineModeLeaderboardModal({ mode, accent, onClose, onOpenPlayer
     <Modal visible={!!mode} animationType="slide" onRequestClose={onClose}>
       <SafeAreaProvider>
         <View style={{ flex: 1, backgroundColor: c.background }}>
+          {/* Colonne centrée sur grand écran : la modale, sortie par un portail,
+              n'hérite pas du DesktopStage de App. */}
+          <DesktopStage>
           <SafeAreaView style={{ flex: 1 }}>
             <View
               style={{
@@ -100,6 +104,7 @@ export function OnlineModeLeaderboardModal({ mode, accent, onClose, onOpenPlayer
               />
             )}
           </SafeAreaView>
+          </DesktopStage>
         </View>
       </SafeAreaProvider>
     </Modal>

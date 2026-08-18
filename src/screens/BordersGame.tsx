@@ -35,9 +35,9 @@ import {
   BORDERS_EXTRA_STEPS,
   BORDERS_MAX_MISSES,
 } from '../lib/borders';
-import { getMapPalette } from '../theme/mapPalette';
+import { getMapPalette, type MapPalette } from '../theme/mapPalette';
 import { buildBordersEarthHtml } from '../lib/globe3d/buildEarthHtml';
-import { useGlobe3d } from '../lib/globe3d/useGlobe3d';
+import { skinMapPalette, useGameGlobeSkin } from '../lib/globeSkin';
 import { getFlagUrl } from '../lib/flags';
 import { normalizeRoundScore } from '../lib/score';
 import { track } from '../lib/analytics';
@@ -98,8 +98,7 @@ type Highlight = {
  * (gold), each with a floating name tag. The player still types below — this is
  * pure visualization, driven from React via `window.setHighlights([...], refit)`.
  */
-function buildBordersGlobeHtml(isDark: boolean): string {
-  const pal = getMapPalette(isDark);
+function buildBordersGlobeHtml(isDark: boolean, pal: MapPalette = getMapPalette(isDark)): string {
   const polys = JSON.stringify(WORLD_POLYGONS);
   const coords = JSON.stringify(COORDS);
   return `<!DOCTYPE html>
@@ -429,19 +428,26 @@ export default function BordersGame({
   const scrollRef = useRef<ScrollView>(null);
   const [globeReady, setGlobeReady] = useState(false);
   // 3D WebGL globe behind the globe_3d flag; legacy Canvas-2D stays the fallback.
-  const globe3d = useGlobe3d();
+  // The shop globe skins the sky, ocean and atmosphere here, never the land:
+  // only the countries in play may ever be drawn (the puzzle must not be
+  // readable off the map), so this globe stays a bare tinted planet — hence no
+  // rig either, which also spares it the ~1.2 MB continent-relief GLB.
+  const globeSkin = useGameGlobeSkin({ withRig: false });
   const globeHtml = useMemo(() => {
-    if (globe3d.status === 'on') {
+    if (globeSkin.status === 'pending') return null;
+    const pal = skinMapPalette(getMapPalette(isDarkMode), globeSkin.key);
+    if (globeSkin.threeSrc) {
       return buildBordersEarthHtml({
-        threeSrc: globe3d.threeSrc,
+        threeSrc: globeSkin.threeSrc,
         isDark: isDarkMode,
-        pal: getMapPalette(isDarkMode),
+        pal,
         polygons: WORLD_POLYGONS,
         coords: COORDS,
+        skin: globeSkin.skin,
       });
     }
-    return buildBordersGlobeHtml(isDarkMode);
-  }, [globe3d, isDarkMode]);
+    return buildBordersGlobeHtml(isDarkMode, pal);
+  }, [globeSkin, isDarkMode]);
 
   /** One shortest chain start→target — revealed once the run is over. */
   const idealPath = useMemo(
@@ -781,8 +787,16 @@ export default function BordersGame({
         </Text>
 
         {/* Globe — the chain painted on the world (drag to rotate, pinch to zoom). */}
-        <View style={[styles.globeWrap, { borderColor: c.border, backgroundColor: getMapPalette(isDarkMode).bg }]}>
-          {globe3d.status !== 'pending' && (
+        <View
+          style={[
+            styles.globeWrap,
+            {
+              borderColor: c.border,
+              backgroundColor: skinMapPalette(getMapPalette(isDarkMode), globeSkin.status === 'ready' ? globeSkin.key : null).bg,
+            },
+          ]}
+        >
+          {globeHtml && (
           <GlobeWebView
             ref={webRef}
             originWhitelist={['*']}

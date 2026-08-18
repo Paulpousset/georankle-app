@@ -13,6 +13,7 @@
  */
 
 import { getSubdivisionFlagUrl } from '../lib/flags';
+import { createSeededRng } from '../lib/rng';
 
 /** What the question shows. */
 export type ChallengePromptKind = 'text' | 'flag';
@@ -401,6 +402,34 @@ export const CHALLENGES: Challenge[] = [
   },
 ];
 
+/**
+ * Questions in a solo / daily run.
+ *
+ * ⚠️ COUPLED TO SQL: `league_norm_score` scales a 'challenge' daily by 20 to
+ * reach 1000, which assumes a 50-point ceiling = 10 questions × CASH (5 pts).
+ * Changing this means changing challenge_mode.sql in the same breath.
+ */
+export const CHALLENGE_QUESTIONS_SOLO = 10;
+
+/** Questions in one online round (ranked / bot). Custom rounds set their own. */
+export const CHALLENGE_QUESTIONS_ONLINE = 5;
+
+/**
+ * The quiz a deterministic surface plays for `seed` — the daily puzzle, a league
+ * day, a ranked/custom round. None of those let the player choose: everyone must
+ * face the SAME quiz or the shared grid, the league ranking and the 1v1 fairness
+ * all fall apart.
+ *
+ * ⚠️ The pick is an index into CHALLENGES, so the array is an ordered contract:
+ * APPEND new challenges at the end, never reorder or remove. Reordering makes two
+ * clients on different builds compute different quizzes for the same day (only
+ * today's puzzle — nothing historical is replayed — but that's still a desync).
+ */
+export function challengeForSeed(seed: number): Challenge {
+  const rng = createSeededRng(seed);
+  return CHALLENGES[Math.floor(rng() * CHALLENGES.length)];
+}
+
 /** Display names for the countries that own challenges. */
 const COUNTRY_LABELS: Record<string, [string, string]> = {
   FRA: ['France', 'France'],
@@ -414,6 +443,11 @@ const COUNTRY_LABELS: Record<string, [string, string]> = {
 export function countryLabel(cca3: string, lang: 'fr' | 'en'): string {
   const l = COUNTRY_LABELS[cca3];
   return l ? (lang === 'fr' ? l[0] : l[1]) : cca3;
+}
+
+/** Compact one-line name for a quiz, e.g. "🇺🇸 Capitales des États". */
+export function challengeLabel(ch: Challenge, lang: 'fr' | 'en'): string {
+  return `${ch.emoji} ${lang === 'fr' ? ch.titleFr : ch.titleEn}`;
 }
 
 export function getChallenge(id: string): Challenge | undefined {

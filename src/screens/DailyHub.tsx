@@ -10,6 +10,7 @@ import {
   Globe,
   HelpCircle,
   Info,
+  Landmark,
   Languages,
   LayoutGrid,
   Map,
@@ -40,6 +41,7 @@ import {
   type DailyState,
 } from '../lib/daily';
 import { variantForSeed } from '../lib/languages';
+import { challengeForSeed, challengeLabel } from '../data/challenges';
 import { buildShareMessage } from '../lib/share';
 import { getReferralInfo } from '../lib/referral';
 import { SITE_URL } from '../lib/links';
@@ -70,6 +72,7 @@ export const MODE_META: Record<string, { icon: ComponentType<{ color: string; si
   silhouette: { icon: Puzzle, accent: PALETTE.forestGreen },
   borders: { icon: Route, accent: PALETTE.sand },
   languages: { icon: Languages, accent: PALETTE.oceanBlue },
+  challenge: { icon: Landmark, accent: PALETTE.chartBlue },
 };
 
 interface DailyHubProps {
@@ -302,13 +305,16 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
                   ) : (
                     <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 11 }}>
                       {tr(language, 'À jouer', 'To play')}
-                      {/* Langues alternates written/spoken by day — say which,
-                          so the player knows whether they need sound. */}
+                      {/* Two modes rotate their content by day — Langues between
+                          written/spoken, Quiz Pays between the 8 country quizzes.
+                          Say which, so the card isn't a lottery ticket. */}
                       {mode === 'languages'
                         ? variantForSeed(seedFor(todayUTC, mode)) === 'audio'
                           ? tr(language, ' · à l’oreille', ' · by ear')
                           : tr(language, ' · à l’écrit', ' · written')
-                        : ''}
+                        : mode === 'challenge'
+                          ? ` · ${challengeLabel(challengeForSeed(seedFor(todayUTC, mode)), language)}`
+                          : ''}
                     </Text>
                   )}
                 </View>

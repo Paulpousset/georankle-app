@@ -44,6 +44,9 @@ export const DAILY_MODES: GameMode[] = [
   'quiz-capital',
   'quiz-flag',
   'languages',
+  // One rotating slot for the 8 country quizzes (dept numbers, US state
+  // capitals, Länder…): the day's seed picks which one, the same for everyone.
+  'challenge',
 ];
 
 /** Day index 0 maps to this UTC date — only affects the displayed "#N". */
@@ -328,6 +331,10 @@ export function dailyModeLabel(mode: GameMode, language: Language): string {
       return tr(language, 'Frontières', 'Borders');
     case 'languages':
       return tr(language, 'Langues', 'Languages');
+    case 'challenge':
+      // Distinct from 'regions' ("Défis Pays", the map game): this is the
+      // subdivision QUIZ (numéros de département, capitales d'États…).
+      return tr(language, 'Quiz Pays', 'Country Quiz');
     default:
       return mode;
   }

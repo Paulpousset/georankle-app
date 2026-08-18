@@ -35,6 +35,7 @@ import { showAlert } from '../lib/alert';
 import { ScoreText } from '../components/ScoreText';
 import { AtlasWin } from '../components/AtlasIcons';
 import { standings as ffaStandings } from '../lib/ffa';
+import type { CustomRoundCfg } from '../lib/customMatch';
 import { setActiveMatch, clearActiveMatch } from '../lib/activeMatch';
 import { forfeitWindowElapsed, FORFEIT_WINDOW_SECONDS } from '../lib/match';
 
@@ -45,6 +46,9 @@ import SilhouetteGame from './SilhouetteGame';
 import LanguagesGame from './LanguagesGame';
 import BordersGame from './BordersGame';
 import GuessCountryGame from './GuessCountryGame';
+import FindRegionGame from './FindRegionGame';
+import ChallengeQuiz from './ChallengeQuiz';
+import { challengeForSeed, getChallenge } from '../data/challenges';
 import FindCountryGame from './FindCountryGame';
 import { ClassicGame } from './ClassicGame';
 
@@ -64,12 +68,6 @@ interface PlayerRow {
 }
 
 type Phase = 'lobby' | 'playing' | 'submitting' | 'roundResult' | 'over';
-
-interface CustomRoundCfg {
-  mode: MatchMode;
-  questionType?: 'CAPITAL' | 'FLAG';
-  count?: number;
-}
 
 /** Build a local solo match for one FFA round (shared seed → identical questions). */
 function makeSyntheticMatch(
@@ -457,6 +455,25 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
         return <GuessCountryGame onBackToMenu={onExit} user={null} {...common} />;
       case 'globe':
         return <FindCountryGame setGameMode={quit} user={null} {...common} />;
+      case 'challenge': {
+        // The builder pins the quiz on the round; a stale id falls back to a
+        // seeded pick so the round is still playable for everyone.
+        const ch = getChallenge(cfg?.challengeId ?? '') ?? challengeForSeed(seed);
+        return <ChallengeQuiz challenge={ch} onExit={onExit} {...common} />;
+      }
+      case 'regions': {
+        // Same deal for the map game: the country is chosen in the builder.
+        const pick = cfg?.region;
+        if (!pick) break;
+        return (
+          <FindRegionGame
+            setGameMode={quit}
+            picks={[{ cca3: pick.cca3, name: pick.name, name_en: pick.name_en, unit: pick.unit ?? null, level: pick.level }]}
+            user={null}
+            {...common}
+          />
+        );
+      }
       case 'classic':
       default:
         return <ClassicGame user={null} onExit={onExit} {...common} />;

@@ -36,6 +36,8 @@ import {
   normalizeConfig, DEFAULT_AVATAR_CONFIG, getPartById, STORY_COSMETIC_UNLOCKS,
 } from '../data/cosmetics';
 import { WorldAvatar } from '../components/WorldAvatar';
+import { WorldAvatar3D } from '../components/WorldAvatar3D';
+import { AvatarPreview3D } from '../components/AvatarPreview3D';
 import { Avatar } from '../components/Avatar';
 import type { AvatarConfig } from '../types';
 
@@ -923,6 +925,10 @@ function StoryTable({
   const myMax = snapshot?.maxLevel ?? 0;
   const width = useStageWidth();
   const [preview, setPreview] = useState<{ itemId: string; level: number } | null>(null);
+  // Même DA que la boutique / l'éditeur : pack 3D pré-rendu derrière le flag,
+  // SVG procédural sinon.
+  const avatar3d = useFeatureFlag('avatar_3d');
+  const WorldRenderer = avatar3d ? WorldAvatar3D : WorldAvatar;
 
   const catLabel = (category: string) =>
     ({
@@ -956,6 +962,7 @@ function StoryTable({
 
   const previewPart = preview ? getPartById(preview.itemId) : undefined;
   const previewOwned = preview ? myMax >= preview.level : false;
+  const previewSize = Math.min(width * 0.5, 190);
 
   return (
     <>
@@ -1029,7 +1036,7 @@ function StoryTable({
                 { hint: tr(language, 'Voir l’aperçu', 'See preview') },
               )}
             >
-              <WorldAvatar config={rewardConfig(u.itemId)} size={40} round />
+              <WorldRenderer config={rewardConfig(u.itemId)} size={40} round />
               <View style={{ flex: 1 }}>
                 <Text style={{ fontFamily: FONTS.heading, color: c.text, fontSize: 14 }} numberOfLines={1}>{name}</Text>
                 <Text style={{ fontFamily: FONTS.mono, color: c.textMuted, fontSize: 11 }}>
@@ -1091,8 +1098,13 @@ function StoryTable({
 
           {preview && previewPart ? (
             <>
-              <View style={{ marginTop: 6, marginBottom: 14 }}>
-                <WorldAvatar config={rewardConfig(preview.itemId)} size={Math.min(width * 0.5, 190)} animate round />
+              {/* Aperçu de la récompense — vraie 3D live derrière le flag, SVG sinon */}
+              <View style={{ marginTop: 6, marginBottom: 14, borderRadius: previewSize / 2, overflow: 'hidden' }}>
+                {avatar3d ? (
+                  <AvatarPreview3D config={rewardConfig(preview.itemId)} size={previewSize} />
+                ) : (
+                  <WorldAvatar config={rewardConfig(preview.itemId)} size={previewSize} animate round />
+                )}
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                 <Gift color="#e0a93a" size={15} />
@@ -1150,6 +1162,8 @@ function RewardMarker({
 }) {
   const part = getPartById(itemId);
   const cfg = useMemo(() => rewardConfig(itemId), [itemId]);
+  const avatar3d = useFeatureFlag('avatar_3d');
+  const WorldRenderer = avatar3d ? WorldAvatar3D : WorldAvatar;
   if (!part) return null;
   const name = language === 'fr' ? part.nameFr : part.nameEn;
   // Card floats to the side of the river, clear of the medallion.
@@ -1174,7 +1188,7 @@ function RewardMarker({
       }}
       pointerEvents="none"
     >
-      <WorldAvatar config={cfg} size={40} round />
+      <WorldRenderer config={cfg} size={40} round />
       <View style={{ flex: 1 }}>
         <Text style={{ fontFamily: FONTS.mono, fontSize: 8.5, color: '#c98a1a', letterSpacing: 0.5 }}>
           {tr(language, `NIV ${level} · À GAGNER`, `LVL ${level} · REWARD`)}
@@ -1213,6 +1227,8 @@ function useLoop(duration: number, delay = 0, enabled = true): Animated.Value {
  */
 function BouncingGlobe({ config }: { config: AvatarConfig }) {
   const rm = useReducedMotion();
+  const avatar3d = useFeatureFlag('avatar_3d');
+  const WorldRenderer = avatar3d ? WorldAvatar3D : WorldAvatar;
   const [v] = useState(() => new Animated.Value(0));
   useEffect(() => {
     if (rm) return;
@@ -1231,7 +1247,7 @@ function BouncingGlobe({ config }: { config: AvatarConfig }) {
   return (
     <View style={{ alignItems: 'center' }} pointerEvents="none">
       <Animated.View style={{ transform: [{ translateY: ty }] }}>
-        <WorldAvatar config={config} size={44} animate round />
+        <WorldRenderer config={config} size={44} animate round />
       </Animated.View>
       <Animated.View
         style={{

@@ -4,6 +4,7 @@ import { showAlert } from '../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Check, ArrowLeft, Lock, ShoppingBag } from 'lucide-react-native';
+import { AtlasGlobe } from '../components/AtlasIcons';
 
 import { supabase } from '../lib/supabase';
 import { track } from '../lib/analytics';
@@ -14,6 +15,7 @@ import { WorldAvatar } from '../components/WorldAvatar';
 import { WorldAvatar3D, cosmeticTileSprite } from '../components/WorldAvatar3D';
 import { AvatarPreview3D } from '../components/AvatarPreview3D';
 import { useFeatureFlag } from '../lib/featureFlags';
+import { cacheEquippedGlobe } from '../lib/globeSkin';
 import { GlyphThumb } from '../components/worldGlyphs';
 import {
   DEFAULT_AVATAR_CONFIG,
@@ -34,6 +36,8 @@ import type { Json } from '../types/database';
 interface AvatarEditorProps {
   onBack: () => void;
   onOpenShop: () => void;
+  /** Opens "Globes en jeu": try any globe skin on the real gameplay globe. */
+  onOpenGlobeLab: () => void;
 }
 
 const CATEGORY_LABELS: Record<CosmeticCategory, [string, string]> = {
@@ -62,7 +66,7 @@ function tileConfig(part: CosmeticPart): AvatarConfig {
   return { v: 4, useCustom: true, layers };
 }
 
-export default function AvatarEditor({ onBack, onOpenShop }: AvatarEditorProps) {
+export default function AvatarEditor({ onBack, onOpenShop, onOpenGlobeLab }: AvatarEditorProps) {
   const { user } = useAuth();
   const { isDarkMode } = useTheme();
   // Pre-rendered 3D layer pack for swatches + live three.js scene for the preview.
@@ -86,7 +90,10 @@ export default function AvatarEditor({ onBack, onOpenShop }: AvatarEditorProps) 
       supabase.from('user_cosmetics').select('item_id').eq('user_id', userId),
     ]);
     if (profile?.avatar_config) {
-      setConfig(normalizeConfig(profile.avatar_config as unknown as AvatarConfig));
+      const saved = normalizeConfig(profile.avatar_config as unknown as AvatarConfig);
+      setConfig(saved);
+      // Keep the gameplay globes' cache in step with what is actually equipped.
+      void cacheEquippedGlobe(saved);
     }
     setOwned(new Set((cosmetics ?? []).map((r) => r.item_id as string)));
     setLoading(false);
@@ -139,14 +146,16 @@ export default function AvatarEditor({ onBack, onOpenShop }: AvatarEditorProps) 
 
   const save = async () => {
     setSaving(true);
+    const next = normalizeConfig(config);
     const { error } = await supabase.rpc('equip_cosmetics', {
-      p_config: normalizeConfig(config) as unknown as Json,
+      p_config: next as unknown as Json,
     });
     setSaving(false);
     if (error) {
       showAlert(tr(language, 'Erreur', 'Error'), error.message);
       return;
     }
+    void cacheEquippedGlobe(next);
     announce(tr(language, 'Monde enregistré', 'World saved'));
     onBack();
   };
@@ -253,6 +262,20 @@ export default function AvatarEditor({ onBack, onOpenShop }: AvatarEditorProps) 
           </View>
 
           <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+            {/* The globe slot is the only one that also shows up during a round. */}
+            {activeCategory === 'globe' && (
+              <TouchableOpacity
+                onPress={onOpenGlobeLab}
+                style={[styles.gameGlobeLink, { borderColor: c.accent, backgroundColor: c.card }]}
+                {...a11yButton(tr(language, 'Essayer les globes en jeu', 'Try globes in game'))}
+              >
+                <AtlasGlobe color={c.accent} size={16} />
+                <Text style={[styles.gameGlobeText, { color: c.accent }]}>
+                  {tr(language, 'Voir mon globe en jeu', 'See my globe in game')}
+                </Text>
+              </TouchableOpacity>
+            )}
+
             {/* Tint swatches (backgrounds) */}
             {showTints && (
               <View style={styles.swatchRow}>
@@ -364,6 +387,11 @@ const styles = StyleSheet.create({
   tile: { width: 92, borderRadius: 14, padding: 8, alignItems: 'center', gap: 4 },
   rarityDot: { width: 8, height: 8, borderRadius: 4, position: 'absolute', top: 8, right: 8 },
   tileName: { fontSize: 10, fontFamily: FONTS.mono, textAlign: 'center' },
+  gameGlobeLink: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
+    borderWidth: 1, borderRadius: 12, paddingVertical: 10, marginBottom: 12,
+  },
+  gameGlobeText: { fontSize: 12, fontFamily: FONTS.monoBold },
   lockRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   lockPrice: { fontSize: 10, fontFamily: FONTS.monoBold },
   footer: { padding: 16, borderTopWidth: 1 },

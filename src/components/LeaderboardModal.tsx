@@ -9,6 +9,7 @@ import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { tr } from '../i18n';
 import { a11yButton, ICON_HIT_SLOP } from '../lib/a11y';
+import { DesktopStage } from './DesktopStage';
 
 interface LeaderboardModalProps {
   visible: boolean;
@@ -28,6 +29,10 @@ export function LeaderboardModal({
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <SafeAreaProvider>
       <View style={{ flex: 1, backgroundColor: c.background }}>
+        {/* Même colonne centrée que le reste de l'app sur grand écran : une
+            modale est sortie de l'arbre par un portail, elle n'hérite donc pas
+            du DesktopStage monté dans App. */}
+        <DesktopStage>
         <SafeAreaView style={{ flex: 1 }}>
           <View
             style={{
@@ -68,6 +73,7 @@ export function LeaderboardModal({
           </View>
           <Leaderboard onOpenPlayer={onOpenPlayer} />
         </SafeAreaView>
+        </DesktopStage>
       </View>
       </SafeAreaProvider>
     </Modal>

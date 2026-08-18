@@ -366,12 +366,17 @@ async function runConfig(cfg, authState) {
     higherlower: async () => {
       await enterSolo(cfg.en ? 'Higher or Lower' : 'Plus ou Moins');
       await checkpoint('start');
+      // On répond en tapant la carte du pays qu'on croit au-dessus : c'est un
+      // bouton étiqueté du nom du pays (HigherLowerGame), pas un « PLUS » /
+      // « MOINS » — cette paire de boutons n'existe plus depuis longtemps et
+      // l'ancien locator sortait de la boucle sans jamais jouer une manche.
       for (let k = 0; k < 3; k++) {
-        const plus = page.getByText(/^(PLUS|HIGHER)/i).first();
-        const moins = page.getByText(/^(MOINS|LOWER)/i).first();
-        const pick = (k % 2 === 0) ? plus : moins;
-        if (!(await pick.isVisible().catch(() => false))) break;
-        await pick.click();
+        // Les deux cartes sont les seuls boutons pleine largeur de l'écran.
+        const cards = await page.evaluate(() => [...document.querySelectorAll('[role="button"][aria-label]')]
+          .filter((e) => e.getBoundingClientRect().width >= 300)
+          .map((e) => e.getAttribute('aria-label')));
+        if (cards.length < 2) break;
+        await page.locator(`[aria-label="${cards[k % 2]}"]`).first().click().catch(() => {});
         await w(2200);
       }
       await checkpoint('after3');

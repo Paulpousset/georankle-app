@@ -10,10 +10,15 @@
  * Geometry comes from the host screen via `measureTarget` (measureInWindow), so
  * the overlay must cover the whole window — we render it in a <Modal> whose
  * coordinates line up 1:1 with measureInWindow's window coordinates.
+ *
+ * Sur le web en grand écran, l'app est agrandie par un zoom CSS : measureInWindow
+ * répond alors en px CSS (zoomés) alors que l'overlay se dessine, lui, en unités
+ * de mise en page. Les rects sont donc ramenés à ces unités (÷ `uiScale`) dès
+ * leur arrivée — sans quoi le halo se décalerait vers le bas à droite.
  */
 import { useEffect, useRef, useState } from 'react';
 import type { ComponentType } from 'react';
-import { Modal, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CalendarDays, Compass, LayoutGrid, ShoppingBag, Sparkles, Target, User, Users } from 'lucide-react-native';
 
@@ -23,6 +28,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { getColors, PALETTE } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { a11yButton, announce } from '../lib/a11y';
+import { useUiScale, useViewport } from '../lib/uiScale';
 
 export interface TutorialRect {
   x: number;
@@ -168,7 +174,8 @@ export function OnboardingTutorial({ visible, steps, measureTarget, onFinish }: 
   const { language } = useLanguage();
   const c = getColors(isDarkMode);
   const insets = useSafeAreaInsets();
-  const { width: screenW, height: screenH } = useWindowDimensions();
+  const { width: screenW, height: screenH } = useViewport();
+  const uiScale = useUiScale();
 
   const [step, setStep] = useState(0);
   const [rect, setRect] = useState<TutorialRect | null>(null);
@@ -184,12 +191,18 @@ export function OnboardingTutorial({ visible, steps, measureTarget, onFinish }: 
     if (!current) return;
     const seq = ++measureSeq.current;
     const apply = (r: TutorialRect | null) => {
-      if (seq === measureSeq.current) setRect(r);
+      if (seq !== measureSeq.current) return;
+      // px CSS → unités de mise en page (identité hors zoom, cf. lib/uiScale).
+      setRect(
+        r && uiScale !== 1
+          ? { x: r.x / uiScale, y: r.y / uiScale, width: r.width / uiScale, height: r.height / uiScale }
+          : r,
+      );
     };
     if (!current.targetId) apply(null);
     else measureTarget(current.targetId).then(apply);
     announce(tr(language, current.titleFr, current.titleEn));
-  }, [visible, step, steps, measureTarget, language]);
+  }, [visible, step, steps, measureTarget, language, uiScale]);
 
   if (!visible || steps.length === 0) return null;
 

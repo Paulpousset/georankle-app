@@ -4,6 +4,7 @@ import { showAlert } from '../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Check, Coins, ArrowLeft, Palette, X, Sparkles, Package } from 'lucide-react-native';
+import { AtlasGlobe } from '../components/AtlasIcons';
 import * as Haptics from 'expo-haptics';
 
 import { supabase } from '../lib/supabase';
@@ -27,6 +28,7 @@ import { WorldAvatar } from '../components/WorldAvatar';
 import { WorldAvatar3D, cosmeticTileSprite } from '../components/WorldAvatar3D';
 import { AvatarPreview3D } from '../components/AvatarPreview3D';
 import { useFeatureFlag } from '../lib/featureFlags';
+import { cacheEquippedGlobe } from '../lib/globeSkin';
 import { GlyphThumb } from '../components/worldGlyphs';
 import { RewardedAdButton } from '../components/RewardedAdButton';
 import { useTheme } from '../contexts/ThemeContext';
@@ -39,6 +41,8 @@ import type { Json } from '../types/database';
 interface ShopProps {
   onBack: () => void;
   onEditAvatar: () => void;
+  /** Opens "Globes en jeu": try any globe skin on the real gameplay globe. */
+  onOpenGlobeLab: () => void;
 }
 
 const CATEGORY_LABELS: Record<CosmeticCategory, [string, string]> = {
@@ -103,7 +107,7 @@ function findPart(id: string): CosmeticPart | undefined {
   return undefined;
 }
 
-export default function Shop({ onBack, onEditAvatar }: ShopProps) {
+export default function Shop({ onBack, onEditAvatar, onOpenGlobeLab }: ShopProps) {
   const { user } = useAuth();
   const { isDarkMode } = useTheme();
   const { language } = useLanguage();
@@ -139,7 +143,12 @@ export default function Shop({ onBack, onEditAvatar }: ShopProps) {
     ]);
     setBalance(wallet?.balance ?? 0);
     setOwned(new Set((cosmetics ?? []).map((r) => r.item_id as string)));
-    if (profile?.avatar_config) setAvatarConfig(normalizeConfig(profile.avatar_config as unknown as AvatarConfig));
+    if (profile?.avatar_config) {
+      const saved = normalizeConfig(profile.avatar_config as unknown as AvatarConfig);
+      setAvatarConfig(saved);
+      // Keep the gameplay globes' cache in step with what is actually equipped.
+      void cacheEquippedGlobe(saved);
+    }
     setFeatured(feat);
     setLoading(false);
   }, [userId]);
@@ -186,6 +195,7 @@ export default function Shop({ onBack, onEditAvatar }: ShopProps) {
       return;
     }
     setAvatarConfig(next);
+    void cacheEquippedGlobe(next);
     track('avatar_equipped', { category: part.category, item_id: part.id });
     announce(tr(language, `${part.nameFr} équipé`, `${part.nameEn} equipped`));
   }, [avatarConfig, language]);
@@ -424,9 +434,23 @@ export default function Shop({ onBack, onEditAvatar }: ShopProps) {
             {section.ownedCount}/{section.totalCount}
           </Text>
         </View>
+        {/* Globes are the one slot that also shows up in gameplay — offer the
+            in-game try-on right where they are browsed. */}
+        {section.cat === 'globe' && (
+          <TouchableOpacity
+            onPress={onOpenGlobeLab}
+            style={[styles.labPill, { borderColor: c.accent }]}
+            {...a11yButton(tr(language, 'Essayer les globes en jeu', 'Try globes in game'))}
+          >
+            <AtlasGlobe color={c.accent} size={13} />
+            <Text style={[styles.labPillText, { color: c.accent }]}>
+              {tr(language, 'En jeu', 'In game')}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     ),
-    [c, language],
+    [c, language, onOpenGlobeLab],
   );
 
   const listHeader = useCallback(
@@ -775,6 +799,11 @@ const styles = StyleSheet.create({
   progressTrack: { width: 64, height: 4, borderRadius: 2, overflow: 'hidden' },
   progressFill: { height: 4, borderRadius: 2 },
   progressText: { fontSize: 10, fontFamily: FONTS.monoBold },
+  labPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1,
+    borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3, marginLeft: 8,
+  },
+  labPillText: { fontSize: 10, fontFamily: FONTS.monoBold, letterSpacing: 0.3 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   tile: { width: 96, borderRadius: 14, borderWidth: 1, padding: 10, alignItems: 'center', gap: 5 },
   newBadge: {

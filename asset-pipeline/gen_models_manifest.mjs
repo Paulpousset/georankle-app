@@ -1,4 +1,4 @@
-// Textures globes 1024×512 (webp) + manifest des assets 3D de la preview live.
+// Textures globes 4096×2048 (webp) + manifest des assets 3D de la preview live.
 //   cd asset-pipeline && node gen_models_manifest.mjs
 // - textures_globe/<style>.png -> ../assets/globes/globe_<style>.webp
 // - scanne ../assets/models3d/*.glb
@@ -18,7 +18,11 @@ mkdirSync(texDst, { recursive: true });
 const styles = [];
 for (const f of readdirSync(texSrc).filter((f) => f.endsWith('.png')).sort()) {
   const style = f.replace('.png', '');
-  await sharp(join(texSrc, f)).resize(1024, 512).webp({ quality: 78 }).toFile(
+  // Native render size, no downscale: these textures are no longer only worn by
+  // a 200 px avatar — the gameplay globe zooms up to 24×, and 1024×512 turned to
+  // mush as soon as the player went hunting for a small country. Flat vector art
+  // compresses well, so quality 76 buys the resolution back at ~220 KB each.
+  await sharp(join(texSrc, f)).webp({ quality: 76 }).toFile(
     join(texDst, `globe_${style}.webp`));
   styles.push(style);
 }

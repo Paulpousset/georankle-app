@@ -121,6 +121,54 @@ const THEME_DESCRIPTIONS: Record<string, LocalizedLabel> = {
     fr: 'Pourcentage de la population vivant en zone urbaine. Le #1 est le pays le plus urbanisé.',
     en: 'Percentage of the population living in urban areas. #1 is the most urbanized country.',
   },
+  fifa_ranking: {
+    fr: "Points au classement mondial FIFA de football masculin. Les nations britanniques jouant séparément, le Royaume-Uni est représenté par l'Angleterre. Le #1 est la meilleure sélection du monde.",
+    en: 'Points in the FIFA men’s world football ranking. British nations play separately, so the United Kingdom is represented by England. #1 is the best national team in the world.',
+  },
+  fiba_ranking: {
+    fr: 'Points au classement mondial FIBA de basket-ball masculin. Le #1 est la meilleure nation de basket.',
+    en: 'Points in the FIBA men’s basketball world ranking. #1 is the best basketball nation.',
+  },
+  rugby_ranking: {
+    fr: "Points de rating au classement World Rugby masculin. Les nations britanniques jouant séparément, le Royaume-Uni est représenté par l'Angleterre. Le #1 est la meilleure nation de rugby à XV.",
+    en: 'Rating points in the World Rugby men’s ranking. British nations play separately, so the United Kingdom is represented by England. #1 is the best rugby union nation.',
+  },
+  olympic_medals: {
+    fr: "Total des médailles olympiques (Jeux d'été et d'hiver) remportées depuis 1896. Le #1 est le pays le plus médaillé de l'histoire.",
+    en: 'Total Olympic medals (Summer and Winter Games) won since 1896. #1 is the most decorated country in history.',
+  },
+  world_heritage: {
+    fr: "Nombre de sites inscrits au patrimoine mondial de l'UNESCO. Le #1 est le pays qui en compte le plus.",
+    en: 'Number of sites inscribed on the UNESCO World Heritage List. #1 is the country with the most sites.',
+  },
+  highest_point: {
+    fr: 'Altitude du point culminant du pays, en mètres. Le #1 abrite le plus haut sommet du monde.',
+    en: 'Elevation of the country’s highest point, in metres. #1 is home to the world’s highest summit.',
+  },
+  avg_temperature: {
+    fr: 'Température annuelle moyenne du pays en °C (moyennes 1991-2020). Le #1 est le pays le plus chaud.',
+    en: 'Average yearly temperature in °C (1991-2020 averages). #1 is the hottest country.',
+  },
+  armed_forces: {
+    fr: "Nombre de militaires en activité. Le #1 possède la plus grande armée du monde en effectifs.",
+    en: 'Number of active military personnel. #1 has the largest armed forces in the world by headcount.',
+  },
+  air_passengers: {
+    fr: 'Nombre de passagers transportés chaque année par les compagnies aériennes du pays. Le #1 a le trafic aérien le plus important.',
+    en: 'Number of passengers carried each year by the country’s airlines. #1 has the busiest air traffic.',
+  },
+  women_parliament: {
+    fr: 'Pourcentage des sièges du parlement national occupés par des femmes. Le #1 a le parlement le plus paritaire.',
+    en: 'Percentage of national parliament seats held by women. #1 has the most gender-balanced parliament.',
+  },
+  rd_expenditure: {
+    fr: 'Dépenses de recherche et développement en pourcentage du PIB. Le #1 investit le plus dans la recherche.',
+    en: 'Research and development spending as a percentage of GDP. #1 invests the most in research.',
+  },
+  electric_consumption: {
+    fr: "Consommation d'électricité par habitant, en kWh par an. Le #1 est le plus gros consommateur par personne.",
+    en: 'Electricity consumption per capita, in kWh per year. #1 is the biggest consumer per person.',
+  },
 };
 
 /** Returns the localized description for a theme, or a fallback string. */

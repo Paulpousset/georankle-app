@@ -33,10 +33,9 @@ import { MODE_META } from '../../screens/DailyHub';
 import { normalizeRoundScore } from '../score';
 import type { GameMode, MatchMode } from '../../types';
 
-/** Every GameMode a player can actually launch (excludes the menu pseudo-mode
- *  and `challenge`, which is reached through the Défis Pays hub, not a tile). */
+/** Every GameMode a player can actually launch (excludes the menu pseudo-mode). */
 const PLAYABLE: GameMode[] = [
-  'classic', 'streak', 'versus', 'guess', 'globe', 'regions',
+  'classic', 'streak', 'versus', 'guess', 'globe', 'regions', 'challenge',
   'quiz-capital', 'quiz-flag', 'higherlower', 'silhouette', 'borders',
   'languages', 'local-builder',
 ];

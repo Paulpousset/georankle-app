@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
-import { ArrowLeft, HelpCircle, Eye, CheckCircle, RotateCcw, Home, ChevronRight } from 'lucide-react-native';
+import { ArrowLeft, HelpCircle, Eye, CheckCircle, RotateCcw, Home, ChevronRight, Share2 } from 'lucide-react-native';
 
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
@@ -31,6 +31,7 @@ import { normalizeRoundScore } from '../lib/score';
 import { prefetchFlagSlugs } from '../lib/flags';
 import type { Match } from '../types';
 import {
+  CHALLENGE_QUESTIONS_ONLINE, CHALLENGE_QUESTIONS_SOLO,
   type Challenge, type ChallengeEntity,
   entityAnswer, entityPrompt, entityFlagUrl, entityAcceptedAnswers, pickDistractors,
 } from '../data/challenges';
@@ -48,6 +49,14 @@ interface ChallengeQuizProps {
    */
   matchData?: Match | null;
   onRoundComplete?: (score: number) => void;
+  /** Daily challenge: today's seed — fixes the questions for every player. */
+  dailySeed?: number;
+  /** Daily challenge: fired once at game-over with the raw score + emoji grid. */
+  onDailyComplete?: (score: number, grid?: string) => void;
+  isDaily?: boolean;
+  onShare?: () => void;
+  /** Daily challenge: reports the live score so a mid-game quit can lock it in. */
+  onDailyScoreChange?: (score: number) => void;
 }
 
 type QuizMode = 'DUO' | 'CARRE' | 'CASH';
@@ -68,21 +77,41 @@ function matchesCash(input: string, e: ChallengeEntity, kind: 'number' | 'name',
   return isAnswerClose(input, entityAnswer(e, lang), entityAcceptedAnswers(e));
 }
 
-export default function ChallengeQuiz({ challenge, onExit, numQuestions = 10, matchData, onRoundComplete }: ChallengeQuizProps) {
+export default function ChallengeQuiz({
+  challenge,
+  onExit,
+  numQuestions = CHALLENGE_QUESTIONS_SOLO,
+  matchData,
+  onRoundComplete,
+  dailySeed,
+  onDailyComplete,
+  isDaily,
+  onShare,
+  onDailyScoreChange,
+}: ChallengeQuizProps) {
   const { isDarkMode } = useTheme();
   const { language } = useLanguage();
   const c = getColors(isDarkMode);
 
   // Online round: questions + length are driven by the match (shared seed → both
   // players get the same set; per-round offset so each round of the series differs).
-  const gdata = matchData?.game_data as { seed?: number; numQuestions?: number } | null | undefined;
+  const gdata = matchData?.game_data as
+    | { seed?: number; numQuestions?: number; roundsPerSet?: number; rounds?: { count?: number }[] }
+    | null
+    | undefined;
   const isOnline = !!matchData && !!onRoundComplete;
-  const effectiveNum = gdata?.numQuestions ?? numQuestions;
+  // Most specific first: a custom round's own length, the match-wide length set
+  // by challenge matchmaking, then the ranked/solo default.
+  const effectiveNum =
+    gdata?.rounds?.[(matchData?.current_round ?? 1) - 1]?.count ??
+    gdata?.numQuestions ??
+    (matchData ? (gdata?.roundsPerSet ?? CHALLENGE_QUESTIONS_ONLINE) : numQuestions);
 
   const [seed, setSeed] = useState(() =>
-    gdata?.seed != null
+    dailySeed ??
+    (gdata?.seed != null
       ? ((gdata.seed + (matchData?.current_round ?? 0) * 997) | 0)
-      : Math.floor(Math.random() * 2147483647),
+      : Math.floor(Math.random() * 2147483647)),
   );
   const questions = useMemo(
     () => seededShuffle(challenge.entities, createSeededRng(seed)).slice(0, Math.min(effectiveNum, challenge.entities.length)),
@@ -96,8 +125,15 @@ export default function ChallengeQuiz({ challenge, onExit, numQuestions = 10, ma
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [score, setScore] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
+  /** '🟩'/'🟥' per answered question — the daily share grid. */
+  const [grid, setGrid] = useState('');
   const [over, setOver] = useState(false);
   const awardedRef = useRef(false);
+
+  // Surface the running raw score so the daily host can lock it in on a quit.
+  useEffect(() => {
+    if (isDaily) onDailyScoreChange?.(score);
+  }, [isDaily, score, onDailyScoreChange]);
 
   const entity = questions[index];
   const correctAnswer = entity ? entityAnswer(entity, language) : '';
@@ -127,6 +163,7 @@ export default function ChallengeQuiz({ challenge, onExit, numQuestions = 10, ma
       setScore((s) => s + points);
       setCorrectCount((n) => n + 1);
     }
+    setGrid((g) => g + (correct ? '🟩' : '🟥'));
     Haptics.notificationAsync(
       correct ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Error,
     ).catch(() => {});
@@ -151,7 +188,9 @@ export default function ChallengeQuiz({ challenge, onExit, numQuestions = 10, ma
       }
       if (!awardedRef.current) {
         awardedRef.current = true;
-        track('challenge_completed', { challenge: challenge.id, score, correct: correctCount, total: questions.length });
+        // Daily: the host records the result + streak; a solo run just reports.
+        if (isDaily) onDailyComplete?.(score, grid);
+        else track('challenge_completed', { challenge: challenge.id, score, correct: correctCount, total: questions.length });
       }
       setOver(true);
       return;
@@ -172,6 +211,7 @@ export default function ChallengeQuiz({ challenge, onExit, numQuestions = 10, ma
     setFeedback(null);
     setScore(0);
     setCorrectCount(0);
+    setGrid('');
     setOver(false);
     awardedRef.current = false;
   };
@@ -185,16 +225,25 @@ export default function ChallengeQuiz({ challenge, onExit, numQuestions = 10, ma
           <Text style={[styles.resultTitle, { color: c.text }]}>
             {tr(language, 'Partie terminée', 'Game over')}
           </Text>
+          {isDaily ? <Text style={{ fontSize: 24, textAlign: 'center', marginTop: 12 }}>{grid}</Text> : null}
           <ScoreText style={[styles.bigScore, { color: '#2a6e3f' }]}>{score}</ScoreText>
           <Text style={[styles.resultSub, { color: c.textMuted }]}>{tr(language, 'points', 'points')}</Text>
           <Text style={[styles.resultSub, { color: c.textMuted, marginTop: 6 }]}>
             {tr(language, `${correctCount} / ${questions.length} bonnes réponses`, `${correctCount} / ${questions.length} correct`)}
           </Text>
           <View style={{ gap: 12, width: '100%', maxWidth: 320, marginTop: 28 }}>
-            <TouchableOpacity style={[styles.bigBtn, { backgroundColor: '#2a6e3f' }]} onPress={replay} {...a11yButton(tr(language, 'Rejouer', 'Play again'))}>
-              <RotateCcw color="#fff" size={18} />
-              <Text style={styles.bigBtnText}>{tr(language, 'Rejouer', 'Play again')}</Text>
-            </TouchableOpacity>
+            {/* The daily puzzle is one-shot: share it, don't replay it. */}
+            {isDaily ? (
+              <TouchableOpacity style={[styles.bigBtn, { backgroundColor: '#2a6e3f' }]} onPress={onShare} {...a11yButton(tr(language, 'Partager', 'Share'))}>
+                <Share2 color="#fff" size={18} />
+                <Text style={styles.bigBtnText}>{tr(language, 'Partager', 'Share')}</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={[styles.bigBtn, { backgroundColor: '#2a6e3f' }]} onPress={replay} {...a11yButton(tr(language, 'Rejouer', 'Play again'))}>
+                <RotateCcw color="#fff" size={18} />
+                <Text style={styles.bigBtnText}>{tr(language, 'Rejouer', 'Play again')}</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity style={[styles.bigBtn, { backgroundColor: c.card, borderWidth: 1, borderColor: c.border }]} onPress={onExit} {...a11yButton(tr(language, 'Retour', 'Back'))}>
               <Home color={c.text} size={18} />
               <Text style={[styles.bigBtnText, { color: c.text }]}>{tr(language, 'Retour', 'Back')}</Text>

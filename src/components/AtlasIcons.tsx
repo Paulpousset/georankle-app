@@ -544,3 +544,152 @@ export function AtlasPassport({ color = '#000', size = 24 }: AtlasIconProps) {
     </Base>
   );
 }
+
+// ── Sport ──────────────────────────────────────────────────────────────────
+
+/** ⚽ classement FIFA — ballon de football */
+export function AtlasFootball({ color = '#000', size = 24 }: AtlasIconProps) {
+  return (
+    <Base size={size}>
+      <Circle cx={12} cy={12} r={9} {...line(color)} />
+      <Path d="M12 7.4l3.6 2.6-1.4 4.2H9.8L8.4 10Z" {...line(color, 1.4)} />
+      <Path
+        d="M12 7.4V3.2M15.6 10l4-1.3M14.2 14.2l2.5 3.4M9.8 14.2l-2.5 3.4M8.4 10l-4-1.3"
+        {...line(color, 1.4)}
+      />
+    </Base>
+  );
+}
+
+/** 🏀 classement FIBA — ballon de basket */
+export function AtlasBasketball({ color = '#000', size = 24 }: AtlasIconProps) {
+  return (
+    <Base size={size}>
+      <Circle cx={12} cy={12} r={9} {...line(color)} />
+      <Path d="M12 3v18M3 12h18" {...line(color, 1.4)} />
+      <Path d="M5.6 5.6a9 9 0 0 1 0 12.8M18.4 5.6a9 9 0 0 0 0 12.8" {...line(color, 1.4)} />
+    </Base>
+  );
+}
+
+/** 🏉 classement World Rugby — ballon ovale + laçage */
+export function AtlasRugby({ color = '#000', size = 24 }: AtlasIconProps) {
+  return (
+    <Base size={size}>
+      {/* vrai ovale incliné : à 20 px un « ballon » dessiné à la main lisait comme un œil */}
+      <Ellipse cx={12} cy={12} rx={8.6} ry={5.3} rotation={-45} originX={12} originY={12} {...line(color)} />
+      <Path d="M9 15 15 9" {...line(color, 1.4)} />
+      <Path d="M9.9 12.9l1.8 1.8M11.4 11.4l1.8 1.8M12.9 9.9l1.8 1.8" {...line(color, 1.4)} />
+    </Base>
+  );
+}
+
+/** 🏅 médailles olympiques — anneaux */
+export function AtlasRings({ color = '#000', size = 24 }: AtlasIconProps) {
+  return (
+    <Base size={size}>
+      <Circle cx={6.6} cy={10} r={3.4} {...line(color, 1.4)} />
+      <Circle cx={12} cy={10} r={3.4} {...line(color, 1.4)} />
+      <Circle cx={17.4} cy={10} r={3.4} {...line(color, 1.4)} />
+      <Circle cx={9.3} cy={14.4} r={3.4} {...line(color, 1.4)} />
+      <Circle cx={14.7} cy={14.4} r={3.4} {...line(color, 1.4)} />
+    </Base>
+  );
+}
+
+// ── Culture / Nature ───────────────────────────────────────────────────────
+
+/** 🏛️ sites UNESCO — temple à colonnes */
+export function AtlasMonument({ color = '#000', size = 24 }: AtlasIconProps) {
+  return (
+    <Base size={size}>
+      <Path d="M3.5 8.5 12 4l8.5 4.5H3.5Z" {...line(color)} />
+      <Path d="M6 11v7M10 11v7M14 11v7M18 11v7" {...line(color, 1.4)} />
+      <Path d="M4 18h16M3.5 20.5h17" {...line(color)} />
+    </Base>
+  );
+}
+
+/** 🏔️ point culminant — sommet enneigé */
+export function AtlasMountain({ color = '#000', size = 24 }: AtlasIconProps) {
+  return (
+    <Base size={size}>
+      <Path d="M2.5 19 9 8l3.3 5.2L14.6 9.6 21.5 19Z" {...line(color)} />
+      <Path d="M7.1 11.1c.8.7 1.6.9 2.4.3.8-.6 1.6-.4 2.4.3" {...line(color, 1.4)} />
+    </Base>
+  );
+}
+
+/** 🌡️ température moyenne — thermomètre */
+export function AtlasThermometer({ color = '#000', size = 24 }: AtlasIconProps) {
+  return (
+    <Base size={size}>
+      <Path d="M14 14.3V5.8a2 2 0 1 0-4 0v8.5a3.8 3.8 0 1 0 4 0Z" {...line(color)} />
+      <Path d="M12 10.5v5.2" {...line(color, 1.4)} />
+      <Path d="M15.8 7.5h2.4M15.8 10.5h2.4" {...line(color, 1.4)} />
+    </Base>
+  );
+}
+
+// ── Puissance / Savoir ─────────────────────────────────────────────────────
+
+/** 🪖 effectifs militaires — casque */
+export function AtlasHelmet({ color = '#000', size = 24 }: AtlasIconProps) {
+  return (
+    <Base size={size}>
+      <Path d="M4.5 14.5a7.5 7.5 0 0 1 15 0" {...line(color)} />
+      <Path d="M3 14.5h18a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 14.5Z" {...line(color)} />
+      <Path d="M12 7v3.5" {...line(color, 1.4)} />
+    </Base>
+  );
+}
+
+/** 🛫 passagers aériens — décollage */
+export function AtlasTakeoff({ color = '#000', size = 24 }: AtlasIconProps) {
+  return (
+    <Base size={size}>
+      <Path d="M4 20.5h16" {...line(color, 1.4)} />
+      <Path
+        d="M6.6 15.6 4.6 12.6l1.8-.7 2.2 1.4 4.4-1.7-3-4.4 1.9-.7 4.8 4 3.2-1.2a1.8 1.8 0 0 1 1.2 3.4L7.8 16.9Z"
+        {...line(color)}
+      />
+    </Base>
+  );
+}
+
+/** 🗳️ femmes au parlement — urne */
+export function AtlasBallot({ color = '#000', size = 24 }: AtlasIconProps) {
+  return (
+    <Base size={size}>
+      <Rect x={3.5} y={10.5} width={17} height={9.5} rx={2} {...line(color)} />
+      <Path d="M8 13.5h8" {...line(color, 1.4)} />
+      <Path d="M9.5 10.5V4.5h5v6" {...line(color)} />
+      <Path d="M10.8 7.3l1.3 1.3 2.2-2.6" {...line(color, 1.4)} />
+    </Base>
+  );
+}
+
+/** 🔬 dépenses de R&D — fiole de laboratoire */
+export function AtlasFlask({ color = '#000', size = 24 }: AtlasIconProps) {
+  return (
+    <Base size={size}>
+      <Path d="M9.8 3.5h4.4" {...line(color, 1.4)} />
+      <Path
+        d="M10.6 3.5v6.2l-4.8 7.7a2 2 0 0 0 1.7 3.1h9a2 2 0 0 0 1.7-3.1l-4.8-7.7V3.5"
+        {...line(color)}
+      />
+      <Path d="M8.2 14.5h7.6" {...line(color, 1.4)} />
+    </Base>
+  );
+}
+
+/** 🔌 consommation d'électricité — prise */
+export function AtlasPlug({ color = '#000', size = 24 }: AtlasIconProps) {
+  return (
+    <Base size={size}>
+      <Path d="M9 3v5.5M15 3v5.5" {...line(color, 1.4)} />
+      <Path d="M6.5 8.5h11v2.5a5.5 5.5 0 0 1-11 0Z" {...line(color)} />
+      <Path d="M12 16.5V21" {...line(color)} />
+    </Base>
+  );
+}

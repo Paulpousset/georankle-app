@@ -99,7 +99,17 @@ export function getBestOfForRank(rank: RankInfo): number {
   return 9; // master
 }
 
-const RANKED_MODES: MatchMode[] = ['classic', 'streak', 'versus', 'globe', 'guess', 'regions', 'higherlower', 'silhouette', 'borders', 'languages'];
+const RANKED_MODES: MatchMode[] = ['classic', 'streak', 'versus', 'globe', 'guess', 'regions', 'higherlower', 'silhouette', 'borders', 'languages', 'challenge'];
+
+/**
+ * The country quiz played in a ranked `challenge` round. Unlike `regions` this
+ * needs nothing stored on the match: both clients derive it from the shared seed,
+ * so they always face the same quiz. `roundNumber` is 1-based so two challenge
+ * rounds in one series aren't the same quiz.
+ */
+export function rankedChallengeSeed(seed: number, roundNumber: number): number {
+  return (seed + roundNumber * 7919 + 0x0c1a) | 0;
+}
 
 /** A seeded country + division level for a ranked `regions` round. */
 export interface RankedRegionPick {

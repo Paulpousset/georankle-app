@@ -50,7 +50,7 @@ describe('buildHigherLowerRun', () => {
     const ids = higherLowerThemeIds();
     expect(ids).not.toContain('suicide_rate');
     expect(ids).not.toContain('homicide_rate');
-    // Sanity: the pool is still rich (game_data ships ~29 themes).
+    // Sanity: the pool is still rich (game_data ships ~41 themes).
     expect(ids.length).toBeGreaterThanOrEqual(20);
     for (const id of ids) expect(gameData.themes[id as keyof typeof gameData.themes]).toBeDefined();
   });

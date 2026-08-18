@@ -20,6 +20,7 @@ import {
   Flag,
   Globe,
   Info,
+  Landmark,
   Languages,
   LayoutGrid,
   Map as MapIcon,
@@ -48,6 +49,8 @@ import { a11yButton, a11yHidden, announce, ICON_HIT_SLOP } from '../lib/a11y';
 import { Avatar } from '../components/Avatar';
 import FfaMatch from './FfaMatch';
 import RegionCountryPicker, { type RegionPick } from './RegionCountryPicker';
+import ChallengePicker from './ChallengePicker';
+import { getChallenge, type Challenge } from '../data/challenges';
 import { MIN_FFA_PLAYERS, MAX_FFA_PLAYERS } from '../lib/ffa';
 import {
   ONLINE_MODES,
@@ -63,7 +66,7 @@ import {
 import type { AvatarConfig, Language, Match } from '../types';
 import type { Json } from '../types/database';
 
-type BuilderView = 'lobby' | 'builder' | 'friends' | 'waiting' | 'region-pick';
+type BuilderView = 'lobby' | 'builder' | 'friends' | 'waiting' | 'region-pick' | 'challenge-pick';
 
 const MODE_ICON: Record<OnlineModeKey, any> = {
   capital: Flag,
@@ -77,6 +80,7 @@ const MODE_ICON: Record<OnlineModeKey, any> = {
   borders: Route,
   globe: Globe,
   regions: MapIcon,
+  challenge: Landmark,
 };
 
 const MODE_ACCENT: Record<OnlineModeKey, string> = {
@@ -91,6 +95,7 @@ const MODE_ACCENT: Record<OnlineModeKey, string> = {
   borders: PALETTE.sand,
   globe: PALETTE.oceanBlue,
   regions: PALETTE.oceanBlue,
+  challenge: PALETTE.chartBlue,
 };
 
 interface PublicCustomItem {
@@ -108,6 +113,12 @@ interface CustomMatchmakingProps {
   onBack: () => void;
   onStartMatch: (match: Match) => void;
 }
+
+/** "Capitales des États" for a round's quiz id (empty if the id went stale). */
+const challengeRoundLabel = (id: string, lang: Language): string => {
+  const ch = getChallenge(id);
+  return ch ? (lang === 'fr' ? ch.titleFr : ch.titleEn) : '';
+};
 
 const keyExtractor = (item: { id: string }) => item.id;
 const RowSeparator = () => <View style={{ height: 8 }} />;
@@ -191,9 +202,15 @@ export default function CustomMatchmaking({ onBack, onStartMatch }: CustomMatchm
       setRounds((prev) =>
         prev.length >= 9
           ? prev
-          : [...prev, newCustomRound('regions', { cca3: p.cca3, name: p.name, name_en: p.name_en, unit: p.unit, level: p.level })],
+          : [...prev, newCustomRound('regions', { region: { cca3: p.cca3, name: p.name, name_en: p.name_en, unit: p.unit, level: p.level } })],
       );
     }
+    setView('builder');
+  };
+
+  // Same idea for a `challenge` round: it has to name the quiz both players answer.
+  const addChallengeRound = (ch: Challenge) => {
+    setRounds((prev) => (prev.length >= 9 ? prev : [...prev, newCustomRound('challenge', { challengeId: ch.id })]));
     setView('builder');
   };
 
@@ -562,6 +579,7 @@ export default function CustomMatchmaking({ onBack, onStartMatch }: CustomMatchm
                     <Text style={{ flex: 1, fontFamily: FONTS.monoBold, color: c.text, fontSize: 14 }} numberOfLines={1}>
                       {modeKeyLabel(r.key, language)}
                       {r.region ? ` · ${language === 'fr' ? r.region.name : (r.region.name_en ?? r.region.name)}` : ''}
+                      {r.challengeId ? ` · ${challengeRoundLabel(r.challengeId, language)}` : ''}
                     </Text>
                     <TouchableOpacity
                       onPress={() => moveRound(i, -1)}
@@ -623,12 +641,20 @@ export default function CustomMatchmaking({ onBack, onStartMatch }: CustomMatchm
               return (
                 <TouchableOpacity
                   key={key}
-                  onPress={() => (ONLINE_MODES[key].needsRegion ? setView('region-pick') : addRound(key))}
+                  onPress={() =>
+                    ONLINE_MODES[key].needsRegion
+                      ? setView('region-pick')
+                      : ONLINE_MODES[key].needsChallenge
+                        ? setView('challenge-pick')
+                        : addRound(key)
+                  }
                   disabled={disabled}
                   {...a11yButton(modeKeyLabel(key, language), {
                     hint: ONLINE_MODES[key].needsRegion
                       ? tr(language, 'Choisir un pays pour cette manche', 'Pick a country for this round')
-                      : tr(language, 'Ajouter cette manche', 'Add this round'),
+                      : ONLINE_MODES[key].needsChallenge
+                        ? tr(language, 'Choisir un quiz pour cette manche', 'Pick a quiz for this round')
+                        : tr(language, 'Ajouter cette manche', 'Add this round'),
                     disabled,
                   })}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.card, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 9, borderWidth: 1, borderColor: c.border, opacity: disabled ? 0.4 : 1 }}
@@ -765,6 +791,17 @@ export default function CustomMatchmaking({ onBack, onStartMatch }: CustomMatchm
       <RegionCountryPicker
         title={tr(language, 'Pays de la manche', 'Round country')}
         onPick={addRegionRound}
+        onBack={() => setView('builder')}
+      />
+    );
+  }
+
+  // Quiz chooser for a "Quiz Pays" round.
+  if (view === 'challenge-pick') {
+    return (
+      <ChallengePicker
+        title={tr(language, 'Quiz de la manche', 'Round quiz')}
+        onPick={addChallengeRound}
         onBack={() => setView('builder')}
       />
     );

@@ -14,6 +14,7 @@ export type Page =
   | { name: 'ranked' }
   | { name: 'avatar' }
   | { name: 'shop' }
+  | { name: 'globe-lab' }
   | { name: 'daily' }
   | { name: 'story' }
   | { name: 'admin-notifications' }

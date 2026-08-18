@@ -1,6 +1,7 @@
 // Génère les textures équirectangulaires CARTOON des styles de globe
 // (continents de world_polygons.json, halo côtier blanc + contour foncé épais,
-// même DA que les globes three.js in-app) → textures_globe/<style>.png 2048×1024.
+// même DA que les globes three.js in-app) → textures_globe/<style>.png (grille
+// d'auteur 2048×1024, rastérisée à SCALE× → 4096×2048).
 // Consommées par le rig Blender (matériaux toon des cosmétiques `globe_*`).
 //   cd asset-pipeline && node gen_globe_textures.mjs [style ...]
 import { mkdirSync, readFileSync, writeFileSync } from 'fs';
@@ -10,6 +11,8 @@ import sharp from 'sharp';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const W = 2048, H = 1024;
+/** Rasterisation multiplier over the authoring grid (see the density call below). */
+const SCALE = 2;
 const POLYS = JSON.parse(readFileSync(join(here, '..', 'assets', 'world_polygons.json'), 'utf8'));
 
 const CITY_LIGHTS = [
@@ -150,7 +153,11 @@ for (const name of names) {
   if (!st) { console.error(`style inconnu: ${name}`); continue; }
   const svg = buildSvg(name, st);
   const out = join(outDir, `${name}.png`);
-  await sharp(Buffer.from(svg)).png().toFile(out);
+  // Rasterised at SCALE× the authoring size via the SVG DPI, so every stroke
+  // width and radius scales with it — no drawing code to touch. The gameplay
+  // globe zooms to 24×, where a 2048-wide equirect is magnified ~14× and turns
+  // to mush; the extra pixels are spent where the player actually looks.
+  await sharp(Buffer.from(svg), { density: 72 * SCALE }).png().toFile(out);
   console.log(`${name}.png OK`);
 }
 writeFileSync(join(outDir, 'STYLES.md'), `Styles générés: ${Object.keys(STYLES).join(', ')}\n`);

@@ -10,6 +10,7 @@ import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { tr } from '../i18n';
 import { a11yButton, ICON_HIT_SLOP } from '../lib/a11y';
+import { DesktopStage } from './DesktopStage';
 import type { GameMode } from '../types';
 
 interface Props {
@@ -37,6 +38,9 @@ export function DailyLeaderboardModal({
     <Modal visible={!!mode} animationType="slide" onRequestClose={onClose}>
       <SafeAreaProvider>
         <View style={{ flex: 1, backgroundColor: c.background }}>
+          {/* Colonne centrée sur grand écran : la modale, sortie par un portail,
+              n'hérite pas du DesktopStage de App. */}
+          <DesktopStage>
           <SafeAreaView style={{ flex: 1 }}>
             <View
               style={{
@@ -78,6 +82,7 @@ export function DailyLeaderboardModal({
               />
             )}
           </SafeAreaView>
+          </DesktopStage>
         </View>
       </SafeAreaProvider>
     </Modal>

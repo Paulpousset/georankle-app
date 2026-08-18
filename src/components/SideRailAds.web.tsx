@@ -21,6 +21,7 @@ import {
   type RailSize,
 } from '../lib/adsWeb';
 import { isFeatureEnabled } from '../lib/featureFlags';
+import { useUiScale } from '../lib/uiScale';
 
 function RailUnit({
   slot,
@@ -68,6 +69,7 @@ function RailUnit({
 }
 
 export function SideRailAds() {
+  const uiScale = useUiScale();
   const [enabled, setEnabled] = useState(false);
   const [dims, setDims] = useState(() =>
     typeof window === 'undefined' ? { w: 0, h: 0 } : { w: window.innerWidth, h: window.innerHeight },
@@ -93,10 +95,16 @@ export function SideRailAds() {
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  const size = railSize(dims.w, dims.h);
+  // Les rails sont dessinés DANS l'app, donc dans son espace de mise en page :
+  // sur grand écran celui-ci est zoomé (lib/uiScale), et la fenêtre en px CSS
+  // vaut `scale` fois plus que la fenêtre en unités. On raisonne en unités —
+  // sinon les gouttières calculées seraient trop larges et un rail chevaucherait
+  // la colonne de jeu. Contrepartie assumée : l'unité 300×600 est affichée
+  // agrandie comme le reste de l'app.
+  const size = railSize(dims.w / uiScale, dims.h / uiScale);
   if (!enabled || !size) return null;
 
-  const offset = railOffset(dims.w, size);
+  const offset = railOffset(dims.w / uiScale, size);
 
   return (
     <>

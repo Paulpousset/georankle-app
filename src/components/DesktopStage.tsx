@@ -5,6 +5,6 @@
  */
 import type { ReactNode } from 'react';
 
-export function DesktopStage({ children }: { children: ReactNode }) {
+export function DesktopStage({ children }: { children: ReactNode; brand?: string }) {
   return <>{children}</>;
 }

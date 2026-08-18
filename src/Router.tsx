@@ -26,7 +26,8 @@ import RegionGameFlow from './screens/RegionGameFlow';
 import FindRegionGame, { type RegionLevelKey } from './screens/FindRegionGame';
 import ChallengeQuiz from './screens/ChallengeQuiz';
 import ChallengeMatchmaking from './screens/ChallengeMatchmaking';
-import { getChallenge } from './data/challenges';
+import { challengeForSeed, getChallenge } from './data/challenges';
+import { rankedChallengeSeed } from './lib/ranked';
 import LocalParcours from './screens/LocalParcours';
 import LeagueHub from './screens/LeagueHub';
 import LeagueDetail from './screens/LeagueDetail';
@@ -40,6 +41,7 @@ import { ResumeMatchBanner } from './components/ResumeMatchBanner';
 import RankedMatchmaking from './screens/RankedMatchmaking';
 import AvatarEditor from './screens/AvatarEditor';
 import Shop from './screens/Shop';
+import GlobeLab from './screens/GlobeLab';
 import AdminNotifications from './screens/AdminNotifications';
 import { AuthModal } from './components/AuthModal';
 import { LeaderboardModal } from './components/LeaderboardModal';
@@ -265,6 +267,7 @@ export function Router({
         <AvatarEditor
           onBack={popPage}
           onOpenShop={() => pushPage({ name: 'shop' })}
+          onOpenGlobeLab={() => pushPage({ name: 'globe-lab' })}
         />
       </SafeAreaProvider>
     );
@@ -276,7 +279,16 @@ export function Router({
         <Shop
           onBack={popPage}
           onEditAvatar={() => pushPage({ name: 'avatar' })}
+          onOpenGlobeLab={() => pushPage({ name: 'globe-lab' })}
         />
+      </SafeAreaProvider>
+    );
+  }
+
+  if (currentPage?.name === 'globe-lab' && user) {
+    return (
+      <SafeAreaProvider>
+        <GlobeLab onBack={popPage} />
       </SafeAreaProvider>
     );
   }
@@ -550,19 +562,29 @@ export function Router({
   }
 
   if (gameMode === 'challenge' && matchData) {
-    const challenge = getChallenge((matchData.game_data?.challengeId as string) ?? '');
-    if (challenge) {
-      return (
-        <SafeAreaProvider>
-          <ChallengeQuiz
-            challenge={challenge}
-            matchData={matchData}
-            onRoundComplete={handleRoundComplete}
-            onExit={resetMatchState}
-          />
-        </SafeAreaProvider>
-      );
-    }
+    const gdc = (matchData.game_data ?? {}) as {
+      seed?: number;
+      challengeId?: string;
+      rounds?: { challengeId?: string }[];
+    };
+    const round = matchData.current_round ?? 1;
+    // Three ways a round knows its quiz, most specific first: a custom round's
+    // own pick, the whole match's quiz (challenge matchmaking), or — for ranked,
+    // where nothing is stored — the shared seed, which both clients derive the
+    // same way.
+    const challenge =
+      getChallenge(gdc.rounds?.[round - 1]?.challengeId ?? gdc.challengeId ?? '') ??
+      challengeForSeed(rankedChallengeSeed(gdc.seed ?? 0, round));
+    return (
+      <SafeAreaProvider>
+        <ChallengeQuiz
+          challenge={challenge}
+          matchData={matchData}
+          onRoundComplete={handleRoundComplete}
+          onExit={resetMatchState}
+        />
+      </SafeAreaProvider>
+    );
   }
 
   if (gameMode === 'versus') {
