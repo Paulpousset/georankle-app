@@ -12,6 +12,7 @@ import { formatMatchScore } from '../lib/match';
 import { a11yButton, announce } from '../lib/a11y';
 import { ScoreText } from './ScoreText';
 import { useStageWidth } from '../lib/stage';
+import { useEventCallback } from '../lib/useEventCallback';
 
 export interface RoundSummaryData {
   roundNumber: number;
@@ -64,11 +65,16 @@ export function RoundSummary({ data, gameMode, onContinue }: RoundSummaryProps) 
   // differs from the match's base mode.
   const scoreLabel = (s: number) => formatMatchScore(data.gameMode ?? gameMode, s);
 
+  // `onContinue` vient de useMatchEngine via Router : nouvelle identité à chaque
+  // rendu. Le laisser en dépendance réarmait la seconde en cours, donc le
+  // décompte pouvait ne jamais atteindre zéro et la manche suivante ne jamais
+  // démarrer. On stabilise l'identité sans figer la closure.
+  const continueStable = useEventCallback(onContinue);
   useEffect(() => {
-    if (countdown <= 0) { onContinue(); return; }
+    if (countdown <= 0) { continueStable(); return; }
     const t = setTimeout(() => setCountdown(cv => cv - 1), 1000);
     return () => clearTimeout(t);
-  }, [countdown, onContinue]);
+  }, [countdown, continueStable]);
 
   const neededToWin = Math.ceil(data.bestOf / 2);
 
@@ -173,7 +179,7 @@ export function RoundSummary({ data, gameMode, onContinue }: RoundSummaryProps) 
         {...a11yButton(language === 'fr' ? 'Round suivant' : 'Next round')}
         style={{
           flexDirection: 'row', alignItems: 'center', gap: 10,
-          backgroundColor: c.accent,
+          backgroundColor: c.accentStrong,
           paddingVertical: 16, paddingHorizontal: 32, borderRadius: 14,
           width: '100%', maxWidth: cardMaxW, justifyContent: 'center',
         }}

@@ -103,7 +103,7 @@ export function ReferralCard(): React.ReactElement | null {
       </View>
 
       <TouchableOpacity
-        style={[styles.shareBtn, { backgroundColor: c.accent }]}
+        style={[styles.shareBtn, { backgroundColor: c.accentStrong }]}
         onPress={onShare}
         {...a11yButton(tr(language, 'Partager mon lien', 'Share my link'))}
       >

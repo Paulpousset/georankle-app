@@ -120,7 +120,7 @@ export function UsernameGate() {
               width: 64,
               height: 64,
               borderRadius: 32,
-              backgroundColor: c.accent,
+              backgroundColor: c.accentStrong,
               alignItems: 'center',
               justifyContent: 'center',
               alignSelf: 'center',
@@ -204,7 +204,7 @@ export function UsernameGate() {
             style={{
               height: 50,
               borderRadius: 14,
-              backgroundColor: c.accent,
+              backgroundColor: c.accentStrong,
               alignItems: 'center',
               justifyContent: 'center',
               marginTop: 20,

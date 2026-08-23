@@ -43,6 +43,8 @@ import { FONTS } from '../theme/typography';
 import { tr } from '../i18n';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { PlayerGlobe } from '../components/PlayerGlobe';
+import { useMyGameGlobe } from '../lib/myGlobe';
 import { a11yButton, announce, a11yImage, a11yHidden, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
 import type { GameMode, Language, Match, MatchMode } from '../types';
@@ -216,6 +218,7 @@ export default function LocalParcours({
   const [seeds, setSeeds] = useState<number[]>([]);
   // scores[mancheIdx][playerIdx]
   const [scores, setScores] = useState<number[][]>([]);
+  const { config: myGlobe } = useMyGameGlobe();
   const [step, setStep] = useState<Step>({ phase: 'builder' });
   const [pickingRegion, setPickingRegion] = useState(false);
   const [pickingChallenge, setPickingChallenge] = useState(false);
@@ -1009,6 +1012,9 @@ export default function LocalParcours({
     <ParcoursScreen isDarkMode={isDarkMode} background={c.background}>
       <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 40 }}>
         <View style={{ alignItems: 'center', marginBottom: 28, marginTop: 12 }}>
+          {/* Le globe du possesseur du téléphone : en local les autres joueurs
+              sont des invités sans compte, seul lui en a un. */}
+          <PlayerGlobe config={myGlobe} size={104} accent={PALETTE.sand} animate style={{ marginBottom: 12 }} />
           <Trophy color={PALETTE.sand} size={48} {...a11yHidden} />
           <Text style={{ fontFamily: FONTS.headingBlack, color: c.text, fontSize: 26, marginTop: 10 }}>
             {tr(language, 'Partie terminée', 'Game over')}

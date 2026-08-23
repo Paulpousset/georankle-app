@@ -115,7 +115,9 @@ export const commonStyles = StyleSheet.create({
     color: '#4a9eff',
     letterSpacing: 1.5,
   },
-  countryLabelLight: { color: '#c04a1a' },
+  // Vermillon assombri (était #c04a1a) : à 9 px sur countryCardLight il ne
+  // faisait que 3,55:1. Ici 5,49:1, teinte conservée.
+  countryLabelLight: { color: '#903713' },
   countryFlag: { borderRadius: 6 },
   countryName: {
     fontFamily: 'PlayfairDisplay_700Bold',
@@ -128,7 +130,8 @@ export const commonStyles = StyleSheet.create({
     color: '#4a6a88',
     fontSize: 11,
   },
-  instructionLight: { color: '#a08060' },
+  // Était #a08060 : 2,62:1 sur cardLight. Ici 4,79:1.
+  instructionLight: { color: '#735735' },
 
   // ── Theme cards (mode selection) ─────────────────────────────────────────
   themesGrid: { width: '100%' },
@@ -155,7 +158,8 @@ export const commonStyles = StyleSheet.create({
     color: '#4a6a88',
     fontSize: 10,
   },
-  selectionCountryLight: { color: '#a08060' },
+  // Même correction que instructionLight.
+  selectionCountryLight: { color: '#735735' },
   selectionRank: {
     fontFamily: 'SpaceMono_700Bold',
     fontSize: 14,

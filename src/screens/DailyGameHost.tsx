@@ -153,6 +153,7 @@ export default function DailyGameHost({
       <ClassicGame
         user={user}
         onExit={requestExit}
+        poolDate={date}
         {...common}
       />
     );
@@ -160,6 +161,7 @@ export default function DailyGameHost({
     screen = (
       <StreakGame
         setGameMode={exitOnMenu}
+        poolDate={date}
         user={user}
         onDailyScoreChange={reportScore}
         {...common}
@@ -171,6 +173,7 @@ export default function DailyGameHost({
         setGameMode={exitOnMenu}
         user={user}
         onDailyScoreChange={reportScore}
+        poolDate={date}
         {...common}
       />
     );

@@ -1,11 +1,14 @@
 [
   {
-    "relation": [ "delegate_permission/common.handle_all_urls" ],
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
+    ],
     "target": {
       "namespace": "android_app",
       "package_name": "com.paulpousset.geog",
       "sha256_cert_fingerprints": [
-        "REMPLACER_PAR_LE_SHA256_DE_LA_CLE_DE_SIGNATURE_PLAY"
+        "F1:0E:D4:4E:DD:DE:CA:D0:CA:A8:49:A1:3C:EB:A0:DF:26:C7:5D:99:D6:79:29:F6:6A:06:12:87:5C:20:0D:46"
       ]
     }
   }

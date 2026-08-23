@@ -47,9 +47,12 @@ WEB_PID=""
 if [ -z "${NO_WEB:-}" ]; then
   step "Web → build + déploiement Vercel (prod)"
   # tourne en arrière-plan pendant que le build natif (long) démarre
-  ( npx vercel --prod --yes >/tmp/geog-web-deploy.log 2>&1 \
-      && echo -e "${GREEN}✅ Web en ligne : https://geogames-mu.vercel.app${NC}" \
-      || { echo "❌ Échec déploiement web — voir /tmp/geog-web-deploy.log"; tail -5 /tmp/geog-web-deploy.log; } ) &
+  # Le sous-shell doit PROPAGER son code de sortie. La version précédente
+  # rattrapait l'échec sur place et finissait par `tail`, qui réussit : le
+  # sous-shell sortait donc à 0 même quand Vercel avait planté, et le script
+  # concluait par « ✅ Terminé » après avoir affiché un « ❌ » noyé dans les
+  # logs EAS. C'est ce qui faisait croire que le web était déployé.
+  ( npx vercel --prod --yes >/tmp/geog-web-deploy.log 2>&1 ) &
   WEB_PID=$!
 fi
 
@@ -60,7 +63,22 @@ step "Natif → EAS build ($PLATFORM) en cloud + ${SUBMIT_FLAG:-sans envoi store
 echo "   (iOS & Android buildent en parallèle ; numéros de build auto-incrémentés)"
 npx eas build --platform "$PLATFORM" --profile production $SUBMIT_FLAG
 
-# attendre la fin du déploiement web
-[ -n "$WEB_PID" ] && wait "$WEB_PID" || true
+# attendre la fin du déploiement web et TENIR COMPTE de son résultat
+WEB_OK=1
+if [ -n "$WEB_PID" ]; then
+  if wait "$WEB_PID"; then
+    echo -e "${GREEN}✅ Web en ligne : https://playgeog.com${NC}"
+  else
+    WEB_OK=0
+    echo -e "${RED}❌ Échec du déploiement web — voir /tmp/geog-web-deploy.log${NC}"
+    tail -15 /tmp/geog-web-deploy.log
+  fi
+fi
+
+if [ "$WEB_OK" -eq 0 ]; then
+  echo -e "${RED}❌ Livraison INCOMPLÈTE : le natif est parti, le web n'est PAS déployé.${NC}"
+  echo "   Relancer seul : npx vercel --prod --yes"
+  exit 1
+fi
 
 echo -e "${GREEN}✅ Terminé. Suivi des builds : https://expo.dev/accounts/polololo/projects/geog/builds${NC}"

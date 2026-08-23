@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { Home, Search, XCircle, RefreshCcw, Wifi, Flag, Share2 } from 'lucide-react-native';
+import { Home, Search, XCircle, RefreshCcw, Wifi, Flag, Info, Share2 } from 'lucide-react-native';
 import {
   AtlasWin,
   AtlasLose,
@@ -41,12 +41,20 @@ import type { User } from '@supabase/supabase-js';
 
 import gameData from '../../assets/game_data.json';
 import countriesStats from '../../assets/countries_stats.json';
+import { filterByContinent, type ContinentId } from '../data/continents';
+import { saveSoloScore } from '../lib/soloResult';
+import { useSoloCoins } from '../lib/useSoloCoins';
+import { SoloCoinReward } from '../components/SoloCoinReward';
+import { PlayerGlobe } from '../components/PlayerGlobe';
+import { useMyGameGlobe } from '../lib/myGlobe';
+import { OffLeaderboardNotice } from '../components/OffLeaderboardNotice';
+import { CountryFactCard } from '../components/CountryFactCard';
+import { recordRun } from '../lib/reviewPool';
 import { getFlagUrl } from '../lib/flags';
 import { COUNTRY_ALIASES } from '../lib/answerMatch';
 import { normalizeRoundScore } from '../lib/score';
 import { track } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
-import { log } from '../lib/log';
 import { createSeededRng } from '../lib/rng';
 import {
   CATEGORIES,
@@ -223,6 +231,15 @@ interface Props {
   isDaily?: boolean;
   /** Daily challenge: invoked by the "Share" button on the win card. */
   onShare?: () => void;
+    /**
+   * Entraînement: no mistake ends the run, every answer is explained, and
+   * nothing is recorded (no coins, no leaderboard).
+   */
+  training?: boolean;
+/** Solo continent scope: narrows the mystery-country pool. Null = worldwide. */
+  scope?: ContinentId | null;
+  /** Review run: countries to ask about first (see lib/reviewPool). */
+  reviewIds?: string[] | null;
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -233,9 +250,20 @@ interface GuessEntry {
   isCorrect: boolean;
 }
 
-function pickRandom(): { country: any; stats: any } {
-  const countries = (gameData as any).countries as any[];
-  const country = countries[Math.floor(Math.random() * countries.length)];
+/**
+ * Tries within which the mystery country counts as "known" for the review
+ * pool. The clue grid makes 1-4 tries a genuine deduction; past that the
+ * player was mostly narrowing down by elimination.
+ */
+const GUESS_MASTERY_TRIES = 4;
+
+/** The countries that can be the answer, narrowed to the solo scope. */
+function answerPool(scope: ContinentId | null): any[] {
+  return filterByContinent((gameData as any).countries as { cca3: string }[], scope) as any[];
+}
+
+function pickRandom(pool: any[]): { country: any; stats: any } {
+  const country = pool[Math.floor(Math.random() * pool.length)];
   const stats = (countriesStats as any[]).find((c) => c.cca3 === country.cca3) ?? {};
   return { country, stats };
 }
@@ -269,6 +297,9 @@ export default function GuessCountryGame({
   onDailyComplete,
   isDaily,
   onShare,
+  scope = null,
+  reviewIds = null,
+  training = false,
 }: Props) {
   const { isDarkMode } = useTheme();
   const { language } = useLanguage();
@@ -276,6 +307,20 @@ export default function GuessCountryGame({
   const isPlayer1 = matchData?.player1_id === user?.id;
   const width = useStageWidth();
   const reducedMotion = useReducedMotion();
+
+  // Only free solo play is scoped: daily and online runs keep the world pool.
+  const pool = useMemo(() => answerPool(scope), [scope]);
+  // One country per run, so a review run must draw from the *due* countries
+  // only — ordering a full pool would just mean picking at random again. Falls
+  // back to the normal pool if nothing due survives the continent scope.
+  const reviewQueue = useMemo(() => {
+    if (!reviewIds?.length) return [];
+    const due = new Set(reviewIds);
+    return (pool as { cca3: string }[]).filter((c) => due.has(c.cca3));
+  }, [pool, reviewIds]);
+  const isReview = reviewQueue.length > 0;
+  const { coinsEarned, coinsCapped, coinsSyncFailed, award } = useSoloCoins();
+  const { config: myGlobe } = useMyGameGlobe();
 
   const [target, setTarget] = useState<{ country: any; stats: any }>(() => {
     if (dailySeed != null) {
@@ -291,11 +336,13 @@ export default function GuessCountryGame({
       const seed = (matchData.game_data.seed as number) + (matchData.current_round ?? 0) * 997;
       return pickSeeded(seed);
     }
-    return pickRandom();
+    return isReview ? pickRandom(reviewQueue as any[]) : pickRandom(pool);
   });
 
   const [guesses, setGuesses] = useState<GuessEntry[]>([]);
   const [won, setWon] = useState(false);
+  /** Country fact sheet, opened from the win card. */
+  const [factsOpen, setFactsOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [myScore, setMyScore] = useState(0);
   const [opponentScore, setOpponentScore] = useState(0);
@@ -376,13 +423,22 @@ export default function GuessCountryGame({
         if (!matchData) track('game_completed', { mode: 'guess', score });
         if (onRoundComplete) {
           onRoundComplete(normalizeRoundScore('guess', score));
-        } else if (!matchData && user) {
-          supabase
-            .from('scores')
-            .insert({ user_id: user.id, game_mode: 'guess', score })
-            .then(({ error }) => {
-              if (error) log.error('Error saving guess score:', error);
-            });
+        } else if (!matchData) {
+          void saveSoloScore(user ?? null, 'guess', score, { scope, review: isReview, training });
+          // A country found in a handful of tries is known; needing the whole
+          // grid means it's worth revising.
+          void recordRun('guess', [
+            {
+              cca3: target.country.cca3,
+              prompt: countryName(target.country),
+              correctAnswer: countryName(target.country),
+              ok: newGuessCount <= GUESS_MASTERY_TRIES,
+            },
+          ]);
+          // Pièces solo — « Devine le Pays » n'en créditait aucune.
+          if (user) {
+            award('guess', normalizeRoundScore('guess', score), { scope, review: isReview, training });
+          }
         }
       }
     } else {
@@ -413,7 +469,7 @@ export default function GuessCountryGame({
   };
 
   const reset = () => {
-    setTarget(pickRandom());
+    setTarget(pickRandom(isReview ? (reviewQueue as any[]) : pool));
     setGuesses([]);
     setWon(false);
     setSubmitted(false);
@@ -581,6 +637,9 @@ export default function GuessCountryGame({
           {/* ── Win card ── */}
           {won && (
             <View style={[styles.winCard, { backgroundColor: cardBg, borderColor: PALETTE.success }]}>
+              {!isOnline && (
+                <PlayerGlobe config={myGlobe} size={92} accent={PALETTE.success} animate />
+              )}
               <View style={styles.winEmoji} {...a11yImage(tr(language, 'Gagné', 'Won'))}>
                 <AtlasWin color={PALETTE.success} size={44} />
               </View>
@@ -600,6 +659,31 @@ export default function GuessCountryGame({
                   </Text>
                 )}
               </Text>
+              {!isOnline && !isDaily && <OffLeaderboardNotice run={{ scope, review: isReview, training }} color={textSec} />}
+              {/* One country per run, so there's no list to recap — just the
+                  way into what makes it memorable. */}
+              <TouchableOpacity
+                onPress={() => setFactsOpen(true)}
+                style={[styles.factsBtn, { borderColor: PALETTE.oceanBlue }]}
+                {...a11yButton(
+                  tr(language, 'En savoir plus sur ce pays', 'Learn more about this country'),
+                )}
+              >
+                <Info color={PALETTE.oceanBlue} size={14} />
+                <Text style={[styles.factsBtnText, { color: PALETTE.oceanBlue }]}>
+                  {tr(language, 'En savoir plus', 'Learn more')}
+                </Text>
+              </TouchableOpacity>
+              {/* Pièces + doubleur pub, juste sous le score : c'est la
+                  récompense, elle ne doit pas être en bas de carte. */}
+              {!isOnline && (
+                <SoloCoinReward
+                  coinsEarned={coinsEarned}
+                  coinsCapped={coinsCapped}
+                  coinsSyncFailed={coinsSyncFailed}
+                  containerStyle={{ alignSelf: 'stretch', marginTop: 12, marginBottom: 4 }}
+                />
+              )}
               {isOnline ? (
                 <Text style={[styles.winSub, { color: textSec }]}>
                   {language === 'fr' ? "En attente de l'adversaire…" : 'Waiting for opponent…'}
@@ -625,6 +709,11 @@ export default function GuessCountryGame({
               )}
             </View>
           )}
+
+          <CountryFactCard
+            cca3={factsOpen ? target.country.cca3 : null}
+            onClose={() => setFactsOpen(false)}
+          />
 
           {/* ── Intro hint + category preview ── */}
           {guesses.length === 0 && !won && !submitted && (
@@ -823,6 +912,18 @@ const styles = StyleSheet.create({
   },
   giveUpText: { color: '#8b1a1a', fontFamily: FONTS.mono, fontSize: 13 },
 
+  factsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    marginBottom: 12,
+  },
+  factsBtnText: { fontFamily: FONTS.monoBold, fontSize: 11.5 },
   winCard: {
     alignItems: 'center',
     padding: 28,

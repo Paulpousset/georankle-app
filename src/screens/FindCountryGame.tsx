@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -11,7 +12,7 @@ import GlobeWebView from '../components/GlobeWebView';
 import type { WebViewMessageEvent } from '../components/GlobeWebView';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { Check, ChevronRight, Home, RotateCcw, Share2, Wifi } from 'lucide-react-native';
+import { Check, ChevronRight, Home, Wifi } from 'lucide-react-native';
 import { AtlasGlobe, AtlasCheck, AtlasCross } from '../components/AtlasIcons';
 import type { User } from '@supabase/supabase-js';
 
@@ -30,10 +31,20 @@ import { normalizeRoundScore } from '../lib/score';
 import { tr } from '../i18n';
 import { track } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
-import { log } from '../lib/log';
 import rawCountriesStats from '../../assets/countries_stats.json';
+import { filterByContinent, type ContinentId } from '../data/continents';
+import { saveSoloScore } from '../lib/soloResult';
+import { useSoloCoins } from '../lib/useSoloCoins';
+import { SoloCoinReward } from '../components/SoloCoinReward';
+import { SoloEndActions } from '../components/SoloEndActions';
+import { PlayerGlobe } from '../components/PlayerGlobe';
+import { useMyGameGlobe } from '../lib/myGlobe';
+import { OffLeaderboardNotice } from '../components/OffLeaderboardNotice';
+import { RunRecap, type RecapEntry } from '../components/RunRecap';
+import { orderByReview, recordRun } from '../lib/reviewPool';
+import { countryFactName } from '../lib/countryFacts';
 import rawWorldPolygons from '../../assets/world_polygons.json';
-import { a11yButton, announce, a11yImage, ICON_HIT_SLOP } from '../lib/a11y';
+import { a11yButton, a11yHidden, announce, a11yImage, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
 import { TopInsetBar } from '../components/TopInsetBar';
 
@@ -65,6 +76,21 @@ interface FindCountryGameProps {
   onShare?: () => void;
   /** Daily challenge: reports the live score so a mid-game quit can lock it in. */
   onDailyScoreChange?: (score: number) => void;
+    /**
+   * Entraînement: no mistake ends the run, every answer is explained, and
+   * nothing is recorded (no coins, no leaderboard).
+   */
+  training?: boolean;
+/** Solo continent scope: narrows the answer pool. Null/absent = worldwide. */
+  scope?: ContinentId | null;
+  /** Review run: countries to ask about first (see lib/reviewPool). */
+  reviewIds?: string[] | null;
+  /**
+   * Opens the shop from the globe picker. Only wired in free solo play — it
+   * navigates away, which ends the round — so a daily / online / parcours host
+   * simply leaves it out and the entry does not appear.
+   */
+  onOpenShop?: () => void;
 }
 
 type Phase = 'loading' | 'playing' | 'result' | 'finished';
@@ -539,6 +565,10 @@ export default function FindCountryGame({
   isDaily,
   onShare,
   onDailyScoreChange,
+  scope = null,
+  reviewIds = null,
+  training = false,
+  onOpenShop,
 }: FindCountryGameProps) {
   const { isDarkMode } = useTheme();
   const { language } = useLanguage();
@@ -550,8 +580,18 @@ export default function FindCountryGame({
   const roundCfg = matchData?.game_data?.rounds?.[(matchData?.current_round ?? 1) - 1];
   const totalRounds = (roundCfg?.count ?? (matchData?.game_data?.roundsPerSet as number)) ?? DEFAULT_ROUNDS;
 
+  // The answer pool, narrowed to the solo continent scope when there is one.
+  // The globe itself still draws the whole world — only the questions change.
+  const pool = useMemo(() => {
+    const scoped = filterByContinent(rawCountriesStats as unknown as CountryStat[], scope);
+    return reviewIds?.length ? orderByReview(scoped, reviewIds) : scoped;
+  }, [scope, reviewIds]);
+  const isReview = !!reviewIds?.length;
+  const { coinsEarned, coinsCapped, coinsSyncFailed, award } = useSoloCoins();
+  const { config: myGlobe } = useMyGameGlobe();
+
   const [rounds, setRounds] = useState<CountryStat[]>(() => {
-    const all = rawCountriesStats as unknown as CountryStat[];
+    const all = pool;
     // Prefer the match's deduplicated per-round assignment (no country repeats
     // across modes); fall back to the legacy seeded sample for older matches.
     const round = matchData?.current_round ?? 1;
@@ -567,10 +607,13 @@ export default function FindCountryGame({
     } else if (matchData?.game_data?.seed != null) {
       seed = (matchData.game_data.seed as number) + (matchData.current_round ?? 0) * 997;
     }
-    return sampleRounds(all, totalRounds, seed);
+    return isReview ? all.slice(0, totalRounds) : sampleRounds(all, totalRounds, seed);
   });
   // Per-round correctness, in play order — drives the daily emoji share grid.
   const roundResults = useRef<boolean[]>([]);
+  // Full per-round detail for the end-of-run recap (the boolean list above only
+  // feeds the daily share grid).
+  const [recap, setRecap] = useState<RecapEntry[]>([]);
   const [index, setIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [phase, setPhase] = useState<Phase>('playing');
@@ -693,6 +736,16 @@ export default function FindCountryGame({
     const correct = selectedCca3 === current.cca3;
     if (correct) setScore((s) => s + 1000);
     roundResults.current.push(correct);
+    setRecap((prev) => [
+      ...prev,
+      {
+        cca3: current.cca3,
+        prompt: countryFactName(current.cca3, language),
+        yourAnswer: correct ? undefined : countryFactName(selectedCca3, language),
+        correctAnswer: countryFactName(current.cca3, language),
+        ok: correct,
+      },
+    ]);
     setPhase('result');
     webViewRef.current?.injectJavaScript(
       `window.showResult('${current.cca3}','${selectedCca3}');true;`,
@@ -717,19 +770,25 @@ export default function FindCountryGame({
         return;
       }
       if (!matchData) {
-        track('game_completed', { mode: 'globe', score });
+        track('game_completed', { mode: 'globe', score, scope: scope ?? 'world' });
+        // Leaderboard stores the unified 0–1000 scale so runs of any length
+        // compare fairly — and a continent-scoped run doesn't enter it at all.
+        void saveSoloScore(
+          user ?? null,
+          'globe',
+          normalizeRoundScore('globe', score, { numQuestions: totalRounds }),
+          { scope, review: isReview, training },
+        );
+        // Feed the "mes erreurs" pool so a missed country comes back later.
+        void recordRun('globe', recap);
+        // Pièces solo : Globe Géo n'en créditait aucune, alors que le serveur
+        // accepte ce mode depuis toujours (award_solo_coins, liste des modes).
         if (user) {
-          // Leaderboard stores the unified 0–1000 scale so runs of any length compare fairly.
-          supabase
-            .from('scores')
-            .insert({
-              user_id: user.id,
-              game_mode: 'globe',
-              score: normalizeRoundScore('globe', score, { numQuestions: totalRounds }),
-            })
-            .then(({ error }) => {
-              if (error) log.error('Error saving globe score:', error);
-            });
+          award('globe', normalizeRoundScore('globe', score, { numQuestions: totalRounds }), {
+            scope,
+            review: isReview,
+            training,
+          });
         }
       }
       setPhase('finished');
@@ -741,8 +800,10 @@ export default function FindCountryGame({
     webViewRef.current?.injectJavaScript(`window.resetRound();true;`);
   };
 
-  const handleReplay = () => {
-    setRounds(sampleRounds(rawCountriesStats as unknown as CountryStat[], totalRounds));
+  /** Remet la manche à zéro sans toucher au tirage (`rounds`). */
+  const restart = () => {
+    setRecap([]);
+    roundResults.current = [];
     setIndex(0);
     setScore(0);
     setSelectedCca3(null);
@@ -751,63 +812,64 @@ export default function FindCountryGame({
     webViewRef.current?.injectJavaScript(`window.resetRound();true;`);
   };
 
+  /** Rejoue exactement les mêmes pays, dans le même ordre. */
+  const handleReplaySame = () => restart();
+
+  /** Nouveau tirage. */
+  const handleReplay = () => {
+    setRounds(isReview ? pool.slice(0, totalRounds) : sampleRounds(pool, totalRounds));
+    restart();
+  };
+
   // ── Finished screen ──────────────────────────────────────────────────────
+  // L'ordre est délibéré : le globe équipé (la vitrine), le score, les pièces
+  // (+ le doubleur pub) AVANT le récap — c'est ce que le joueur vient chercher
+  // et il ne doit pas avoir à scroller pour le voir. Le récap, lui, est la
+  // solution : il reste juste en dessous, toujours ouvert.
   if (phase === 'finished') {
     const correctCount = score / 1000;
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <StatusBar style={isDarkMode ? 'light' : 'dark'} />
-        <View style={styles.centered}>
-            <View style={{ marginBottom: 8 }} {...a11yImage(tr(language, 'Globe', 'Globe'))}>
-              <AtlasGlobe color={PALETTE.oceanBlue} size={64} />
-            </View>
-            <Text style={[styles.finishedTitle, { color: colors.text }]}>
-              {tr(language, 'Partie terminée !', 'Game over!')}
-            </Text>
-            <ScoreText style={[styles.finishedScore, { color: PALETTE.sand }]}>
-              {correctCount} / {totalRounds}
-            </ScoreText>
-            <Text style={[styles.finishedSub, { color: colors.textMuted }]}>
-              {Math.round((correctCount / totalRounds) * 100)}
-              {tr(language, '% de réussite', '% success rate')}
-            </Text>
-            <View style={{ gap: 12, width: '100%', maxWidth: 300 }}>
-              {isDaily ? (
-                <TouchableOpacity
-                  style={[styles.btn, { backgroundColor: PALETTE.chartBlue }]}
-                  onPress={onShare}
-                  {...a11yButton(tr(language, 'Partager', 'Share'))}
-                >
-                  <Share2 color="white" size={18} />
-                  <Text style={styles.btnText}>{tr(language, 'Partager', 'Share')}</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={[styles.btn, { backgroundColor: PALETTE.chartBlue }]}
-                  onPress={handleReplay}
-                  {...a11yButton(tr(language, 'Rejouer', 'Play again'))}
-                >
-                  <RotateCcw color="white" size={18} />
-                  <Text style={styles.btnText}>{tr(language, 'Rejouer', 'Play again')}</Text>
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity
-                style={[
-                  styles.btn,
-                  {
-                    backgroundColor: colors.card,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                  },
-                ]}
-                onPress={() => setGameMode('menu')}
-                {...a11yButton(tr(language, 'Menu', 'Menu'))}
-              >
-                <Home color={colors.text} size={18} />
-                <Text style={[styles.btnText, { color: colors.text }]}>Menu</Text>
-              </TouchableOpacity>
-            </View>
-        </View>
+        <ScrollView
+          contentContainerStyle={styles.finishedScroll}
+          showsVerticalScrollIndicator={false}
+        >
+          <PlayerGlobe config={myGlobe} size={116} accent={PALETTE.oceanBlue} animate />
+
+          <Text style={[styles.finishedTitle, { color: colors.text }]}>
+            {tr(language, 'Partie terminée !', 'Game over!')}
+          </Text>
+          <ScoreText style={[styles.finishedScore, { color: PALETTE.sand }]}>
+            {correctCount} / {totalRounds}
+          </ScoreText>
+          <Text style={[styles.finishedSub, { color: colors.textMuted }]}>
+            {Math.round((correctCount / totalRounds) * 100)}
+            {tr(language, '% de réussite', '% success rate')}
+          </Text>
+          <OffLeaderboardNotice run={{ scope, review: isReview, training }} color={colors.textMuted} />
+
+          <SoloCoinReward
+            coinsEarned={coinsEarned}
+            coinsCapped={coinsCapped}
+            coinsSyncFailed={coinsSyncFailed}
+            containerStyle={styles.finishedBlock}
+          />
+
+          <View style={styles.finishedBlock}>
+            <RunRecap entries={recap} />
+          </View>
+
+          <View style={styles.finishedBlock}>
+            <SoloEndActions
+              onShare={isDaily ? onShare : undefined}
+              onReplaySame={isDaily ? undefined : handleReplaySame}
+              onNewGame={isDaily ? undefined : handleReplay}
+              onMenu={() => setGameMode('menu')}
+              accent={PALETTE.chartBlue}
+            />
+          </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -849,21 +911,33 @@ export default function FindCountryGame({
             )}
           </View>
           {/* Swap the planet you play on. Only between guesses: the pick rebuilds
-              the globe page, which would wipe a result reveal. */}
+              the globe page, which would wipe a result reveal. A bare icon read
+              as decoration — the label is what tells the player it is a button. */}
           <TouchableOpacity
             onPress={() => setPickerOpen(true)}
             disabled={phase !== 'playing'}
-            style={[styles.backBtn, { opacity: phase === 'playing' ? 1 : 0.35 }]}
+            style={[
+              styles.globeBtn,
+              {
+                backgroundColor: colors.background,
+                borderColor: colors.border,
+                opacity: phase === 'playing' ? 1 : 0.35,
+              },
+            ]}
             hitSlop={ICON_HIT_SLOP}
-            {...a11yButton(tr(language, 'Choisir le globe', 'Pick the globe'))}
+            {...a11yButton(tr(language, 'Changer de globe', 'Change globe'))}
           >
-            <AtlasGlobe color={colors.textMuted} size={20} />
+            <AtlasGlobe color={colors.textMuted} size={16} {...a11yHidden} />
+            <Text style={[styles.globeBtnText, { color: colors.textMuted }]} numberOfLines={1}>
+              {tr(language, 'Changer de globe', 'Change globe')}
+            </Text>
           </TouchableOpacity>
         </View>
 
         <GlobePickerModal
           visible={pickerOpen}
           onClose={() => setPickerOpen(false)}
+          onOpenShop={isOnline ? undefined : onOpenShop}
           current={globeSkin.status === 'ready' ? globeSkin.key : null}
           onPick={(key) => {
             setSelectedCca3(null);
@@ -1047,6 +1121,19 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   backBtn: { padding: 8 },
+  // Labelled pill: shrinks before the header does (the round counter keeps its
+  // room), and the text truncates rather than pushing the score off screen.
+  globeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    flexShrink: 1,
+  },
+  globeBtnText: { fontSize: 11, fontFamily: FONTS.monoBold, flexShrink: 1 },
   headerCenter: { flex: 1, alignItems: 'center', gap: 2 },
   roundLabel: { fontSize: 13, fontFamily: FONTS.mono },
   scoreRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -1132,7 +1219,16 @@ const styles = StyleSheet.create({
   finishedEmoji: { fontSize: 64, marginBottom: 8 },
   finishedTitle: { fontSize: 26, fontFamily: FONTS.headingBlack, textAlign: 'center' },
   finishedScore: { fontSize: 56, fontFamily: FONTS.headingBlack, marginTop: 8 },
-  finishedSub: { fontSize: 16, fontFamily: FONTS.mono, marginBottom: 32 },
+  finishedSub: { fontSize: 16, fontFamily: FONTS.mono, marginBottom: 8 },
+  finishedScroll: {
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 24,
+    gap: 6,
+  },
+  finishedBlock: { width: '100%', maxWidth: 360, marginTop: 12 },
 
   // Shared button
   btn: {

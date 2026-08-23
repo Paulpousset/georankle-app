@@ -105,7 +105,7 @@ export function ThemeInfoModal({ theme, onClose }: ThemeInfoModalProps) {
           <TouchableOpacity
             onPress={onClose}
             style={{
-              backgroundColor: c.accent,
+              backgroundColor: c.accentStrong,
               paddingVertical: 14, borderRadius: 14,
               alignItems: 'center', marginTop: 20,
             }}

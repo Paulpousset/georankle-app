@@ -1,9 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
-import { Coins, Home, Trophy } from 'lucide-react-native';
+import { Home, RotateCcw, Trophy } from 'lucide-react-native';
 import { AtlasPromote, AtlasDemote } from './AtlasIcons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -13,13 +13,25 @@ import type { RoundSummaryData } from './RoundSummary';
 import { getRankFromElo } from '../lib/ranked';
 import { computeMatchOutcome, formatMatchScore } from '../lib/match';
 import { RankGlobe } from './RankGlobe';
-import { a11yButton, announce } from '../lib/a11y';
+import { a11yButton, a11yHidden, announce } from '../lib/a11y';
 import { ScoreText } from './ScoreText';
+import { PlayerGlobe } from './PlayerGlobe';
+import { RematchPanel } from './RematchPanel';
+import { SoloCoinReward } from './SoloCoinReward';
+import { supabase } from '../lib/supabase';
+import { tr } from '../i18n';
+import type { AvatarConfig, Match } from '../types';
 
 interface RankResult {
   eloChange: number;
   newElo: number;
   oldElo: number;
+}
+
+interface OpponentProfile {
+  username: string | null;
+  avatar_url: string | null;
+  avatar_config: AvatarConfig | null;
 }
 
 interface MatchResultProps {
@@ -33,6 +45,16 @@ interface MatchResultProps {
   isRanked?: boolean;
   rankResult?: RankResult | null;
   coinsAwarded?: number | null;
+  /**
+   * Le match joué et l'identité du joueur : sans eux, l'écran se contente du
+   * score (c'est le cas d'un match local/bot qui n'a pas de ligne à recréer).
+   */
+  match?: Match | null;
+  currentUserId?: string | null;
+  /** Revanche acceptée : la nouvelle partie démarre. */
+  onStartMatch?: (match: Match) => void;
+  /** Rejouer les mêmes questions seul, à l'entraînement. */
+  onSoloReplay?: () => void;
   onExit: () => void;
 }
 
@@ -47,11 +69,46 @@ export function MatchResult({
   isRanked = false,
   rankResult = null,
   coinsAwarded = null,
+  match = null,
+  currentUserId = null,
+  onStartMatch,
+  onSoloReplay,
   onExit,
 }: MatchResultProps) {
   const { isDarkMode } = useTheme();
   const { language } = useLanguage();
   const c = getColors(isDarkMode);
+
+  // Les deux globes de la table. Chargés ici plutôt que passés en prop : le
+  // lobby fait la même requête, mais un match repris ou gagné par forfait n'y
+  // passe pas.
+  const [me, setMe] = useState<OpponentProfile | null>(null);
+  const [opponent, setOpponent] = useState<OpponentProfile | null>(null);
+  const opponentId =
+    match && currentUserId
+      ? match.player1_id === currentUserId
+        ? match.player2_id
+        : match.player1_id
+      : null;
+
+  useEffect(() => {
+    const ids = [currentUserId, opponentId].filter(Boolean) as string[];
+    if (ids.length === 0) return;
+    let alive = true;
+    void supabase
+      .from('profiles')
+      .select('id, username, avatar_url, avatar_config')
+      .in('id', ids)
+      .then(({ data }) => {
+        if (!alive || !data) return;
+        const rows = data as ({ id: string } & OpponentProfile)[];
+        setMe(rows.find((r) => r.id === currentUserId) ?? null);
+        setOpponent(rows.find((r) => r.id === opponentId) ?? null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [currentUserId, opponentId]);
 
   const { iWon, isDraw } = computeMatchOutcome(
     bestOf,
@@ -105,6 +162,32 @@ export function MatchResult({
 
       <ScrollView contentContainerStyle={{ alignItems: 'center', padding: 24, gap: 24 }}>
         <View style={{ alignItems: 'center', gap: 12, marginTop: 16 }}>
+          {/* Les deux globes face à face : on voit enfin contre quel monde on
+              vient de jouer, et le sien porte la couleur du résultat. */}
+          {opponentId && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 4 }}>
+              <PlayerGlobe
+                config={me?.avatar_config ?? null}
+                photoUrl={me?.avatar_url ?? null}
+                username={me?.username ?? (language === 'fr' ? 'Vous' : 'You')}
+                size={92}
+                label={language === 'fr' ? 'VOUS' : 'YOU'}
+                accent={resultColor}
+                animate
+              />
+              <Text style={{ color: c.textFaint, fontFamily: FONTS.mono, fontSize: 13 }}>
+                {language === 'fr' ? 'contre' : 'vs'}
+              </Text>
+              <PlayerGlobe
+                config={opponent?.avatar_config ?? null}
+                photoUrl={opponent?.avatar_url ?? null}
+                username={opponent?.username ?? (language === 'fr' ? 'Adversaire' : 'Opponent')}
+                size={92}
+                label={language === 'fr' ? 'ADVERSAIRE' : 'OPPONENT'}
+                animate
+              />
+            </View>
+          )}
           <Trophy size={56} color={resultColor} />
           <ScoreText
             numberOfLines={1}
@@ -133,18 +216,17 @@ export function MatchResult({
               {language === 'fr' ? 'Départagé aux points' : 'Decided on points'}
             </Text>
           )}
-          {coinsAwarded != null && coinsAwarded > 0 && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-              <Coins size={18} color="#ffd700" />
-              <Text style={{ color: '#ffd700', fontSize: 18, fontFamily: FONTS.headingBlack }}>
-                {`+${coinsAwarded}`}
-              </Text>
-              <Text style={{ color: c.textMuted, fontSize: 13, fontFamily: FONTS.mono }}>
-                {language === 'fr' ? 'pièces' : 'coins'}
-              </Text>
-            </View>
-          )}
         </View>
+
+        {/* Pièces animées + doubleur pub — la même carte qu'en solo. En ligne,
+            l'écran se contentait d'une ligne « +6 pièces », sans aucun moyen de
+            les doubler, alors que la RPC de multiplication ignore le mode. */}
+        {coinsAwarded != null && (
+          <SoloCoinReward
+            coinsEarned={coinsAwarded}
+            containerStyle={{ width: '100%', maxWidth: 400 }}
+          />
+        )}
 
         {/* Ranked ELO block */}
         {isRanked && rankResult && (() => {
@@ -248,23 +330,59 @@ export function MatchResult({
           })}
         </View>
 
-        <TouchableOpacity
-          onPress={onExit}
-          {...a11yButton(language === 'fr' ? 'Retour au menu' : 'Back to menu')}
-          style={{
-            flexDirection: 'row', alignItems: 'center', gap: 10,
-            backgroundColor: c.card,
-            paddingVertical: 16, paddingHorizontal: 32, borderRadius: 14,
-            width: '100%', maxWidth: 400, justifyContent: 'center',
-            borderWidth: 1, borderColor: c.border,
-            marginTop: 8, marginBottom: 16,
-          }}
-        >
-          <Home size={20} color={c.text} />
-          <Text style={{ color: c.text, fontFamily: FONTS.monoBold, fontSize: 16 }}>
-            {language === 'fr' ? 'Retour au menu' : 'Back to menu'}
-          </Text>
-        </TouchableOpacity>
+        <View style={{ width: '100%', maxWidth: 400, gap: 10, marginTop: 8, marginBottom: 16 }}>
+          {/* Revanche : même adversaire, mêmes réglages, tirage neuf. Jamais en
+              classé — un match classé se relance par la file, seule à apparier
+              sur l'ELO. */}
+          {match && currentUserId && opponentId && onStartMatch && !isRanked && (
+            <RematchPanel
+              match={match}
+              currentUserId={currentUserId}
+              opponentName={opponent?.username ?? null}
+              onStartMatch={onStartMatch}
+            />
+          )}
+
+          {/* Rejouer les mêmes questions seul : la seule façon de retravailler
+              ce qu'on vient de rater sans attendre personne. */}
+          {onSoloReplay && (
+            <TouchableOpacity
+              onPress={onSoloReplay}
+              {...a11yButton(
+                tr(language, 'Rejouer les mêmes questions en solo', 'Replay the same questions solo'),
+              )}
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: 10,
+                backgroundColor: c.card,
+                paddingVertical: 16, paddingHorizontal: 24, borderRadius: 14,
+                width: '100%', justifyContent: 'center',
+                borderWidth: 1, borderColor: c.border,
+              }}
+            >
+              <RotateCcw size={20} color={c.text} {...a11yHidden} />
+              <Text numberOfLines={1} style={{ color: c.text, fontFamily: FONTS.monoBold, fontSize: 15 }}>
+                {tr(language, 'Rejouer en solo', 'Replay solo')}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            onPress={onExit}
+            {...a11yButton(language === 'fr' ? 'Retour au menu' : 'Back to menu')}
+            style={{
+              flexDirection: 'row', alignItems: 'center', gap: 10,
+              backgroundColor: c.card,
+              paddingVertical: 16, paddingHorizontal: 32, borderRadius: 14,
+              width: '100%', justifyContent: 'center',
+              borderWidth: 1, borderColor: c.border,
+            }}
+          >
+            <Home size={20} color={c.text} {...a11yHidden} />
+            <Text style={{ color: c.text, fontFamily: FONTS.monoBold, fontSize: 16 }}>
+              {language === 'fr' ? 'Retour au menu' : 'Back to menu'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

@@ -58,6 +58,28 @@ interface CoreOptions {
   transparentBg?: boolean;
   /** Equipped shop globe worn by the planet; omitted/null = the stock look. */
   skin?: GameGlobeSkin | null;
+  /**
+   * Confine the highlight overlay to a lat/lng box instead of wrapping the whole
+   * sphere. The overlay canvas is a fixed 2048x1024: spread over 360 degrees it
+   * gives France about 57 px, which is fine for country-sized shapes and useless
+   * for its departments. Boxed on the country in play, the same canvas buys ~35x
+   * the resolution, which is what makes the Regions globe drawable in 3D at all.
+   */
+  overlayBox?: OverlayBox | null;
+  /**
+   * Regions mode: POLYGONS are a country's subdivisions, not the world. They are
+   * the board — always outlined, whatever the skin — since neither the pack
+   * texture nor the cartoon coat knows anything about them.
+   */
+  regionCoat?: boolean;
+}
+
+/** Lat/lng window an overlay is confined to (see CoreOptions.overlayBox). */
+export interface OverlayBox {
+  lat0: number;
+  lat1: number;
+  lng0: number;
+  lng1: number;
 }
 
 function core(opts: CoreOptions, gameJs: string): string {
@@ -76,6 +98,8 @@ function core(opts: CoreOptions, gameJs: string): string {
     spin: !!opts.spin,
     resetAlways: !!opts.resetAlways,
     skin: opts.skin ?? null,
+    obox: opts.overlayBox ?? null,
+    regionCoat: !!opts.regionCoat,
   };
   return `<!DOCTYPE html>
 <html>
@@ -207,7 +231,11 @@ function projectLL(lat,lng,r){
   return{sx:(_pv.x*0.5+0.5)*W,sy:(1-(_pv.y*0.5+0.5))*H,d:vis?1:0,vis:vis};}
 
 // ── Overlay: country polygons on an equirect canvas draped over the sphere ──
-var OW=2048,OH=1024;
+// 2048x1024 for the whole planet (2:1, the equirect ratio); square when the
+// overlay is boxed on one country, whose window is nowhere near 2:1 — the extra
+// rows go straight into how sharp a region's edge is when the player zooms past
+// the default framing.
+var OW=2048,OH=D.obox?2048:1024;
 var overlayCv=document.createElement('canvas');overlayCv.width=OW;overlayCv.height=OH;
 var overlayCtx=overlayCv.getContext('2d');
 var overlayTex=null;
@@ -217,14 +245,26 @@ function unwrapRing(ring){
     if(prev!==null){while(lng-prev>180)lng-=360;while(prev-lng>180)lng+=360;}
     out.push([lng,ring[i][1]]);prev=lng;}
   return out;}
+// Boxed overlay (Regions): the canvas covers BOX only, so the same 2048x1024
+// lands on one country instead of the planet. Rings are shifted by whole turns
+// into the box's longitude window first (a box near +-180 would otherwise draw
+// its own country off-canvas).
+var BOX=D.obox;
 function traceRings(ctx,rings,off){
   for(var ri=0;ri<rings.length;ri++){var ring=unwrapRing(rings[ri]);
+    var shift=0;
+    if(BOX){var mid=(BOX.lng0+BOX.lng1)/2;
+      while(ring[0][0]+shift-mid>180)shift-=360;
+      while(mid-(ring[0][0]+shift)>180)shift+=360;}
     for(var i=0;i<ring.length;i++){
-      var x=(ring[i][0]+180+off)/360*OW,y=(90-ring[i][1])/180*OH;
+      var lng=ring[i][0]+shift,lat=ring[i][1];
+      var x=BOX?(lng-BOX.lng0)/(BOX.lng1-BOX.lng0)*OW:(lng+180+off)/360*OW;
+      var y=BOX?(BOX.lat1-lat)/(BOX.lat1-BOX.lat0)*OH:(90-lat)/180*OH;
       i?ctx.lineTo(x,y):ctx.moveTo(x,y);}
     ctx.closePath();}}
 function drawPoly(rings,fill,stroke,lw){
-  [-360,0,360].forEach(function(off){
+  // The +-360 passes only exist to wrap the seam on a full-sphere overlay.
+  (BOX?[0]:[-360,0,360]).forEach(function(off){
     overlayCtx.beginPath();traceRings(overlayCtx,rings,off);
     if(fill){overlayCtx.fillStyle=fill;overlayCtx.fill();}
     if(stroke){overlayCtx.strokeStyle=stroke;overlayCtx.lineWidth=lw||2;overlayCtx.stroke();}});}
@@ -255,9 +295,20 @@ function paintSkinCoat(){
   POLYGONS.forEach(function(p){drawPoly(p.r,null,SKIN.halo,5);});
   POLYGONS.forEach(function(p){drawPoly(p.r,SKIN.landCoat,SKIN.line,1.8);});
 }
+// Regions: the subdivisions are the board and exist on no texture, so they are
+// always drawn. Only their HALO is painted here — a soft, wide underlay. The
+// border itself is a real 3D line (buildCrispLines), the one thing that stays a
+// hairline at the 8x-20x zoom this mode opens at; a canvas stroke would be a
+// fat smear there, exactly the "traits trop gros" problem the world globe had.
+function paintRegionCoat(){
+  var halo=SKIN?SKIN.halo:PAL.rim;
+  POLYGONS.forEach(function(p){drawPoly(p.r,SKIN?null:PAL.landF,halo,10);});
+}
 function paintOverlay(){
   overlayCtx.clearRect(0,0,OW,OH);
-  if(SKIN){
+  if(D.regionCoat){
+    paintRegionCoat();
+  } else if(SKIN){
     if(D.drawBaseLand)paintSkinCoat();else paintSkinGraticule();
   } else if(!photoMode){
     // Cartoon coat: graticule + sticker continents (white coastal halo under a
@@ -332,7 +383,14 @@ function initScene(){
   // Grazing angles near the limb are where an equirect overlay smears the most;
   // 16 costs nothing on a single sphere and keeps the highlights legible there.
   overlayTex.anisotropy=Math.min(16,renderer.capabilities.getMaxAnisotropy());
-  overlayMesh=new THREE.Mesh(new THREE.SphereGeometry(SURF,96,96),
+  // A boxed overlay rides a sphere PATCH whose UVs span the box, so the canvas is
+  // spent entirely on the country in play (see CoreOptions.overlayBox).
+  var oGeo=BOX
+    ?new THREE.SphereGeometry(SURF,96,96,
+      (BOX.lng0+180)*Math.PI/180,(BOX.lng1-BOX.lng0)*Math.PI/180,
+      (90-BOX.lat1)*Math.PI/180,(BOX.lat1-BOX.lat0)*Math.PI/180)
+    :new THREE.SphereGeometry(SURF,96,96);
+  overlayMesh=new THREE.Mesh(oGeo,
     new THREE.MeshBasicMaterial({map:overlayTex,transparent:true,depthWrite:false}));
   globe.add(overlayMesh);
   cloudMesh=new THREE.Mesh(new THREE.SphereGeometry(1.016,64,64),
@@ -363,19 +421,30 @@ function initScene(){
   }
   if(SKIN){
     applyCosmos();
-    buildCrispLines();
     loadSatellite((typeof THREE.GLTFLoader==='function')?new THREE.GLTFLoader():null);
   }
+  buildCrispLines();
   applyRotation();updateCamera();paintOverlay();updateCrispLines();
 }
 function applyRotation(){
   pivot.rotation.x=rotLat*Math.PI/180;
   globe.rotation.y=(-90-rotLon)*Math.PI/180;
   needsRender=true;}
+// Past this apparent radius the camera would be sitting ON the crust (its
+// distance is 1/sin(a), so a→90° means d→1) and the view degenerates into the
+// inside of the sphere — black sky with stars. Régions frames a whole country
+// on screen, so it reaches that ceiling from the very first frame on a small
+// country. Beyond A_MAX the camera therefore stops closing in and goes
+// TELEPHOTO instead: same viewpoint, narrower field of view. 1.40 rad is above
+// anything Globe Géo/Frontières can reach (zoom 24 tops out at ~1.37), so their
+// framing is bit-for-bit unchanged.
+var A_MAX=1.40;
 function updateCamera(){
-  var t=Math.tan(FOVY/2)*(baseR*zoom)/(H/2);
-  var a=Math.atan(t);
-  camera.position.set(0,0,1/Math.sin(Math.max(0.03,Math.min(1.52,a))));
+  var want=(baseR*zoom)/(H/2); // sphere radius, in half-screens
+  var a=Math.atan(Math.tan(FOVY/2)*want),fov=FOVY;
+  if(a>A_MAX){a=A_MAX;fov=2*Math.atan(Math.tan(A_MAX)/Math.max(0.001,want));}
+  camera.position.set(0,0,1/Math.sin(Math.max(0.03,a)));
+  camera.fov=fov*180/Math.PI;
   camera.lookAt(0,0,0);
   camera.updateProjectionMatrix();
   needsRender=true;}
@@ -539,14 +608,14 @@ function ringSegments(rings,r,out){
 }
 var crispLines=null;
 function buildCrispLines(){
-  if(!SKIN||!D.drawBaseLand)return;
+  if(!D.regionCoat&&(!SKIN||!D.drawBaseLand))return;
   var pos=[];
   for(var i=0;i<POLYGONS.length;i++)ringSegments(POLYGONS[i].r,LINER,pos);
   if(!pos.length)return;
   var g=new THREE.BufferGeometry();
   g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(pos),3));
   crispLines=new THREE.LineSegments(g,new THREE.LineBasicMaterial({
-    color:new THREE.Color(SKIN.crispLine),transparent:true,opacity:0,depthWrite:false}));
+    color:new THREE.Color(SKIN?SKIN.crispLine:PAL.landS),transparent:true,opacity:0,depthWrite:false}));
   crispLines.visible=false;
   globe.add(crispLines);
 }
@@ -560,8 +629,11 @@ function buildCrispLines(){
 var landObj=null;
 function updateCrispLines(){
   if(crispLines){
-    var k=Math.max(0,Math.min(1,(zoom-2)/4));
-    crispLines.material.opacity=k*0.75;
+    // Regions open already zoomed on a country: their borders are the board, so
+    // they are never faded out. Country borders instead fade in from 2x to 6x,
+    // where the equirect texture stops holding up.
+    var k=D.regionCoat?1:Math.max(0,Math.min(1,(zoom-2)/4));
+    crispLines.material.opacity=k*(D.regionCoat?0.9:0.75);
     crispLines.visible=k>0.01;
   }
   if(landObj){
@@ -679,10 +751,17 @@ function setZoom(z,px,py,geo){
   if(zr&&!D.resetAlways)zr.style.display=zoom>1.05?'flex':'none';
   updateCrispLines();updateSatVisibility();
   if(onZoomCb)onZoomCb();}
+// The +/-/reset controls live inside the page, so their clicks bubble to the
+// document handlers below and used to register as a tap on the planet too —
+// pressing "+" silently picked whatever sat under the button.
+function onControls(e){
+  var zc=document.getElementById('zc');
+  return !!(zc&&e.target&&zc.contains(e.target));}
 if(D.interactive){
   var pinchGeo=null;
   document.addEventListener('touchstart',function(e){
     lastTouch=Date.now();
+    if(onControls(e))return;
     if(e.touches.length===2){pinchD=Math.hypot(e.touches[1].clientX-e.touches[0].clientX,e.touches[1].clientY-e.touches[0].clientY);pinchZ=zoom;drag=null;
       syncMatrices();pinchGeo=unproject((e.touches[0].clientX+e.touches[1].clientX)/2,(e.touches[0].clientY+e.touches[1].clientY)/2);}
     else onStart(e.touches[0].clientX,e.touches[0].clientY);},{passive:true});
@@ -697,12 +776,12 @@ if(D.interactive){
     if(e.touches.length<2){pinchD=null;pinchGeo=null;}
     if(e.touches.length===1)drag={x:e.touches[0].clientX,y:e.touches[0].clientY,lon:rotLon,lat:rotLat,moved:true};
     if(e.touches.length===0)onEnd(e.changedTouches[0].clientX,e.changedTouches[0].clientY);},{passive:true});
-  document.addEventListener('mousedown',function(e){if(fromTouch())return;onStart(e.clientX,e.clientY);});
+  document.addEventListener('mousedown',function(e){if(fromTouch()||onControls(e))return;onStart(e.clientX,e.clientY);});
   document.addEventListener('mousemove',function(e){
     if(fromTouch())return;
     if(drag){onMoveDrag(e.clientX,e.clientY);return;}
     if(onHoverCb)onHoverCb(e.clientX,e.clientY);});
-  document.addEventListener('mouseup',function(e){if(fromTouch())return;onEnd(e.clientX,e.clientY);});
+  document.addEventListener('mouseup',function(e){if(fromTouch()||onControls(e))return;onEnd(e.clientX,e.clientY);});
   document.addEventListener('wheel',function(e){e.preventDefault();setZoom(zoom*(e.deltaY>0?0.9:1.1),e.clientX,e.clientY);},{passive:false});
   var zin=document.getElementById('zin');
   if(zin){
@@ -1071,6 +1150,210 @@ function gameInit(){rotLat=20;applyRotation();}`;
     },
     gameJs,
   );
+}
+
+// ── REGIONS mode (FindRegionGame) ────────────────────────────────────────────
+
+export interface RegionDot {
+  id: string;
+  lat: number;
+  lng: number;
+}
+
+/**
+ * The subdivisions of ONE country, draped on the planet the player equipped.
+ *
+ * Same contract as the Canvas-2D region map it stands in for: posts MAP_READY /
+ * REGION_SELECTED{id}, exposes window.resetRound() + window.showResult(correct,
+ * picked), auto-frames the country and snaps a near miss to the closest region
+ * label point. What it adds is the skin: the round is played on the bought globe
+ * instead of a flat two-tone disc.
+ */
+export function buildRegionEarthHtml(opts: {
+  threeSrc: string;
+  isDark: boolean;
+  pal: MapPalette;
+  polygons: WorldPolygon[];
+  dots: RegionDot[];
+  /** Auto-framing from lib/regionView (spherical mean + angular spread). */
+  view: { clat: number; clng: number; maxAng: number };
+  maxDpr?: number;
+  skin?: GameGlobeSkin | null;
+}): string {
+  const gameJs = `
+var DOTS=${JSON.stringify(opts.dots)};
+var VIEW=${JSON.stringify({
+    clat: +opts.view.clat.toFixed(4),
+    clng: +opts.view.clng.toFixed(4),
+    maxAng: +opts.view.maxAng.toFixed(4),
+  })};
+D.drawBaseLand=true;   // the planet keeps its texture: it is the point of the mode
+D.regionCoat=true;     // …and the country's regions are drawn on top of it
+var sel=null,hov=null,locked=false,resultMode=false,resultCorrect=null,resultPicked=null;
+var markDot=null,markHalo=null;
+function angDist(la1,lo1,la2,lo2){
+  var r=Math.PI/180,s=Math.sin((la2-la1)*r/2),t=Math.sin((lo2-lo1)*r/2);
+  return 2*Math.asin(Math.min(1,Math.sqrt(s*s+Math.cos(la1*r)*Math.cos(la2*r)*t*t)))*180/Math.PI;}
+var dotMap={};
+DOTS.forEach(function(d){dotMap[d.id]=d;});
+// Smallest region containing the tap (an enclave beats the region around it),
+// then a snap to the nearest label point for the ones that are sub-pixel here.
+function pickAt(tx,ty){
+  var coords=unproject(tx,ty);
+  if(!coords)return null;
+  var hit=hitTest(coords);
+  if(hit)return hit;
+  var best=null,bestD=2.5/zoom+0.6;
+  for(var i=0;i<DOTS.length;i++){
+    var d=angDist(coords.lat,coords.lng,DOTS[i].lat,DOTS[i].lng);
+    if(d<bestD){bestD=d;best=DOTS[i].id;}}
+  return best;}
+function repaintStates(){
+  var list=[];
+  if(resultMode){
+    if(resultCorrect)list.push({id:resultCorrect,fill:PAL.okF,stroke:PAL.okS,lw:9});
+    if(resultPicked&&resultPicked!==resultCorrect)list.push({id:resultPicked,fill:PAL.badF,stroke:PAL.badS,lw:9});
+  } else {
+    if(hov&&!locked&&hov!==sel)list.push({id:hov,fill:PAL.hovF,stroke:PAL.hovS,lw:8});
+    if(sel)list.push({id:sel,fill:PAL.selF,stroke:PAL.selS,lw:10});
+  }
+  setOverlayStates(list);
+  updateMarks();}
+// A tiny region can be a couple of pixels wide: the reveal also plants a marker
+// on its label point, or the player never sees where the answer was.
+function updateMarks(){
+  if(!markDot)return;
+  var pos=[],col=[];
+  if(resultMode){
+    [[resultCorrect,PAL.okS],[resultPicked===resultCorrect?null:resultPicked,PAL.badS]].forEach(function(e){
+      var d=e[0]?dotMap[e[0]]:null;if(!d)return;
+      var v=llToVec(d.lat,d.lng,DOTR+0.001);pos.push(v.x,v.y,v.z);
+      var c=new THREE.Color(e[1]);col.push(c.r,c.g,c.b);});}
+  [markHalo,markDot].forEach(function(o){
+    o.geometry.setAttribute('position',new THREE.BufferAttribute(new Float32Array(pos),3));
+    o.geometry.setAttribute('color',new THREE.BufferAttribute(new Float32Array(col),3));
+    o.geometry.setDrawRange(0,pos.length/3);
+    o.visible=pos.length>0;});
+  needsRender=true;}
+// Fit the country: an orthographic point at angle θ lands at R·sin(θ) from the
+// centre, so size the globe until the farthest region sits at ~84% of the disc.
+var atFit=false;
+// Where a point ang radians off the view centre lands, in px from the centre,
+// at a given zoom. The flat maps could invert this in closed form (orthographic:
+// R·sin θ); a perspective camera cannot — it magnifies the centre far more than
+// the limb, which is why reusing the 2D formula here framed France so tight that
+// Corsica fell off the screen. Mirrors updateCamera exactly, so a binary search
+// on it lands on the real fit.
+function projRadius(ang,z){
+  var want=(baseR*z)/(H/2);
+  var a=Math.atan(Math.tan(FOVY/2)*want),fov=FOVY;
+  if(a>A_MAX){a=A_MAX;fov=2*Math.atan(Math.tan(A_MAX)/Math.max(0.001,want));}
+  var d=1/Math.sin(Math.max(0.03,a));
+  return (H/2)*(Math.sin(ang)/Math.max(0.001,d-Math.cos(ang)))/Math.tan(fov/2);}
+function frameCountry(){
+  rotLon=VIEW.clng;rotLat=Math.max(-85,Math.min(85,VIEW.clat));
+  var ang=Math.min(80,VIEW.maxAng*1.12+1.5)*Math.PI/180;
+  // …so the farthest region sits at ~84% of the half-screen, like the 2D map.
+  var target=0.84*Math.min(W,H)/2,lo=0.2,hi=400;
+  for(var i=0;i<44;i++){var mid=(lo+hi)/2;
+    if(projRadius(ang,mid)>target)hi=mid;else lo=mid;}
+  var z=(lo+hi)/2;
+  ZMAX=Math.max(16,z*6);ZMIN=Math.min(0.9,z*0.4);
+  applyRotation();setZoom(z);atFit=true;}
+// The globe box shrinks when the result banner opens (and grows back on the next
+// round). Re-fit rather than keep the pixel size, or half the country is simply
+// cropped away at the very moment the answer is revealed. A player who zoomed in
+// themselves keeps their view.
+window.addEventListener('resize',function(){if(atFit)frameCountry();});
+function gameInit(){
+  var mk=function(size,vc){
+    var m=new THREE.PointsMaterial({size:size,sizeAttenuation:false,transparent:true,
+      opacity:1,map:dotTexture(),alphaTest:0.4,depthWrite:false,depthTest:false});
+    if(vc)m.vertexColors=true;else m.color=new THREE.Color(SKIN?SKIN.crispLine:(D.isDark?'#0a1221':'#ffffff'));
+    var o=new THREE.Points(new THREE.BufferGeometry(),m);
+    o.visible=false;globe.add(o);return o;};
+  markHalo=mk(22,false);markHalo.renderOrder=8;
+  markDot=mk(14,true);markDot.renderOrder=9;
+  onZoomCb=function(){atFit=false;};
+  onTapCb=function(x,y){
+    if(locked)return;
+    var hit=pickAt(x,y);
+    if(!hit)return;
+    sel=hit;repaintStates();
+    postMsg({type:'REGION_SELECTED',id:hit});};
+  onHoverCb=function(x,y){
+    if(locked)return;
+    var hit=pickAt(x,y);
+    if(hit!==hov){hov=hit;document.body.style.cursor=hit?'pointer':'default';repaintStates();}};
+  frameCountry();repaintStates();
+  // The host screen listens for MAP_READY (shared with the 2D map it replaces).
+  postMsg({type:'MAP_READY'});}
+// ⟲ goes back to the country, not to world zoom: the world is not the board here.
+window.__recenter=function(){frameCountry();};
+window.resetRound=function(){
+  sel=null;hov=null;locked=false;resultMode=false;resultCorrect=null;resultPicked=null;
+  document.body.style.cursor='default';repaintStates();};
+window.showResult=function(correct,picked){
+  locked=true;hov=null;document.body.style.cursor='default';
+  resultMode=true;resultCorrect=correct;resultPicked=picked;
+  // Straight back to the whole country: after hunting a region at 30x, a reveal
+  // left at that zoom shows nothing but the answer's own interior.
+  frameCountry();
+  repaintStates();};`;
+  return core(
+    {
+      threeSrc: opts.threeSrc,
+      isDark: opts.isDark,
+      pal: opts.pal,
+      polygons: opts.polygons,
+      maxDpr: opts.maxDpr,
+      interactive: true,
+      resetAlways: true,
+      initial: { rotLat: opts.view.clat, rotLon: opts.view.clng, fit: 0.9 },
+      overlayBox: regionOverlayBox(opts.view, opts.polygons),
+      regionCoat: true,
+      skin: opts.skin,
+    },
+    gameJs,
+  );
+}
+
+/**
+ * The lat/lng window the region overlay is confined to: the polygons' own
+ * bounding box plus a small margin. Tight on purpose — every degree of slack is
+ * canvas resolution taken away from the country. Longitudes are unwrapped around
+ * the framed centre first, so a country straddling ±180° still yields one box.
+ *
+ * Null — i.e. the plain full-sphere overlay — as soon as the box would wrap the
+ * globe or reach a pole, where a sphere patch buys nothing.
+ */
+export function regionOverlayBox(
+  view: { clat: number; clng: number },
+  polygons: WorldPolygon[],
+): OverlayBox | null {
+  let lat0 = 90, lat1 = -90, lng0 = 180, lng1 = -180;
+  let seen = false;
+  for (const p of polygons) {
+    for (const ring of p.r) {
+      for (const [lngRaw, lat] of ring) {
+        let lng = lngRaw;
+        while (lng - view.clng > 180) lng -= 360;
+        while (view.clng - lng > 180) lng += 360;
+        if (lat < lat0) lat0 = lat;
+        if (lat > lat1) lat1 = lat;
+        if (lng < lng0) lng0 = lng;
+        if (lng > lng1) lng1 = lng;
+        seen = true;
+      }
+    }
+  }
+  if (!seen) return null;
+  const mLat = Math.max(0.25, (lat1 - lat0) * 0.06);
+  const mLng = Math.max(0.25, (lng1 - lng0) * 0.06);
+  lat0 -= mLat; lat1 += mLat; lng0 -= mLng; lng1 += mLng;
+  if (lat1 - lat0 >= 140 || lng1 - lng0 >= 170) return null;
+  if (lat0 <= -89 || lat1 >= 89) return null;
+  return { lat0, lat1, lng0, lng1 };
 }
 
 // ── MENU mode (decorative hero globe) ────────────────────────────────────────

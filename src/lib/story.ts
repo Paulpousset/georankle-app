@@ -129,15 +129,28 @@ function withTimeout<T>(p: PromiseLike<T>): Promise<T | typeof TIMEOUT> {
 }
 
 /** Merge the user's own server rows + lives into the local cache. */
-async function reconcileFromServer(progress: StoredProgress, lives: StoredLives): Promise<{
+async function reconcileFromServer(
+  progress: StoredProgress,
+  lives: StoredLives,
+  userId: string,
+): Promise<{
   progress: StoredProgress;
   lives: StoredLives;
 }> {
   try {
     const [state, rows] = await Promise.all([
       withTimeout(supabase.rpc('get_story_state')),
+      // `.eq('user_id')` OBLIGATOIRE : sans lui cette requête ramenait les
+      // lignes de TOUS les joueurs (la policy était `USING (true)`) et la
+      // fusion par Math.max plus bas plaquait les étoiles d'inconnus sur la
+      // carte Histoire du joueur. La policy est désormais restreinte au
+      // propriétaire, mais le filtre reste la bonne écriture — et la seule
+      // qui rende la requête indexable.
       withTimeout(
-        supabase.from('story_progress').select('level, stars, score'),
+        supabase
+          .from('story_progress')
+          .select('level, stars, score')
+          .eq('user_id', userId),
       ),
     ]);
 
@@ -181,7 +194,7 @@ export async function getStorySnapshot(user: User | null): Promise<StorySnapshot
   let lives = settleLives(await readLives());
 
   if (user) {
-    const merged = await reconcileFromServer(progress, lives);
+    const merged = await reconcileFromServer(progress, lives, user.id);
     progress = merged.progress;
     lives = settleLives(merged.lives);
     await writeProgress(progress);

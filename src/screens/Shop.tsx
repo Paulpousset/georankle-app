@@ -8,6 +8,7 @@ import { AtlasGlobe } from '../components/AtlasIcons';
 import * as Haptics from 'expo-haptics';
 
 import { supabase } from '../lib/supabase';
+import { log } from '../lib/log';
 import { purchaseCosmetic, purchaseBundle, fetchFeaturedCosmetic, type FeaturedCosmetic } from '../lib/shop';
 import { track } from '../lib/analytics';
 import { getColors } from '../theme/colors';
@@ -120,6 +121,12 @@ export default function Shop({ onBack, onEditAvatar, onOpenGlobeLab }: ShopProps
   const [balance, setBalance] = useState(0);
   const [owned, setOwned] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  /**
+   * La lecture a échoué. Sans cet état, un échec réseau affichait « solde 0 » et
+   * « aucun objet possédé » : les objets DÉJÀ ACHETÉS réapparaissaient avec un
+   * bouton « Acheter » et un solde faux. Mieux vaut le dire que mentir.
+   */
+  const [loadError, setLoadError] = useState(false);
   const [buying, setBuying] = useState<string | null>(null);
   const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(DEFAULT_AVATAR_CONFIG);
   const [previewPart, setPreviewPart] = useState<CosmeticPart | null>(null);
@@ -133,14 +140,31 @@ export default function Shop({ onBack, onEditAvatar, onOpenGlobeLab }: ShopProps
   const [filter, setFilter] = useState<ShopFilter>('all');
 
   const fetchAll = useCallback(async () => {
-    if (!userId) return;
+    // Sans session, on ne laisse PAS le spinner tourner indéfiniment.
+    if (!userId) {
+      setLoading(false);
+      setLoadError(true);
+      return;
+    }
     setLoading(true);
-    const [{ data: wallet }, { data: cosmetics }, { data: profile }, feat] = await Promise.all([
+    setLoadError(false);
+    const [
+      { data: wallet, error: wErr },
+      { data: cosmetics, error: cErr },
+      { data: profile, error: pErr },
+      feat,
+    ] = await Promise.all([
       supabase.from('coin_wallets').select('balance').eq('user_id', userId).maybeSingle(),
       supabase.from('user_cosmetics').select('item_id').eq('user_id', userId),
       supabase.from('profiles').select('avatar_config').eq('id', userId).single(),
       fetchFeaturedCosmetic(),
     ]);
+    if (wErr || cErr || pErr) {
+      log.error('boutique: lecture échouée', wErr ?? cErr ?? pErr);
+      setLoadError(true);
+      setLoading(false);
+      return;
+    }
     setBalance(wallet?.balance ?? 0);
     setOwned(new Set((cosmetics ?? []).map((r) => r.item_id as string)));
     if (profile?.avatar_config) {
@@ -426,7 +450,7 @@ export default function Shop({ onBack, onEditAvatar, onOpenGlobeLab }: ShopProps
             <View
               style={[
                 styles.progressFill,
-                { backgroundColor: c.accent, width: `${Math.round((section.ownedCount / Math.max(1, section.totalCount)) * 100)}%` },
+                { backgroundColor: c.accentStrong, width: `${Math.round((section.ownedCount / Math.max(1, section.totalCount)) * 100)}%` },
               ]}
             />
           </View>
@@ -638,6 +662,32 @@ export default function Shop({ onBack, onEditAvatar, onOpenGlobeLab }: ShopProps
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="large" color={c.accent} />
         </View>
+      ) : loadError ? (
+        <View style={[styles.loadingWrap, { padding: 24, gap: 16 }]}>
+          <Text style={{ color: c.text, fontSize: 15, textAlign: 'center' }}>
+            {tr(
+              language,
+              'Impossible de charger la boutique. Ton solde et tes objets sont intacts.',
+              'Could not load the shop. Your balance and items are unchanged.',
+            )}
+          </Text>
+          <TouchableOpacity
+            onPress={fetchAll}
+            style={{
+              backgroundColor: c.accentStrong,
+              paddingHorizontal: 24,
+              paddingVertical: 12,
+              borderRadius: 10,
+              minHeight: 44,
+              justifyContent: 'center',
+            }}
+            {...a11yButton(tr(language, 'Réessayer', 'Retry'))}
+          >
+            <Text style={{ color: '#fff', fontWeight: '700' }}>
+              {tr(language, 'Réessayer', 'Retry')}
+            </Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <SectionList
           sections={sections}
@@ -646,6 +696,17 @@ export default function Shop({ onBack, onEditAvatar, onOpenGlobeLab }: ShopProps
           renderSectionHeader={renderSectionHeader}
           ListHeaderComponent={listHeader}
           contentContainerStyle={styles.content}
+          ListEmptyComponent={
+            <View style={{ padding: 32, alignItems: 'center' }}>
+              <Text style={{ color: c.textMuted, fontSize: 14, textAlign: 'center' }}>
+                {tr(
+                  language,
+                  'Aucun objet dans ce filtre.',
+                  'No items match this filter.',
+                )}
+              </Text>
+            </View>
+          }
           showsVerticalScrollIndicator={false}
           stickySectionHeadersEnabled={false}
           initialNumToRender={6}

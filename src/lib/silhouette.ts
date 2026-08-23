@@ -10,6 +10,8 @@
  */
 import rawWorldPolygons from '../../assets/world_polygons.json';
 import rawCountriesStats from '../../assets/countries_stats.json';
+import { filterCca3sByContinent, type ContinentId } from '../data/continents';
+import { orderCca3sByReview } from './reviewOrder';
 import { createSeededRng, seededShuffle } from './rng';
 import { COUNTRY_ALIASES } from './answerMatch';
 
@@ -108,15 +110,40 @@ export interface SilhouetteQuestion {
   options: string[];
 }
 
+export interface SilhouetteOpts {
+  /** Solo continent scope; null (the default) plays the whole world. */
+  continent?: ContinentId | null;
+  /**
+   * Review run: cca3s to draw the answers from first. Ones outside the scoped
+   * pool are ignored, and the rest of the pool still fills the run out.
+   */
+  reviewIds?: string[] | null;
+}
+
 /**
  * A seeded session of `count` questions. Answers never repeat within a run;
  * the three distractors come from the answer's region when it has enough
  * neighbours, topped up from the rest of the world otherwise.
+ *
+ * `opts.continent` narrows the *answers* for solo play. Distractors keep
+ * drawing from the worldwide pool as a top-up so a run always has four options
+ * — inside a continent they're same-continent anyway, which is the harder and
+ * more instructive case.
  */
-export function buildSilhouetteRun(seed: number, count = 5): SilhouetteQuestion[] {
+export function buildSilhouetteRun(
+  seed: number,
+  count = 5,
+  opts: SilhouetteOpts = {},
+): SilhouetteQuestion[] {
   const rng = createSeededRng(seed);
   const pool = silhouetteCountries();
-  const answers = seededShuffle(pool, rng).slice(0, Math.min(count, pool.length));
+  const answerPool = filterCca3sByContinent(pool, opts.continent ?? null);
+  // A review run keeps the due order (most-missed first) instead of shuffling;
+  // everything else is seeded-random as before.
+  const ordered = opts.reviewIds?.length
+    ? orderCca3sByReview(answerPool, opts.reviewIds)
+    : seededShuffle(answerPool, rng);
+  const answers = ordered.slice(0, Math.min(count, answerPool.length));
 
   return answers.map((answer) => {
     const region = STATS_BY_ID.get(answer)?.region;

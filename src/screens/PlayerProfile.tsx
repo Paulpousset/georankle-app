@@ -295,7 +295,7 @@ export default function PlayerProfile({
       <TouchableOpacity
         onPress={addFriend}
         disabled={acting}
-        style={[styles.friendBtn, { backgroundColor: c.accent, borderColor: c.accent }]}
+        style={[styles.friendBtn, { backgroundColor: c.accentStrong, borderColor: c.accent }]}
         {...a11yButton(tr(language, 'Ajouter en ami', 'Add friend'), { disabled: acting, busy: acting })}
       >
         {acting ? <ActivityIndicator size="small" color="#fff" /> : <UserPlus color="#fff" size={18} />}

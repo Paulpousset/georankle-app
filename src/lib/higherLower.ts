@@ -12,7 +12,9 @@
  * the data (display_fr / display_en).
  */
 import { gameData } from '../data/gameData';
+import { filterByContinent, type ContinentId } from '../data/continents';
 import { createSeededRng, seededShuffle } from './rng';
+import { THEME_POOL_LATEST, themePoolFor } from './themePool';
 
 /** Themes too grim for a quick-fire quiz — never asked. */
 const EXCLUDED_THEMES = new Set(['suicide_rate', 'homicide_rate']);
@@ -55,9 +57,28 @@ function toEntry(c: RawCountry, themeId: string): HLEntry {
   };
 }
 
-/** Theme ids eligible for Plus ou Moins (numeric data, not excluded). */
-export function higherLowerThemeIds(): string[] {
-  return Object.keys(gameData.themes).filter((t) => !EXCLUDED_THEMES.has(t));
+/**
+ * Theme ids eligible for Plus ou Moins (numeric data, not excluded).
+ *
+ * `poolDate` freezes the pool to the version in force that day — mandatory for
+ * the daily and league draws, where two players on different app builds must
+ * get the SAME chain. Omit it for free solo play, which compares to nobody and
+ * should see every theme immediately. See `themePool.ts`.
+ */
+export function higherLowerThemeIds(poolDate?: string): string[] {
+  const pool = poolDate ? themePoolFor(poolDate) : THEME_POOL_LATEST;
+  return pool.filter((t) => !EXCLUDED_THEMES.has(t));
+}
+
+export interface HigherLowerOpts {
+  /** Solo continent scope; null (the default) plays the whole world. */
+  continent?: ContinentId | null;
+  /**
+   * UTC date (`YYYY-MM-DD`) of the daily/league puzzle this run belongs to.
+   * Freezes the theme pool so the chain is identical across app versions.
+   * Leave undefined for free solo play.
+   */
+  poolDate?: string;
 }
 
 /**
@@ -65,12 +86,24 @@ export function higherLowerThemeIds(): string[] {
  * most once per run; a challenger sharing no comparable theme with the current
  * reference is skipped. `maxQuestions` only bounds the precomputation — real
  * chains end at the first mistake long before the pool runs out.
+ *
+ * `opts.continent` narrows the pool for solo play. It shortens the chain (a
+ * continent holds 14–54 countries, not 195), which is fine: a run ends at the
+ * first mistake anyway, and the screen falls back to a fresh seed when it does
+ * reach the end.
  */
-export function buildHigherLowerRun(seed: number, maxQuestions = 100): HLPair[] {
+export function buildHigherLowerRun(
+  seed: number,
+  maxQuestions = 100,
+  opts: HigherLowerOpts = {},
+): HLPair[] {
   const rng = createSeededRng(seed);
-  const themeIds = higherLowerThemeIds();
-  const countries = (gameData.countries as unknown as RawCountry[]).filter(
-    (c) => c.data && Object.keys(c.data).length >= 5,
+  const themeIds = higherLowerThemeIds(opts.poolDate);
+  const countries = filterByContinent(
+    (gameData.countries as unknown as RawCountry[]).filter(
+      (c) => c.data && Object.keys(c.data).length >= 5,
+    ),
+    opts.continent ?? null,
   );
   const order = seededShuffle(countries, rng);
   if (order.length < 2) return [];

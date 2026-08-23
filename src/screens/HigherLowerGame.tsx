@@ -7,16 +7,17 @@
 import { showAlert } from '../lib/alert';
 import { useState, useEffect, useRef } from 'react';
 import {
-  StyleSheet,
-  Text,
-  View,
-  TouchableOpacity,
   Image,
   Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { RefreshCcw, Moon, Sun, Home, Share2 } from 'lucide-react-native';
+import { Moon, Sun, Home } from 'lucide-react-native';
 import { ThemeIcon } from '../components/themeIcons';
 import type { User } from '@supabase/supabase-js';
 
@@ -25,8 +26,11 @@ import { buildHigherLowerRun, higherSide, type HLPair } from '../lib/higherLower
 import { normalizeRoundScore } from '../lib/score';
 import { track } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
-import { log } from '../lib/log';
 import { awardSoloCoins } from '../lib/coins';
+import { earnsCoins, saveSoloScore } from '../lib/soloResult';
+import { OffLeaderboardNotice } from '../components/OffLeaderboardNotice';
+import { RunRecap, type RecapEntry } from '../components/RunRecap';
+import type { ContinentId } from '../data/continents';
 import { useToast } from '../components/ToastProvider';
 import { getFlagUrl, prefetchFlags } from '../lib/flags';
 import type { GameMode, Match } from '../types';
@@ -39,6 +43,9 @@ import { getThemeShortDescription } from '../i18n/themeDescriptions';
 import { a11yButton, announce, a11yHidden, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
 import { SoloCoinReward } from '../components/SoloCoinReward';
+import { SoloEndActions } from '../components/SoloEndActions';
+import { PlayerGlobe } from '../components/PlayerGlobe';
+import { useMyGameGlobe } from '../lib/myGlobe';
 import { TopInsetBar } from '../components/TopInsetBar';
 
 import { isMobileLayout as isMobile } from '../lib/layout';
@@ -54,6 +61,12 @@ interface HigherLowerGameProps {
   onRoundComplete?: (score: number) => void;
   /** Daily challenge: deterministic seed for today's puzzle (overrides random). */
   dailySeed?: number;
+  /**
+   * Daily/league: the puzzle's UTC date (`YYYY-MM-DD`). Freezes the theme pool
+   * to the version in force that day, so two players on different app builds
+   * get the same chain. Leave undefined for free solo play.
+   */
+  poolDate?: string;
   /** Daily challenge: fired once at game-over with the score. */
   onDailyComplete?: (score: number, grid?: string) => void;
   /** Daily challenge: replaces "Retry" with "Share" and skips score saving. */
@@ -62,6 +75,13 @@ interface HigherLowerGameProps {
   onShare?: () => void;
   /** Daily challenge: reports the live score so a mid-game quit can lock it in. */
   onDailyScoreChange?: (score: number) => void;
+    /**
+   * Entraînement: no mistake ends the run, every answer is explained, and
+   * nothing is recorded (no coins, no leaderboard).
+   */
+  training?: boolean;
+/** Solo continent scope: narrows the country chain. Null = worldwide. */
+  scope?: ContinentId | null;
 }
 
 export default function HigherLowerGame({
@@ -70,10 +90,13 @@ export default function HigherLowerGame({
   matchData,
   onRoundComplete,
   dailySeed,
+  poolDate,
   onDailyComplete,
   isDaily,
   onShare,
   onDailyScoreChange,
+  scope = null,
+  training = false,
 }: HigherLowerGameProps) {
   const { isDarkMode, setIsDarkMode } = useTheme();
   const { language, setLanguage } = useLanguage();
@@ -88,7 +111,7 @@ export default function HigherLowerGame({
       (matchData?.game_data?.seed
         ? matchData.game_data.seed + ((matchData.current_round ?? 1) - 1)
         : Math.floor(Math.random() * 2147483647));
-    return buildHigherLowerRun(seed);
+    return buildHigherLowerRun(seed, undefined, { continent: scope, poolDate });
   });
   const [questionIndex, setQuestionIndex] = useState(0);
   const [score, setScore] = useState(0);
@@ -96,7 +119,9 @@ export default function HigherLowerGame({
   const [gameOver, setGameOver] = useState(false);
   /** Which side the player tapped this question (null until they answer). */
   const [picked, setPicked] = useState<'a' | 'b' | null>(null);
+  const [recap, setRecap] = useState<RecapEntry[]>([]);
   const [coinsEarned, setCoinsEarned] = useState<number | null>(null);
+  const { config: myGlobe } = useMyGameGlobe();
   const [coinsCapped, setCoinsCapped] = useState(false);
   const [coinsSyncFailed, setCoinsSyncFailed] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -142,25 +167,21 @@ export default function HigherLowerGame({
 
   const pair = run[questionIndex] ?? null;
 
-  const finishRun = (finalScore: number) => {
+  const finishRun = (finalScore: number, runRecap: RecapEntry[] = recap) => {
     if (finalScore > best) setBest(finalScore);
     if (!isDaily) {
-      if (!matchData) track('game_completed', { mode: 'higherlower', score: finalScore });
+      if (!matchData) {
+        track('game_completed', { mode: 'higherlower', score: finalScore, scope: scope ?? 'world' });
+      }
       if (user) {
-        supabase
-          .from('scores')
-          .insert({ user_id: user.id, game_mode: 'higherlower', score: finalScore })
-          .then(({ error }) => {
-            if (error) {
-              log.error('Error saving higherlower score:', error);
-              showAlert(
-                tr(language, 'Erreur', 'Error'),
-                tr(language, "Impossible d'enregistrer ton score.", 'Could not save your score.'),
-              );
-            }
-          });
+        void saveSoloScore(user, 'higherlower', finalScore, { scope, training }, () =>
+          showAlert(
+            tr(language, 'Erreur', 'Error'),
+            tr(language, "Impossible d'enregistrer ton score.", 'Could not save your score.'),
+          ),
+        );
         if (!matchData) {
-          awardSoloCoins('higherlower', normalizeRoundScore('higherlower', finalScore)).then((res) => {
+          if (earnsCoins({ training })) awardSoloCoins('higherlower', normalizeRoundScore('higherlower', finalScore)).then((res) => {
             setCoinsEarned(res.coinsAwarded);
             setCoinsCapped(res.capped);
             setCoinsSyncFailed(!res.synced);
@@ -194,6 +215,26 @@ export default function HigherLowerGame({
     answeredRef.current = true;
     setPicked(side);
     const correct = side === higherSide(pair);
+    // Record the pair so the game-over screen can replay the whole chain: the
+    // theme, which country actually won it, and by how much.
+    const winner = higherSide(pair) === 'a' ? pair.a : pair.b;
+    const loser = higherSide(pair) === 'a' ? pair.b : pair.a;
+    const nameOf = (e: typeof winner) => (language === 'fr' ? e.name : e.name_en);
+    const valueOf = (e: typeof winner) => (language === 'fr' ? e.display_fr : e.display_en);
+    // Built eagerly rather than through a setState updater: a wrong answer
+    // ends the run in this same handler, and `recap` state wouldn't have
+    // flushed in time to include the losing pair.
+    const nextRecap: RecapEntry[] = [
+      ...recap,
+      {
+        cca3: winner.cca3,
+        prompt: `${nameOf(pair.a)} / ${nameOf(pair.b)}`,
+        yourAnswer: correct ? undefined : nameOf(loser),
+        correctAnswer: valueOf(winner) || nameOf(winner),
+        ok: correct,
+      },
+    ];
+    setRecap(nextRecap);
 
     if (correct) {
       announce(tr(language, `Correct ! Série ${score + 1}`, `Correct! Chain ${score + 1}`));
@@ -204,29 +245,50 @@ export default function HigherLowerGame({
         // The precomputed chain is ~100 questions deep; wrap defensively if a
         // player somehow outruns it by reseeding a fresh run.
         if (questionIndex + 1 >= run.length) {
-          setRun(buildHigherLowerRun(Math.floor(Math.random() * 2147483647)));
+          setRun(buildHigherLowerRun(Math.floor(Math.random() * 2147483647), undefined, { continent: scope }));
           setQuestionIndex(0);
         } else {
           setQuestionIndex((i) => i + 1);
         }
       }, NEXT_DELAY);
+    } else if (training) {
+      // Entraînement: a miss costs the chain but not the run — the whole point
+      // is to keep meeting countries instead of restarting every few seconds.
+      announce(
+        tr(
+          language,
+          `Faux. ${valueOf(winner) || nameOf(winner)}. On continue.`,
+          `Wrong. ${valueOf(winner) || nameOf(winner)}. Keep going.`,
+        ),
+      );
+      timerRef.current = setTimeout(() => {
+        answeredRef.current = false;
+        setPicked(null);
+        if (questionIndex + 1 >= run.length) {
+          setRun(buildHigherLowerRun(Math.floor(Math.random() * 2147483647), undefined, { continent: scope }));
+          setQuestionIndex(0);
+        } else {
+          setQuestionIndex((i) => i + 1);
+        }
+      }, GAME_OVER_DELAY);
     } else {
       announce(
         tr(language, `Faux ! Perdu. Ton score : ${score}`, `Wrong! Game over. Your score: ${score}`),
       );
-      finishRun(score);
+      finishRun(score, nextRecap);
     }
   };
 
   const resetGame = () => {
     setScore(0);
     setQuestionIndex(0);
+    setRecap([]);
     setPicked(null);
     setGameOver(false);
     setCoinsEarned(null);
     setCoinsCapped(false);
     setCoinsSyncFailed(false);
-    setRun(buildHigherLowerRun(Math.floor(Math.random() * 2147483647)));
+    setRun(buildHigherLowerRun(Math.floor(Math.random() * 2147483647), undefined, { continent: scope }));
   };
 
   if (!pair) return null;
@@ -379,6 +441,14 @@ export default function HigherLowerGame({
               { backgroundColor: isDarkMode ? 'rgba(10,22,40,0.96)' : 'rgba(242,232,208,0.97)' },
             ]}
           >
+            {/* Le récap fait maintenant tenir globe + pièces + réponses : sur un
+                petit écran ça dépasse, donc ça défile. */}
+            <ScrollView
+              style={{ alignSelf: 'stretch' }}
+              contentContainerStyle={styles.gameOverContent}
+              showsVerticalScrollIndicator={false}
+            >
+            <PlayerGlobe config={myGlobe} size={96} accent="#8b1a1a" animate style={{ marginBottom: 12 }} />
             <ScoreText style={styles.gameOverTitle}>
               {tr(language, 'PERDU !', 'LOST!')}
             </ScoreText>
@@ -386,32 +456,28 @@ export default function HigherLowerGame({
               {tr(language, 'Ta série : ', 'Your chain: ')}
               {score}
             </Text>
-            {/* Animated coins + rewarded-ad doubler (solo only, server-credited). */}
+            {!isDaily && <OffLeaderboardNotice run={{ scope, training }} color={c.textMuted} />}
+            {/* Pièces + doubleur pub AVANT le récap : la récompense d'abord,
+                la solution juste après. */}
             <SoloCoinReward
               coinsEarned={coinsEarned}
               coinsCapped={coinsCapped}
               coinsSyncFailed={coinsSyncFailed}
-              containerStyle={{ alignSelf: 'stretch', marginBottom: 24 }}
+              containerStyle={{ alignSelf: 'stretch', maxWidth: 380, marginBottom: 14 }}
             />
-            {isDaily ? (
-              <TouchableOpacity
-                style={styles.resetBtn}
-                onPress={onShare}
-                {...a11yButton(tr(language, 'Partager', 'Share'))}
-              >
-                <Share2 color="#fff" size={20} />
-                <Text style={styles.resetBtnText}>{tr(language, 'PARTAGER', 'SHARE')}</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={styles.resetBtn}
-                onPress={resetGame}
-                {...a11yButton(tr(language, 'Recommencer', 'Retry'))}
-              >
-                <RefreshCcw color="#fff" size={20} />
-                <Text style={styles.resetBtnText}>{tr(language, 'RECOMMENCER', 'RETRY')}</Text>
-              </TouchableOpacity>
-            )}
+            <View style={{ alignSelf: 'stretch', maxWidth: 380, marginBottom: 18 }}>
+              <RunRecap entries={recap} mistakesFirst={false} maxHeight={200} />
+            </View>
+            {/* La chaîne casse à la première erreur : pas de « même partie »
+                à rejouer, seulement une nouvelle tentative. */}
+            <View style={{ alignSelf: 'stretch', maxWidth: 380 }}>
+              <SoloEndActions
+                onShare={isDaily ? onShare : undefined}
+                onNewGame={isDaily ? undefined : resetGame}
+                onMenu={() => setGameMode('menu')}
+              />
+            </View>
+            </ScrollView>
           </View>
         )}
       </View>
@@ -495,10 +561,10 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     justifyContent: 'center',
-    alignItems: 'center',
     borderRadius: 16,
     padding: 20,
   },
+  gameOverContent: { flexGrow: 1, alignItems: 'center', justifyContent: 'center' },
   gameOverTitle: { fontSize: 44, fontFamily: FONTS.headingBlack, color: '#8b1a1a', marginBottom: 10 },
   gameOverScore: { fontSize: 22, fontFamily: FONTS.mono, marginBottom: 30 },
   resetBtn: {

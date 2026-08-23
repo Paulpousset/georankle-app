@@ -166,7 +166,7 @@ export function DailyResultCard({
               alignItems: 'center',
               justifyContent: 'center',
               gap: 8,
-              backgroundColor: c.accent,
+              backgroundColor: c.accentStrong,
               borderRadius: 14,
               paddingVertical: 14,
               paddingHorizontal: 28,

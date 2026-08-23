@@ -13,6 +13,15 @@ const here = dirname(fileURLToPath(import.meta.url));
 const W = 2048, H = 1024;
 /** Rasterisation multiplier over the authoring grid (see the density call below). */
 const SCALE = 2;
+// Épaisseurs des frontières, en px de la grille d'auteur (2048 de large, soit
+// ~20 km/px à l'équateur). Le globe de jeu zoome jusqu'à 24× : un trait pensé
+// pour la vignette de la boutique devient une bande de ~40 px à l'écran et
+// avale la Suisse, la Slovénie et tous les Balkans (retour Paul 23/08 : « les
+// traits des frontières sont trop gros, compliqué de bien sélectionner son
+// pays »). On les affine ; de près la lisibilité est de toute façon portée par
+// les VRAIES lignes 3D (crispLines, buildEarthHtml.ts) qui se fondent dès 2×.
+const LINE_W = 1.6;   // contour de pays (était 3.5)
+const HALO_W = 6;     // halo côtier clair sous le contour (était 11)
 const POLYS = JSON.parse(readFileSync(join(here, '..', 'assets', 'world_polygons.json'), 'utf8'));
 
 const CITY_LIGHTS = [
@@ -100,11 +109,11 @@ function buildSvg(name, st) {
     }
     svg.push(`<ellipse cx="${W / 2}" cy="${H * 0.04}" rx="${W * 0.3}" ry="${H * 0.07}" fill="rgba(255,246,238,0.9)"/>`);
   } else {
-    if (st.halo) svg.push(landPaths((d) => `<path d="${d}" fill="none" stroke="${st.halo}" stroke-width="11" stroke-linejoin="round"/>`));
+    if (st.halo) svg.push(landPaths((d) => `<path d="${d}" fill="none" stroke="${st.halo}" stroke-width="${HALO_W}" stroke-linejoin="round"/>`));
     svg.push(landPaths((d, i) => {
       const fill = st.political ? POLITICAL[i % POLITICAL.length] : (st.land ?? 'none');
       const dash = st.dash ? ' stroke-dasharray="10,8"' : '';
-      return `<path d="${d}" fill="${fill}" stroke="${st.line ?? 'none'}" stroke-width="3.5" stroke-linejoin="round"${dash}/>`;
+      return `<path d="${d}" fill="${fill}" stroke="${st.line ?? 'none'}" stroke-width="${LINE_W}" stroke-linejoin="round"${dash}/>`;
     }));
   }
   if (st.cities) for (const [lon, lat] of CITY_LIGHTS) {

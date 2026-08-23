@@ -9,20 +9,27 @@ import {
   Appearance,
   Dimensions,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { Trophy, RefreshCcw, Moon, Sun, Heart, TrendingUp, Home, Share2 } from 'lucide-react-native';
+import { Trophy, Moon, Sun, Heart, TrendingUp, Home } from 'lucide-react-native';
 import { ThemeIcon } from '../components/themeIcons';
 import type { User } from '@supabase/supabase-js';
 
 import { gameData } from '../data/gameData';
 import { createSeededRng, seededShuffle } from '../lib/rng';
+import { THEME_POOL_LATEST, themePoolFor } from '../lib/themePool';
+import { log } from '../lib/log';
 import { normalizeRoundScore } from '../lib/score';
 import { track } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
-import { log } from '../lib/log';
 import { awardSoloCoins } from '../lib/coins';
+import { earnsCoins, saveSoloScore } from '../lib/soloResult';
+import { OffLeaderboardNotice } from '../components/OffLeaderboardNotice';
+import { RunRecap, type RecapEntry } from '../components/RunRecap';
+import { countryFactName } from '../lib/countryFacts';
+import { filterByContinent, type ContinentId } from '../data/continents';
 import { useToast } from '../components/ToastProvider';
 import { getFlagUrl, prefetchFlags } from '../lib/flags';
 import type { GameMode, Match } from '../types';
@@ -34,6 +41,9 @@ import { tr } from '../i18n';
 import { a11yButton, announce, a11yHidden, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
 import { SoloCoinReward } from '../components/SoloCoinReward';
+import { SoloEndActions } from '../components/SoloEndActions';
+import { PlayerGlobe } from '../components/PlayerGlobe';
+import { useMyGameGlobe } from '../lib/myGlobe';
 import { TopInsetBar } from '../components/TopInsetBar';
 
 import { isMobileLayout as isMobile } from '../lib/layout';
@@ -57,6 +67,11 @@ interface StreakGameProps {
   onRoundComplete?: (score: number) => void;
   /** Daily challenge: deterministic seed for today's puzzle (overrides random). */
   dailySeed?: number;
+  /**
+   * Daily/league: the puzzle's UTC date (`YYYY-MM-DD`). Freezes the theme pool
+   * to the version in force that day. Leave undefined for free solo play.
+   */
+  poolDate?: string;
   /** Daily challenge: fired once at game-over with the score. */
   onDailyComplete?: (score: number, grid?: string) => void;
   /** Daily challenge: replaces "Retry" with "Share" and skips score saving. */
@@ -65,6 +80,13 @@ interface StreakGameProps {
   onShare?: () => void;
   /** Daily challenge: reports the live score so a mid-game quit can lock it in. */
   onDailyScoreChange?: (score: number) => void;
+    /**
+   * Entraînement: no mistake ends the run, every answer is explained, and
+   * nothing is recorded (no coins, no leaderboard).
+   */
+  training?: boolean;
+/** Solo continent scope: narrows the country pool. Null = worldwide. */
+  scope?: ContinentId | null;
 }
 
 export default function StreakGame({
@@ -73,28 +95,35 @@ export default function StreakGame({
   matchData,
   onRoundComplete,
   dailySeed,
+  poolDate,
   onDailyComplete,
   isDaily,
   onShare,
   onDailyScoreChange,
+  scope = null,
+  training = false,
 }: StreakGameProps) {
   const { isDarkMode, setIsDarkMode } = useTheme();
   const { language, setLanguage } = useLanguage();
   const toast = useToast();
   const c = getColors(isDarkMode);
   const [currentCountry, setCurrentCountry] = useState<any>(null);
+  /** Aucun pays du périmètre n'a assez de thèmes documentés pour une manche. */
+  const [notEnoughData, setNotEnoughData] = useState(false);
   const [options, setOptions] = useState<ThemeOption[]>([]);
   const [bestStreak, setBestStreak] = useState<number>(0);
   const [score, setScore] = useState<number>(0);
   const [gameOver, setGameOver] = useState<boolean>(false);
   /** Solo coins credited for this run (null until the server replies). */
   const [coinsEarned, setCoinsEarned] = useState<number | null>(null);
+  const { config: myGlobe } = useMyGameGlobe();
   /** True when today's per-mode coin cap was already hit (no coins this run). */
   const [coinsCapped, setCoinsCapped] = useState(false);
   /** True when the coin award couldn't reach the server (queued for retry). */
   const [coinsSyncFailed, setCoinsSyncFailed] = useState(false);
   const [lastAnswerCorrect, setLastAnswerCorrect] = useState<boolean | null>(null);
   const [revealedRanks, setRevealedRanks] = useState<Record<string, number>>({});
+  const [recap, setRecap] = useState<RecapEntry[]>([]);
   const rngRef = useRef<(() => number) | null>(null);
   const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Guards against a second answer landing before state updates (multitouch).
@@ -141,12 +170,32 @@ export default function StreakGame({
 
   const initRound = () => {
     const rand = rngRef.current ?? Math.random;
-    const countries = gameData.countries.filter(
-      (c: any) => c.ranks && Object.keys(c.ranks).length >= 4,
+    // Pool de thèmes GELÉ PAR DATE pour le quotidien et la ligue. Tirer depuis
+    // `Object.keys(country.ranks)` liait le tirage au JSON embarqué : les 195
+    // pays ont vu leur nombre de thèmes changer entre v5.3.2 et v5.4.0, donc
+    // deux joueurs sur deux versions n'avaient pas les mêmes 4 questions le
+    // même jour. On parcourt le pool figé (et non les clés du pays) pour que
+    // l'ORDRE soumis au shuffle soit lui aussi indépendant de la version.
+    const pool = poolDate ? themePoolFor(poolDate) : THEME_POOL_LATEST;
+    const themesOf = (c: any): string[] =>
+      c?.ranks ? pool.filter((t) => c.ranks[t] !== undefined) : [];
+
+    const countries = filterByContinent(
+      gameData.countries.filter((c: any) => themesOf(c).length >= 4),
+      scope,
     );
+    // Un continent restreint peut ne contenir aucun pays assez documenté : sans
+    // cette garde, `country` était undefined et `country.ranks` plantait la
+    // manche (tsconfig a noUncheckedIndexedAccess: false, TypeScript ne le voit
+    // pas). On sort proprement plutôt que de crasher l'écran.
+    if (countries.length === 0) {
+      log.warn('streak: aucun pays éligible pour ce périmètre', { scope });
+      setNotEnoughData(true);
+      return;
+    }
     const country = countries[Math.floor(rand() * countries.length)];
 
-    const availableThemeIds = Object.keys(country.ranks);
+    const availableThemeIds = themesOf(country);
     const shuffledThemeIds = seededShuffle(availableThemeIds, rand);
     const selectedThemeIds = shuffledThemeIds.slice(0, 4);
 
@@ -179,6 +228,25 @@ export default function StreakGame({
 
     const isCorrect = chosenOption.rank === minRank;
 
+    // Record the round for the game-over recap: the country, the theme picked,
+    // and the theme where it actually ranked best.
+    const bestOption = options.find((o) => o.rank === minRank)!;
+    const themeName = (o: typeof chosenOption) =>
+      (o.label?.[language] as string) ?? (o.label?.fr as string) ?? o.id;
+    // Built eagerly: a wrong answer ends the run further down in this same
+    // handler, before a setState updater would have flushed.
+    const nextRecap: RecapEntry[] = [
+      ...recap,
+      {
+        cca3: currentCountry?.cca3,
+        prompt: countryFactName(currentCountry?.cca3 ?? '', language),
+        yourAnswer: isCorrect ? undefined : `${themeName(chosenOption)} (#${chosenOption.rank})`,
+        correctAnswer: `${themeName(bestOption)} (#${bestOption.rank})`,
+        ok: isCorrect,
+      },
+    ];
+    setRecap(nextRecap);
+
     // Reveal all ranks
     const newRevealed: Record<string, number> = {};
     options.forEach((o) => (newRevealed[o.id] = o.rank));
@@ -191,6 +259,20 @@ export default function StreakGame({
       revealTimerRef.current = setTimeout(() => {
         initRound();
       }, 1500);
+    } else if (training) {
+      // Entraînement: the ranks are revealed and the run carries on, so a
+      // player can work through many countries in one sitting.
+      setLastAnswerCorrect(false);
+      announce(
+        tr(
+          language,
+          `Faux. Le meilleur était ${themeName(bestOption)}. On continue.`,
+          `Wrong. The best was ${themeName(bestOption)}. Keep going.`,
+        ),
+      );
+      revealTimerRef.current = setTimeout(() => {
+        initRound();
+      }, 2200);
     } else {
       setLastAnswerCorrect(false);
       announce(
@@ -205,25 +287,19 @@ export default function StreakGame({
       // Daily run: record the result, skip the normal score/coins path (daily
       // results live in their own table).
       if (!isDaily) {
-        if (!matchData) track('game_completed', { mode: 'streak', score });
+        if (!matchData) track('game_completed', { mode: 'streak', score, scope: scope ?? 'world' });
 
         if (user) {
-          supabase
-            .from('scores')
-            .insert({ user_id: user.id, game_mode: 'streak', score })
-            .then(({ error }) => {
-              if (error) {
-                log.error('Error saving streak score:', error);
-                showAlert(
-                  language === 'fr' ? 'Erreur' : 'Error',
-                  language === 'fr' ? "Impossible d'enregistrer ton score." : 'Could not save your score.',
-                );
-              }
-            });
+          void saveSoloScore(user, 'streak', score, { scope, training }, () =>
+            showAlert(
+              language === 'fr' ? 'Erreur' : 'Error',
+              language === 'fr' ? "Impossible d'enregistrer ton score." : 'Could not save your score.',
+            ),
+          );
           // Solo coins (server-side daily cap; reward scales with performance).
           // Skip in matches. Failures are queued for retry on reconnect.
           if (!matchData) {
-            awardSoloCoins('streak', normalizeRoundScore('streak', score)).then((res) => {
+            if (earnsCoins({ training })) awardSoloCoins('streak', normalizeRoundScore('streak', score)).then((res) => {
               setCoinsEarned(res.coinsAwarded);
               setCoinsCapped(res.capped);
               setCoinsSyncFailed(!res.synced);
@@ -254,10 +330,50 @@ export default function StreakGame({
 
   const resetGame = () => {
     setScore(0);
+    setRecap([]);
     setCoinsEarned(null);
     setCoinsCapped(false);
     initRound();
   };
+
+  // Périmètre trop étroit pour composer une manche : on le DIT, au lieu de
+  // renvoyer un écran vide (ce que faisait le `return null` seul).
+  if (notEnoughData) {
+    return (
+      <SafeAreaView
+        style={[styles.container, !isDarkMode && styles.containerLight]}
+        edges={['left', 'right', 'bottom']}
+      >
+        <StatusBar style={isDarkMode ? 'light' : 'dark'} />
+        <TopInsetBar color={isDarkMode ? c.background : c.card} />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 16 }}>
+          <Text style={{ color: c.text, fontSize: 16, textAlign: 'center' }}>
+            {tr(
+              language,
+              "Pas assez de pays documentés dans cette zone pour lancer une manche.",
+              'Not enough documented countries in this area to start a round.',
+            )}
+          </Text>
+          <TouchableOpacity
+            onPress={() => setGameMode('menu')}
+            style={{
+              backgroundColor: c.accentStrong,
+              paddingHorizontal: 24,
+              paddingVertical: 12,
+              borderRadius: 10,
+              minHeight: 44,
+              justifyContent: 'center',
+            }}
+            {...a11yButton(tr(language, 'Retour au menu', 'Back to menu'))}
+          >
+            <Text style={{ color: '#fff', fontWeight: '700' }}>
+              {tr(language, 'Retour au menu', 'Back to menu')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!currentCountry) return null;
 
@@ -536,41 +652,41 @@ export default function StreakGame({
                 { backgroundColor: isDarkMode ? 'rgba(10,22,40,0.96)' : 'rgba(242,232,208,0.97)' },
               ]}
             >
+              {/* Globe + pièces + réponses ne tiennent plus sur un petit écran :
+                  le récap défile. */}
+              <ScrollView
+                style={{ alignSelf: 'stretch' }}
+                contentContainerStyle={styles.gameOverContent}
+                showsVerticalScrollIndicator={false}
+              >
+              <PlayerGlobe config={myGlobe} size={96} accent="#8b1a1a" animate style={{ marginBottom: 12 }} />
               <ScoreText style={styles.gameOverTitle}>{language === 'fr' ? 'PERDU !' : 'LOST!'}</ScoreText>
               <Text style={[styles.gameOverScore, { color: c.text }]}>
                 {language === 'fr' ? 'Votre score : ' : 'Your score: '}
                 {score}
               </Text>
-              {/* Animated coins + rewarded-ad doubler (solo only, server-credited). */}
+              {!isDaily && <OffLeaderboardNotice run={{ scope, training }} color={c.textMuted} />}
+              {/* Pièces + doubleur pub AVANT le récap : la récompense d'abord,
+                  la solution juste après. */}
               <SoloCoinReward
                 coinsEarned={coinsEarned}
                 coinsCapped={coinsCapped}
                 coinsSyncFailed={coinsSyncFailed}
-                containerStyle={{ alignSelf: 'stretch', marginBottom: 24 }}
+                containerStyle={{ alignSelf: 'stretch', maxWidth: 380, marginBottom: 14 }}
               />
-              {isDaily ? (
-                <TouchableOpacity
-                  style={styles.resetBtn}
-                  onPress={onShare}
-                  {...a11yButton(tr(language, 'Partager', 'Share'))}
-                >
-                  <Share2 color="#fff" size={20} />
-                  <Text style={styles.resetBtnText}>
-                    {language === 'fr' ? 'PARTAGER' : 'SHARE'}
-                  </Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={styles.resetBtn}
-                  onPress={resetGame}
-                  {...a11yButton(tr(language, 'Recommencer', 'Retry'))}
-                >
-                  <RefreshCcw color="#fff" size={20} />
-                  <Text style={styles.resetBtnText}>
-                    {language === 'fr' ? 'RECOMMENCER' : 'RETRY'}
-                  </Text>
-                </TouchableOpacity>
-              )}
+              <View style={{ alignSelf: 'stretch', maxWidth: 380, marginBottom: 18 }}>
+                <RunRecap entries={recap} mistakesFirst={false} maxHeight={200} />
+              </View>
+              {/* La série s'arrête à la première erreur : il n'y a pas de
+                  « même partie » à rejouer, seulement une nouvelle tentative. */}
+              <View style={{ alignSelf: 'stretch', maxWidth: 380 }}>
+                <SoloEndActions
+                  onShare={isDaily ? onShare : undefined}
+                  onNewGame={isDaily ? undefined : resetGame}
+                  onMenu={() => setGameMode('menu')}
+                />
+              </View>
+              </ScrollView>
             </View>
           )}
         </View>
@@ -652,10 +768,10 @@ const styles = StyleSheet.create({
     top: 0, left: 0, right: 0, bottom: 0,
     backgroundColor: 'rgba(10,22,40,0.96)',
     justifyContent: 'center',
-    alignItems: 'center',
     borderRadius: 16,
     padding: 20,
   },
+  gameOverContent: { flexGrow: 1, alignItems: 'center', justifyContent: 'center' },
   gameOverTitle: { fontSize: 44, fontFamily: FONTS.headingBlack, color: '#8b1a1a', marginBottom: 10 },
   gameOverScore: { fontSize: 22, fontFamily: FONTS.mono, color: '#d8e8f4', marginBottom: 30 },
   resetBtn: {

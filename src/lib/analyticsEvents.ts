@@ -51,6 +51,9 @@ export type AnalyticsEvent =
   | 'match_started'
   | 'round_completed'
   | 'match_completed'
+  // Revanche depuis l'écran de fin de match (voir components/RematchPanel).
+  | 'rematch_requested'
+  | 'rematch_solo_replay'
   | 'bot_match_started'
   | 'bot_match_completed'
   // Economy

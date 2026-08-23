@@ -49,6 +49,7 @@ import LanguagesGame from './LanguagesGame';
 import ChallengeQuiz from './ChallengeQuiz';
 import BordersGame from './BordersGame';
 import { ClassicGame } from './ClassicGame';
+import { useEventCallback } from '../lib/useEventCallback';
 
 interface BotMatchProps {
   user: User | null;
@@ -124,17 +125,20 @@ function OpponentReveal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // `onReady` est passé en lambda inline (BotMatch.tsx, rendu du lobby) : nouvelle
+  // identité à chaque rendu, ce qui réarmait la seconde en cours indéfiniment.
+  const readyStable = useEventCallback(onReady);
   useEffect(() => {
     if (countdown <= 0) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       announce(language === 'fr' ? "C'est parti !" : "Let's go!");
-      onReady();
+      readyStable();
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     const t = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
     return () => clearTimeout(t);
-  }, [countdown, onReady, language]);
+  }, [countdown, readyStable, language]);
 
   const renderSide = (
     name: string,

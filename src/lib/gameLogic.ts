@@ -6,6 +6,7 @@
 import type { Country, Language, SelectionMap, Theme } from '../types';
 import { haversine, calcBearing, bearingToArrow } from './geo';
 import { fmtCount, fmtArea, fmtMoney, fmtDist } from './format';
+import { continentLabel } from '../data/continents';
 
 // ── Classic mode ──────────────────────────────────────────────────────────────
 
@@ -94,15 +95,6 @@ export type CatId = (typeof CATEGORIES)[number]['id'];
 // hint  = short directional clue about the mystery country ("▲ plus", "▼ moins", "✓"…)
 export type CellResult = { value: string; hint?: string; color: string };
 
-const REGION_LABEL: Record<string, { fr: string; en: string }> = {
-  Africa:    { fr: 'Afrique',  en: 'Africa'   },
-  Europe:    { fr: 'Europe',   en: 'Europe'   },
-  Asia:      { fr: 'Asie',     en: 'Asia'     },
-  Americas:  { fr: 'Amériques',en: 'Americas' },
-  Oceania:   { fr: 'Océanie',  en: 'Oceania'  },
-  Antarctic: { fr: 'Antarct.', en: 'Antarctic'},
-};
-
 export const UNKNOWN: CellResult = { value: '?', color: '#64748B' };
 
 // Compares the guessed stat to the mystery one and returns a colored cell:
@@ -130,9 +122,8 @@ export function buildComparison(
 
   // Continent — the guessed country's region name; green if it matches.
   const sameRegion = guessedS?.region === targetS?.region;
-  const regionLabel = REGION_LABEL[guessedS?.region];
   r.continent = {
-    value: (lang === 'fr' ? regionLabel?.fr : regionLabel?.en) ?? guessedS?.region ?? '?',
+    value: continentLabel(guessedS?.region, lang),
     hint: sameRegion ? '✓' : (lang === 'fr' ? '✗ autre' : '✗ other'),
     color: sameRegion ? '#10B981' : '#EF4444',
   };

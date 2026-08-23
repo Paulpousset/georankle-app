@@ -7,6 +7,7 @@ import { Check, ArrowLeft, Lock, ShoppingBag } from 'lucide-react-native';
 import { AtlasGlobe } from '../components/AtlasIcons';
 
 import { supabase } from '../lib/supabase';
+import { log } from '../lib/log';
 import { track } from '../lib/analytics';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
@@ -81,14 +82,35 @@ export default function AvatarEditor({ onBack, onOpenShop, onOpenGlobeLab }: Ava
   const [activeCategory, setActiveCategory] = useState<CosmeticCategory>('globe');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  /**
+   * La lecture du profil a échoué. C'est un état à part entière et pas un
+   * détail : sans lui, `config` restait sur DEFAULT_AVATAR_CONFIG, l'écran
+   * affichait l'avatar par défaut comme s'il était celui du joueur, et
+   * « Enregistrer » écrasait DURABLEMENT sa personnalisation par les valeurs
+   * par défaut. On refuse donc d'afficher l'éditeur tant qu'on n'a pas lu
+   * l'état réel.
+   */
+  const [loadError, setLoadError] = useState(false);
 
   const fetchAll = useCallback(async () => {
-    if (!userId) return;
+    // Sans session, on ne laisse PAS le spinner tourner indéfiniment.
+    if (!userId) {
+      setLoading(false);
+      setLoadError(true);
+      return;
+    }
     setLoading(true);
-    const [{ data: profile }, { data: cosmetics }] = await Promise.all([
+    setLoadError(false);
+    const [{ data: profile, error: pErr }, { data: cosmetics, error: cErr }] = await Promise.all([
       supabase.from('profiles').select('avatar_config').eq('id', userId).single(),
       supabase.from('user_cosmetics').select('item_id').eq('user_id', userId),
     ]);
+    if (pErr || cErr) {
+      log.error('avatar editor: lecture échouée', pErr ?? cErr);
+      setLoadError(true);
+      setLoading(false);
+      return;
+    }
     if (profile?.avatar_config) {
       const saved = normalizeConfig(profile.avatar_config as unknown as AvatarConfig);
       setConfig(saved);
@@ -221,6 +243,32 @@ export default function AvatarEditor({ onBack, onOpenShop, onOpenGlobeLab }: Ava
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="large" color={c.accent} />
         </View>
+      ) : loadError ? (
+        <View style={[styles.loadingWrap, { padding: 24, gap: 16 }]}>
+          <Text style={{ color: c.text, fontSize: 15, textAlign: 'center' }}>
+            {tr(
+              language,
+              "Impossible de charger ton monde. Rien n'a été modifié.",
+              'Could not load your world. Nothing was changed.',
+            )}
+          </Text>
+          <TouchableOpacity
+            onPress={fetchAll}
+            style={{
+              backgroundColor: c.accentStrong,
+              paddingHorizontal: 24,
+              paddingVertical: 12,
+              borderRadius: 10,
+              minHeight: 44,
+              justifyContent: 'center',
+            }}
+            {...a11yButton(tr(language, 'Réessayer', 'Retry'))}
+          >
+            <Text style={{ color: '#fff', fontWeight: '700' }}>
+              {tr(language, 'Réessayer', 'Retry')}
+            </Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <>
           {/* Live preview — the composed world avatar */}
@@ -347,7 +395,7 @@ export default function AvatarEditor({ onBack, onOpenShop, onOpenGlobeLab }: Ava
                 disabled: saving,
                 busy: saving,
               })}
-              style={[styles.saveBtn, { backgroundColor: c.accent, opacity: saving ? 0.6 : 1 }]}
+              style={[styles.saveBtn, { backgroundColor: c.accentStrong, opacity: saving ? 0.6 : 1 }]}
             >
               {saving ? (
                 <ActivityIndicator size="small" color="#fff" />

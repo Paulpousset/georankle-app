@@ -13,9 +13,10 @@
  */
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Check, X } from 'lucide-react-native';
+import { Check, ShoppingBag, X } from 'lucide-react-native';
 
 import { WorldAvatar } from './WorldAvatar';
+import { showAlert } from '../lib/alert';
 import { GLOBE_PARTS, partStyleKey } from '../lib/globeSkin';
 import { supabase } from '../lib/supabase';
 import { getColors } from '../theme/colors';
@@ -33,6 +34,12 @@ interface GlobePickerModalProps {
   current: string | null;
   /** Same contract as useGameGlobeSkin().choose — null picks the classic globe. */
   onPick: (key: string | null) => void;
+  /**
+   * Opens the shop. Only passed where leaving is harmless (free solo play): it
+   * navigates away, which ends the round in progress, so the caller confirms
+   * first and simply omits this in a daily / online / parcours game.
+   */
+  onOpenShop?: () => void;
 }
 
 /** Tile preview: the previewed globe alone on the free default backdrop. */
@@ -50,7 +57,7 @@ function tileConfig(part: CosmeticPart): AvatarConfig {
   };
 }
 
-export function GlobePickerModal({ visible, onClose, current, onPick }: GlobePickerModalProps) {
+export function GlobePickerModal({ visible, onClose, current, onPick, onOpenShop }: GlobePickerModalProps) {
   const { isDarkMode } = useTheme();
   const { language } = useLanguage();
   const c = getColors(isDarkMode);
@@ -149,6 +156,37 @@ export function GlobePickerModal({ visible, onClose, current, onPick }: GlobePic
               'Only your own globes show up here. The shop has more.',
             )}
           </Text>
+
+          {onOpenShop ? (
+            <TouchableOpacity
+              onPress={() => {
+                // This sheet only ever opens mid-round, and the shop is a page:
+                // going there unmounts the game. Ask first rather than eat a
+                // round the player was in the middle of.
+                showAlert(
+                  t('Ouvrir la boutique ?', 'Open the shop?'),
+                  t('Ta partie en cours sera perdue.', 'Your current game will be lost.'),
+                  [
+                    { text: t('Annuler', 'Cancel'), style: 'cancel' },
+                    {
+                      text: t('Boutique', 'Shop'),
+                      onPress: () => {
+                        onClose();
+                        onOpenShop();
+                      },
+                    },
+                  ],
+                );
+              }}
+              style={[styles.shopBtn, { borderColor: c.accent, backgroundColor: c.card }]}
+              {...a11yButton(t('Voir la boutique', 'Open the shop'))}
+            >
+              <ShoppingBag color={c.accent} size={16} />
+              <Text style={[styles.shopBtnText, { color: c.accent }]}>
+                {t('Voir la boutique', 'Open the shop')}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
         </Pressable>
       </Pressable>
     </Modal>
@@ -181,4 +219,15 @@ const styles = StyleSheet.create({
   art: { width: 64, height: 64, borderRadius: 32, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   name: { fontSize: 10, fontFamily: FONTS.mono, textAlign: 'center', minHeight: 26 },
   note: { fontSize: 10, fontFamily: FONTS.mono, textAlign: 'center', marginTop: 8, lineHeight: 15 },
+  shopBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 10,
+    paddingVertical: 11,
+    borderRadius: 14,
+    borderWidth: 1.5,
+  },
+  shopBtnText: { fontSize: 13, fontFamily: FONTS.monoBold },
 });

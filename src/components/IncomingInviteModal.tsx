@@ -53,7 +53,7 @@ export function IncomingInviteModal({
           }}
         >
           <View
-            style={{ backgroundColor: c.accent, padding: 12, borderRadius: 25, marginBottom: 15 }}
+            style={{ backgroundColor: c.accentStrong, padding: 12, borderRadius: 25, marginBottom: 15 }}
           >
             <Users color="#fff" size={24} />
           </View>

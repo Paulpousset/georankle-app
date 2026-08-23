@@ -2,10 +2,14 @@ import { useState, type Dispatch, type SetStateAction } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { getTodayUTC } from './lib/daily';
+import { SCOPED_MODES, effectiveScope, useSoloScope, useTrainingMode } from './lib/soloScope';
+import { continentLabel } from './data/continents';
 import { track } from './lib/analytics';
 import { maybeShowInterstitial } from './lib/monetization';
 import type { GameMode, Match, MatchMode } from './types';
 import { useAuth } from './contexts/AuthContext';
+import { useLanguage } from './contexts/LanguageContext';
+import { tr } from './i18n';
 import type { useNavigationStack } from './hooks/useNavigationStack';
 import type { useMatchEngine } from './hooks/useMatchEngine';
 
@@ -47,9 +51,28 @@ import { AuthModal } from './components/AuthModal';
 import { LeaderboardModal } from './components/LeaderboardModal';
 import { OnlineModeLeaderboardModal } from './components/OnlineModeLeaderboardModal';
 import { PreGameLobby } from './components/PreGameLobby';
+import { SoloStart } from './components/SoloStart';
 import { WaitingOpponent } from './components/WaitingOpponent';
 import { RoundSummary } from './components/RoundSummary';
 import { MatchResult } from './components/MatchResult';
+import MatchReplay from './screens/MatchReplay';
+
+/**
+ * Modes solo qui, avant, démarraient sans le moindre écran d'accueil : ce sont
+ * les seuls devant lesquels <SoloStart> s'intercale. Régions, Langues et Quiz
+ * Pays ont déjà leur écran de choix, Capitales/Drapeaux leur réglage de manche
+ * (VersusCapitals, qui porte donc sa propre vitrine de globe), la partie locale
+ * son constructeur, et `versus` n'existe qu'en ligne.
+ */
+const DIRECT_SOLO_MODES = new Set<GameMode>([
+  'classic',
+  'streak',
+  'higherlower',
+  'silhouette',
+  'borders',
+  'guess',
+  'globe',
+]);
 
 interface RouterProps {
   nav: ReturnType<typeof useNavigationStack>;
@@ -92,6 +115,17 @@ export function Router({
   refreshFriendCount,
 }: RouterProps) {
   const { user, isAdmin } = useAuth();
+  const { language } = useLanguage();
+  // Vitrine de lancement : le mode dont la partie a déjà été confirmée. Remis à
+  // zéro dès que le mode affiché change (motif React « ajuster un état quand une
+  // prop change »), sinon revenir au menu puis relancer le même mode sauterait
+  // l'écran de départ.
+  const [startedMode, setStartedMode] = useState<GameMode | null>(null);
+  const [lastMode, setLastMode] = useState<GameMode>(gameMode);
+  if (lastMode !== gameMode) {
+    setLastMode(gameMode);
+    setStartedMode(null);
+  }
   // Which screen the auth modal opens on: the banner CTA opens signup, the
   // header/gated features open login. Local to routing — App owns visibility.
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
@@ -120,8 +154,63 @@ export function Router({
     claimForfeit,
   } = matchEngine;
 
+  // Solo continent scope. Only free solo play is ever scoped: a live match, a
+  // daily (mounted through DailyGameHost), story mode and the local parcours
+  // all keep the worldwide pool, so `soloScope` below folds to null as soon as
+  // there is a matchData. `effectiveScope` additionally degrades a mode whose
+  // pool would be too small (Silhouette/Rankle in Oceania).
+  const [continent] = useSoloScope();
+  const [trainingPref] = useTrainingMode();
+  // Training never applies to a live match, a daily or the story ramp — those
+  // all mount their screens without these props.
+  const soloTraining = (mode: GameMode) => !matchData && SCOPED_MODES.has(mode) && trainingPref;
+  const soloScope = (mode: GameMode) =>
+    matchData ? null : effectiveScope(mode, continent);
+
+  // Review run: the countries the player has missed in this mode, loaded by the
+  // menu before it switches modes. Cleared on the way back so the next ordinary
+  // run isn't silently a review. Never applies to a live match.
+  const [reviewIds, setReviewIds] = useState<string[] | null>(null);
+  const soloReview = (mode: GameMode) =>
+    matchData || !reviewIds?.length ? null : reviewIds;
+  const leaveGame = (mode: GameMode) => {
+    setReviewIds(null);
+    resetMatchState();
+    setGameMode(mode);
+  };
+  /**
+   * "Voir la boutique" from a game's globe picker. The shop is a page, so the
+   * game unmounts either way — end the run for real rather than leave it behind
+   * the shop, or coming back would drop the player into a silently restarted
+   * game. The picker warns before calling this, and only offers it in free solo
+   * play (never a daily / online / parcours run).
+   */
+  const openShopFromGame = () => {
+    if (!user) {
+      openAuth('login');
+      return;
+    }
+    leaveGame('menu');
+    pushPage({ name: 'shop' });
+  };
+
   // Resuming a free-for-all match takes over the screen (it has its own engine).
   const [resumeFfa, setResumeFfa] = useState<Match | null>(null);
+  /**
+   * « Rejouer en solo » depuis l'écran de fin de match : l'hôte de rejeu prend
+   * l'écran, avec le game_data du match (mêmes questions) et aucune écriture
+   * serveur. On sort du match AVANT de le rejouer, sinon revenir retomberait
+   * dans une série déjà terminée.
+   */
+  const [replayMatch, setReplayMatch] = useState<Match | null>(null);
+  if (replayMatch) {
+    return (
+      <SafeAreaProvider>
+        <MatchReplay match={replayMatch} onExit={() => setReplayMatch(null)} />
+      </SafeAreaProvider>
+    );
+  }
+
   if (resumeFfa && user) {
     return (
       <SafeAreaProvider>
@@ -369,6 +458,14 @@ export function Router({
           isRanked={matchData.is_ranked ?? false}
           rankResult={rankResult}
           coinsAwarded={coinsAwarded}
+          match={matchData}
+          currentUserId={user?.id ?? null}
+          onStartMatch={(m: Match) => startMatch(m)}
+          onSoloReplay={() => {
+            const played = matchData;
+            resetMatchState();
+            setReplayMatch(played);
+          }}
           onExit={resetMatchState}
         />
       </SafeAreaProvider>
@@ -382,6 +479,39 @@ export function Router({
           matchData={matchData}
           currentUserId={user.id}
           onReady={dismissPreGameLobby}
+        />
+      </SafeAreaProvider>
+    );
+  }
+
+  /**
+   * Écran de lancement solo — la vitrine du globe équipé + le rappel des règles.
+   * Ne s'intercale que devant les modes qui démarraient tambour battant : ceux
+   * qui ont déjà leur propre écran de choix (Régions, Langues, Quiz Pays, partie
+   * locale) le gardent, et un match en ligne / un quotidien / une manche
+   * d'Histoire n'en voient jamais (ils arrivent avec `matchData` ou par un hôte
+   * dédié). `startedMode` retombe tout seul dès que le mode change, donc
+   * revenir au menu puis relancer réaffiche bien la vitrine.
+   */
+  if (
+    !matchData &&
+    DIRECT_SOLO_MODES.has(gameMode) &&
+    startedMode !== gameMode
+  ) {
+    const scope = soloScope(gameMode);
+    const badges = [
+      scope ? continentLabel(scope, language) : null,
+      soloTraining(gameMode) ? tr(language, 'Entraînement', 'Training') : null,
+      soloReview(gameMode)?.length ? tr(language, 'Mes erreurs', 'My mistakes') : null,
+    ].filter(Boolean) as string[];
+    return (
+      <SafeAreaProvider>
+        <SoloStart
+          mode={gameMode}
+          badges={badges}
+          onStart={() => setStartedMode(gameMode)}
+          onExit={() => leaveGame('menu')}
+          onChangeGlobe={user ? () => pushPage({ name: 'globe-lab' }) : undefined}
         />
       </SafeAreaProvider>
     );
@@ -401,10 +531,12 @@ export function Router({
     return (
       <SafeAreaProvider>
         <StreakGame
-          setGameMode={(mode) => { resetMatchState(); setGameMode(mode); }}
+          setGameMode={leaveGame}
           user={user}
           matchData={matchData}
           onRoundComplete={matchData ? handleRoundComplete : undefined}
+          scope={soloScope('streak')}
+          training={soloTraining('streak')}
         />
       </SafeAreaProvider>
     );
@@ -419,6 +551,9 @@ export function Router({
           soloMode
           user={user}
           initialGameType={initialGameType}
+          scope={soloScope(gameMode)}
+          reviewIds={soloReview(gameMode)}
+          training={soloTraining(gameMode)}
         />
       </SafeAreaProvider>
     );
@@ -428,10 +563,12 @@ export function Router({
     return (
       <SafeAreaProvider>
         <HigherLowerGame
-          setGameMode={(mode) => { resetMatchState(); setGameMode(mode); }}
+          setGameMode={leaveGame}
           user={user}
           matchData={matchData}
           onRoundComplete={matchData ? handleRoundComplete : undefined}
+          scope={soloScope('higherlower')}
+          training={soloTraining('higherlower')}
         />
       </SafeAreaProvider>
     );
@@ -441,10 +578,13 @@ export function Router({
     return (
       <SafeAreaProvider>
         <SilhouetteGame
-          setGameMode={(mode) => { resetMatchState(); setGameMode(mode); }}
+          setGameMode={leaveGame}
           user={user}
           matchData={matchData}
           onRoundComplete={matchData ? handleRoundComplete : undefined}
+          scope={soloScope('silhouette')}
+          training={soloTraining('silhouette')}
+          reviewIds={soloReview('silhouette')}
         />
       </SafeAreaProvider>
     );
@@ -454,7 +594,7 @@ export function Router({
     return (
       <SafeAreaProvider>
         <LanguagesFlow
-          setGameMode={(mode) => { resetMatchState(); setGameMode(mode); }}
+          setGameMode={leaveGame}
           user={user}
           matchData={matchData}
           onRoundComplete={matchData ? handleRoundComplete : undefined}
@@ -467,10 +607,11 @@ export function Router({
     return (
       <SafeAreaProvider>
         <BordersGame
-          setGameMode={(mode) => { resetMatchState(); setGameMode(mode); }}
+          setGameMode={leaveGame}
           user={user}
           matchData={matchData}
           onRoundComplete={matchData ? handleRoundComplete : undefined}
+          onOpenShop={openShopFromGame}
         />
       </SafeAreaProvider>
     );
@@ -480,10 +621,13 @@ export function Router({
     return (
       <SafeAreaProvider>
         <GuessCountryGame
-          onBackToMenu={() => { resetMatchState(); setGameMode('menu'); }}
+          onBackToMenu={() => leaveGame('menu')}
           user={user}
           matchData={matchData}
           onRoundComplete={matchData ? handleRoundComplete : undefined}
+          scope={soloScope('guess')}
+          training={soloTraining('guess')}
+          reviewIds={soloReview('guess')}
         />
       </SafeAreaProvider>
     );
@@ -493,10 +637,14 @@ export function Router({
     return (
       <SafeAreaProvider>
         <FindCountryGame
-          setGameMode={(mode) => { resetMatchState(); setGameMode(mode); }}
+          setGameMode={leaveGame}
           user={user}
           matchData={matchData}
           onRoundComplete={matchData ? handleRoundComplete : undefined}
+          scope={soloScope('globe')}
+          training={soloTraining('globe')}
+          reviewIds={soloReview('globe')}
+          onOpenShop={openShopFromGame}
         />
       </SafeAreaProvider>
     );
@@ -539,7 +687,7 @@ export function Router({
       return (
         <SafeAreaProvider>
           <FindRegionGame
-            setGameMode={(mode) => { resetMatchState(); setGameMode(mode); }}
+            setGameMode={leaveGame}
             picks={picks}
             user={user}
             matchData={matchData}
@@ -551,11 +699,12 @@ export function Router({
     return (
       <SafeAreaProvider>
         <RegionGameFlow
-          setGameMode={(mode) => { resetMatchState(); setGameMode(mode); }}
+          setGameMode={leaveGame}
           user={user}
           onPlayChallengeOnline={
             user ? (challengeId) => pushPage({ name: 'challenge-matchmaking', challengeId }) : undefined
           }
+          onOpenShop={openShopFromGame}
         />
       </SafeAreaProvider>
     );
@@ -607,6 +756,8 @@ export function Router({
           user={user}
           matchData={matchData}
           onRoundComplete={matchData ? handleRoundComplete : undefined}
+          scope={soloScope('classic')}
+          training={soloTraining('classic')}
           onExit={resetMatchState}
         />
       </SafeAreaProvider>
@@ -629,7 +780,8 @@ export function Router({
           track('leaderboard_opened', { type: 'online_mode', mode });
           setOnlineLeaderboard({ mode, accent });
         }}
-        onPlay={setGameMode}
+        onPlay={(mode) => { setReviewIds(null); setGameMode(mode); }}
+        onPlayReview={(mode, ids) => { setReviewIds(ids); setGameMode(mode); }}
         onPlayOnline={(mode) => pushPage({ name: 'matchmaking', mode })}
         onPlayCustomOnline={() => (user ? pushPage({ name: 'custom-matchmaking' }) : openAuth('login'))}
         onPlayRanked={() => (user ? pushPage({ name: 'ranked' }) : openAuth('login'))}

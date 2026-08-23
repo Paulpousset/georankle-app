@@ -231,6 +231,9 @@ async function runConfig(cfg, authState) {
     await tap('Solo', 1200);
     await tap(label, ms);
     await tapIf('JOUER', 2500) || await tapIf('PLAY', 2500);
+    // Écran de lancement (SoloStart) : vitrine du globe + règles, un tap pour
+    // entrer. Absent des modes qui ont leur propre écran de choix.
+    await tapIf('COMMENCER', ms) || await tapIf('START', ms);
   };
 
   // ── scenarios ─────────────────────────────────────────────────────────────
@@ -522,6 +525,10 @@ async function runConfig(cfg, authState) {
       await tap('Solo', 1500).catch(() => {});
       await tapIf(cfg.en ? 'Capitals' : 'Capitales', 2500);
       await tapIf('JOUER', 2000) || await tapIf('PLAY', 2000);
+      // L'écran de lancement doit fonctionner hors-ligne : son globe vient du
+      // cache local, jamais du réseau.
+      await checkpoint('start-offline');
+      await tapIf('COMMENCER', 2500) || await tapIf('START', 2500);
       await checkpoint('solo-offline');
       const inGame = await bodyText();
       if (!/CARRÉ|SQUARE|DUO|CASH/i.test(inGame)) push('assert', 'offline: le quiz Capitales ne démarre pas hors-ligne');

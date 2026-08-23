@@ -437,7 +437,7 @@ export default function AdminNotifications({
                 />
                 <TouchableOpacity
                   onPress={runSearch}
-                  style={[styles.searchBtn, { backgroundColor: c.accent }]}
+                  style={[styles.searchBtn, { backgroundColor: c.accentStrong }]}
                   {...a11yButton(t('Rechercher', 'Search'), { busy: searching })}
                 >
                   {searching ? <ActivityIndicator size="small" color="#fff" /> : <Search color="#fff" size={18} />}
@@ -450,7 +450,7 @@ export default function AdminNotifications({
                     <TouchableOpacity
                       key={u.id}
                       onPress={() => toggleUser(u)}
-                      style={[styles.chip, { borderColor: c.accent, backgroundColor: c.accent, flexDirection: 'row', gap: 4 }]}
+                      style={[styles.chip, { borderColor: c.accent, backgroundColor: c.accentStrong, flexDirection: 'row', gap: 4 }]}
                       {...a11yButton(t(`Retirer ${u.username}`, `Remove ${u.username}`))}
                     >
                       <Text style={[styles.chipText, { color: '#fff' }]}>{u.username}</Text>
@@ -499,7 +499,7 @@ export default function AdminNotifications({
 
         {/* ── Send now ─────────────────────────────────────────────────────── */}
         <TouchableOpacity
-          style={[styles.sendBtn, { backgroundColor: c.accent }]}
+          style={[styles.sendBtn, { backgroundColor: c.accentStrong }]}
           onPress={doSend}
           disabled={sending}
           {...a11yButton(t('Envoyer maintenant', 'Send now'), { disabled: sending, busy: sending })}

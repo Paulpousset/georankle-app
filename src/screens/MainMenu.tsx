@@ -53,6 +53,10 @@ import { ScoreText } from '../components/ScoreText';
 import { NotificationDot } from '../components/NotificationDot';
 import { OnboardingTutorial, ONBOARDING_STEPS, type TutorialRect } from '../components/OnboardingTutorial';
 import { ModeIntroCard } from '../components/ModeIntroModal';
+import { ContinentChip } from '../components/ContinentChip';
+import { ContinentIcon } from '../components/ContinentIcon';
+import { ReviewEntryCard } from '../components/ReviewEntryCard';
+import { scopeSupported, useSoloScope, useTrainingMode } from '../lib/soloScope';
 import { getHasSeenTutorial, setHasSeenTutorial } from '../lib/tutorial';
 import { useStageWidth } from '../lib/stage';
 import { hoverLift } from '../lib/webHover';
@@ -251,10 +255,16 @@ interface ModeTileProps {
   isDarkMode: boolean;
   onPress: () => void;
   onHelp?: () => void;
+  /**
+   * A continent is selected but this mode's pool is too small to honour it, so
+   * it will be played worldwide. Marked on the tile rather than disabled — the
+   * mode is perfectly playable, just not restrictable.
+   */
+  worldOnly?: boolean;
 }
 
 /** Compact 2-column grid tile for the solo mode list. */
-function ModeTile({ icon: Icon, accent, tint, title, subtitle, isDarkMode, onPress, onHelp }: ModeTileProps) {
+function ModeTile({ icon: Icon, accent, tint, title, subtitle, isDarkMode, onPress, onHelp, worldOnly }: ModeTileProps) {
   const c = getColors(isDarkMode);
   const { language } = useLanguage();
   // Trois tuiles par ligne sur ordinateur, deux sur téléphone.
@@ -274,7 +284,12 @@ function ModeTile({ icon: Icon, accent, tint, title, subtitle, isDarkMode, onPre
           borderBottomColor: accent,
         },
       ]}
-      {...a11yButton(title, { hint: tr(language, 'Démarrer ce mode', 'Start this mode') })}
+      {...a11yButton(
+        worldOnly
+          ? tr(language, `${title}, joué en monde entier`, `${title}, played worldwide`)
+          : title,
+        { hint: tr(language, 'Démarrer ce mode', 'Start this mode') },
+      )}
       {...hoverLift}
     >
       {onHelp && (
@@ -300,8 +315,18 @@ function ModeTile({ icon: Icon, accent, tint, title, subtitle, isDarkMode, onPre
           <HelpCircle color={c.textFaint} size={13} />
         </TouchableOpacity>
       )}
-      <View style={{ backgroundColor: tint, padding: 9, borderRadius: 10 }}>
-        <Icon color={accent} size={20} />
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <View style={{ backgroundColor: tint, padding: 9, borderRadius: 10 }}>
+          <Icon color={accent} size={20} />
+        </View>
+        {worldOnly && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+            <ContinentIcon continent={null} color={c.textFaint} size={11} />
+            <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 8 }}>
+              {tr(language, 'monde', 'world')}
+            </Text>
+          </View>
+        )}
       </View>
       <View>
         <Text style={[styles.countryName, !isDarkMode && styles.countryNameLight, { fontSize: 14.5, textAlign: 'left', marginBottom: 2 }]}>
@@ -330,7 +355,9 @@ function PlayTabs({
   const { col: menuCol } = useMenuGrid();
   const [w, setW] = useState(0);
   const [slideX] = useState(() => new Animated.Value(0));
-  const thumbColor = isDarkMode ? PALETTE.chartBlue : PALETTE.sepia;
+  // Le pouce porte du texte blanc (`color = '#fff'` plus bas) : c'est une
+  // SURFACE, donc la variante foncée. chartBlue nu donnait 2,75:1.
+  const thumbColor = isDarkMode ? PALETTE.chartBlueStrong : PALETTE.sepia;
 
   useEffect(() => {
     Animated.timing(slideX, {
@@ -417,6 +444,8 @@ interface MainMenuProps {
   onOpenLeaderboard: () => void;
   onOpenOnlineModeLeaderboard: (mode: MatchMode, accent: string) => void;
   onPlay: (mode: GameMode) => void;
+  /** Starts a review run: a normal solo game drawing from the missed countries. */
+  onPlayReview: (mode: GameMode, ids: string[]) => void;
   onPlayOnline: (mode: MatchMode) => void;
   onPlayCustomOnline: () => void;
   onPlayRanked: () => void;
@@ -443,6 +472,7 @@ export function MainMenu({
   onOpenLeaderboard,
   onOpenOnlineModeLeaderboard,
   onPlay,
+  onPlayReview,
   onPlayOnline,
   onPlayCustomOnline,
   onPlayRanked,
@@ -492,6 +522,15 @@ export function MainMenu({
   // Tab index mapping: `playType` stays lifted in App (back gesture resets it
   // to null, which shows the default Solo tab again).
   const tabIndex = playType === 'local' ? 1 : playType === 'online' ? 2 : 0;
+  // Solo continent scope: sticky across runs, and the tiles whose pool is too
+  // small for it get a "worldwide" marker instead of being hidden.
+  const [soloScope, setSoloScope] = useSoloScope();
+  const [training, setTraining] = useTrainingMode();
+  const [zoneOpen, setZoneOpen] = useState(false);
+  // Re-read the pending review counts each time the menu is mounted again
+  // (i.e. after a run), so the badge reflects the game that just ended.
+  const [reviewRefresh] = useState(() => Date.now());
+  const worldOnly = (mode: GameMode) => !!soloScope && !scopeSupported(mode, soloScope);
   const selectTab = (i: number) => setPlayType(i === 1 ? 'local' : i === 2 ? 'online' : 'solo');
 
   // Which mode's "how to play" card is open from a "?" button (null = none).
@@ -978,6 +1017,18 @@ export function MainMenu({
 
         {tabIndex === 0 ? (
           <>
+            <View style={{ width: '100%', maxWidth: grid.col }}>
+              {/* Only rendered when something is actually pending. */}
+              <ReviewEntryCard onPlayReview={onPlayReview} refreshKey={reviewRefresh} />
+              <ContinentChip
+                scope={soloScope}
+                onChange={setSoloScope}
+                training={training}
+                onChangeTraining={setTraining}
+                open={zoneOpen}
+                setOpen={setZoneOpen}
+              />
+            </View>
             <View
               style={{
                 flexDirection: 'row',
@@ -1000,6 +1051,7 @@ export function MainMenu({
                 subtitle={tr(language, 'Trouvez les pays sur le globe', 'Find countries on the globe')}
                 isDarkMode={isDarkMode}
                 onPress={() => onPlay('globe')}
+                worldOnly={worldOnly('globe')}
                 onHelp={() => setHelpMode('globe')}
               />
               <ModeTile
@@ -1020,6 +1072,7 @@ export function MainMenu({
                 subtitle={tr(language, 'Identifiez le pays depuis ses infos', 'Identify the country from clues')}
                 isDarkMode={isDarkMode}
                 onPress={() => onPlay('guess')}
+                worldOnly={worldOnly('guess')}
                 onHelp={() => setHelpMode('guess')}
               />
               <ModeTile
@@ -1040,6 +1093,7 @@ export function MainMenu({
                 subtitle={tr(language, 'Devinez le pays à sa forme', 'Guess the country by its shape')}
                 isDarkMode={isDarkMode}
                 onPress={() => onPlay('silhouette')}
+                worldOnly={worldOnly('silhouette')}
                 onHelp={() => setHelpMode('silhouette')}
               />
               {languagesMode && (
@@ -1062,6 +1116,7 @@ export function MainMenu({
                 subtitle={tr(language, 'Quel pays est au-dessus ?', 'Which country is higher?')}
                 isDarkMode={isDarkMode}
                 onPress={() => onPlay('higherlower')}
+                worldOnly={worldOnly('higherlower')}
                 onHelp={() => setHelpMode('higherlower')}
               />
               <ModeTile
@@ -1072,6 +1127,7 @@ export function MainMenu({
                 subtitle={tr(language, 'Associez chaque pays à un thème', 'Match each country to a theme')}
                 isDarkMode={isDarkMode}
                 onPress={() => onPlay('classic')}
+                worldOnly={worldOnly('classic')}
                 onHelp={() => setHelpMode('classic')}
               />
               <ModeTile
@@ -1082,6 +1138,7 @@ export function MainMenu({
                 subtitle={tr(language, 'Enchaînez les bonnes réponses', 'Chain correct answers')}
                 isDarkMode={isDarkMode}
                 onPress={() => onPlay('streak')}
+                worldOnly={worldOnly('streak')}
                 onHelp={() => setHelpMode('streak')}
               />
               <ModeTile
@@ -1092,6 +1149,7 @@ export function MainMenu({
                 subtitle={tr(language, 'Retrouvez les capitales du monde', 'Find the world capitals')}
                 isDarkMode={isDarkMode}
                 onPress={() => onPlay('quiz-capital')}
+                worldOnly={worldOnly('quiz-capital')}
                 onHelp={() => setHelpMode('quiz-capital')}
               />
               <ModeTile
@@ -1102,6 +1160,7 @@ export function MainMenu({
                 subtitle={tr(language, 'Identifiez les drapeaux des pays', 'Identify country flags')}
                 isDarkMode={isDarkMode}
                 onPress={() => onPlay('quiz-flag')}
+                worldOnly={worldOnly('quiz-flag')}
                 onHelp={() => setHelpMode('quiz-flag')}
               />
             </View>

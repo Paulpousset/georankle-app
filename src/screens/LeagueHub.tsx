@@ -193,7 +193,7 @@ export default function LeagueHub({ onBack, onOpenLeague, currentUserId }: Leagu
               height: 46,
               paddingHorizontal: 14,
               borderRadius: 13,
-              backgroundColor: c.accent,
+              backgroundColor: c.accentStrong,
               alignItems: 'center',
               justifyContent: 'center',
               flexDirection: 'row',

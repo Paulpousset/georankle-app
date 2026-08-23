@@ -47,6 +47,31 @@ export interface GameData {
   countries: Country[];
 }
 
+/**
+ * One entry of `assets/countries_stats.json` — the geographic/reference facts
+ * that `game_data.json` doesn't carry (capital, coordinates, continent…).
+ *
+ * ⚠️ `region` here is the **continent** ('Africa' | 'Americas' | 'Asia' |
+ * 'Europe' | 'Oceania'), not the sub-national "region" of the Défis Pays mode.
+ * Prefer the helpers in `src/data/continents.ts` over reading it directly.
+ */
+export interface CountryStat {
+  name: string;
+  name_en: string;
+  cca3: string;
+  capital: string;
+  capital_fr: string;
+  region: string;
+  subregion: string;
+  lat: number;
+  lng: number;
+  coastline: boolean;
+  languages_count: number;
+  borders_count: number;
+  population: number;
+  area: number;
+}
+
 /** A player's pick for a given theme during a classic game. */
 export interface Selection {
   countryName: string;

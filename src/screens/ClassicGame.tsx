@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { ArrowLeft, Home, Info, Moon, RefreshCcw, Share2, Sun, Trophy } from 'lucide-react-native';
+import { Home, Info, Moon, Sun, Trophy } from 'lucide-react-native';
 import { ThemeIcon } from '../components/themeIcons';
 import type { User } from '@supabase/supabase-js';
 
@@ -19,12 +19,16 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { gameData } from '../data/gameData';
 import { createSeededRng, seededShuffle } from '../lib/rng';
+import { THEME_POOL_LATEST, themePoolFor } from '../lib/themePool';
 import { MISSING_RANK, SESSION_SIZE, solveOptimal } from '../lib/gameLogic';
 import { normalizeRoundScore } from '../lib/score';
 import { track } from '../lib/analytics';
-import { log } from '../lib/log';
 import { supabase } from '../lib/supabase';
 import { awardSoloCoins } from '../lib/coins';
+import { earnsCoins, saveSoloScore } from '../lib/soloResult';
+import { OffLeaderboardNotice } from '../components/OffLeaderboardNotice';
+import { CountryFactCard } from '../components/CountryFactCard';
+import { filterByContinent, type ContinentId } from '../data/continents';
 import { useToast } from '../components/ToastProvider';
 import { useCachedData } from '../lib/cache';
 import { getFlagUrl, prefetchFlags } from '../lib/flags';
@@ -37,6 +41,9 @@ import { ThemeInfoModal } from '../components/ThemeInfoModal';
 import { a11yButton, announce, a11yHidden, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
 import { SoloCoinReward } from '../components/SoloCoinReward';
+import { SoloEndActions } from '../components/SoloEndActions';
+import { PlayerGlobe } from '../components/PlayerGlobe';
+import { useMyGameGlobe } from '../lib/myGlobe';
 import { TopInsetBar } from '../components/TopInsetBar';
 
 import { isMobileLayout as isMobile } from '../lib/layout';
@@ -60,6 +67,12 @@ interface ClassicGameProps {
   onExit: () => void;
   /** Daily challenge: deterministic seed for today's puzzle (overrides random). */
   dailySeed?: number;
+  /**
+   * Daily/league: the puzzle's UTC date (`YYYY-MM-DD`). Freezes the theme pool
+   * to the version in force that day, so two players on different app builds
+   * draw the same 8 themes. Leave undefined for free solo play.
+   */
+  poolDate?: string;
   /** Daily challenge: fired once at game-over with the score + emoji share grid. */
   onDailyComplete?: (score: number, grid?: string) => void;
   /** Daily challenge: replaces "Play again" with "Share" and skips score saving. */
@@ -70,6 +83,13 @@ interface ClassicGameProps {
   onSessionData?: (data: ClassicSessionResult) => void;
   /** Review mode: render a finished session read-only (no live game, no saving). */
   reviewData?: ClassicSessionResult | null;
+    /**
+   * Entraînement: no mistake ends the run, every answer is explained, and
+   * nothing is recorded (no coins, no leaderboard).
+   */
+  training?: boolean;
+/** Solo continent scope: narrows the 8-country session. Null = worldwide. */
+  scope?: ContinentId | null;
 }
 
 /** Emoji cell for the share grid: how close a pick was to the optimal rank. */
@@ -121,11 +141,14 @@ export function ClassicGame({
   onRoundComplete,
   onExit,
   dailySeed,
+  poolDate,
   onDailyComplete,
   isDaily,
   onShare,
   onSessionData,
   reviewData,
+  scope = null,
+  training = false,
 }: ClassicGameProps) {
   const { isDarkMode, toggleTheme } = useTheme();
   const { language, toggleLanguage } = useLanguage();
@@ -141,17 +164,35 @@ export function ClassicGame({
   const [sessionBest, setSessionBest] = useState<number | null>(null);
   const [gameOver, setGameOver] = useState(() => !!reviewData);
   /** Solo coins credited for this session (null until the server replies). */
+  /** Country whose fact sheet is open from the end-of-game breakdown. */
+  const [factsFor, setFactsFor] = useState<string | null>(null);
   const [coinsEarned, setCoinsEarned] = useState<number | null>(null);
   /** True when today's per-mode coin cap was already hit (no coins this time). */
   const [coinsCapped, setCoinsCapped] = useState(false);
   /** True when the coin award couldn't reach the server (queued for retry). */
   const [coinsSyncFailed, setCoinsSyncFailed] = useState(false);
+  const { config: myGlobe } = useMyGameGlobe();
   const [usedThemeIds, setUsedThemeIds] = useState<string[]>([]);
   const [selections, setSelections] = useState<SelectionMap>(() => reviewData?.selections ?? {});
   const [optimalSelections, setOptimalSelections] = useState<SelectionMap>(() => reviewData?.optimalSelections ?? {});
   const [showThemeInfo, setShowThemeInfo] = useState<Theme | null>(null);
 
   const rngRef = useRef<(() => number) | null>(null);
+  /**
+   * Minuteries d'avancement de manche. ClassicGame était le SEUL écran de jeu à
+   * ne pas les nettoyer (StreakGame, HigherLowerGame et VersusCapitals le font
+   * tous). Or celle de 300 ms exécute toute la chaîne de fin de partie —
+   * saveSoloScore, awardSoloCoins, onDailyComplete, setGameOver, track. Quitter
+   * dans les 300 ms qui suivent le dernier thème faisait tourner tout ça sur un
+   * composant démonté.
+   */
+  const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (advanceTimerRef.current != null) clearTimeout(advanceTimerRef.current);
+    };
+  }, []);
 
   // Web grand écran : la colonne de jeu fait 900 px (DesktopStage), on y met
   // deux thèmes par ligne et on respire. Sur natif/mobile, rien ne change.
@@ -235,25 +276,39 @@ export function ClassicGame({
         }
       }
     } else {
-      // Solo mode: randomise locally.
-      const allThemeIds = Object.keys(gameData.themes).filter((themeId) => {
-        const coverage = gameData.countries.filter(
-          (c) => c.ranks && c.ranks[themeId] !== undefined,
-        ).length;
-        return coverage > 10;
+      // Solo mode: randomise locally, within the continent scope when there is
+      // one. A theme is only usable if enough of the *scoped* pool has a rank
+      // for it — an absolute "> 10" would let a 35-country continent pick
+      // themes barely anyone in it covers, and the 8-country session below
+      // would then come up short.
+      const pool = filterByContinent(gameData.countries, scope);
+      const minCoverage = scope ? Math.max(3, Math.floor(pool.length / 4)) : 10;
+      // The theme pool is FROZEN BY DATE for the daily and the league: it lives
+      // in themePool.ts, not in Object.keys(gameData.themes), because that JSON
+      // ships inside the binary. Shuffling 41 ids doesn't yield the same 8 as
+      // shuffling 29, so deriving it from the bundle handed two players on
+      // different app versions two different puzzles for the same day. Free
+      // solo play compares to nobody and keeps the newest pool.
+      const themePool = poolDate ? themePoolFor(poolDate) : THEME_POOL_LATEST;
+      const allThemeIds = themePool.filter((themeId) => {
+        const coverage = pool.filter((c) => c.ranks && c.ranks[themeId] !== undefined).length;
+        return coverage > minCoverage;
       });
       const rand = rngRef.current ?? Math.random;
       selectedThemes = seededShuffle(allThemeIds, rand)
         .slice(0, SESSION_SIZE)
         .map((id) => ({ id, ...gameData.themes[id] }));
-      let countries = gameData.countries.filter((c) =>
+      let countries = pool.filter((c) =>
         selectedThemes.every(
           (theme) =>
             c.ranks && c.ranks[theme.id] !== undefined && c.data && c.data[theme.id] !== undefined,
         ),
       );
       if (countries.length < SESSION_SIZE) {
-        countries = [...gameData.countries].sort(
+        // Rare draw where the 8 themes don't intersect on 8 countries: fall
+        // back to the best-documented countries *of the same pool*, so a scoped
+        // session never silently escapes its continent.
+        countries = [...pool].sort(
           (a, b) => Object.keys(b.ranks).length - Object.keys(a.ranks).length,
         );
       }
@@ -272,6 +327,22 @@ export function ClassicGame({
     setUsedThemeIds([]);
     setSelections({});
     setOptimalSelections(solveOptimal(selectedThemes, selectedCountries, language));
+  };
+
+  /**
+   * Rejoue la session à l'identique : mêmes 8 pays, mêmes 8 thèmes, donc même
+   * placement optimal — on ne touche qu'à la progression et au score. C'est la
+   * seule façon de vérifier qu'on a compris son 62 % d'efficacité.
+   */
+  const replaySameGame = () => {
+    setCurrentRoundIndex(0);
+    setTotalScore(0);
+    setGameOver(false);
+    setCoinsEarned(null);
+    setCoinsCapped(false);
+    setCoinsSyncFailed(false);
+    setUsedThemeIds([]);
+    setSelections({});
   };
 
   const selectTheme = (themeId: string) => {
@@ -299,9 +370,12 @@ export function ClassicGame({
 
     if (currentRoundIndex < SESSION_SIZE - 1) {
       // Snappy auto-advance to the next country.
-      setTimeout(() => setCurrentRoundIndex((prev) => prev + 1), 300);
+      advanceTimerRef.current = setTimeout(
+        () => setCurrentRoundIndex((prev) => prev + 1),
+        300,
+      );
     } else {
-      setTimeout(() => {
+      advanceTimerRef.current = setTimeout(() => {
         setGameOver(true);
         const finalScore = totalScore + rank;
 
@@ -335,23 +409,19 @@ export function ClassicGame({
           return;
         }
 
-        if (!matchData) track('game_completed', { mode: 'classic', score: gameEfficiency });
+        if (!matchData) {
+          track('game_completed', { mode: 'classic', score: gameEfficiency, scope: scope ?? 'world' });
+        }
 
         if (user) {
-          supabase
-            .from('scores')
-            .insert({ user_id: user.id, game_mode: 'classic', score: gameEfficiency })
-            .then(({ error }) => {
-              if (error) {
-                log.error('Error saving classic efficiency:', error);
-                showAlert(tr(language, 'Erreur', 'Error'), tr(language, "Impossible d'enregistrer ton score.", 'Could not save your score.'));
-              }
-            });
+          void saveSoloScore(user, 'classic', gameEfficiency, { scope, training }, () =>
+            showAlert(tr(language, 'Erreur', 'Error'), tr(language, "Impossible d'enregistrer ton score.", 'Could not save your score.')),
+          );
           // Solo coins (server-side daily cap; reward scales with performance).
           // Skip in matches. Failures are queued for retry on reconnect and
           // surfaced to the player instead of being swallowed by a console.log.
           if (!matchData) {
-            awardSoloCoins('classic', normalizeRoundScore('classic', gameEfficiency)).then((res) => {
+            if (earnsCoins({ training })) awardSoloCoins('classic', normalizeRoundScore('classic', gameEfficiency)).then((res) => {
               setCoinsEarned(res.coinsAwarded);
               setCoinsCapped(res.capped);
               setCoinsSyncFailed(!res.synced);
@@ -401,16 +471,16 @@ export function ClassicGame({
     statLabel: [styles.statLabel, !isDarkMode && styles.statLabelLight],
     statValue: [styles.statValue, !isDarkMode && styles.statValueLight],
     statBox: [styles.statBox],
-    countryLabel: [styles.countryLabel],
+    countryLabel: [styles.countryLabel, !isDarkMode && styles.countryLabelLight],
     countryName: [styles.countryName, !isDarkMode && styles.countryNameLight],
-    instruction: [styles.instruction],
+    instruction: [styles.instruction, !isDarkMode && styles.instructionLight],
     themeCard: (isUsed: boolean) => [
       styles.themeCard,
       !isDarkMode && styles.themeCardLight,
       isUsed && (isDarkMode ? styles.usedThemeCard : styles.usedThemeCardLight),
     ],
     themeLabel: [styles.themeLabel, !isDarkMode && styles.themeLabelLight],
-    selectionCountry: [styles.selectionCountry],
+    selectionCountry: [styles.selectionCountry, !isDarkMode && styles.selectionCountryLight],
     winCard: [styles.winCard, !isDarkMode && styles.winCardLight],
     winTitle: [styles.winTitle, !isDarkMode && styles.winTitleLight],
     summaryHeaderText: [styles.summaryHeaderText, !isDarkMode && styles.summaryHeaderTextLight],
@@ -949,6 +1019,17 @@ export function ClassicGame({
                   showsVerticalScrollIndicator={false}
                 >
                   <View style={{ alignItems: 'center', marginBottom: 18 }}>
+                    {/* Le globe équipé ouvre l'écran de fin : c'est la vitrine
+                        de ce qu'on achète en boutique. */}
+                    {!reviewData && (
+                      <PlayerGlobe
+                        config={myGlobe}
+                        size={wide ? 128 : 104}
+                        accent={c.accent}
+                        animate
+                        style={{ marginBottom: 10 }}
+                      />
+                    )}
                     <Trophy color={c.accent} size={wide ? 52 : 44} {...a11yHidden} />
                     <ScoreText
                       style={[
@@ -1013,6 +1094,9 @@ export function ClassicGame({
                       </View>
                     </View>
 
+                    {!isDaily && !matchData && (
+                      <OffLeaderboardNotice run={{ scope, training }} color={c.textMuted} />
+                    )}
                     {/* Animated coins + rewarded-ad doubler (solo only, server-credited). */}
                     <SoloCoinReward
                       coinsEarned={coinsEarned}
@@ -1099,8 +1183,13 @@ export function ClassicGame({
                               >
                                 {tr(language, 'VOTRE CHOIX', 'YOUR CHOICE')}
                               </Text>
-                              <View
+                              <TouchableOpacity
+                                onPress={() => setFactsFor(selection.cca3)}
                                 style={{ flexDirection: 'row', alignItems: 'center', gap: wide ? 12 : 8 }}
+                                {...a11yButton(
+                                  tr(language, 'Fiche du pays, votre choix', 'Country facts, your choice'),
+                                  { hint: tr(language, 'Voir ses données', 'See its data') },
+                                )}
                               >
                                 <Image
                                   source={{ uri: getFlagUrl(selection.cca3) }}
@@ -1130,7 +1219,7 @@ export function ClassicGame({
                                 >
                                   #{selection.rank}
                                 </Text>
-                              </View>
+                              </TouchableOpacity>
                             </View>
 
                             <View
@@ -1151,8 +1240,13 @@ export function ClassicGame({
                               >
                                 {tr(language, 'MEILLEUR CHOIX', 'BEST PICK')}
                               </Text>
-                              <View
+                              <TouchableOpacity
+                                onPress={() => setFactsFor(optimal.cca3)}
                                 style={{ flexDirection: 'row', alignItems: 'center', gap: wide ? 12 : 8 }}
+                                {...a11yButton(
+                                  tr(language, 'Fiche du pays, meilleur choix', 'Country facts, best pick'),
+                                  { hint: tr(language, 'Voir ses données', 'See its data') },
+                                )}
                               >
                                 <Image
                                   source={{ uri: getFlagUrl(optimal.cca3) }}
@@ -1182,7 +1276,7 @@ export function ClassicGame({
                                 >
                                   #{optimal.rank}
                                 </Text>
-                              </View>
+                              </TouchableOpacity>
                             </View>
                           </View>
                         </View>
@@ -1191,62 +1285,23 @@ export function ClassicGame({
                   </View>
                 </ScrollView>
 
+                <CountryFactCard cca3={factsFor} onClose={() => setFactsFor(null)} />
+
                 <View
                   style={{
-                    flexDirection: 'row',
-                    gap: 12,
                     paddingHorizontal: 16,
                     paddingVertical: 14,
                     borderTopWidth: 1,
                     borderTopColor: c.border,
                   }}
                 >
-                  {!reviewData && (isDaily ? (
-                    <TouchableOpacity
-                      style={[styles.playAgainBtn, { flex: 2, paddingVertical: 14, marginTop: 0 }]}
-                      onPress={onShare}
-                      {...a11yButton(tr(language, 'Partager', 'Share'))}
-                    >
-                      <Share2 color="#fff" size={20} {...a11yHidden} />
-                      <Text style={[styles.playAgainText, { fontSize: 16 }]}>
-                        {tr(language, 'PARTAGER', 'SHARE')}
-                      </Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity
-                      style={[styles.playAgainBtn, { flex: 2, paddingVertical: 14, marginTop: 0 }]}
-                      onPress={initGame}
-                      {...a11yButton(tr(language, 'Rejouer', 'Play again'))}
-                    >
-                      <RefreshCcw color="#fff" size={20} {...a11yHidden} />
-                      <Text style={[styles.playAgainText, { fontSize: 16 }]}>
-                        {tr(language, 'REJOUER', 'PLAY AGAIN')}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                  <TouchableOpacity
-                    style={[
-                      styles.playAgainBtn,
-                      {
-                        backgroundColor: c.border,
-                        borderColor: c.border,
-                        flex: 1,
-                        paddingVertical: 14,
-                        marginTop: 0,
-                      },
-                    ]}
-                    onPress={onExit}
-                    {...a11yButton(reviewData ? tr(language, 'Retour', 'Back') : tr(language, 'Menu', 'Menu'))}
-                  >
-                    {reviewData ? (
-                      <ArrowLeft color="#fff" size={20} {...a11yHidden} />
-                    ) : (
-                      <Home color="#fff" size={20} {...a11yHidden} />
-                    )}
-                    <Text style={[styles.playAgainText, { fontSize: 16 }]}>
-                      {reviewData ? tr(language, 'RETOUR', 'BACK') : 'MENU'}
-                    </Text>
-                  </TouchableOpacity>
+                  <SoloEndActions
+                    onShare={!reviewData && isDaily ? onShare : undefined}
+                    onReplaySame={reviewData || isDaily ? undefined : replaySameGame}
+                    onNewGame={reviewData || isDaily ? undefined : initGame}
+                    onMenu={onExit}
+                    menuLabel={reviewData ? tr(language, 'Retour', 'Back') : undefined}
+                  />
                 </View>
               </View>
             </View>

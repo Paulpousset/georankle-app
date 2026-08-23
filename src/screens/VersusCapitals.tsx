@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -28,8 +28,6 @@ import { AtlasStar, AtlasTrophy, AtlasCross } from '../components/AtlasIcons';
 import * as Haptics from 'expo-haptics';
 import { track } from '../lib/analytics';
 import { normalizeRoundScore } from '../lib/score';
-import { supabase } from '../lib/supabase';
-import { log } from '../lib/log';
 import { getFlagUrl } from '../lib/flags';
 import { isAnswerClose, COUNTRY_ALIASES } from '../lib/answerMatch';
 import { getColors } from '../theme/colors';
@@ -45,6 +43,16 @@ import { TopInsetBar } from '../components/TopInsetBar';
 
 const PLAYER_COLORS = ['#4a9eff', '#8b1a1a', '#2a6e3f', '#c4872a'];
 import countriesStats from '../../assets/countries_stats.json';
+import { filterByContinent, type ContinentId } from '../data/continents';
+import { saveSoloScore } from '../lib/soloResult';
+import { OffLeaderboardNotice } from '../components/OffLeaderboardNotice';
+import { RunRecap, type RecapEntry } from '../components/RunRecap';
+import { SoloCoinReward } from '../components/SoloCoinReward';
+import { PlayerGlobe } from '../components/PlayerGlobe';
+import { useMyGameGlobe } from '../lib/myGlobe';
+import { useSoloCoins } from '../lib/useSoloCoins';
+import { recordRun } from '../lib/reviewPool';
+import { orderByReview } from '../lib/reviewOrder';
 
 function createSeededRng(seed: number) {
   let s = seed;
@@ -75,6 +83,15 @@ interface VersusCapitalsProps {
   onShare?: () => void;
   /** Daily challenge: reports the live score so a mid-game quit can lock it in. */
   onDailyScoreChange?: (score: number) => void;
+    /**
+   * Entraînement: no mistake ends the run, every answer is explained, and
+   * nothing is recorded (no coins, no leaderboard).
+   */
+  training?: boolean;
+/** Solo continent scope: narrows the question countries. Null = worldwide. */
+  scope?: ContinentId | null;
+  /** Review run: countries to ask about first (see lib/reviewPool). */
+  reviewIds?: string[] | null;
   /**
    * When set (local hot-seat parcours), replaces the internal P1/P2 board with a
    * live standings strip of every player. The current player's running manche
@@ -138,6 +155,9 @@ export default function VersusCapitals({
   isDaily,
   onShare,
   onDailyScoreChange,
+  scope = null,
+  reviewIds = null,
+  training = false,
 }: VersusCapitalsProps) {
   const { isDarkMode, setIsDarkMode } = useTheme();
   const { language } = useLanguage();
@@ -148,6 +168,27 @@ export default function VersusCapitals({
 
   // Analytics mode string for solo play, derived from the chosen quiz type.
   const soloAnalyticsMode = initialGameType === 'FLAG' ? 'quiz-flag' : 'quiz-capital';
+  // Question countries, narrowed to the solo continent scope when there is one.
+  const [recap, setRecap] = useState<RecapEntry[]>([]);
+  const { coinsEarned, coinsCapped, coinsSyncFailed, award } = useSoloCoins();
+  const { config: myGlobe } = useMyGameGlobe();
+  /**
+   * Les pays interrogés, dans l'ordre de la partie en cours : c'est la seule
+   * mémoire du tirage (les questions sont générées une par une). `replayQueue`
+   * les rejoue à l'identique quand on demande « la même partie ».
+   */
+  const askedRef = useRef<string[]>([]);
+  const [replayQueue, setReplayQueue] = useState<string[] | null>(null);
+  const isReview = !!reviewIds?.length;
+  const scopedStats = useMemo(() => {
+    const scoped = filterByContinent(
+      countriesStats as unknown as { cca3: string }[],
+      scope,
+    ) as any[];
+    // A review run asks about the due countries first; the rest still fills the
+    // set out so the run keeps its normal length.
+    return isReview ? orderByReview(scoped, reviewIds!) : scoped;
+  }, [scope, isReview, reviewIds]);
 
   const [numPlayers, setNumPlayers] = useState<number | null>(
     isOnline || isDaily ? 1 : null,
@@ -238,29 +279,39 @@ export default function VersusCapitals({
     // repeats across modes); the current question index is `currentRound - 1`.
     // Fall back to a random country not yet used in this set.
     const matchRound = matchData?.current_round ?? 1;
-    const assignedCca3 = matchData?.game_data?.roundCountries?.[matchRound]?.[currentRound - 1];
+    const assignedCca3 =
+      replayQueue?.[currentRound - 1] ??
+      matchData?.game_data?.roundCountries?.[matchRound]?.[currentRound - 1];
     let country: any = assignedCca3
       ? countriesStats.find((c: any) => c.cca3 === assignedCca3)
       : undefined;
     if (!country) {
-      const availableCountries = countriesStats.filter(
+      const availableCountries = scopedStats.filter(
         (c: any) => !usedCountries.has(c.cca3) && c.capital !== 'N/A',
       );
-      const sourceList = availableCountries.length > 0 ? availableCountries : countriesStats;
-      country = sourceList[Math.floor(rng() * sourceList.length)];
+      const sourceList = availableCountries.length > 0 ? availableCountries : scopedStats;
+      country = isReview ? sourceList[0] : sourceList[Math.floor(rng() * sourceList.length)];
     }
 
     setUsedCountries((prev) => new Set([...prev, country.cca3]));
+    askedRef.current = [...askedRef.current.slice(0, currentRound - 1), country.cca3];
 
-    // Preparations for Duo/Carre
-    const wrs = countriesStats
-      .filter(
-        (c: any) =>
-          c.cca3 !== country.cca3 &&
-          (activeType === 'CAPITAL' ? c.capital !== country.capital : true) &&
-          c.capital !== 'N/A',
-      )
-      .sort(() => rng() - 0.5);
+    // Preparations for Duo/Carre. Distractors follow the scope: inside a
+    // continent, same-continent options are both the only honest choice and
+    // the more instructive one. The worldwide list only tops up if the scoped
+    // pool is too thin to fill four options — deduplicated by cca3, or a
+    // country present in both lists could be offered twice.
+    const eligible = (c: any) =>
+      c.cca3 !== country.cca3 &&
+      (activeType === 'CAPITAL' ? c.capital !== country.capital : true) &&
+      c.capital !== 'N/A';
+    const scopedWrong = scopedStats.filter(eligible).sort(() => rng() - 0.5);
+    const seenWrong = new Set(scopedWrong.map((c: any) => c.cca3));
+    const worldWrong =
+      scopedWrong.length >= 3
+        ? []
+        : countriesStats.filter((c: any) => eligible(c) && !seenWrong.has(c.cca3)).sort(() => rng() - 0.5);
+    const wrs = [...scopedWrong, ...worldWrong];
 
     const getOptionName = (c: any) => {
       if (activeType === 'CAPITAL') return language === 'fr' ? c.capital_fr || c.capital : c.capital;
@@ -284,6 +335,30 @@ export default function VersusCapitals({
     setFeedback(null);
     setMode(null);
     setCashInput('');
+  };
+
+  /**
+   * Records one question for the end-of-run recap. Solo only — a hot-seat or
+   * online board has several players, so a single "your answers" list would be
+   * wrong.
+   */
+  const recordRecap = (isCorrect: boolean, correctAnswer: string, given?: string) => {
+    if (!soloMode) return;
+    setRecap((prev) => [
+      ...prev,
+      {
+        cca3: question?.cca3,
+        prompt:
+          currentQuestionType === 'CAPITAL'
+            ? language === 'fr'
+              ? question.name
+              : question.name_en || question.name
+            : tr(language, 'Ce drapeau', 'This flag'),
+        yourAnswer: isCorrect ? undefined : given,
+        correctAnswer,
+        ok: isCorrect,
+      },
+    ]);
   };
 
   const handleAnswer = (option: Option, selectedMode: string) => {
@@ -321,6 +396,7 @@ export default function VersusCapitals({
       setScores((prev) => ({ ...prev, [currentPlayer]: prev[currentPlayer] + points }));
     }
 
+    recordRecap(isCorrect, correctAnswer, option.name);
     proceedNext();
   };
 
@@ -358,6 +434,7 @@ export default function VersusCapitals({
       setScores((prev) => ({ ...prev, [currentPlayer]: prev[currentPlayer] + points }));
     }
 
+    recordRecap(isCorrect, correctAnswer, cashInput.trim());
     proceedNext();
   };
 
@@ -419,22 +496,36 @@ export default function VersusCapitals({
       }
 
       if (soloMode) {
-        track('game_completed', { mode: soloAnalyticsMode, score: scores[1] });
+        track('game_completed', {
+          mode: soloAnalyticsMode,
+          score: scores[1],
+          scope: scope ?? 'world',
+        });
+        // Leaderboard stores the unified 0–1000 scale so 5/10/20-round runs
+        // compare fairly — a continent-scoped run stays out of it.
+        void saveSoloScore(
+          user ?? null,
+          soloAnalyticsMode,
+          normalizeRoundScore('versus', scores[1], {
+            numQuestions: totalRounds,
+            maxPointsPerQuestion: 5,
+          }),
+          { scope, review: isReview, training },
+        );
+        // Feed the "mes erreurs" pool — capitals and flags are tracked apart,
+        // since knowing a flag says nothing about knowing its capital.
+        void recordRun(soloAnalyticsMode, recap);
+        // Pièces solo : Capitales et Drapeaux n'en créditaient aucune, alors
+        // que le serveur accepte déjà ces deux modes.
         if (user) {
-          // Leaderboard stores the unified 0–1000 scale so 5/10/20-round runs compare fairly.
-          supabase
-            .from('scores')
-            .insert({
-              user_id: user.id,
-              game_mode: soloAnalyticsMode,
-              score: normalizeRoundScore('versus', scores[1], {
-                numQuestions: totalRounds,
-                maxPointsPerQuestion: 5,
-              }),
-            })
-            .then(({ error }) => {
-              if (error) log.error('Error saving quiz score:', error);
-            });
+          award(
+            soloAnalyticsMode,
+            normalizeRoundScore('versus', scores[1], {
+              numQuestions: totalRounds,
+              maxPointsPerQuestion: 5,
+            }),
+            { scope, review: isReview, training },
+          );
         }
       }
 
@@ -489,6 +580,7 @@ export default function VersusCapitals({
 
   const nextSet = () => {
     setScores({ 1: 0, 2: 0, 3: 0, 4: 0 });
+    setRecap([]);
     setCurrentRound(1);
     setCurrentPlayer(1);
     // Note: Used countries are intentionally NOT reset to avoid duplicates in the same match
@@ -497,13 +589,28 @@ export default function VersusCapitals({
     setFeedback(null);
   };
 
-  const resetMatch = () => {
+  /**
+   * Rejoue exactement les mêmes questions : on fige les pays déjà interrogés
+   * puis on repart de zéro. `usedCountries` doit être vidé, sinon la file
+   * rejouée serait considérée comme déjà servie.
+   */
+  const replaySameGame = () => {
+    setReplayQueue([...askedRef.current]);
+    resetMatch({ keepQueue: true });
+  };
+
+  const resetMatch = ({ keepQueue = false }: { keepQueue?: boolean } = {}) => {
     if (proceedTimer.current) {
       clearTimeout(proceedTimer.current);
       proceedTimer.current = null;
     }
+    if (!keepQueue) {
+      setReplayQueue(null);
+      askedRef.current = [];
+    }
     setScores({ 1: 0, 2: 0, 3: 0, 4: 0 });
     setMatchScores({ 1: 0, 2: 0, 3: 0, 4: 0 });
+    setRecap([]);
     setCurrentRound(1);
     setCurrentPlayer(1);
     setUsedCountries(new Set());
@@ -650,11 +757,24 @@ export default function VersusCapitals({
               </TouchableOpacity>
             </View>
 
-            <Trophy
-              color="#c4872a"
-              size={80}
-              style={{ marginBottom: 10, marginTop: isMobile ? 60 : 0 }}
-            />
+            {/* En solo, le globe équipé remplace le trophée générique : c'est
+                l'écran de lancement du mode, donc sa vitrine. */}
+            {soloMode ? (
+              <PlayerGlobe
+                config={myGlobe}
+                size={132}
+                label={tr(language, 'TON GLOBE', 'YOUR GLOBE')}
+                accent="#c4872a"
+                animate
+                style={{ marginBottom: 10, marginTop: isMobile ? 60 : 0 }}
+              />
+            ) : (
+              <Trophy
+                color="#c4872a"
+                size={80}
+                style={{ marginBottom: 10, marginTop: isMobile ? 60 : 0 }}
+              />
+            )}
             <Text style={[styles.menuTitle, { color: c.text }]} maxFontSizeMultiplier={1.3}>
               {soloMode
                 ? gameType === 'CAPITAL'
@@ -1166,7 +1286,7 @@ export default function VersusCapitals({
                   {language === 'fr' ? question.name : question.name_en || question.name}
                 </Text>
               )}
-              <Text style={styles.instruction}>
+              <Text style={[styles.instruction, { color: c.textMuted }]}>
                 {currentQuestionType === 'CAPITAL'
                   ? language === 'fr'
                     ? 'Quelle est la capitale ?'
@@ -1195,7 +1315,7 @@ export default function VersusCapitals({
                       {language === 'fr' ? question.name : question.name_en || question.name}
                     </Text>
                   )}
-                  <Text style={[styles.instruction, { marginTop: 2, fontSize: 12 }]}>
+                  <Text style={[styles.instruction, { color: c.textMuted, marginTop: 2, fontSize: 12 }]}>
                     {currentQuestionType === 'CAPITAL'
                       ? language === 'fr'
                         ? 'Quelle est la capitale ?'
@@ -1224,7 +1344,7 @@ export default function VersusCapitals({
               >
                 <HelpCircle color="#8b1a1a" size={24} />
                 <Text style={[styles.modeBtnTitle, { color: '#8b1a1a' }]}>DUO</Text>
-                <Text style={styles.modeBtnPoints}>1 PT</Text>
+                <Text style={[styles.modeBtnPoints, { color: c.textMuted }]}>1 PT</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1240,7 +1360,7 @@ export default function VersusCapitals({
               >
                 <Eye color="#4a9eff" size={24} />
                 <Text style={[styles.modeBtnTitle, { color: '#4a9eff' }]}>CARRÉ</Text>
-                <Text style={styles.modeBtnPoints}>3 PTS</Text>
+                <Text style={[styles.modeBtnPoints, { color: c.textMuted }]}>3 PTS</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1256,7 +1376,7 @@ export default function VersusCapitals({
               >
                 <CheckCircle color="#2a6e3f" size={24} />
                 <Text style={[styles.modeBtnTitle, { color: '#2a6e3f' }]}>CASH</Text>
-                <Text style={styles.modeBtnPoints}>5 PTS</Text>
+                <Text style={[styles.modeBtnPoints, { color: c.textMuted }]}>5 PTS</Text>
               </TouchableOpacity>
             </View>
           ) : mode === 'CASH' && !feedback ? (
@@ -1273,13 +1393,13 @@ export default function VersusCapitals({
                 {...a11yButton(tr(language, 'Retour', 'Back'))}
               >
                 <Text style={{ color: '#4a9eff', fontWeight: 'bold' }}>
-                  ← {language === 'fr' ? 'RETOUR' : 'BACK'}
+                  ← {tr(language, 'RETOUR', 'BACK')}
                 </Text>
               </TouchableOpacity>
               <TextInput
                 style={[styles.cashInput, !isDarkMode && styles.cashInputLight]}
                 placeholder={tr(language, 'Réponse...', 'Answer...')}
-                placeholderTextColor="#4a6a88"
+                placeholderTextColor={c.textFaint}
                 value={cashInput}
                 onChangeText={setCashInput}
                 autoFocus
@@ -1290,7 +1410,7 @@ export default function VersusCapitals({
                 onPress={handleCashSubmit}
                 {...a11yButton(tr(language, 'Valider', 'Submit'))}
               >
-                <Text style={styles.cashSubmitText}>VALIDER</Text>
+                <Text style={styles.cashSubmitText}>{tr(language, 'VALIDER', 'SUBMIT')}</Text>
               </TouchableOpacity>
             </View>
           ) : (mode === 'DUO' || mode === 'CARRE') && !feedback ? (
@@ -1342,7 +1462,7 @@ export default function VersusCapitals({
                     ? tr(language, 'BIEN JOUÉ !', 'WELL DONE!')
                     : tr(language, 'DOMMAGE...', 'TOO BAD...')}
                 </Text>
-                <Text style={styles.feedbackSub}>
+                <Text style={[styles.feedbackSub, { color: c.text }]}>
                   {feedback.correct
                     ? `+${feedback.points} point(s)`
                     : tr(
@@ -1394,7 +1514,11 @@ export default function VersusCapitals({
 
         {gameOver && !isOnline && (
           <View style={[styles.overlay, !isDarkMode && styles.overlayLight]}>
-            <Trophy color={numPlayers === 1 ? '#2a6e3f' : matchOver ? '#c4872a' : '#cbd5e1'} size={80} />
+            {soloMode ? (
+              <PlayerGlobe config={myGlobe} size={104} accent="#2a6e3f" animate />
+            ) : (
+              <Trophy color={matchOver ? '#c4872a' : '#cbd5e1'} size={80} />
+            )}
             <ScoreText style={[styles.winnerTitle, { color: c.text }]}>
               {numPlayers === 1
                 ? language === 'fr' ? 'TERMINÉ !' : 'DONE!'
@@ -1414,6 +1538,27 @@ export default function VersusCapitals({
                 ? `${language === 'fr' ? 'Score :' : 'Score:'} ${scores[1]} pts`
                 : `${language === 'fr' ? 'Score de la manche :' : 'Set score:'} ${scores[1]} - ${scores[2]}${numPlayers >= 3 ? ` - ${scores[3]}` : ''}${numPlayers === 4 ? ` - ${scores[4]}` : ''}`}
             </ScoreText>
+
+            {soloMode && !isDaily && (
+              <OffLeaderboardNotice run={{ scope, review: isReview, training }} color={c.textMuted} />
+            )}
+
+            {/* Pièces + doubleur pub avant le récap : la récompense d'abord,
+                la solution juste après. */}
+            {soloMode && (
+              <SoloCoinReward
+                coinsEarned={coinsEarned}
+                coinsCapped={coinsCapped}
+                coinsSyncFailed={coinsSyncFailed}
+                containerStyle={{ alignSelf: 'stretch', maxWidth: 380, width: '100%', marginBottom: 14 }}
+              />
+            )}
+
+            {soloMode && (
+              <View style={{ alignSelf: 'stretch', maxWidth: 380, width: '100%' }}>
+                <RunRecap entries={recap} />
+              </View>
+            )}
 
             {matchFormat > 1 && (
               <View
@@ -1456,15 +1601,29 @@ export default function VersusCapitals({
                   </Text>
                 </TouchableOpacity>
               ) : numPlayers === 1 ? (
-                <TouchableOpacity
-                  style={styles.resetBtn}
-                  onPress={() => { resetMatch(); setNumPlayers(1); }}
-                  {...a11yButton(tr(language, 'Rejouer', 'Play again'))}
-                >
-                  <Text style={styles.resetBtnText}>
-                    {language === 'fr' ? 'REJOUER' : 'PLAY AGAIN'}
-                  </Text>
-                </TouchableOpacity>
+                <>
+                  <TouchableOpacity
+                    style={styles.resetBtn}
+                    onPress={() => { replaySameGame(); setNumPlayers(1); }}
+                    {...a11yButton(tr(language, 'Rejouer la même partie', 'Replay the same game'))}
+                  >
+                    <Text style={styles.resetBtnText}>
+                      {language === 'fr' ? 'REJOUER LA MÊME PARTIE' : 'REPLAY THE SAME GAME'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.resetBtn,
+                      { backgroundColor: 'transparent', borderWidth: 2, borderColor: c.border },
+                    ]}
+                    onPress={() => { resetMatch(); setNumPlayers(1); }}
+                    {...a11yButton(tr(language, 'Nouvelle partie', 'New game'))}
+                  >
+                    <Text style={styles.resetBtnText}>
+                      {language === 'fr' ? 'NOUVELLE PARTIE' : 'NEW GAME'}
+                    </Text>
+                  </TouchableOpacity>
+                </>
               ) : !matchOver ? (
                 <TouchableOpacity
                   style={styles.resetBtn}
@@ -1476,15 +1635,29 @@ export default function VersusCapitals({
                   </Text>
                 </TouchableOpacity>
               ) : (
-                <TouchableOpacity
-                  style={styles.resetBtn}
-                  onPress={resetMatch}
-                  {...a11yButton(tr(language, 'Rejouer le match', 'Play match again'))}
-                >
-                  <Text style={styles.resetBtnText}>
-                    {language === 'fr' ? 'REJOUER LE MATCH' : 'PLAY MATCH AGAIN'}
-                  </Text>
-                </TouchableOpacity>
+                <>
+                  <TouchableOpacity
+                    style={styles.resetBtn}
+                    onPress={replaySameGame}
+                    {...a11yButton(tr(language, 'Rejouer la même partie', 'Replay the same game'))}
+                  >
+                    <Text style={styles.resetBtnText}>
+                      {language === 'fr' ? 'REJOUER LA MÊME PARTIE' : 'REPLAY THE SAME GAME'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.resetBtn,
+                      { backgroundColor: 'transparent', borderWidth: 2, borderColor: c.border },
+                    ]}
+                    onPress={() => resetMatch()}
+                    {...a11yButton(tr(language, 'Nouveau match', 'New match'))}
+                  >
+                    <Text style={styles.resetBtnText}>
+                      {language === 'fr' ? 'NOUVEAU MATCH' : 'NEW MATCH'}
+                    </Text>
+                  </TouchableOpacity>
+                </>
               )}
               <TouchableOpacity
                 style={[

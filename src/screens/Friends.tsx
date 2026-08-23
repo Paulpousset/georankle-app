@@ -190,9 +190,15 @@ export default function Friends({ onBack, onOpenPlayer, onRequestsChanged }: Fri
           disabled={!onOpenPlayer}
           onPress={() => onOpenPlayer?.(friendData.id, friendData.username)}
           accessibilityRole="button"
-          accessibilityLabel={tr(language, 'Voir le profil', 'View profile')}
+          accessibilityLabel={tr(
+            language,
+            `Voir le profil de ${friendData.username}`,
+            `View ${friendData.username}'s profile`,
+          )}
         >
-          <Text style={[styles.usernameText, { color: c.text }]}>{friendData.username}</Text>
+          <Text style={[styles.usernameText, { color: c.text }]} numberOfLines={1}>
+            {friendData.username}
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.removeBtn}
@@ -216,10 +222,14 @@ export default function Friends({ onBack, onOpenPlayer, onRequestsChanged }: Fri
           disabled={!onOpenPlayer}
           onPress={() => item.user1 && onOpenPlayer?.(item.user1.id, item.user1.username)}
           accessibilityRole="button"
-          accessibilityLabel={tr(language, 'Voir le profil', 'View profile')}
+          accessibilityLabel={tr(
+            language,
+            `${item.user1?.username} veut être votre ami. Voir son profil`,
+            `${item.user1?.username} wants to be friends. View their profile`,
+          )}
         >
-          <Text style={[styles.usernameText, { color: c.text }]}>
-            {item.user1?.username} {language === 'fr' ? 'veut être votre ami' : 'wants to be friends'}
+          <Text style={[styles.usernameText, { color: c.text }]} numberOfLines={2}>
+            {item.user1?.username} {tr(language, 'veut être votre ami', 'wants to be friends')}
           </Text>
         </TouchableOpacity>
         <View style={styles.actionRow}>
@@ -254,9 +264,15 @@ export default function Friends({ onBack, onOpenPlayer, onRequestsChanged }: Fri
         disabled={!onOpenPlayer}
         onPress={() => onOpenPlayer?.(item.id, item.username)}
         accessibilityRole="button"
-        accessibilityLabel={tr(language, 'Voir le profil', 'View profile')}
+        accessibilityLabel={tr(
+          language,
+          `Voir le profil de ${item.username}`,
+          `View ${item.username}'s profile`,
+        )}
       >
-        <Text style={[styles.usernameText, { color: c.text }]}>{item.username}</Text>
+        <Text style={[styles.usernameText, { color: c.text }]} numberOfLines={1}>
+          {item.username}
+        </Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.addBtn}
@@ -351,6 +367,23 @@ export default function Friends({ onBack, onOpenPlayer, onRequestsChanged }: Fri
         {!searchQuery && <ReferralCard />}
 
         {searchLoading && <ActivityIndicator style={{ margin: 20 }} color={c.accent} />}
+
+        {/* Une recherche sans résultat n'affichait RIEN : le bloc ci-dessous
+            exigeait `searchResults.length > 0`, et le ListEmptyComponent de la
+            liste principale est neutralisé dès que searchQuery est rempli.
+            L'utilisateur tapait un pseudo, voyait un spinner clignoter, puis
+            plus rien — impossible de distinguer « pseudo inexistant » d'un bug. */}
+        {searchQuery.length > 0 && !searchLoading && searchResults.length === 0 && (
+          <View style={styles.section}>
+            <Text style={[styles.emptyText, { color: c.textMuted }]}>
+              {tr(
+                language,
+                `Aucun joueur trouvé pour « ${searchQuery} ».`,
+                `No player found for “${searchQuery}”.`,
+              )}
+            </Text>
+          </View>
+        )}
 
         {searchQuery.length > 0 && searchResults.length > 0 && (
           <View style={styles.section}>

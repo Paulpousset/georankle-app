@@ -15,6 +15,8 @@ interface AvatarProps {
   size: number;
   ringColor?: string;
   ringWidth?: number;
+  /** Anime le satellite en orbite (écrans calmes : lobby, fin de partie). */
+  animate?: boolean;
 }
 
 const INITIALS_COLORS = ['#2a6e3f', '#1a4a7a', '#c04a1a', '#c4872a', '#8b1a1a', '#4a9eff'];
@@ -43,7 +45,7 @@ function initials(name: string | null | undefined): string {
  *
  * Purely presentational — never fetches data.
  */
-function AvatarBase({ config, photoUrl, username, size, ringColor, ringWidth = 3 }: AvatarProps) {
+function AvatarBase({ config, photoUrl, username, size, ringColor, ringWidth = 3, animate = false }: AvatarProps) {
   const radius = size / 2;
   // Pre-rendered 3D layer pack (falls back to SVG per-avatar when layers are missing).
   const avatar3d = useFeatureFlag('avatar_3d');
@@ -69,7 +71,7 @@ function AvatarBase({ config, photoUrl, username, size, ringColor, ringWidth = 3
           backgroundColor: '#05060f',
         }}
       >
-        <WorldRenderer config={worldConfig} size={size} round />
+        <WorldRenderer config={worldConfig} size={size} round animate={animate} />
       </View>
     );
   }

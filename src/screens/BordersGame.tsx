@@ -21,7 +21,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Fuse from 'fuse.js';
-import { ArrowRight, Heart, Home, Moon, RefreshCcw, Route, Search, Share2, Sun } from 'lucide-react-native';
+import { ArrowRight, Heart, Home, Moon, Route, Search, Sun } from 'lucide-react-native';
 import type { User } from '@supabase/supabase-js';
 
 import rawCountriesStats from '../../assets/countries_stats.json';
@@ -38,11 +38,12 @@ import {
 import { getMapPalette, type MapPalette } from '../theme/mapPalette';
 import { buildBordersEarthHtml } from '../lib/globe3d/buildEarthHtml';
 import { skinMapPalette, useGameGlobeSkin } from '../lib/globeSkin';
+import { GlobePickerModal } from '../components/GlobePickerModal';
+import { AtlasGlobe } from '../components/AtlasIcons';
 import { getFlagUrl } from '../lib/flags';
 import { normalizeRoundScore } from '../lib/score';
 import { track } from '../lib/analytics';
-import { supabase } from '../lib/supabase';
-import { log } from '../lib/log';
+import { saveSoloScore } from '../lib/soloResult';
 import { awardSoloCoins } from '../lib/coins';
 import { useToast } from '../components/ToastProvider';
 import type { GameMode, Match } from '../types';
@@ -54,6 +55,9 @@ import { tr } from '../i18n';
 import { a11yButton, announce, a11yHidden, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
 import { SoloCoinReward } from '../components/SoloCoinReward';
+import { SoloEndActions } from '../components/SoloEndActions';
+import { PlayerGlobe } from '../components/PlayerGlobe';
+import { useMyGameGlobe } from '../lib/myGlobe';
 import { TopInsetBar } from '../components/TopInsetBar';
 
 import { isMobileLayout as isMobile } from '../lib/layout';
@@ -371,6 +375,12 @@ interface BordersGameProps {
   onShare?: () => void;
   /** Daily challenge: reports the live score so a mid-game quit can lock it in. */
   onDailyScoreChange?: (score: number) => void;
+  /**
+   * Opens the shop from the globe picker. Only wired in free solo play — it
+   * navigates away, which ends the game — so a daily / online / parcours host
+   * simply leaves it out and the entry does not appear.
+   */
+  onOpenShop?: () => void;
 }
 
 export default function BordersGame({
@@ -383,6 +393,7 @@ export default function BordersGame({
   isDaily,
   onShare,
   onDailyScoreChange,
+  onOpenShop,
 }: BordersGameProps) {
   const { isDarkMode, setIsDarkMode } = useTheme();
   const { language, setLanguage } = useLanguage();
@@ -403,6 +414,7 @@ export default function BordersGame({
   const [input, setInput] = useState('');
   const [outcome, setOutcome] = useState<'won' | 'lost' | null>(null);
   const [coinsEarned, setCoinsEarned] = useState<number | null>(null);
+  const { config: myGlobe } = useMyGameGlobe();
   const [coinsCapped, setCoinsCapped] = useState(false);
   const [coinsSyncFailed, setCoinsSyncFailed] = useState(false);
   useEffect(() => {
@@ -433,6 +445,7 @@ export default function BordersGame({
   // readable off the map), so this globe stays a bare tinted planet — hence no
   // rig either, which also spares it the ~1.2 MB continent-relief GLB.
   const globeSkin = useGameGlobeSkin({ withRig: false });
+  const [pickerOpen, setPickerOpen] = useState(false);
   const globeHtml = useMemo(() => {
     if (globeSkin.status === 'pending') return null;
     const pal = skinMapPalette(getMapPalette(isDarkMode), globeSkin.key);
@@ -536,18 +549,15 @@ export default function BordersGame({
     if (!matchData) {
       track('game_completed', { mode: 'borders', score: finalScore, won });
       if (user) {
-        supabase
-          .from('scores')
-          .insert({ user_id: user.id, game_mode: 'borders', score: finalScore })
-          .then(({ error }) => {
-            if (error) {
-              log.error('Error saving borders score:', error);
-              showAlert(
-                tr(language, 'Erreur', 'Error'),
-                tr(language, "Impossible d'enregistrer ton score.", 'Could not save your score.'),
-              );
-            }
-          });
+        // Route through saveSoloScore rather than inserting here: it is the one
+        // place that decides whether a run counts for the leaderboard (scope /
+        // training / review). Inserting directly bypassed that rule.
+        void saveSoloScore(user, 'borders', finalScore, {}, () =>
+          showAlert(
+            tr(language, 'Erreur', 'Error'),
+            tr(language, "Impossible d'enregistrer ton score.", 'Could not save your score.'),
+          ),
+        );
         awardSoloCoins('borders', normalizeRoundScore('borders', finalScore)).then((res) => {
           setCoinsEarned(res.coinsAwarded);
           setCoinsCapped(res.capped);
@@ -629,10 +639,10 @@ export default function BordersGame({
     }
   };
 
-  const resetGame = () => {
-    const fresh = buildBordersPuzzle(Math.floor(Math.random() * 2147483647));
-    setPuzzle(fresh);
-    setChain([fresh.start]);
+  /** Repart de zéro sur une grille donnée. */
+  const restart = (p: typeof puzzle) => {
+    setPuzzle(p);
+    setChain([p.start]);
     setMisses(0);
     setInput('');
     setOutcome(null);
@@ -640,6 +650,12 @@ export default function BordersGame({
     setCoinsCapped(false);
     setCoinsSyncFailed(false);
   };
+
+  /** Rejoue exactement le même trajet — c'est là qu'on applique ce qu'on vient de lire. */
+  const replaySameGame = () => restart(puzzle);
+
+  /** Nouveau trajet. */
+  const resetGame = () => restart(buildBordersPuzzle(Math.floor(Math.random() * 2147483647)));
 
   const chip = (cca3: string, kind: 'start' | 'chain' | 'target' | 'ideal') => {
     const palette =
@@ -822,6 +838,30 @@ export default function BordersGame({
           )}
         </View>
 
+        {/* Swap the planet. Safe at any point here: the page reload re-pushes the
+            chain on GLOBE_READY, so nothing on screen is lost. */}
+        <View style={styles.globeBtnRow}>
+          <TouchableOpacity
+            onPress={() => setPickerOpen(true)}
+            style={[styles.globeBtn, { backgroundColor: c.surface, borderColor: c.border }]}
+            hitSlop={ICON_HIT_SLOP}
+            {...a11yButton(tr(language, 'Changer de globe', 'Change globe'))}
+          >
+            <AtlasGlobe color={c.textMuted} size={16} {...a11yHidden} />
+            <Text style={[styles.globeBtnText, { color: c.textMuted }]} numberOfLines={1}>
+              {tr(language, 'Changer de globe', 'Change globe')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <GlobePickerModal
+          visible={pickerOpen}
+          onClose={() => setPickerOpen(false)}
+          onOpenShop={matchData ? undefined : onOpenShop}
+          current={globeSkin.status === 'ready' ? globeSkin.key : null}
+          onPick={(key) => globeSkin.choose(key)}
+        />
+
         {/* The journey so far: start → links → (…) → destination. */}
         <View style={[styles.routeCard, { backgroundColor: c.card, borderColor: c.border }]}>
           <View style={styles.routeChain}>
@@ -904,6 +944,14 @@ export default function BordersGame({
 
         {outcome && (
           <View style={{ alignItems: 'center', gap: 14, marginTop: 18, width: '100%' }}>
+            {!matchData && (
+              <PlayerGlobe
+                config={myGlobe}
+                size={100}
+                accent={outcome === 'won' ? '#2a6e3f' : '#8b1a1a'}
+                animate
+              />
+            )}
             <ScoreText
               style={{
                 fontSize: 34,
@@ -982,26 +1030,14 @@ export default function BordersGame({
               containerStyle={{ alignSelf: 'stretch' }}
             />
 
-            {!matchData &&
-              (isDaily ? (
-                <TouchableOpacity
-                  style={styles.resetBtn}
-                  onPress={onShare}
-                  {...a11yButton(tr(language, 'Partager', 'Share'))}
-                >
-                  <Share2 color="#fff" size={20} />
-                  <Text style={styles.resetBtnText}>{tr(language, 'PARTAGER', 'SHARE')}</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={styles.resetBtn}
-                  onPress={resetGame}
-                  {...a11yButton(tr(language, 'Recommencer', 'Retry'))}
-                >
-                  <RefreshCcw color="#fff" size={20} />
-                  <Text style={styles.resetBtnText}>{tr(language, 'RECOMMENCER', 'RETRY')}</Text>
-                </TouchableOpacity>
-              ))}
+            {!matchData && (
+              <SoloEndActions
+                onShare={isDaily ? onShare : undefined}
+                onReplaySame={isDaily ? undefined : replaySameGame}
+                onNewGame={isDaily ? undefined : resetGame}
+                onMenu={() => setGameMode('menu')}
+              />
+            )}
           </View>
         )}
       </ScrollView>
@@ -1051,8 +1087,21 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     overflow: 'hidden',
-    marginBottom: 16,
+    marginBottom: 8,
   },
+  // Under the globe rather than in the header: that row is already full (title,
+  // steps, lives, language, theme) and truncates the title on a 360 px phone.
+  globeBtnRow: { width: '100%', maxWidth: 520, alignItems: 'flex-end', marginBottom: 12 },
+  globeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 7,
+    paddingHorizontal: 11,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  globeBtnText: { fontSize: 11, fontFamily: FONTS.monoBold },
   globe: { flex: 1, backgroundColor: 'transparent' },
   routeCard: {
     width: '100%',

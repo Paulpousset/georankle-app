@@ -72,7 +72,7 @@ class ScreenErrorBoundaryInner extends Component<InnerProps, State> {
         <TouchableOpacity
           onPress={this.handleReset}
           accessibilityRole="button"
-          style={{ backgroundColor: c.accent, paddingHorizontal: 24, paddingVertical: 14, borderRadius: 14 }}
+          style={{ backgroundColor: c.accentStrong, paddingHorizontal: 24, paddingVertical: 14, borderRadius: 14 }}
         >
           <Text style={{ color: '#fff', fontFamily: FONTS.monoBold, fontSize: 15 }}>
             {tr(language, 'Retour au menu', 'Back to menu')}

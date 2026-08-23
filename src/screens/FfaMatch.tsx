@@ -21,7 +21,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Home, ChevronRight, Users } from 'lucide-react-native';
 import type { User } from '@supabase/supabase-js';
 
-import type { GameMode, Match, MatchMode } from '../types';
+import type { AvatarConfig, GameMode, Match, MatchMode } from '../types';
 import { getColors, PALETTE } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { useTheme } from '../contexts/ThemeContext';
@@ -35,6 +35,8 @@ import { showAlert } from '../lib/alert';
 import { ScoreText } from '../components/ScoreText';
 import { AtlasWin } from '../components/AtlasIcons';
 import { standings as ffaStandings } from '../lib/ffa';
+import { PlayerGlobe } from '../components/PlayerGlobe';
+import { SoloCoinReward } from '../components/SoloCoinReward';
 import type { CustomRoundCfg } from '../lib/customMatch';
 import { setActiveMatch, clearActiveMatch } from '../lib/activeMatch';
 import { forfeitWindowElapsed, FORFEIT_WINDOW_SECONDS } from '../lib/match';
@@ -113,6 +115,11 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
 
   const [players, setPlayers] = useState<PlayerRow[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
+  const [profiles, setProfiles] = useState<
+    Record<string, { avatar_url: string | null; avatar_config: AvatarConfig | null }>
+  >({});
+  /** Pièces de placement de la série (1ᵉʳ → 12, sinon 5, cf. apply_ffa_result). */
+  const [coinsAwarded, setCoinsAwarded] = useState<number | null>(null);
   const [status, setStatus] = useState<string>(match.status ?? 'waiting');
   const [currentRound, setCurrentRound] = useState<number>(match.current_round ?? 1);
   const [phase, setPhase] = useState<Phase>(
@@ -165,21 +172,33 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
     [],
   );
 
-  // Resolve display names once we know the player ids.
+  // Resolve display names — et les mondes équipés : le salon ne montrait que des
+  // pseudos, on ne voyait ni son globe ni celui des autres.
   useEffect(() => {
     const ids = players.map((p) => p.player_id).filter((id) => !(id in names));
     if (ids.length === 0) return;
     let cancelled = false;
     supabase
       .from('profiles')
-      .select('id, username')
+      .select('id, username, avatar_url, avatar_config')
       .in('id', ids)
       .then(({ data }) => {
         if (cancelled || !data) return;
+        const rows = data as {
+          id: string;
+          username: string | null;
+          avatar_url: string | null;
+          avatar_config: AvatarConfig | null;
+        }[];
         setNames((prev) => {
           const next = { ...prev };
-          for (const row of data as { id: string; username: string | null }[]) {
-            next[row.id] = row.username ?? tr(language, 'Joueur', 'Player');
+          for (const row of rows) next[row.id] = row.username ?? tr(language, 'Joueur', 'Player');
+          return next;
+        });
+        setProfiles((prev) => {
+          const next = { ...prev };
+          for (const row of rows) {
+            next[row.id] = { avatar_url: row.avatar_url, avatar_config: row.avatar_config };
           }
           return next;
         });
@@ -367,8 +386,16 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
       const apply = async () => {
         for (let attempt = 0; attempt < 3; attempt++) {
           if (attempt > 0) await new Promise((r) => setTimeout(r, attempt * 2000));
-          const { error } = await supabase.rpc('apply_ffa_result', { p_match_id: match.id });
-          if (!error) return;
+          const { data, error } = await supabase.rpc('apply_ffa_result', { p_match_id: match.id });
+          if (!error) {
+            // La RPC ne renvoie le montant que pour le client qui a crédité en
+            // premier ; `place`, lui, est toujours là, et le barème est fixe
+            // (1ᵉʳ → 12, sinon 5). On l'en déduit pour que TOUT le monde voie
+            // ses pièces — et puisse les doubler.
+            const res = (data ?? {}) as { place?: number };
+            if (typeof res.place === 'number') setCoinsAwarded(res.place === 1 ? 12 : 5);
+            return;
+          }
           log.error('apply_ffa_result error:', error);
         }
       };
@@ -501,11 +528,19 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
               {players.length} / {maxPlayers} {tr(language, 'joueurs', 'players')}
             </Text>
             <ActivityIndicator color={PALETTE.forestGreen} style={{ marginTop: 16 }} />
-            <View style={styles.playerList}>
+            {/* Le salon montre les mondes en attente, pas une liste de pseudos. */}
+            <View style={styles.globeRow}>
               {players.map((p) => (
-                <Text key={p.slot} style={[styles.playerLine, { color: colors.textMuted }]}>
-                  {nameOf(p.player_id)}
-                </Text>
+                <PlayerGlobe
+                  key={p.slot}
+                  config={profiles[p.player_id]?.avatar_config ?? null}
+                  photoUrl={profiles[p.player_id]?.avatar_url ?? null}
+                  username={nameOf(p.player_id)}
+                  size={76}
+                  accent={p.player_id === user.id ? PALETTE.forestGreen : undefined}
+                  showGlobeName={false}
+                  animate
+                />
               ))}
             </View>
           </>
@@ -555,9 +590,20 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
         {(phase === 'roundResult' || phase === 'over') && (
           <>
             {phase === 'over' && (
-              <View style={{ marginBottom: 8 }}>
-                <AtlasWin color={iWon ? PALETTE.forestGreen : PALETTE.sand} size={64} />
-              </View>
+              <>
+                <PlayerGlobe
+                  config={profiles[user.id]?.avatar_config ?? null}
+                  photoUrl={profiles[user.id]?.avatar_url ?? null}
+                  username={nameOf(user.id)}
+                  size={104}
+                  accent={iWon ? PALETTE.forestGreen : PALETTE.sand}
+                  animate
+                  style={{ marginBottom: 10 }}
+                />
+                <View style={{ marginBottom: 8 }}>
+                  <AtlasWin color={iWon ? PALETTE.forestGreen : PALETTE.sand} size={64} />
+                </View>
+              </>
             )}
             <Text style={[styles.title, { color: colors.text }]}>
               {phase === 'over'
@@ -580,6 +626,15 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
                 </View>
               ))}
             </View>
+
+            {/* Pièces de placement + doubleur pub : la partie en ligne à
+                plusieurs ne montrait rien du tout. */}
+            {phase === 'over' && coinsAwarded != null && (
+              <SoloCoinReward
+                coinsEarned={coinsAwarded}
+                containerStyle={{ width: '100%', maxWidth: 340, marginTop: 16 }}
+              />
+            )}
 
             <View style={{ gap: 12, width: '100%', maxWidth: 320, marginTop: 20 }}>
               {phase === 'roundResult' ? (
@@ -629,6 +684,14 @@ const styles = StyleSheet.create({
   playerList: { marginTop: 16, gap: 4, alignItems: 'center' },
   playerLine: { fontFamily: FONTS.mono, fontSize: 13 },
   standings: { width: '100%', maxWidth: 340, marginTop: 16, gap: 6 },
+  globeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 16,
+    marginTop: 18,
+    maxWidth: 340,
+  },
   standingRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1 },
   standingRank: { width: 18, fontFamily: FONTS.monoBold, fontSize: 14, textAlign: 'center' },
   standingName: { flex: 1, fontFamily: FONTS.heading, fontSize: 15 },

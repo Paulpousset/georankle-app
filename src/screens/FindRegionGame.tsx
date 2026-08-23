@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -11,15 +12,15 @@ import GlobeWebView from '../components/GlobeWebView';
 import type { WebViewMessageEvent } from '../components/GlobeWebView';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { Check, ChevronRight, Home, RotateCcw, Share2, Wifi } from 'lucide-react-native';
-import { AtlasMap, AtlasCheck, AtlasCross } from '../components/AtlasIcons';
+import { Check, ChevronRight, Home, Wifi } from 'lucide-react-native';
+import { AtlasCheck, AtlasCross, AtlasGlobe } from '../components/AtlasIcons';
 import type { User } from '@supabase/supabase-js';
 
 import type { GameMode, Language, Match } from '../types';
 import { getColors, PALETTE } from '../theme/colors';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { getMapPalette } from '../theme/mapPalette';
+import { getMapPalette, type MapPalette } from '../theme/mapPalette';
 import { FONTS } from '../theme/typography';
 import { getFlagUrl } from '../lib/flags';
 import { createSeededRng } from '../lib/rng';
@@ -29,8 +30,17 @@ import { tr } from '../i18n';
 import { track } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
 import { getRegionFile, type Region } from '../../assets/regions';
-import { a11yButton, announce, a11yImage, ICON_HIT_SLOP } from '../lib/a11y';
+import { a11yButton, a11yHidden, announce, a11yImage, ICON_HIT_SLOP } from '../lib/a11y';
+import { buildRegionEarthHtml } from '../lib/globe3d/buildEarthHtml';
+import { skinMapPalette, useGameGlobeSkin } from '../lib/globeSkin';
+import { GlobePickerModal } from '../components/GlobePickerModal';
 import { ScoreText } from '../components/ScoreText';
+import { RunRecap, type RecapEntry } from '../components/RunRecap';
+import { SoloCoinReward } from '../components/SoloCoinReward';
+import { SoloEndActions } from '../components/SoloEndActions';
+import { PlayerGlobe } from '../components/PlayerGlobe';
+import { useMyGameGlobe } from '../lib/myGlobe';
+import { useSoloCoins } from '../lib/useSoloCoins';
 import { TopInsetBar } from '../components/TopInsetBar';
 
 const DEFAULT_ROUNDS = 5;
@@ -72,12 +82,20 @@ interface FindRegionGameProps {
   onShare?: () => void;
   /** Daily challenge: reports the live score so a mid-game quit can lock it in. */
   onDailyScoreChange?: (score: number) => void;
+  /**
+   * Opens the shop from the globe picker. Only wired in free solo play — it
+   * navigates away, which ends the round — so a daily / online / parcours host
+   * simply leaves it out and the entry does not appear.
+   */
+  onOpenShop?: () => void;
 }
 
 type Phase = 'loading' | 'playing' | 'result' | 'finished';
 
 interface RegionMessage {
-  type: 'MAP_READY' | 'REGION_SELECTED' | 'MAP_ERROR';
+  // The WebGL map posts MAP_READY for parity, plus core's own GLOBE_READY /
+  // GLOBE_ERROR — both are accepted so either builder can drive this screen.
+  type: 'MAP_READY' | 'REGION_SELECTED' | 'MAP_ERROR' | 'GLOBE_READY' | 'GLOBE_ERROR';
   id?: string;
   msg?: string;
 }
@@ -149,8 +167,12 @@ function findPrompt(level: RegionLevelKey, unit: string | null | undefined, lang
   return tr(language, 'Trouve cette région :', 'Find this region:');
 }
 
-function buildRegionMapHtml(regions: Region[], isDark: boolean, view: RegionView): string {
-  const pal = getMapPalette(isDark);
+function buildRegionMapHtml(
+  regions: Region[],
+  isDark: boolean,
+  view: RegionView,
+  pal: MapPalette = getMapPalette(isDark),
+): string {
   const bg = pal.bg;
   const polys = JSON.stringify(regions.map((r) => ({ id: r.id, r: r.r })));
   const dots = JSON.stringify(regions.map((r) => ({ id: r.id, lat: r.lat, lng: r.lng })));
@@ -409,22 +431,27 @@ window.resetRound=function(){sel=null;locked=false;hov=null;resultMode=false;res
 window.showResult=function(correct,picked){
   locked=true;hov=null;canvas.style.cursor='default';
   resultMode=true;resultCorrect=correct;resultPicked=picked;
-  var t=DOTS.find(function(c){return c.id===correct;});
-  if(t){rotLon=t.lng;rotLat=Math.max(-85,Math.min(85,t.lat));}
+  // Back to the whole country, like the WebGL map: a reveal left at the zoom the
+  // player was hunting at shows nothing but the answer's own interior.
+  frameCountry();
   render();
 };
 
-function setup(){
-  W=window.innerWidth;H=window.innerHeight;
-  if(!W||!H){requestAnimationFrame(setup);return;}
-  Rb=Math.min(W,H)/2*0.9;
-  // Fit the country: an orthographic point at angle θ lands at R·sin(θ) from
-  // centre; size R so the farthest region sits at ~84% of the disc radius.
+// Fit the country: an orthographic point at angle θ lands at R·sin(θ) from
+// centre; size R so the farthest region sits at ~84% of the disc radius.
+function frameCountry(){
+  rotLon=CLON;rotLat=Math.max(-85,Math.min(85,CLAT));
   var ang=Math.min(80,MAXANG*1.12+1.5)*Math.PI/180;
   var rNeeded=(0.84*Math.min(W,H)/2)/Math.max(0.02,Math.sin(ang));
   zoom=Math.max(0.5,rNeeded/Rb);
   ZMAX=Math.max(16,zoom*6);ZMIN=Math.min(0.6,zoom*0.4);
   R=Rb*zoom;
+}
+function setup(){
+  W=window.innerWidth;H=window.innerHeight;
+  if(!W||!H){requestAnimationFrame(setup);return;}
+  Rb=Math.min(W,H)/2*0.9;
+  frameCountry();
   canvas.width=W*dpr;canvas.height=H*dpr;
   canvas.style.width=W+'px';canvas.style.height=H+'px';
   ctx.scale(dpr,dpr);cx=W/2;cy=H/2;
@@ -450,6 +477,7 @@ export default function FindRegionGame({
   isDaily,
   onShare,
   onDailyScoreChange,
+  onOpenShop,
 }: FindRegionGameProps) {
   const { isDarkMode } = useTheme();
   const { language } = useLanguage();
@@ -500,6 +528,9 @@ export default function FindRegionGame({
   });
   // Per-round correctness, in play order — drives the daily emoji share grid.
   const roundResults = useRef<boolean[]>([]);
+  // Détail par question pour le récap de fin (la liste ci-dessus ne sert qu'à
+  // la grille emoji du quotidien).
+  const [recap, setRecap] = useState<RecapEntry[]>([]);
   const [index, setIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [phase, setPhase] = useState<Phase>(hasData ? 'playing' : 'loading');
@@ -512,10 +543,30 @@ export default function FindRegionGame({
   const curPick = loaded[curPickIndex]?.pick ?? selection[0];
   const curRegions = regionsByPick[curPickIndex] ?? [];
   const view = useMemo(() => computeView(curRegions), [curRegions]);
-  const html = useMemo(
-    () => buildRegionMapHtml(curRegions, isDarkMode, view),
-    [curRegions, isDarkMode, view],
-  );
+  // The planet the player wears, resolved once before the map mounts (same rule
+  // as Globe Géo). No rig here: the country fills the screen from the first
+  // frame, and the relief GLB flattens itself away past 6× anyway.
+  const globeSkin = useGameGlobeSkin({ withRig: false });
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const html = useMemo(() => {
+    if (globeSkin.status === 'pending') return null;
+    const pal = skinMapPalette(getMapPalette(isDarkMode), globeSkin.key);
+    // A worn globe is a texture and a relief — only the WebGL map can show it.
+    // Everything else (classic globe, reduce-motion) keeps the proven 2D map,
+    // which at least takes the skin's colours.
+    if (globeSkin.threeSrc && globeSkin.skin) {
+      return buildRegionEarthHtml({
+        threeSrc: globeSkin.threeSrc,
+        isDark: isDarkMode,
+        pal,
+        polygons: curRegions.map((r) => ({ id: r.id, r: r.r })),
+        dots: curRegions.map((r) => ({ id: r.id, lat: r.lat, lng: r.lng })),
+        view,
+        skin: globeSkin.skin,
+      });
+    }
+    return buildRegionMapHtml(curRegions, isDarkMode, view, pal);
+  }, [curRegions, isDarkMode, view, globeSkin]);
 
   // Surface the running score so the daily host can lock it in on a mid-game quit.
   useEffect(() => {
@@ -549,6 +600,8 @@ export default function FindRegionGame({
   }, [matchData?.id, user?.id]);
 
   const goBack = onBack ?? (() => setGameMode('menu'));
+  const { coinsEarned, coinsCapped, coinsSyncFailed, award } = useSoloCoins();
+  const { config: myGlobe } = useMyGameGlobe();
   const current = curTagged?.region;
   const isCorrect = current != null && selectedId === current.id;
   const regionName = (r: Region) => {
@@ -592,12 +645,12 @@ export default function FindRegionGame({
       } catch {
         return;
       }
-      if (msg.type === 'MAP_READY') {
+      if (msg.type === 'MAP_READY' || msg.type === 'GLOBE_READY') {
         setPhase('playing');
       } else if (msg.type === 'REGION_SELECTED' && msg.id) {
         // Tentative pick — highlighted on the map, validated only on confirm.
         setSelectedId(msg.id);
-      } else if (msg.type === 'MAP_ERROR') {
+      } else if (msg.type === 'MAP_ERROR' || msg.type === 'GLOBE_ERROR') {
         setErrorMsg(msg.msg ?? 'Map failed to load');
       }
     },
@@ -609,6 +662,16 @@ export default function FindRegionGame({
     const correct = selectedId === current.id;
     if (correct) setScore((s) => s + 1000);
     roundResults.current.push(correct);
+    const picked = curRegions.find((r) => r.id === selectedId);
+    setRecap((prev) => [
+      ...prev,
+      {
+        prompt: regionName(current),
+        yourAnswer: picked ? regionName(picked) : undefined,
+        correctAnswer: regionName(current),
+        ok: correct,
+      },
+    ]);
     setPhase('result');
     webViewRef.current?.injectJavaScript(
       `window.showResult('${current.id}','${selectedId}');true;`,
@@ -632,7 +695,14 @@ export default function FindRegionGame({
         setPhase('finished');
         return;
       }
-      if (!matchData) track('game_completed', { mode: 'regions', score });
+      if (!matchData) {
+        track('game_completed', { mode: 'regions', score });
+        // Pièces solo : Régions Géo n'en créditait aucune. Le mode est déjà
+        // accepté par award_solo_coins côté serveur, rien à migrer.
+        if (user) {
+          award('regions', normalizeRoundScore('regions', score, { numQuestions: totalRounds }));
+        }
+      }
       setPhase('finished');
       return;
     }
@@ -650,18 +720,25 @@ export default function FindRegionGame({
     }
   };
 
-  const handleReplay = () => {
-    const fresh = buildMixRounds(regionsByPick, totalRounds);
+  /** Remet la manche à zéro sur un jeu de questions donné. */
+  const restart = (next: TaggedRegion[]) => {
     roundResults.current = [];
-    setRounds(fresh);
+    setRecap([]);
+    setRounds(next);
     setIndex(0);
     setScore(0);
     setSelectedId(null);
     // If replay starts on a different country the WebView reloads on its own;
     // otherwise reset the current map in place.
-    setPhase(fresh[0]?.pickIndex === curPickIndex ? 'playing' : 'loading');
+    setPhase(next[0]?.pickIndex === curPickIndex ? 'playing' : 'loading');
     webViewRef.current?.injectJavaScript(`window.resetRound();true;`);
   };
+
+  /** Rejoue exactement les mêmes régions, dans le même ordre. */
+  const handleReplaySame = () => restart(rounds);
+
+  /** Nouveau tirage. */
+  const handleReplay = () => restart(buildMixRounds(regionsByPick, totalRounds));
 
   const countryLabel = language === 'fr' ? curPick.name : (curPick.name_en ?? curPick.name);
 
@@ -688,15 +765,17 @@ export default function FindRegionGame({
   }
 
   // ── Finished screen ──────────────────────────────────────────────────────
+  // Globe équipé → score → pièces (+ doubleur pub) → la solution (récap) →
+  // actions. Les pièces passent avant le récap : c'est la récompense, elle ne
+  // doit pas se mériter au scroll.
   if (phase === 'finished') {
     const correctCount = score / 1000;
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <StatusBar style={isDarkMode ? 'light' : 'dark'} />
-        <View style={styles.centered}>
-          <View style={{ marginBottom: 8 }} {...a11yImage(tr(language, 'Carte', 'Map'))}>
-            <AtlasMap color={PALETTE.sand} size={64} />
-          </View>
+        <ScrollView contentContainerStyle={styles.finishedScroll} showsVerticalScrollIndicator={false}>
+          <PlayerGlobe config={myGlobe} size={116} accent={PALETTE.sand} animate />
+
           <Text style={[styles.finishedTitle, { color: colors.text }]}>
             {tr(language, 'Partie terminée !', 'Game over!')}
           </Text>
@@ -707,44 +786,33 @@ export default function FindRegionGame({
             {Math.round((correctCount / totalRounds) * 100)}
             {tr(language, '% de réussite', '% success rate')}
           </Text>
-          <View style={{ gap: 12, width: '100%', maxWidth: 300 }}>
-            {isDaily ? (
-              <TouchableOpacity
-                style={[styles.btn, { backgroundColor: PALETTE.chartBlue }]}
-                onPress={onShare}
-                {...a11yButton(tr(language, 'Partager', 'Share'))}
-              >
-                <Share2 color="white" size={18} />
-                <Text style={styles.btnText}>{tr(language, 'Partager', 'Share')}</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={[styles.btn, { backgroundColor: PALETTE.chartBlue }]}
-                onPress={handleReplay}
-                {...a11yButton(tr(language, 'Rejouer', 'Play again'))}
-              >
-                <RotateCcw color="white" size={18} />
-                <Text style={styles.btnText}>{tr(language, 'Rejouer', 'Play again')}</Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              style={[styles.btn, { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }]}
-              onPress={goBack}
-              {...a11yButton(
+
+          <SoloCoinReward
+            coinsEarned={coinsEarned}
+            coinsCapped={coinsCapped}
+            coinsSyncFailed={coinsSyncFailed}
+            containerStyle={styles.finishedBlock}
+          />
+
+          <View style={styles.finishedBlock}>
+            <RunRecap entries={recap} />
+          </View>
+
+          <View style={styles.finishedBlock}>
+            <SoloEndActions
+              onShare={isDaily ? onShare : undefined}
+              onReplaySame={isDaily ? undefined : handleReplaySame}
+              onNewGame={isDaily ? undefined : handleReplay}
+              onMenu={goBack}
+              menuLabel={
                 isDaily
                   ? tr(language, 'Retour', 'Back')
-                  : tr(language, 'Changer de pays', 'Change country'),
-              )}
-            >
-              <Home color={colors.text} size={18} />
-              <Text style={[styles.btnText, { color: colors.text }]}>
-                {isDaily
-                  ? tr(language, 'Retour', 'Back')
-                  : tr(language, 'Changer de pays', 'Change country')}
-              </Text>
-            </TouchableOpacity>
+                  : tr(language, 'Changer de pays', 'Change country')
+              }
+              accent={PALETTE.chartBlue}
+            />
           </View>
-        </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -780,7 +848,40 @@ export default function FindRegionGame({
             <Text style={[styles.scoreLabel, { color: PALETTE.sand }]}>{score} pts</Text>
           )}
         </View>
+        {/* Swap the planet the regions are drawn on. Only between guesses: the
+            pick rebuilds the map page, which would wipe a result reveal. */}
+        <TouchableOpacity
+          onPress={() => setPickerOpen(true)}
+          disabled={phase !== 'playing'}
+          style={[
+            styles.globeBtn,
+            {
+              backgroundColor: colors.background,
+              borderColor: colors.border,
+              opacity: phase === 'playing' ? 1 : 0.35,
+            },
+          ]}
+          hitSlop={ICON_HIT_SLOP}
+          {...a11yButton(tr(language, 'Changer de globe', 'Change globe'))}
+        >
+          <AtlasGlobe color={colors.textMuted} size={16} {...a11yHidden} />
+          <Text style={[styles.globeBtnText, { color: colors.textMuted }]} numberOfLines={1}>
+            {tr(language, 'Changer de globe', 'Change globe')}
+          </Text>
+        </TouchableOpacity>
       </View>
+
+      <GlobePickerModal
+        visible={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onOpenShop={isOnline ? undefined : onOpenShop}
+        current={globeSkin.status === 'ready' ? globeSkin.key : null}
+        onPick={(key) => {
+          setSelectedId(null);
+          setPhase('loading');
+          globeSkin.choose(key);
+        }}
+      />
 
       {/* Region name prompt */}
       <View style={[styles.prompt, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -823,6 +924,7 @@ export default function FindRegionGame({
             )}
           </View>
         )}
+        {html && (
         <GlobeWebView
           ref={webViewRef}
           source={{ html }}
@@ -833,6 +935,7 @@ export default function FindRegionGame({
           style={styles.webview}
           scrollEnabled={false}
         />
+        )}
       </View>
 
       {/* Hint / confirm bar (playing) */}
@@ -925,6 +1028,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   backBtn: { padding: 8 },
+  // Labelled pill: an icon alone did not read as "you can change this".
+  globeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    flexShrink: 1,
+  },
+  globeBtnText: { fontSize: 11, fontFamily: FONTS.monoBold, flexShrink: 1 },
   headerCenter: { flex: 1, alignItems: 'center', gap: 2 },
   roundLabel: { fontSize: 13, fontFamily: FONTS.mono },
   scoreRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -1008,7 +1123,16 @@ const styles = StyleSheet.create({
   finishedEmoji: { fontSize: 64, marginBottom: 8 },
   finishedTitle: { fontSize: 26, fontFamily: FONTS.headingBlack, textAlign: 'center' },
   finishedScore: { fontSize: 56, fontFamily: FONTS.headingBlack, marginTop: 8 },
-  finishedSub: { fontSize: 16, fontFamily: FONTS.mono, marginBottom: 32 },
+  finishedSub: { fontSize: 16, fontFamily: FONTS.mono, marginBottom: 8 },
+  finishedScroll: {
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 24,
+    gap: 6,
+  },
+  finishedBlock: { width: '100%', maxWidth: 360, marginTop: 12 },
 
   // Shared button
   btn: {

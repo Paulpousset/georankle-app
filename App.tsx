@@ -18,6 +18,7 @@ import { LanguageProvider, useLanguage } from './src/contexts/LanguageContext';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { NetworkProvider } from './src/contexts/NetworkContext';
 import { ToastProvider } from './src/components/ToastProvider';
+import { AlertHost } from './src/components/AlertHost';
 import { OfflineBanner } from './src/components/OfflineBanner';
 import { useMatchEngine } from './src/hooks/useMatchEngine';
 import { useNavigationStack } from './src/hooks/useNavigationStack';
@@ -356,6 +357,9 @@ function App() {
               <NetworkProvider>
                 <ToastProvider>
                   <AppContent />
+                  {/* Les confirmations du web (showAlert) : la boîte du
+                      navigateur remplacée par une modale au thème de l'app. */}
+                  <AlertHost />
                 </ToastProvider>
               </NetworkProvider>
             </AuthProvider>

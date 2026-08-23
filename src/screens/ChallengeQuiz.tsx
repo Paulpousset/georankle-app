@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
-import { ArrowLeft, HelpCircle, Eye, CheckCircle, RotateCcw, Home, ChevronRight, Share2 } from 'lucide-react-native';
+import { ArrowLeft, HelpCircle, Eye, CheckCircle, ChevronRight } from 'lucide-react-native';
 
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
@@ -24,6 +24,13 @@ import { tr } from '../i18n';
 import { track } from '../lib/analytics';
 import { a11yButton, a11yImage, announce, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
+import { RunRecap, type RecapEntry } from '../components/RunRecap';
+import { SoloCoinReward } from '../components/SoloCoinReward';
+import { SoloEndActions } from '../components/SoloEndActions';
+import { PlayerGlobe } from '../components/PlayerGlobe';
+import { useMyGameGlobe } from '../lib/myGlobe';
+import { useSoloCoins } from '../lib/useSoloCoins';
+import { useAuth } from '../contexts/AuthContext';
 import { AtlasTrophy, AtlasCross } from '../components/AtlasIcons';
 import { isAnswerClose, normalizeAnswer } from '../lib/answerMatch';
 import { createSeededRng, seededShuffle } from '../lib/rng';
@@ -129,6 +136,11 @@ export default function ChallengeQuiz({
   const [grid, setGrid] = useState('');
   const [over, setOver] = useState(false);
   const awardedRef = useRef(false);
+  /** Détail par question — la « solution », affichée telle quelle en fin de partie. */
+  const [recap, setRecap] = useState<RecapEntry[]>([]);
+  const { user } = useAuth();
+  const { coinsEarned, coinsCapped, coinsSyncFailed, award } = useSoloCoins();
+  const { config: myGlobe } = useMyGameGlobe();
 
   // Surface the running raw score so the daily host can lock it in on a quit.
   useEffect(() => {
@@ -157,8 +169,19 @@ export default function ChallengeQuiz({
     setMode(m);
   };
 
-  const resolve = (correct: boolean) => {
+  const resolve = (correct: boolean, given?: string) => {
     const points = correct ? MODE_POINTS[mode ?? 'DUO'] : 0;
+    if (entity) {
+      setRecap((prev) => [
+        ...prev,
+        {
+          prompt: entityPrompt(entity, language),
+          yourAnswer: given,
+          correctAnswer,
+          ok: correct,
+        },
+      ]);
+    }
     if (correct) {
       setScore((s) => s + points);
       setCorrectCount((n) => n + 1);
@@ -190,7 +213,18 @@ export default function ChallengeQuiz({
         awardedRef.current = true;
         // Daily: the host records the result + streak; a solo run just reports.
         if (isDaily) onDailyComplete?.(score, grid);
-        else track('challenge_completed', { challenge: challenge.id, score, correct: correctCount, total: questions.length });
+        else {
+          track('challenge_completed', { challenge: challenge.id, score, correct: correctCount, total: questions.length });
+          // Pièces solo : le Quiz Pays n'en créditait aucune. Le mode
+          // 'challenge' a été ajouté à la liste blanche d'award_solo_coins
+          // (end_of_game.sql) — sans cette migration le serveur refuse.
+          if (user) {
+            award('challenge', normalizeRoundScore('challenge', score, {
+              numQuestions: questions.length,
+              maxPointsPerQuestion: 5,
+            }));
+          }
+        }
       }
       setOver(true);
       return;
@@ -202,8 +236,8 @@ export default function ChallengeQuiz({
     setFeedback(null);
   };
 
-  const replay = () => {
-    setSeed(Math.floor(Math.random() * 2147483647));
+  /** Remet la partie à zéro ; `seed` inchangé = exactement les mêmes questions. */
+  const restart = () => {
     setIndex(0);
     setMode(null);
     setOptions([]);
@@ -212,16 +246,29 @@ export default function ChallengeQuiz({
     setScore(0);
     setCorrectCount(0);
     setGrid('');
+    setRecap([]);
     setOver(false);
     awardedRef.current = false;
   };
 
+  /** Rejoue exactement les mêmes questions (le tirage vient du seed). */
+  const replaySame = () => restart();
+
+  /** Nouveau tirage. */
+  const replay = () => {
+    setSeed(Math.floor(Math.random() * 2147483647));
+    restart();
+  };
+
   // ── Result screen ──────────────────────────────────────────────────────────
+  // Globe équipé → score → pièces (+ doubleur pub) → la solution → actions.
   if (over) {
     return (
       <SafeAreaView style={[styles.root, { backgroundColor: c.background }]}>
         <StatusBar style={isDarkMode ? 'light' : 'dark'} />
-        <View style={styles.resultCentered}>
+        <ScrollView contentContainerStyle={styles.resultScroll} showsVerticalScrollIndicator={false}>
+          <PlayerGlobe config={myGlobe} size={104} accent="#2a6e3f" animate />
+
           <Text style={[styles.resultTitle, { color: c.text }]}>
             {tr(language, 'Partie terminée', 'Game over')}
           </Text>
@@ -231,25 +278,29 @@ export default function ChallengeQuiz({
           <Text style={[styles.resultSub, { color: c.textMuted, marginTop: 6 }]}>
             {tr(language, `${correctCount} / ${questions.length} bonnes réponses`, `${correctCount} / ${questions.length} correct`)}
           </Text>
-          <View style={{ gap: 12, width: '100%', maxWidth: 320, marginTop: 28 }}>
-            {/* The daily puzzle is one-shot: share it, don't replay it. */}
-            {isDaily ? (
-              <TouchableOpacity style={[styles.bigBtn, { backgroundColor: '#2a6e3f' }]} onPress={onShare} {...a11yButton(tr(language, 'Partager', 'Share'))}>
-                <Share2 color="#fff" size={18} />
-                <Text style={styles.bigBtnText}>{tr(language, 'Partager', 'Share')}</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity style={[styles.bigBtn, { backgroundColor: '#2a6e3f' }]} onPress={replay} {...a11yButton(tr(language, 'Rejouer', 'Play again'))}>
-                <RotateCcw color="#fff" size={18} />
-                <Text style={styles.bigBtnText}>{tr(language, 'Rejouer', 'Play again')}</Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity style={[styles.bigBtn, { backgroundColor: c.card, borderWidth: 1, borderColor: c.border }]} onPress={onExit} {...a11yButton(tr(language, 'Retour', 'Back'))}>
-              <Home color={c.text} size={18} />
-              <Text style={[styles.bigBtnText, { color: c.text }]}>{tr(language, 'Retour', 'Back')}</Text>
-            </TouchableOpacity>
+
+          <SoloCoinReward
+            coinsEarned={coinsEarned}
+            coinsCapped={coinsCapped}
+            coinsSyncFailed={coinsSyncFailed}
+            containerStyle={styles.resultBlock}
+          />
+
+          <View style={styles.resultBlock}>
+            <RunRecap entries={recap} />
           </View>
-        </View>
+
+          <View style={styles.resultBlock}>
+            <SoloEndActions
+              onShare={isDaily ? onShare : undefined}
+              onReplaySame={isDaily ? undefined : replaySame}
+              onNewGame={isDaily ? undefined : replay}
+              onMenu={onExit}
+              menuLabel={tr(language, 'Retour', 'Back')}
+              accent="#2a6e3f"
+            />
+          </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -283,7 +334,7 @@ export default function ChallengeQuiz({
               {entityPrompt(entity, language)}
             </Text>
           )}
-          <Text style={styles.instruction}>
+          <Text style={[styles.instruction, { color: c.textMuted }]}>
             {language === 'fr' ? challenge.questionFr : challenge.questionEn}
           </Text>
         </View>
@@ -298,7 +349,7 @@ export default function ChallengeQuiz({
             >
               <HelpCircle color="#8b1a1a" size={24} />
               <Text style={[styles.modeBtnTitle, { color: '#8b1a1a' }]}>DUO</Text>
-              <Text style={styles.modeBtnPoints}>1 PT</Text>
+              <Text style={[styles.modeBtnPoints, { color: c.textMuted }]}>1 PT</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -308,7 +359,7 @@ export default function ChallengeQuiz({
             >
               <Eye color="#4a9eff" size={24} />
               <Text style={[styles.modeBtnTitle, { color: '#4a9eff' }]}>CARRÉ</Text>
-              <Text style={styles.modeBtnPoints}>3 PTS</Text>
+              <Text style={[styles.modeBtnPoints, { color: c.textMuted }]}>3 PTS</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -318,7 +369,7 @@ export default function ChallengeQuiz({
             >
               <CheckCircle color="#2a6e3f" size={24} />
               <Text style={[styles.modeBtnTitle, { color: '#2a6e3f' }]}>CASH</Text>
-              <Text style={styles.modeBtnPoints}>5 PTS</Text>
+              <Text style={[styles.modeBtnPoints, { color: c.textMuted }]}>5 PTS</Text>
             </TouchableOpacity>
           </View>
         ) : mode === 'CASH' && !feedback ? (
@@ -334,17 +385,17 @@ export default function ChallengeQuiz({
             <TextInput
               style={[styles.cashInput, !isDarkMode && styles.cashInputLight]}
               placeholder={tr(language, 'Réponse...', 'Answer...')}
-              placeholderTextColor="#4a6a88"
+              placeholderTextColor={c.textFaint}
               value={cashInput}
               onChangeText={setCashInput}
               autoFocus
               autoCorrect={false}
               autoCapitalize={challenge.answerKind === 'number' ? 'none' : 'words'}
-              onSubmitEditing={() => { if (cashInput.trim()) resolve(matchesCash(cashInput, entity, challenge.answerKind, language)); }}
+              onSubmitEditing={() => { if (cashInput.trim()) resolve(matchesCash(cashInput, entity, challenge.answerKind, language), cashInput.trim()); }}
             />
             <TouchableOpacity
               style={styles.cashSubmitBtn}
-              onPress={() => { if (cashInput.trim()) resolve(matchesCash(cashInput, entity, challenge.answerKind, language)); }}
+              onPress={() => { if (cashInput.trim()) resolve(matchesCash(cashInput, entity, challenge.answerKind, language), cashInput.trim()); }}
               {...a11yButton(tr(language, 'Valider', 'Submit'))}
             >
               <Text style={styles.cashSubmitText}>{tr(language, 'VALIDER', 'SUBMIT')}</Text>
@@ -356,7 +407,7 @@ export default function ChallengeQuiz({
               <TouchableOpacity
                 key={option}
                 style={[styles.optionBtn, !isDarkMode && styles.optionBtnLight]}
-                onPress={() => resolve(option === correctAnswer)}
+                onPress={() => resolve(option === correctAnswer, option)}
                 {...a11yButton(option)}
               >
                 <Text style={[styles.optionText, { color: c.text }]}>{option}</Text>
@@ -372,13 +423,13 @@ export default function ChallengeQuiz({
               <Text style={[styles.feedbackTitle, { color: c.text }]}>
                 {feedback.correct ? tr(language, 'BIEN JOUÉ !', 'WELL DONE!') : tr(language, 'DOMMAGE...', 'TOO BAD...')}
               </Text>
-              <Text style={styles.feedbackSub}>
+              <Text style={[styles.feedbackSub, { color: c.text }]}>
                 {feedback.correct
                   ? `+${feedback.points} ${tr(language, 'point(s)', 'point(s)')}`
                   : tr(language, `La réponse était : ${feedback.answer}`, `The answer was: ${feedback.answer}`)}
               </Text>
               <TouchableOpacity
-                style={[styles.nextBtn, { backgroundColor: c.accent }]}
+                style={[styles.nextBtn, { backgroundColor: c.accentStrong }]}
                 onPress={next}
                 {...a11yButton(index + 1 >= questions.length ? tr(language, 'Voir le score', 'See score') : tr(language, 'Suivant', 'Next'))}
               >
@@ -449,6 +500,14 @@ const styles = StyleSheet.create({
   nextBtnText: { color: '#fff', fontFamily: FONTS.monoBold, fontSize: 16 },
 
   resultCentered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 30 },
+  resultScroll: {
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 24,
+  },
+  resultBlock: { width: '100%', maxWidth: 360, marginTop: 14 },
   resultTitle: { fontSize: 26, fontFamily: FONTS.headingBlack, textAlign: 'center' },
   bigScore: { fontSize: 64, fontFamily: FONTS.headingBlack, marginTop: 12 },
   resultSub: { fontFamily: FONTS.mono, fontSize: 14, textAlign: 'center' },

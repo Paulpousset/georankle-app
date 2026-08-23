@@ -21,6 +21,8 @@ interface RegionGameFlowProps {
   onShare?: () => void;
   /** Daily challenge: reports the live score so a mid-game quit can lock it in. */
   onDailyScoreChange?: (score: number) => void;
+  /** Opens the shop from the in-game globe picker (free solo play only). */
+  onOpenShop?: () => void;
 }
 
 /** Deterministically pick a country + level from the manifest for the daily. */
@@ -41,6 +43,7 @@ export default function RegionGameFlow({
   isDaily,
   onShare,
   onDailyScoreChange,
+  onOpenShop,
 }: RegionGameFlowProps) {
   // Daily run: a fixed single country for the day, played straight away (no picker).
   const [picks, setPicks] = useState<RegionPick[] | null>(() =>
@@ -75,6 +78,7 @@ export default function RegionGameFlow({
       isDaily={isDaily}
       onShare={onShare}
       onDailyScoreChange={onDailyScoreChange}
+      onOpenShop={isDaily ? undefined : onOpenShop}
     />
   );
 }

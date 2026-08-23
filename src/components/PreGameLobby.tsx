@@ -10,8 +10,9 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
-import { Avatar } from './Avatar';
+import { PlayerGlobe } from './PlayerGlobe';
 import { a11yHidden, announce } from '../lib/a11y';
+import { useEventCallback } from '../lib/useEventCallback';
 
 interface PlayerProfile {
   id: string;
@@ -52,17 +53,20 @@ export function PreGameLobby({
       });
   }, [matchData.player1_id, matchData.player2_id]);
 
+  // Même motif que RoundSummary : `onReady` change d'identité à chaque rendu du
+  // parent et réarmait le décompte indéfiniment.
+  const readyStable = useEventCallback(onReady);
   useEffect(() => {
     if (countdown <= 0) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       announce(language === 'fr' ? "C'est parti !" : "Let's go!");
-      onReady();
+      readyStable();
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     const t = setTimeout(() => setCountdown((cv) => cv - 1), 1000);
     return () => clearTimeout(t);
-  }, [countdown, onReady, language]);
+  }, [countdown, readyStable, language]);
 
   const MODE_LABELS: Record<string, string> = {
     classic: 'Rankle',
@@ -77,40 +81,32 @@ export function PreGameLobby({
     ? (language === 'fr' ? 'Partie perso' : 'Custom game')
     : MODE_LABELS[matchData.game_mode] ?? 'Mode Versus';
 
-  const renderAvatar = (profile: PlayerProfile | null, isCurrentUser: boolean) => {
-    const name = profile?.username ?? (language === 'fr' ? 'Joueur' : 'Player');
-    return (
-      <View style={{ alignItems: 'center', gap: 12 }}>
-        <Avatar
-          config={profile?.avatar_config ?? null}
-          photoUrl={profile?.avatar_url ?? null}
-          username={profile?.username ?? name}
-          size={80}
-          ringColor={isCurrentUser ? '#2a6e3f' : c.border}
-          ringWidth={isCurrentUser ? 3 : 1}
-        />
-        <Text style={{ color: c.text, fontFamily: FONTS.heading, fontSize: 16, textAlign: 'center' }}>
-          {name}
-        </Text>
-        {isCurrentUser && (
-          <Text style={{ color: '#2a6e3f', fontSize: 12, fontFamily: FONTS.monoBold }}>
-            {language === 'fr' ? 'Vous' : 'You'}
-          </Text>
-        )}
-      </View>
-    );
-  };
+  const renderPlayer = (profile: PlayerProfile | null, isCurrentUser: boolean) => (
+    <PlayerGlobe
+      config={profile?.avatar_config ?? null}
+      photoUrl={profile?.avatar_url ?? null}
+      username={profile?.username ?? (language === 'fr' ? 'Joueur' : 'Player')}
+      size={116}
+      label={
+        isCurrentUser
+          ? (language === 'fr' ? 'VOUS' : 'YOU')
+          : (language === 'fr' ? 'ADVERSAIRE' : 'OPPONENT')
+      }
+      accent={isCurrentUser ? '#2a6e3f' : undefined}
+      animate
+    />
+  );
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.background, alignItems: 'center', justifyContent: 'center' }}>
       <StatusBar style={isDarkMode ? 'light' : 'dark'} />
 
-      <Text style={{ color: c.textFaint, fontSize: 14, fontFamily: FONTS.monoBold, letterSpacing: 2, marginBottom: 40 }}>
+      <Text style={{ color: c.textFaint, fontSize: 14, fontFamily: FONTS.monoBold, letterSpacing: 2, marginBottom: 28 }}>
         {modeLabel.toUpperCase()}
       </Text>
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 32 }}>
-        {renderAvatar(player1, player1?.id === currentUserId)}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20 }}>
+        {renderPlayer(player1, player1?.id === currentUserId)}
 
         <View style={{ alignItems: 'center', gap: 6 }}>
           <Text style={{ color: c.textMuted, fontSize: 13, fontFamily: FONTS.mono }}>
@@ -129,7 +125,7 @@ export function PreGameLobby({
           </View>
         </View>
 
-        {renderAvatar(player2, player2?.id === currentUserId)}
+        {renderPlayer(player2, player2?.id === currentUserId)}
       </View>
 
       <Text style={{ color: c.textMuted, fontFamily: FONTS.mono, fontSize: 14, marginTop: 48 }}>

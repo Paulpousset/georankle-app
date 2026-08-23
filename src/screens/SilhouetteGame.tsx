@@ -25,7 +25,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
 import Svg, { Path } from 'react-native-svg';
 import {
-  RefreshCcw, Moon, Sun, Home, Share2, HelpCircle, Eye, CheckCircle, ChevronRight,
+  Moon, Sun, Home, HelpCircle, Eye, CheckCircle, ChevronRight,
 } from 'lucide-react-native';
 import type { User } from '@supabase/supabase-js';
 
@@ -40,9 +40,12 @@ import { isAnswerClose } from '../lib/answerMatch';
 import { createSeededRng, seededShuffle } from '../lib/rng';
 import { normalizeRoundScore } from '../lib/score';
 import { track } from '../lib/analytics';
-import { supabase } from '../lib/supabase';
-import { log } from '../lib/log';
 import { awardSoloCoins } from '../lib/coins';
+import { earnsCoins, saveSoloScore } from '../lib/soloResult';
+import { OffLeaderboardNotice } from '../components/OffLeaderboardNotice';
+import { CountryFactCard } from '../components/CountryFactCard';
+import { recordRun } from '../lib/reviewPool';
+import type { ContinentId } from '../data/continents';
 import { useToast } from '../components/ToastProvider';
 import type { GameMode, Match } from '../types';
 import { getColors } from '../theme/colors';
@@ -54,6 +57,9 @@ import { a11yButton, a11yImage, announce, a11yHidden, ICON_HIT_SLOP } from '../l
 import { ScoreText } from '../components/ScoreText';
 import { AtlasTrophy, AtlasCross } from '../components/AtlasIcons';
 import { SoloCoinReward } from '../components/SoloCoinReward';
+import { SoloEndActions } from '../components/SoloEndActions';
+import { PlayerGlobe } from '../components/PlayerGlobe';
+import { useMyGameGlobe } from '../lib/myGlobe';
 import { TopInsetBar } from '../components/TopInsetBar';
 
 import { isMobileLayout as isMobile } from '../lib/layout';
@@ -79,6 +85,15 @@ interface SilhouetteGameProps {
   onShare?: () => void;
   /** Daily challenge: reports the live score so a mid-game quit can lock it in. */
   onDailyScoreChange?: (score: number) => void;
+    /**
+   * Entraînement: no mistake ends the run, every answer is explained, and
+   * nothing is recorded (no coins, no leaderboard).
+   */
+  training?: boolean;
+/** Solo continent scope: narrows the answer shapes. Null = worldwide. */
+  scope?: ContinentId | null;
+  /** Review run: shapes to ask about first (see lib/reviewPool). */
+  reviewIds?: string[] | null;
 }
 
 export default function SilhouetteGame({
@@ -91,6 +106,9 @@ export default function SilhouetteGame({
   isDaily,
   onShare,
   onDailyScoreChange,
+  scope = null,
+  reviewIds = null,
+  training = false,
 }: SilhouetteGameProps) {
   const { isDarkMode, setIsDarkMode } = useTheme();
   const { language, setLanguage } = useLanguage();
@@ -116,7 +134,7 @@ export default function SilhouetteGame({
         : Math.floor(Math.random() * 2147483647)),
   );
   const [run, setRun] = useState<SilhouetteQuestion[]>(() =>
-    buildSilhouetteRun(seed, numQuestions),
+    buildSilhouetteRun(seed, numQuestions, { continent: scope, reviewIds }),
   );
   const [runSeed, setRunSeed] = useState(seed);
 
@@ -131,10 +149,14 @@ export default function SilhouetteGame({
   const [grid, setGrid] = useState('');
   /** Per-question outcome, in run order — drives the end-of-run recap. */
   const [history, setHistory] = useState<{ correct: boolean; points: number }[]>([]);
+  /** Country whose fact sheet is open from the end-of-run recap. */
+  const [factsFor, setFactsFor] = useState<string | null>(null);
+  const isReview = !!reviewIds?.length;
   const [gameOver, setGameOver] = useState(false);
   const [coinsEarned, setCoinsEarned] = useState<number | null>(null);
   const [coinsCapped, setCoinsCapped] = useState(false);
   const [coinsSyncFailed, setCoinsSyncFailed] = useState(false);
+  const { config: myGlobe } = useMyGameGlobe();
   const awardedRef = useRef(false);
 
   // Surface the running raw score so the daily host can lock it in on a quit.
@@ -219,21 +241,30 @@ export default function SilhouetteGame({
       return;
     }
     // Solo: save the score + award coins.
-    track('game_completed', { mode: 'silhouette', score: finalScore, correct: correctCount });
+    track('game_completed', {
+      mode: 'silhouette',
+      score: finalScore,
+      correct: correctCount,
+      scope: scope ?? 'world',
+    });
+    // Feed the "mes erreurs" pool from the run's shapes and outcomes.
+    void recordRun(
+      'silhouette',
+      run.map((q, i) => ({
+        cca3: q.answer,
+        prompt: silhouetteCountryName(q.answer, language),
+        correctAnswer: silhouetteCountryName(q.answer, language),
+        ok: !!history[i]?.correct,
+      })),
+    );
     if (user) {
-      supabase
-        .from('scores')
-        .insert({ user_id: user.id, game_mode: 'silhouette', score: finalScore })
-        .then(({ error }) => {
-          if (error) {
-            log.error('Error saving silhouette score:', error);
-            showAlert(
-              tr(language, 'Erreur', 'Error'),
-              tr(language, "Impossible d'enregistrer ton score.", 'Could not save your score.'),
-            );
-          }
-        });
-      awardSoloCoins(
+      void saveSoloScore(user, 'silhouette', finalScore, { scope, review: isReview, training }, () =>
+        showAlert(
+          tr(language, 'Erreur', 'Error'),
+          tr(language, "Impossible d'enregistrer ton score.", 'Could not save your score.'),
+        ),
+      );
+      if (earnsCoins({ training })) awardSoloCoins(
         'silhouette',
         normalizeRoundScore('silhouette', finalScore, {
           numQuestions: run.length,
@@ -268,11 +299,8 @@ export default function SilhouetteGame({
     setFeedback(null);
   };
 
-  const resetGame = () => {
-    // A fresh casual run gets a fresh random question set.
-    const fresh = Math.floor(Math.random() * 2147483647);
-    setRunSeed(fresh);
-    setRun(buildSilhouetteRun(fresh, numQuestions));
+  /** Remet la manche à zéro sans toucher au tirage (`run`/`runSeed`). */
+  const restartRun = () => {
     setQuestionIndex(0);
     setMode(null);
     setOptions([]);
@@ -287,6 +315,17 @@ export default function SilhouetteGame({
     setCoinsCapped(false);
     setCoinsSyncFailed(false);
     awardedRef.current = false;
+  };
+
+  /** Rejoue exactement les mêmes silhouettes, dans le même ordre. */
+  const replaySameGame = () => restartRun();
+
+  /** Nouveau tirage. */
+  const resetGame = () => {
+    const fresh = Math.floor(Math.random() * 2147483647);
+    setRunSeed(fresh);
+    setRun(buildSilhouetteRun(fresh, numQuestions, { continent: scope, reviewIds }));
+    restartRun();
   };
 
   if (!question) return null;
@@ -368,7 +407,7 @@ export default function SilhouetteGame({
               </Svg>
             )}
           </View>
-          <Text style={styles.instruction}>
+          <Text style={[styles.instruction, { color: c.textMuted }]}>
             {tr(language, 'Quel pays a cette forme ?', 'Which country has this shape?')}
           </Text>
         </View>
@@ -383,7 +422,7 @@ export default function SilhouetteGame({
             >
               <HelpCircle color="#8b1a1a" size={24} />
               <Text style={[styles.modeBtnTitle, { color: '#8b1a1a' }]}>DUO</Text>
-              <Text style={styles.modeBtnPoints}>1 PT</Text>
+              <Text style={[styles.modeBtnPoints, { color: c.textMuted }]}>1 PT</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -393,7 +432,7 @@ export default function SilhouetteGame({
             >
               <Eye color="#4a9eff" size={24} />
               <Text style={[styles.modeBtnTitle, { color: '#4a9eff' }]}>CARRÉ</Text>
-              <Text style={styles.modeBtnPoints}>3 PTS</Text>
+              <Text style={[styles.modeBtnPoints, { color: c.textMuted }]}>3 PTS</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -403,7 +442,7 @@ export default function SilhouetteGame({
             >
               <CheckCircle color="#2a6e3f" size={24} />
               <Text style={[styles.modeBtnTitle, { color: '#2a6e3f' }]}>CASH</Text>
-              <Text style={styles.modeBtnPoints}>5 PTS</Text>
+              <Text style={[styles.modeBtnPoints, { color: c.textMuted }]}>5 PTS</Text>
             </TouchableOpacity>
           </View>
         ) : mode === 'CASH' && !feedback ? (
@@ -414,12 +453,12 @@ export default function SilhouetteGame({
               hitSlop={ICON_HIT_SLOP}
               {...a11yButton(tr(language, 'Retour', 'Back'))}
             >
-              <Text style={{ color: '#4a9eff', fontWeight: 'bold' }}>← {language === 'fr' ? 'RETOUR' : 'BACK'}</Text>
+              <Text style={{ color: '#4a9eff', fontWeight: 'bold' }}>← {tr(language, 'RETOUR', 'BACK')}</Text>
             </TouchableOpacity>
             <TextInput
               style={[styles.cashInput, !isDarkMode && styles.cashInputLight]}
               placeholder={tr(language, 'Réponse...', 'Answer...')}
-              placeholderTextColor="#4a6a88"
+              placeholderTextColor={c.textFaint}
               value={cashInput}
               onChangeText={setCashInput}
               autoFocus
@@ -459,13 +498,28 @@ export default function SilhouetteGame({
               <Text style={[styles.feedbackTitle, { color: c.text }]}>
                 {feedback.correct ? tr(language, 'BIEN JOUÉ !', 'WELL DONE!') : tr(language, 'DOMMAGE...', 'TOO BAD...')}
               </Text>
-              <Text style={styles.feedbackSub}>
+              <Text style={[styles.feedbackSub, { color: c.text }]}>
                 {feedback.correct
                   ? `+${feedback.points} ${tr(language, 'point(s)', 'point(s)')}`
                   : tr(language, `La réponse était : ${feedback.answer}`, `The answer was: ${feedback.answer}`)}
               </Text>
+              {/* Entraînement: the reveal is the lesson, so the country's facts
+                  are one tap away instead of waiting for the end-of-run recap. */}
+              {training && question && (
+                <TouchableOpacity
+                  style={[styles.learnBtn, { borderColor: c.accent }]}
+                  onPress={() => setFactsFor(question.answer)}
+                  {...a11yButton(
+                    tr(language, 'En savoir plus sur ce pays', 'Learn more about this country'),
+                  )}
+                >
+                  <Text style={[styles.learnBtnText, { color: c.accent }]}>
+                    {tr(language, 'En savoir plus', 'Learn more')}
+                  </Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
-                style={[styles.nextBtn, { backgroundColor: c.accent }]}
+                style={[styles.nextBtn, { backgroundColor: c.accentStrong }]}
                 onPress={next}
                 {...a11yButton(questionIndex + 1 >= run.length ? tr(language, 'Voir le score', 'See score') : tr(language, 'Suivant', 'Next'))}
               >
@@ -491,6 +545,13 @@ export default function SilhouetteGame({
             contentContainerStyle={styles.gameOverContent}
             showsVerticalScrollIndicator={false}
           >
+            <PlayerGlobe
+              config={myGlobe}
+              size={100}
+              accent="#2a6e3f"
+              animate
+              style={{ marginBottom: 10 }}
+            />
             <Text style={{ fontSize: 24, textAlign: 'center' }} {...a11yHidden}>
               {grid}
             </Text>
@@ -499,6 +560,18 @@ export default function SilhouetteGame({
               {tr(language, `${correctCount} / ${run.length} bonnes réponses`, `${correctCount} / ${run.length} correct`)}
             </Text>
 
+            {!isDaily && !isOnline && <OffLeaderboardNotice run={{ scope, review: isReview, training }} color={c.textMuted} />}
+
+            {/* Pièces + doubleur pub AVANT le récap : c'est la récompense, elle
+                ne doit pas se mériter au scroll. */}
+            {/* Animated coins + rewarded-ad doubler (solo only, server-credited). */}
+            <SoloCoinReward
+              coinsEarned={coinsEarned}
+              coinsCapped={coinsCapped}
+              coinsSyncFailed={coinsSyncFailed}
+              containerStyle={{ alignSelf: 'stretch', marginBottom: 12 }}
+            />
+
             {/* Recap: every silhouette of the run with its answer and outcome. */}
             <View style={[styles.recapCard, { backgroundColor: c.card, borderColor: c.border }]}>
               {run.map((q, i) => {
@@ -506,15 +579,18 @@ export default function SilhouetteGame({
                 const name = silhouetteCountryName(q.answer, language);
                 const d = silhouettePath(q.answer, 100);
                 return (
-                  <View
+                  // Tapping a row opens the country's fact sheet: the shape is
+                  // what you got wrong, the facts are what make it stick.
+                  <TouchableOpacity
                     key={`${q.answer}-${i}`}
+                    onPress={() => setFactsFor(q.answer)}
                     style={[styles.recapRow, i > 0 && { borderTopWidth: 1, borderTopColor: c.border }]}
-                    accessible
-                    accessibilityLabel={
+                    {...a11yButton(
                       h?.correct
                         ? tr(language, `${name}, bonne réponse, +${h.points} points`, `${name}, correct, +${h.points} points`)
-                        : tr(language, `${name}, mauvaise réponse`, `${name}, wrong`)
-                    }
+                        : tr(language, `${name}, mauvaise réponse`, `${name}, wrong`),
+                      { hint: tr(language, 'Voir la fiche du pays', 'See the country facts') },
+                    )}
                   >
                     <View style={styles.recapShape} {...a11yHidden}>
                       {d && (
@@ -533,18 +609,13 @@ export default function SilhouetteGame({
                     ) : (
                       <AtlasCross color="#8b1a1a" size={16} />
                     )}
-                  </View>
+                  </TouchableOpacity>
                 );
               })}
             </View>
 
-            {/* Animated coins + rewarded-ad doubler (solo only, server-credited). */}
-            <SoloCoinReward
-              coinsEarned={coinsEarned}
-              coinsCapped={coinsCapped}
-              coinsSyncFailed={coinsSyncFailed}
-              containerStyle={{ alignSelf: 'stretch', marginBottom: 12 }}
-            />
+
+
             {!user && !isDaily && (
               <Text style={{ color: c.textMuted, fontFamily: FONTS.mono, fontSize: 12, textAlign: 'center', marginBottom: 12 }}>
                 {tr(
@@ -555,37 +626,20 @@ export default function SilhouetteGame({
               </Text>
             )}
 
-            {isDaily ? (
-              <TouchableOpacity
-                style={styles.resetBtn}
-                onPress={onShare}
-                {...a11yButton(tr(language, 'Partager', 'Share'))}
-              >
-                <Share2 color="#fff" size={20} />
-                <Text style={styles.resetBtnText}>{tr(language, 'PARTAGER', 'SHARE')}</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={styles.resetBtn}
-                onPress={resetGame}
-                {...a11yButton(tr(language, 'Recommencer', 'Retry'))}
-              >
-                <RefreshCcw color="#fff" size={20} />
-                <Text style={styles.resetBtnText}>{tr(language, 'RECOMMENCER', 'RETRY')}</Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              style={[styles.menuBtn, { backgroundColor: c.surface, borderColor: c.border }]}
-              onPress={() => setGameMode('menu')}
-              {...a11yButton(tr(language, 'Retour au menu', 'Back to menu'))}
-            >
-              <Home color={c.accent} size={18} />
-              <Text style={[styles.menuBtnText, { color: c.text }]}>{tr(language, 'MENU', 'MENU')}</Text>
-            </TouchableOpacity>
+            <SoloEndActions
+              onShare={isDaily ? onShare : undefined}
+              onReplaySame={isDaily ? undefined : replaySameGame}
+              onNewGame={isDaily ? undefined : resetGame}
+              onMenu={() => setGameMode('menu')}
+            />
           </ScrollView>
         </View>
       )}
       </KeyboardAvoidingView>
+
+      {/* Mounted once at the top level so it opens both from a training reveal
+          and from the end-of-run recap. */}
+      <CountryFactCard cca3={factsFor} onClose={() => setFactsFor(null)} />
     </SafeAreaView>
   );
 }
@@ -648,6 +702,14 @@ const styles = StyleSheet.create({
   wrongCard: { backgroundColor: 'rgba(139, 26, 26, 0.15)', borderWidth: 2, borderColor: '#8b1a1a' },
   feedbackTitle: { fontSize: 24, fontFamily: FONTS.headingBlack, color: '#d8e8f4', marginBottom: 5 },
   feedbackSub: { fontSize: 16, color: '#7aa0c4', textAlign: 'center', fontFamily: FONTS.mono },
+  learnBtn: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    marginBottom: 10,
+  },
+  learnBtnText: { fontFamily: FONTS.monoBold, fontSize: 11.5 },
   nextBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     marginTop: 18, paddingVertical: 14, paddingHorizontal: 28, borderRadius: 14, alignSelf: 'stretch',

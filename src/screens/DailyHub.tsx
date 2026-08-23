@@ -396,7 +396,7 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
             marginBottom: 10,
             paddingVertical: 12,
             borderRadius: 12,
-            backgroundColor: c.accent,
+            backgroundColor: c.accentStrong,
             alignItems: 'center',
           }}
           {...a11yButton(tr(language, "Installer l'app GeoG", 'Install the GeoG app'))}

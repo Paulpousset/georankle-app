@@ -41,11 +41,16 @@ export function WaitingOpponent({
   const c = getColors(isDarkMode);
   const [canLeave, setCanLeave] = useState(false);
 
+  // Dépendre de `onLeave` LUI-MÊME relançait les 30 s à chaque rendu du parent
+  // (l'objet de useMatchEngine recrée ses fonctions à chaque fois), si bien que
+  // le bouton pouvait n'apparaître jamais. Seule la PRÉSENCE d'un `onLeave`
+  // compte ici, pas son identité.
+  const canOfferLeave = !!onLeave;
   useEffect(() => {
-    if (!onLeave) return;
+    if (!canOfferLeave) return;
     const t = setTimeout(() => setCanLeave(true), LEAVE_BUTTON_DELAY_MS);
     return () => clearTimeout(t);
-  }, [onLeave]);
+  }, [canOfferLeave]);
 
   // Screen-reader heads-up when the claim becomes possible (the new button
   // appears without focus movement otherwise).

@@ -29,6 +29,9 @@ interface RankGlobeProps {
   spinSpeed?: number;
 }
 
+/** ~30 fps: the spin is decorative, 60 fps buys nothing and costs the JS thread. */
+const SPIN_FRAME_MS = 33;
+
 function RankGlobeBase({
   rank,
   size = 80,
@@ -51,11 +54,18 @@ function RankGlobeBase({
   useEffect(() => {
     if (!spin) return;
     const tick = (ts: number) => {
-      if (lastTsRef.current != null) {
-        const dt = (ts - lastTsRef.current) / 1000;
-        setSpinLon((prev) => (prev + spinSpeed * dt) % 360);
+      if (lastTsRef.current == null) lastTsRef.current = ts;
+      const dt = ts - lastTsRef.current;
+      // Throttle to ~30 fps, like MenuGlobe. Without this, setSpinLon fired on
+      // EVERY frame and `cLon` is a dependency of the path memo below — so the
+      // 142 world rings were re-projected three times each (fill + shadow +
+      // highlight), plus the graticule, sixty times a second. That is roughly
+      // 174 000 point projections per second on the JS thread, for a decorative
+      // globe rendered in four screens at once.
+      if (dt >= SPIN_FRAME_MS) {
+        lastTsRef.current = ts;
+        setSpinLon((prev) => (prev + (spinSpeed * dt) / 1000) % 360);
       }
-      lastTsRef.current = ts;
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
@@ -71,7 +81,9 @@ function RankGlobeBase({
   const gradId = `rg_${rank.tier}_${Math.round(size)}`;
   const clipId = `rc_${rank.tier}_${Math.round(size)}`;
 
-  // Compute all projected land paths (memoised — stable for a given rank + size)
+  // Projected land paths. NOTE: `cLon` is in the deps, so this recomputes on
+  // every spin step — the memo only spares re-renders that don't move the
+  // globe. That is why the rAF loop above is throttled rather than free-running.
   const { shadowPaths, fillPaths, hlPaths } = useMemo(() => {
     const shadow: string[] = [];
     const fill:   string[] = [];
@@ -86,7 +98,7 @@ function RankGlobeBase({
       hl.push(   ringToPath(ring, cLon, cLat, r, cx, cy, -ofs * 0.65, -ofs * 0.65));
     }
     return { shadowPaths: shadow, fillPaths: fill, hlPaths: hl };
-  }, [rank.tier, r, cx, cy, cLon, cLat, size]);
+  }, [r, cx, cy, cLon, cLat, size]);
 
   // Graticule lines
   const gratLines = useMemo(() => {

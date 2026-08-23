@@ -20,7 +20,6 @@ import { getColors, PALETTE, type ThemeColors } from '../theme/colors';
 import { ArrowLeft, Plus, RefreshCw, Users, Globe, Map as MapIcon, Trophy, ChevronRight } from 'lucide-react-native';
 import { AtlasCapital, AtlasFlag } from '../components/AtlasIcons';
 import type { MatchMode, Language, Match, AvatarConfig } from '../types';
-import { gameData as gd } from '../data/gameData';
 import { Avatar } from '../components/Avatar';
 import RegionCountryPicker, { type RegionPick } from './RegionCountryPicker';
 import { useTheme } from '../contexts/ThemeContext';
@@ -28,31 +27,9 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { tr } from '../i18n';
 import { a11yButton, announce, ICON_HIT_SLOP } from '../lib/a11y';
-import { createSeededRng, seededShuffle } from '../lib/rng';
-
-const SESSION_SIZE = 8;
-
-function buildClassicSessions(seed: number, numRounds: number) {
-  const sessions: Record<number, { themeIds: string[]; countryCca3s: string[] }> = {};
-  for (let r = 1; r <= numRounds; r++) {
-    const rand = createSeededRng(seed + (r - 1) * 997);
-    const allThemeIds = Object.keys(gd.themes).filter(
-      (id) => gd.countries.filter((c) => c.ranks?.[id] !== undefined).length > 10,
-    );
-    const themeIds = seededShuffle(allThemeIds, rand).slice(0, SESSION_SIZE);
-    let countries = gd.countries.filter((c) =>
-      themeIds.every((id) => c.ranks?.[id] !== undefined && c.data?.[id] !== undefined),
-    );
-    if (countries.length < SESSION_SIZE) {
-      countries = [...gd.countries].sort(
-        (a, b) => Object.keys(b.ranks).length - Object.keys(a.ranks).length,
-      );
-    }
-    const countryCca3s = seededShuffle(countries, rand).slice(0, SESSION_SIZE).map((c) => c.cca3);
-    sessions[r] = { themeIds, countryCca3s };
-  }
-  return sessions;
-}
+// Partagé avec la revanche (lib/rematch) : les deux doivent produire le MÊME
+// game_data, c'est lui que les deux clients lisent pour jouer la même partie.
+import { buildClassicSessions } from '../lib/rematch';
 
 type MatchmakingView = 'lobby' | 'create' | 'waiting' | 'friends' | 'region-picker';
 
@@ -121,12 +98,14 @@ const PublicMatchRow = React.memo(function PublicMatchRow({
   language,
   gameMode,
   onJoin,
+  busy,
 }: {
   item: PublicMatchItem;
   colors: ThemeColors;
   language: Language;
   gameMode: MatchMode;
   onJoin: (item: PublicMatchItem) => void;
+  busy?: boolean;
 }) {
   const gdata = item.game_data ?? {};
   return (
@@ -150,13 +129,15 @@ const PublicMatchRow = React.memo(function PublicMatchRow({
         </Text>
       </View>
       <TouchableOpacity
-        style={styles.joinBtn}
+        style={[styles.joinBtn, busy && { opacity: 0.6 }]}
         onPress={() => onJoin(item)}
+        disabled={busy}
         {...a11yButton(
           tr(language, `Rejoindre la partie de ${item.creator_username ?? 'Joueur'}`, `Join ${item.creator_username ?? 'Player'}'s match`),
+          { disabled: busy, busy },
         )}
       >
-        <Text style={styles.joinBtnText}>{language === 'fr' ? 'Rejoindre' : 'Join'}</Text>
+        <Text style={styles.joinBtnText}>{tr(language, 'Rejoindre', 'Join')}</Text>
         <ChevronRight size={14} color="#fff" />
       </TouchableOpacity>
     </View>
@@ -169,12 +150,14 @@ const FriendRow = React.memo(function FriendRow({
   colors,
   language,
   onInvite,
+  busy,
 }: {
   item: any;
   userId: string;
   colors: ThemeColors;
   language: Language;
   onInvite: (friendId: string) => void;
+  busy?: boolean;
 }) {
   const isUser1 = item.user_id1 === userId;
   const friend = isUser1 ? item.user2 : item.user1;
@@ -187,13 +170,19 @@ const FriendRow = React.memo(function FriendRow({
         username={friend.username}
         size={40}
       />
-      <Text style={[styles.matchCreator, { color: colors.text, flex: 1 }]}>{friend.username}</Text>
+      <Text style={[styles.matchCreator, { color: colors.text, flex: 1 }]} numberOfLines={1}>
+        {friend.username}
+      </Text>
       <TouchableOpacity
-        style={styles.joinBtn}
+        style={[styles.joinBtn, busy && { opacity: 0.6 }]}
         onPress={() => onInvite(friend.id)}
-        {...a11yButton(tr(language, `Inviter ${friend.username}`, `Invite ${friend.username}`))}
+        disabled={busy}
+        {...a11yButton(tr(language, `Inviter ${friend.username}`, `Invite ${friend.username}`), {
+          disabled: busy,
+          busy,
+        })}
       >
-        <Text style={styles.joinBtnText}>{language === 'fr' ? 'Inviter' : 'Invite'}</Text>
+        <Text style={styles.joinBtnText}>{tr(language, 'Inviter', 'Invite')}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -226,6 +215,9 @@ export default function Matchmaking({
   const [roundsPerSet, setRoundsPerSet] = useState(5);
   const [isPublic, setIsPublic] = useState(true);
   const [creating, setCreating] = useState(false);
+  /** Id de la partie qu'on est en train de rejoindre (grise la ligne). */
+  const [joining, setJoining] = useState<string | null>(null);
+  const joiningRef = useRef(false);
   // Regions mode: the country(ies) + division level(s) both players will play (a mix).
   const [regionPicks, setRegionPicks] = useState<RegionPick[]>([]);
 
@@ -366,6 +358,12 @@ export default function Matchmaking({
   // ─── Actions ─────────────────────────────────────────────────────────────────
 
   const joinMatch = useCallback(async (match: PublicMatchItem) => {
+    // Garde d'in-flight : sans elle, un double-tap lançait deux UPDATE. Le
+    // premier naviguait vers le match, le second affichait « Cette partie n'est
+    // plus disponible » PAR-DESSUS. Les deux écrans jumeaux ont déjà ce garde.
+    if (joiningRef.current) return;
+    joiningRef.current = true;
+    setJoining(match.id);
     // Guard the join: only an open 'waiting' slot can be taken. Without this,
     // two players joining the same row both "succeed" (the second overwrites
     // player2_id), and a cancelled row could be resurrected.
@@ -381,8 +379,12 @@ export default function Matchmaking({
       track('matchmaking_started', { mode: gameMode, kind: 'public' });
       setMatchState(updated);
       onStartMatch(updated as Match);
+      // On NE relâche PAS la garde ici : on quitte l'écran pour le match, et
+      // relâcher rouvrirait la porte à un second tap pendant la transition.
     } else {
       // 0 rows matched (PGRST116) → someone else took it or it was cancelled.
+      joiningRef.current = false;
+      setJoining(null);
       showAlert(
         tr(language, 'Partie indisponible', 'Match unavailable'),
         tr(language, 'Cette partie n’est plus disponible.', 'This match is no longer available.'),
@@ -550,11 +552,19 @@ export default function Matchmaking({
       language={language}
       gameMode={gameMode}
       onJoin={joinMatch}
+      busy={joining === item.id}
     />
   );
 
   const renderFriendItem = ({ item }: { item: any }) => (
-    <FriendRow item={item} userId={userId} colors={c} language={language} onInvite={createMatch} />
+    <FriendRow
+      item={item}
+      userId={userId}
+      colors={c}
+      language={language}
+      onInvite={createMatch}
+      busy={creating}
+    />
   );
 
   // ─── LOBBY ────────────────────────────────────────────────────────────────────
