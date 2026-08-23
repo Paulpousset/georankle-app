@@ -132,6 +132,12 @@ const stickiness = (series, { days = 30 } = {}) => ({
   source: { kind: 'StickinessQuery', dateRange: { date_from: `-${days}d` }, series },
 });
 
+/**
+ * Tableau HogQL, pour ce qu'aucun insight standard ne sait faire — typiquement
+ * réunir deux événements qui nomment la même chose différemment.
+ */
+const hogql = (query) => ({ kind: 'DataTableNode', source: { kind: 'HogQLQuery', query } });
+
 /** Filtre de propriété d'événement, p. ex. surface = content. */
 const prop = (key, value) => ({ key, value: [value], operator: 'exact', type: 'event' });
 
@@ -146,17 +152,22 @@ const DASHBOARDS = [
     insights: [
       {
         name: 'Joueurs actifs par jour (toutes surfaces)',
-        description: 'Utilisateurs uniques ayant émis au moins un événement.',
-        query: trend([ev('$pageview', { math: 'dau' }), ev('game_started', { math: 'dau' })], { days: 30 }),
+        description:
+          'Utilisateurs uniques ayant émis au moins un événement. Compter les `$pageview` serait faux : le natif émet `$screen`, et le web ne pèse qu’une poignée d’événements.',
+        query: trend([{ kind: 'EventsNode', name: 'Tous les événements', math: 'dau' }, ev('game_started', { math: 'dau' })], {
+          days: 30,
+        }),
       },
       {
         name: 'Joueurs actifs par plateforme',
-        description: 'La super-propriété `platform` sépare web, iOS et Android. Sans elle, tout se mélange.',
-        query: trend([ev('game_started', { math: 'dau' })], { days: 30, breakdown: { key: 'platform' } }),
+        description:
+          'Réparti sur `$os`, renseigné à 100 % depuis toujours — la super-propriété `platform` ne l’est que sur 0,2 % des événements tant que le parc natif ne s’est pas renouvelé. Avant le 2026-08-23 le web utilisait le SDK natif : un OS de bureau (Mac OS, Windows, Linux) y désigne donc un joueur web.',
+        query: trend([ev('game_started', { math: 'dau' })], { days: 30, breakdown: { key: '$os' } }),
       },
       {
         name: 'Web : jeu vs site de contenu',
-        description: '`surface` distingue la SPA (app) des guides et de la landing (content).',
+        description:
+          '`surface` distingue la SPA (app) des guides et de la landing (content). Mesuré depuis le 2026-08-23 seulement : aucune comparaison avec l’avant n’a de sens.',
         query: trend([ev('$pageview', { math: 'dau' })], { days: 30, breakdown: { key: 'surface' } }),
       },
       {
@@ -182,11 +193,14 @@ const DASHBOARDS = [
       },
       {
         name: 'Écrans du jeu les plus vus',
-        query: trend([ev('$pageview', { properties: [prop('surface', 'app')] })], {
-          days: 30,
-          breakdown: { key: 'screen' },
-          display: 'ActionsBarValue',
-        }),
+        description:
+          'Réunit les deux surfaces : le natif nomme l’écran `$screen_name` sur un `$screen`, le web `screen` sur un `$pageview`. Ne regarder que l’un des deux ne montrait que 4 vues au lieu de plusieurs milliers.',
+        query: hogql(
+          "select coalesce(properties.$screen_name, properties.screen) as ecran, count() as vues, uniq(person_id) as joueurs " +
+            "from events where event in ('$screen', '$pageview') and timestamp > now() - interval 30 day " +
+            'and coalesce(properties.$screen_name, properties.screen) is not null ' +
+            'group by ecran order by vues desc limit 40',
+        ),
       },
       {
         name: 'Adoption des fonctionnalités',
@@ -200,7 +214,7 @@ const DASHBOARDS = [
             ev('shop_opened', { math: 'dau' }),
             ev('leaderboard_opened', { math: 'dau' }),
             ev('matchmaking_started', { math: 'dau' }),
-            ev('challenge_started', { math: 'dau' }),
+            ev('challenge_completed', { math: 'dau' }),
             ev('local_parcours_started', { math: 'dau' }),
           ],
           { days: 30, display: 'ActionsBarValue' },
@@ -259,8 +273,10 @@ const DASHBOARDS = [
         query: trend([ev('daily_completed'), ev('daily_shared')], { days: 30 }),
       },
       {
-        name: 'Paliers de streak atteints',
-        query: trend([ev('streak_bonus_awarded', { math: 'dau' })], { days: 60, breakdown: { key: 'streak' } }),
+        name: 'Sentinelle : bonus de streak attribués',
+        description:
+          '⚠️ Jamais émis à ce jour, pour 1 013 défis quotidiens terminés — et `daily_completed` ne porte pas non plus de propriété `streak` (seulement `mode` et `score`). Soit la récompense de série ne se déclenche jamais, soit elle n’est pas instrumentée. Cette tuile doit rester à zéro tant que ce n’est pas tranché.',
+        query: trend([ev('streak_bonus_awarded'), ev('daily_completed')], { days: 90 }),
       },
       {
         name: 'Rappels quotidiens activés',
@@ -294,8 +310,10 @@ const DASHBOARDS = [
         query: trend([ev('story_opened'), ev('story_level_started'), ev('story_level_completed')], { days: 30 }),
       },
       {
-        name: 'Quiz Pays : défis lancés par thème',
-        query: trend([ev('challenge_started')], { days: 30, breakdown: { key: 'challenge' }, display: 'ActionsBarValue' }),
+        name: 'Quiz Pays : défis terminés par thème',
+        description:
+          '`challenge_started` n’a jamais été émis en production — seul `challenge_completed` l’est, et il porte bien `challenge`.',
+        query: trend([ev('challenge_completed')], { days: 90, breakdown: { key: 'challenge' }, display: 'ActionsBarValue' }),
       },
       {
         name: 'Ligues : création, participation, invitations',
@@ -309,8 +327,9 @@ const DASHBOARDS = [
         query: trend([ev('match_started'), ev('bot_match_started')], { days: 30 }),
       },
       {
-        name: 'Mode Langues : repli audio → texte',
-        description: 'Un pic signale un problème de bucket Storage ou de CDN, pas un problème de jeu.',
+        name: 'Sentinelle : mode Langues, repli audio → texte',
+        description:
+          'À zéro tant que le mode Langues reste derrière son drapeau — c’est le comportement attendu. Une fois activé, un pic signale un problème de bucket Storage ou de CDN, pas un problème de jeu.',
         query: trend([ev('language_audio_fallback')], { days: 30 }),
       },
     ],
@@ -359,11 +378,15 @@ const DASHBOARDS = [
     insights: [
       {
         name: 'Entonnoir de parrainage : partagé → ouvert → utilisé',
+        description:
+          '⚠️ `referral_shared` n’a été émis qu’une seule fois dans toute l’histoire du projet (2026-08-17), et jamais suivi d’une ouverture ni d’une conversion. La boucle n’est pas cassée : elle n’est pas trouvée par les joueurs.',
         query: funnel([ev('referral_shared'), ev('referral_link_opened'), ev('referral_redeemed')], { windowDays: 7 }),
       },
       {
-        name: 'Parrainages aboutis par jour',
-        query: trend([ev('referral_redeemed')], { days: 60 }),
+        name: 'Sentinelle : parrainages aboutis',
+        description:
+          '⚠️ `referral_redeemed` n’a jamais été émis. Tant que cette tuile reste à zéro, le parrainage ne rapporte aucun joueur.',
+        query: trend([ev('referral_redeemed'), ev('referral_shared')], { days: 90 }),
       },
       {
         name: 'Tous les partages sortants',
@@ -376,7 +399,8 @@ const DASHBOARDS = [
       },
       {
         name: 'Nouveaux comptes par plateforme',
-        query: trend([ev('signed_up')], { days: 60, breakdown: { key: 'platform' } }),
+        description: 'Sur `$os`, pour la même raison que le tableau Vue d’ensemble.',
+        query: trend([ev('signed_up')], { days: 90, breakdown: { key: '$os' } }),
       },
       {
         name: 'Installations par jour',
@@ -441,6 +465,24 @@ for (const def of DASHBOARDS) {
     });
     console.log(`+ tableau de bord « ${def.name} » créé (id ${dashboard.id})`);
     created += 1;
+  }
+
+  // Le rapprochement se fait par nom : renommer un insight en crée donc un
+  // nouveau et laisse l'ancien accroché au tableau. Sans élagage, chaque
+  // correction laissait une tuile fantôme — dont une qui affichait « aucune
+  // donnée » parce qu'elle interrogeait une propriété inexistante.
+  // On détache plutôt que supprimer : l'insight reste consultable dans la liste.
+  if (!DRY && dashboard.id !== '<nouveau>') {
+    const attendus = new Set(def.insights.map((i) => i.name));
+    const complet = await api('GET', `/api/projects/${project.id}/dashboards/${dashboard.id}/`);
+    for (const tile of complet.tiles ?? []) {
+      const ins = tile.insight;
+      if (!ins || attendus.has(ins.name)) continue;
+      await api('PATCH', `/api/projects/${project.id}/insights/${ins.id}/`, {
+        dashboards: (ins.dashboards ?? []).filter((x) => x !== dashboard.id),
+      });
+      console.log(`   − ${ins.name} (détaché : absent de la définition)`);
+    }
   }
 
   for (const ins of def.insights) {

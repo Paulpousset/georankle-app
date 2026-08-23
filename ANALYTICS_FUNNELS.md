@@ -30,11 +30,23 @@ POSTHOG_PERSONAL_API_KEY=phx_...
 
 ## Ce qu'il faut savoir pour les lire
 
-- **`platform` et `surface`** séparent web / iOS / Android et jeu / site de
-  contenu. Ce sont des super-propriétés attachées à chaque événement. Elles sont
-  `null` sur les versions natives installées avant le build qui les introduit :
-  une répartition par plateforme ne devient fiable qu'après renouvellement du
-  parc.
+Ces règles viennent d'un contrôle de chaque tuile contre les données réelles,
+pas de la lecture du catalogue d'événements. Les ignorer produit des tableaux
+qui s'affichent sans erreur mais ne montrent rien.
+
+- **Ne pas répartir sur `platform`.** La super-propriété n'est renseignée que
+  sur 0,2 % des événements : elle n'existe que depuis le build du 2026-08-23 et
+  tout le parc natif installé l'ignore. Utiliser **`$os`**, renseigné à 100 %
+  depuis toujours. Attention : avant le 2026-08-23 le web utilisait le SDK
+  natif, donc un OS de bureau (Mac OS, Windows, Linux) y désigne un joueur web.
+- **Le natif n'émet pas `$pageview`.** Il émet `$screen`, et nomme l'écran
+  `$screen_name` ; le web émet `$pageview` avec `screen`. Une tuile qui ne
+  regarde que l'un des deux voit 4 vues au lieu de 13 000 — la tuile « Écrans
+  du jeu les plus vus » les réunit en HogQL.
+- **Un événement du catalogue n'est pas un événement émis.** `challenge_started`,
+  `streak_bonus_awarded`, `referral_link_opened`, `referral_redeemed` et
+  `language_audio_fallback` n'existent pas dans les données. Vérifier avant de
+  bâtir un insight dessus.
 - **Les écrans du jeu** arrivent en `$pageview` avec un chemin virtuel
   (`/play/menu`, `/play/daily`) : l'URL réelle de la SPA ne change jamais, donc
   sans cela tout le jeu se réduirait à une seule ligne dans le rapport Pages.
@@ -42,6 +54,22 @@ POSTHOG_PERSONAL_API_KEY=phx_...
   2026-08-23. Aucune comparaison avec l'avant n'a de sens.
 - **Les affichages en barres** rendent `aggregated_value` et non `count` — un
   script de vérification qui somme `count` conclura à tort « aucune donnée ».
+
+## Les sentinelles
+
+Trois tuiles sont censées rester à zéro. Leur vide est l'information :
+
+| Tuile | Ce que son silence signifie |
+|---|---|
+| Bonus de streak attribués | Jamais attribué, pour 1 013 défis quotidiens terminés. Soit la récompense de série ne se déclenche pas, soit elle n'est pas instrumentée — à trancher. |
+| Parrainages aboutis | `referral_shared` n'a été émis qu'une fois (2026-08-17), jamais suivi d'une ouverture. La boucle n'est pas cassée : personne ne la trouve. |
+| Mode Langues, repli audio | Normal tant que le mode reste derrière son drapeau. |
+
+## Dérive
+
+Le script rapproche par nom : renommer une tuile en crée donc une nouvelle et
+laisse l'ancienne accrochée. Il détache automatiquement toute tuile absente de
+la définition (détachée, pas supprimée — elle reste dans la liste des insights).
 
 ## Alerte à créer à la main
 
