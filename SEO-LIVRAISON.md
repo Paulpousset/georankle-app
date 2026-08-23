@@ -2,7 +2,8 @@
 
 > Exécution du plan SEO playgeog.com, le **23/08/2026**.
 > Le constat de départ est dans [SEO-AUDIT.md](SEO-AUDIT.md).
-> **Rien n'est commité ni déployé** : tout est dans l'arbre de travail.
+> **Commité (`8a4fb2b`), poussé sur `master` et déployé en production.**
+> Les mesures ci-dessous sont prises sur playgeog.com après déploiement.
 
 ---
 
@@ -20,9 +21,9 @@ automatique — et la performance mobile de l'accueil passe de **66 à 92**.
 | `hreflang` | aucun | 96 pages, réciprocité vérifiée au build |
 | Types JSON-LD | 4, sans dates | **7**, dates réelles, FAQ extraite du HTML |
 | Sitemap | manuel, `lastmod` figé | généré, `lastmod` déclaré, `xhtml:link` |
-| Lighthouse mobile · accueil | **66** · LCP 6,0 s · 1 053 Ko | **92** · LCP 3,1 s · 371 Ko |
-| Lighthouse mobile · guide | **84** · LCP 3,6 s · 359 Ko | **99** · LCP 1,8 s · 128 Ko |
-| Accessibilité | 94 / 93 | 95 / 95 |
+| Lighthouse mobile · accueil | **66** · LCP 6,0 s · 1 053 Ko | **89** · LCP **2,5 s** · 316 Ko |
+| Lighthouse mobile · guide | **84** · LCP 3,6 s · 359 Ko | **97** · LCP **1,8 s** · 192 Ko |
+| Accessibilité | 94 / 93 | 95 / 96 |
 | Erreurs de lint | 47 | **0** |
 | Tests | 843 | **852** |
 
@@ -115,9 +116,9 @@ Les doublons repérés par l'audit sont supprimés par des redirections 301 dans
   juste à côté) et `aria-label` redondants retirés des badges de stores.
 - Vérifié : aucune page ne déborde horizontalement, en 1280 comme en 390 px.
 
-⚠️ Les mesures « après » sont prises sur le build local. Elles n'incluent donc
-pas la latence réseau ni le script PostHog (~48 Ko en production). L'ordre de
-grandeur du gain est réel, le chiffre exact sera à reprendre après déploiement.
+Mesuré sur la production après déploiement : **plus aucune ressource bloquant
+le rendu**, ni sur l'accueil ni sur les guides. Le LCP de l'accueil passe sous
+le seuil « bon » de Google (2,5 s), celui d'un guide à 1,8 s.
 
 **5.5 · Search Console.** Hors code — reste à faire par Paul (voir plus bas).
 
@@ -217,20 +218,32 @@ Wordle, il est en place.
 
 ---
 
+## Vérifié en production
+
+```
+96/96 URL du sitemap répondent 200
+redirections 308 : /guides → /guides/ · /landing.html → / · /a-propos → · /en →
+réécritures 200 : /play · /en/play · /daily
+hreflang réciproques vérifiés sur une paire FR/EN servie
+JSON-LD : 6 pages échantillonnées, tous les blocs valides
+   accueil  FAQPage · VideoGame+SoftwareApplication
+   mode     ItemList · FAQPage · BreadcrumbList
+   guide    ItemList · FAQPage · Article · BreadcrumbList
+polices servies depuis /fonts/, plus aucun appel à fonts.googleapis.com
+chiffres corrigés servis : « 195 pays », « 2 langues »
+```
+
 ## Ce qui reste à faire
 
 ### Pour Paul, hors dépôt
 
-1. **Déployer le web.** Rien n'est en ligne. `npm run build:web && npm run build:site`,
-   puis le déploiement Vercel habituel.
-2. **Search Console** : vérifier la propriété **par domaine entier** (pas par
+1. **Search Console** : vérifier la propriété **par domaine entier** (pas par
    préfixe d'URL — la phase 1 ajoute des préfixes de chemin), soumettre
    `sitemap.xml`, activer Bing Webmaster Tools par import depuis GSC.
-3. **Valider les `hreflang` avec un outil dédié après déploiement.** Le build
-   vérifie la cohérence interne ; seul un crawl externe confirme le rendu réel.
-4. **Relancer Lighthouse sur la prod** pour confirmer les gains hors conditions
-   locales.
-5. **Contraste des couleurs.** Deux règles échouent encore en accessibilité :
+2. **Valider les `hreflang` avec un outil de crawl externe.** Le build vérifie
+   la cohérence interne et j'ai contrôlé une paire servie ; seul un crawl
+   complet (Ahrefs, Screaming Frog) confirme les 96.
+3. **Contraste des couleurs.** Deux règles échouent encore en accessibilité :
    `--brown-light` (#a08060) sur parchemin donne 2,99:1, et la ligne de pied de
    page à `opacity:.7` tombe à 2,06:1. C'est un jeton de la palette : le plan
    interdit de toucher au design, donc rien n'a été modifié. À arbitrer.
