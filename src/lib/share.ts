@@ -43,7 +43,7 @@ function tr(language: Language, fr: string, en: string): string {
  *   🌍 GeoRankle — Rankle #312
  *   🟩🟩🟨🟩🟥🟩🟨🟩  87%
  *   🔥 Série 5
- *   georankle.app
+ *   playgeog.com
  */
 export function buildShareMessage(
   result: DailyResult,

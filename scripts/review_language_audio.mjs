@@ -1,4 +1,3 @@
-/* global URL */
 // Génère une page d'écoute locale pour valider les extraits déjà en ligne.
 //
 //   set -a; source .env; set +a

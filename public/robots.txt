@@ -1,9 +1,0 @@
-User-agent: *
-Allow: /
-
-# Coquille brute de l'application (servie via /play) : sans intérêt pour
-# l'indexation, et c'est le genre de page vide qui fait échouer une revue
-# AdSense si elle est explorée directement.
-Disallow: /app.html
-
-Sitemap: https://playgeog.com/sitemap.xml

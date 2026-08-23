@@ -1,4 +1,3 @@
-/* global fetch, URL, Buffer */
 // Génère les extraits parlés du mode « Langues » (ElevenLabs) et les pousse
 // dans le bucket Supabase Storage `game-audio`.
 //

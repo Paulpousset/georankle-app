@@ -86,8 +86,12 @@ function AppContent() {
 
   // Zero-friction web entry: a shared `/play` link boots straight into today's
   // daily challenge (playable logged out) instead of the menu — the Wordle loop.
+  // `/play?mode=quiz-flag` boots that solo mode instead: it is where the site's
+  // per-mode pages send their "play" button.
   useEffect(() => {
-    if (getInitialWebIntent()?.screen === 'daily') nav.pushPage({ name: 'daily' });
+    const intent = getInitialWebIntent();
+    if (intent?.screen === 'daily') nav.pushPage({ name: 'daily' });
+    else if (intent?.screen === 'mode') setGameMode(intent.mode);
     // Mount-once: read the opening URL a single time.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

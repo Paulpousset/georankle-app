@@ -1,4 +1,3 @@
-/* global fetch, URL */
 // Vérifie que CHAQUE extrait attendu par le mode « Langues » est bien en ligne.
 //
 //   node scripts/check_language_audio.mjs

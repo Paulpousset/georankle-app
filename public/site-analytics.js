@@ -31,6 +31,9 @@
       autocapture: true,
       disable_session_recording: true,
       advanced_disable_feature_flags: true,
+      // Aucun sondage n'est utilisé sur le site : sans ce drapeau, le SDK
+      // télécharge surveys.js (33 Ko) sur chaque page de contenu, pour rien.
+      disable_surveys: true,
       persistence: 'localStorage+cookie',
       person_profiles: 'always',
       loaded: function (ph) {

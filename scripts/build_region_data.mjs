@@ -1,4 +1,3 @@
-/* global fetch */
 /**
  * build_region_data.mjs — generates the sub-national polygon data for the
  * "Régions Géo" game mode (src/screens/FindRegionGame.tsx).

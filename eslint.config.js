@@ -75,7 +75,9 @@ module.exports = [
     // are Node tooling. Give them Node globals instead of the RN/browser set.
     // The Playwright QA/screenshot scripts also reference browser globals inside
     // page.evaluate()/addInitScript callbacks, so allow those too.
-    files: ['index.js', 'scripts/**'],
+    // `site/**` est le générateur du site public (Node pur, exécuté au build)
+    // et `final-check.mjs` un contrôle Playwright : même famille d'outillage.
+    files: ['index.js', 'scripts/**', 'site/**', 'final-check.mjs'],
     languageOptions: {
       globals: {
         require: 'readonly',
@@ -84,8 +86,14 @@ module.exports = [
         console: 'readonly',
         setTimeout: 'readonly',
         __dirname: 'readonly',
+        fetch: 'readonly',
+        Buffer: 'readonly',
+        URL: 'readonly',
+        URLSearchParams: 'readonly',
         document: 'readonly',
         window: 'readonly',
+        innerHeight: 'readonly',
+        matchMedia: 'readonly',
         localStorage: 'readonly',
         getComputedStyle: 'readonly',
         HTMLElement: 'readonly',

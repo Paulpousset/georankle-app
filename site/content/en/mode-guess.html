@@ -1,0 +1,82 @@
+title: Guess the country: the geography clue game
+description: A geographic deduction game: find the mystery country in as few guesses as possible. Every guess reveals continent, distance, direction, population and area.
+ogTitle: Guess the Country — the geography clue game
+breadcrumb: Guess the country
+published: 2026-08-23
+modified: 2026-08-23
+---
+    <article>
+      <header>
+        <h1>Guess the country from its clues</h1>
+        <p class="standfirst">A country is hidden. With every guess the game tells you how warm you are: right continent, distance as the crow flies, direction, population gap. Your job is to close in.</p>
+      </header>
+
+      <div class="play-cta">
+        <h3>Find the mystery country</h3>
+        <p>As few guesses as possible: that is where the score is won.</p>
+        <a class="btn" href="{{play:mode-guess}}">{{t:playNow}}</a>
+      </div>
+
+      <figure class="shot">
+        <picture>
+          <source srcset="/shots/22-devine-en-480.webp" type="image/webp" />
+          <img src="/shots/22-devine-en-480.png" alt="GeoG Guess the Country mode: the nine clues compared on every attempt" loading="lazy" decoding="async" width="480" height="1040" />
+        </picture>
+        <figcaption>GeoG Guess the Country mode: the nine clues compared on every attempt</figcaption>
+      </figure>
+
+      <h2>How it works</h2>
+
+      <p><strong>A mystery country is drawn. You name a country, and the game compares.</strong> No vague hot-or-cold: each guess returns precise clues.</p>
+
+      <ul>
+        <li><strong>The continent</strong> — right or wrong, the clue that eliminates fastest;</li>
+        <li><strong>The direction</strong> to travel from your guess, and the <strong>distance</strong> as the crow flies;</li>
+        <li><strong>Population</strong> and <strong>area</strong>, larger or smaller than the target;</li>
+        <li><strong>GDP per capita</strong> and <strong>life expectancy</strong>, which often separate two neighbours;</li>
+        <li><strong>Whether it has a coastline</strong>, and its <strong>number of land borders</strong>.</li>
+      </ul>
+
+      <p>Nine clues in all, recomputed on every attempt. None of them gives the answer alone; it is crossing them that does.</p>
+
+      <p>The right strategy is not to guess wildly but to <strong>grid-search</strong>: start with one country per continent to find the right one, then use direction and distance to close in, and finally population to separate the last candidates. It is exactly the reasoning you apply without thinking when reading a map — the mode makes it explicit.</p>
+
+      <p><strong>The fewer guesses you use, the more you score.</strong> A player who knows their subregions finds most countries in four or five.</p>
+
+      <h2>The 24 subregions of the world</h2>
+
+<p>The game’s first clue is the continent, but deduction gets efficient at subregion scale: knowing that “Western Africa” holds sixteen countries and which ones beats knowing there are {{count:afrique}} in Africa. Here is the full breakdown, the one the game’s own data uses.</p>
+
+      {{table:subregions:all}}
+
+      <h2>Frequently asked</h2>
+
+      <div class="faq-list">
+        <details>
+          <summary>What is the best strategy?</summary>
+          <div class="faq-body">Start with one country per continent to identify the right one, then use direction and distance to close in, and population to separate the last candidates.</div>
+        </details>
+        <details>
+          <summary>How many guesses does it usually take?</summary>
+          <div class="faq-body">A player who knows the subregions usually gets there in four or five. The score depends directly on the number of attempts.</div>
+        </details>
+        <details>
+          <summary>Are the clues always the same?</summary>
+          <div class="faq-body">Yes: continent, direction, distance, population, area, GDP per capita, life expectancy, coastline and number of land borders. What changes is the hidden country — and in the daily challenge it is the same one for every player in the world.</div>
+        </details>
+      </div>
+
+      <div class="play-cta">
+        <h3>Ready?</h3>
+        <p>Free, no account, in your browser — or on <a href="https://apps.apple.com/app/id6779650018">iPhone</a> and <a href="https://play.google.com/store/apps/details?id=com.paulpousset.geog">Android</a>.</p>
+        <a class="btn" href="{{play:mode-guess}}">{{t:playNow}}</a>
+      </div>
+
+      <h2>{{t:readNext}}</h2>
+      <ul>
+        <li><a href="{{link:guide-revise}}">Studying geography: where to start</a></li>
+        <li><a href="{{link:mode-borders}}">The borders game</a></li>
+        <li><a href="{{link:mode-higherlower}}">Higher or Lower: comparing two countries</a></li>
+        <li><a href="{{link:mode-globe}}">The 3D globe</a></li>
+      </ul>
+    </article>

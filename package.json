@@ -14,7 +14,11 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,json}\"",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "build:site": "node site/build.mjs",
+    "build:web:full": "npm run build:web && node site/build.mjs",
+    "site:fonts": "node scripts/fetch_site_fonts.mjs",
+    "site:check": "node site/build.mjs --check"
   },
   "dependencies": {
     "@expo-google-fonts/playfair-display": "^0.4.2",

@@ -1,4 +1,3 @@
-/* global fetch */
 /**
  * build_world_polygons.mjs — (re)generates the country border geometry used by
  * the interactive globe (src/screens/FindCountryGame.tsx → assets/world_polygons.json).

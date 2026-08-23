@@ -170,3 +170,70 @@ footer {
 .f-links a { color: var(--brown); text-decoration: none; }
 .f-links a:hover { color: var(--vermilion); }
 footer p { margin-bottom: 6px; }
+
+/* ---------- sélecteur de langue ---------- */
+/* Pas de redirection automatique sur Accept-Language ni sur l'IP : Googlebot
+   explore depuis les États-Unis et resterait enfermé dans une seule version.
+   Ce sont donc de vrais liens, explorables, et c'est le visiteur qui choisit. */
+
+.lang-switch { display: inline-flex; gap: 10px; align-items: center; }
+.lang-switch::before {
+  content: "";
+  width: 15px; height: 15px; flex: none; opacity: .55;
+  background: currentColor;
+  -webkit-mask: var(--globe-mask) center/contain no-repeat;
+  mask: var(--globe-mask) center/contain no-repeat;
+}
+:root {
+  --globe-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M2 12h20M12 2c2.6 2.8 4 6.2 4 10s-1.4 7.2-4 10c-2.6-2.8-4-6.2-4-10s1.4-7.2 4-10Z'/%3E%3C/svg%3E");
+}
+.lang-link { color: inherit; text-decoration: none; }
+.lang-link:hover { color: var(--vermilion); }
+.f-lang { margin-bottom: 12px; }
+.lang-switch-foot { color: var(--brown); }
+
+/* ---------- lien d'évitement ---------- */
+
+.skip-link {
+  position: absolute; left: -9999px; top: 0; z-index: 100;
+  background: var(--vermilion); color: #fff; padding: 10px 18px;
+  font-family: var(--mono); font-size: 13px; text-decoration: none;
+}
+.skip-link:focus { left: 8px; top: 8px; color: #fff; }
+
+/* ---------- FAQ ---------- */
+/* Le JSON-LD FAQPage est EXTRAIT de ce balisage par le générateur : une FAQ
+   structurée qui ne correspond pas à la page affichée est au mieux ignorée.
+   Conserver la structure <details><summary>…</summary><div class="faq-body">. */
+
+.faq-list { margin: 26px 0; border: var(--frame); border-radius: 6px; overflow: hidden; }
+.faq-list details { background: var(--surface); border-bottom: 1px solid var(--tan); }
+.faq-list details:last-child { border-bottom: 0; }
+.faq-list summary {
+  cursor: pointer; padding: 15px 18px; font-family: var(--serif);
+  font-weight: 700; font-size: 18px; list-style: none;
+}
+.faq-list summary::-webkit-details-marker { display: none; }
+.faq-list summary::after { content: "＋"; float: right; color: var(--brown-light); font-family: var(--mono); }
+.faq-list details[open] summary::after { content: "－"; }
+.faq-list summary:hover { color: var(--vermilion); }
+.faq-body { padding: 0 18px 16px; color: var(--brown); }
+.faq-body a { color: var(--vermilion); }
+
+/* ---------- drapeaux en tableau ---------- */
+/* flagcdn, le même CDN que l'app (src/lib/flags.ts) : pas de duplication des
+   195 fichiers dans le dépôt. Toutes sous la ligne de flottaison, en lazy. */
+td img { display: block; border: 1px solid var(--tan); border-radius: 2px; }
+
+/* ---------- capture d'écran d'un mode ---------- */
+
+.shot { margin: 30px 0; text-align: center; }
+.shot img {
+  max-width: 100%; height: auto; width: 240px;
+  border-radius: 22px; border: 8px solid var(--sepia);
+  box-shadow: 0 22px 44px rgba(44, 24, 16, .22);
+}
+.shot figcaption {
+  margin-top: 14px; font-family: var(--mono); font-size: 12px;
+  letter-spacing: .06em; color: var(--brown-light);
+}

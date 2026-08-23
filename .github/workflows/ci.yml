@@ -30,12 +30,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # The three steps below use `if: always()` so a failure in one still lets
-      # the others run — contributors see every problem in a single CI run
-      # instead of fixing them one round-trip at a time. The job still fails
-      # (red) if any step fails.
+      # The steps below use `if: always()` so a failure in one still lets the
+      # others run — contributors see every problem in a single CI run instead
+      # of fixing them one round-trip at a time. The job still fails (red) if
+      # any step fails.
       - name: Lint
         run: npm run lint
+
+      - name: Site SEO check
+        # Renders the 96 pages of the public site in memory and checks hreflang
+        # reciprocity, canonicals, duplicate titles and dead internal links.
+        # A reciprocity error is silent in production: it cancels the benefit of
+        # the whole block without ever visibly breaking anything.
+        if: always()
+        run: npm run site:check
 
       - name: Typecheck
         if: always()
