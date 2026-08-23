@@ -121,6 +121,12 @@ const retention = (target, returning, { period = 'Day', intervals = 14, type = '
   },
 });
 
+/** Cycle de vie : nouveaux, récurrents, revenus, endormis — le « growth accounting ». */
+const lifecycle = (series, { days = 60, interval = 'week' } = {}) => ({
+  kind: 'InsightVizNode',
+  source: { kind: 'LifecycleQuery', dateRange: { date_from: `-${days}d` }, interval, series },
+});
+
 const stickiness = (series, { days = 30 } = {}) => ({
   kind: 'InsightVizNode',
   source: { kind: 'StickinessQuery', dateRange: { date_from: `-${days}d` }, series },
@@ -183,6 +189,24 @@ const DASHBOARDS = [
         }),
       },
       {
+        name: 'Adoption des fonctionnalités',
+        description:
+          'Combien de joueurs uniques touchent à chaque grande fonction. Ce qui est bas est soit mal placé, soit inutile.',
+        query: trend(
+          [
+            ev('daily_opened', { math: 'dau' }),
+            ev('story_opened', { math: 'dau' }),
+            ev('league_opened', { math: 'dau' }),
+            ev('shop_opened', { math: 'dau' }),
+            ev('leaderboard_opened', { math: 'dau' }),
+            ev('matchmaking_started', { math: 'dau' }),
+            ev('challenge_started', { math: 'dau' }),
+            ev('local_parcours_started', { math: 'dau' }),
+          ],
+          { days: 30, display: 'ActionsBarValue' },
+        ),
+      },
+      {
         name: 'Entonnoir : lecteur d’un guide → joueur',
         description:
           'La raison d’être du site de contenu. Même distinct_id de bout en bout depuis la refonte du 23/08.',
@@ -213,6 +237,12 @@ const DASHBOARDS = [
       {
         name: 'Rétention hebdomadaire des joueurs',
         query: retention('game_started', 'game_started', { period: 'Week', intervals: 12, type: 'retention_recurring' }),
+      },
+      {
+        name: 'Cycle de vie : nouveaux, revenus, endormis',
+        description:
+          'La seule vue qui dit si la base grandit vraiment : les nouveaux compensent-ils ceux qui s’endorment ?',
+        query: lifecycle([ev('game_started')], { days: 90, interval: 'week' }),
       },
       {
         name: 'Fidélité : nombre de jours actifs sur 30',
@@ -347,6 +377,33 @@ const DASHBOARDS = [
       {
         name: 'Nouveaux comptes par plateforme',
         query: trend([ev('signed_up')], { days: 60, breakdown: { key: 'platform' } }),
+      },
+      {
+        name: 'Installations par jour',
+        description: 'Événement de cycle de vie du SDK natif — le web n’en émet pas.',
+        query: trend([ev('Application Installed')], { days: 60 }),
+      },
+      {
+        name: 'Installations par pays',
+        query: trend([ev('Application Installed')], {
+          days: 90,
+          breakdown: { key: '$geoip_country_name' },
+          display: 'ActionsBarValue',
+        }),
+      },
+      {
+        name: 'Installations par version d’app',
+        description: 'Montre la vitesse de renouvellement du parc — utile avant de se fier à `platform`.',
+        query: trend([ev('Application Installed')], {
+          days: 90,
+          breakdown: { key: '$app_version' },
+          display: 'ActionsBarValue',
+        }),
+      },
+      {
+        name: 'Entonnoir : installation → inscription → première partie',
+        description: 'Le vrai coût d’entrée du jeu, de l’ouverture du store à la première partie.',
+        query: funnel([ev('Application Installed'), ev('signed_up'), ev('game_completed')], { windowDays: 7 }),
       },
     ],
   },
