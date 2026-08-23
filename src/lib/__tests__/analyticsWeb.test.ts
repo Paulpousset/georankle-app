@@ -89,6 +89,8 @@ describe('web analytics', () => {
       play_type: 'solo',
       screen: 'shop',
       $current_url: `${window.location.origin}/play/shop`,
+      // Doit accompagner $current_url : c'est `$pathname` que lit Web Analytics.
+      $pathname: '/play/shop',
     });
   });
 

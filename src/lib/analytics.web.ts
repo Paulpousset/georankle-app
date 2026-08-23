@@ -102,10 +102,16 @@ export function track(event: AnalyticsEvent, props?: Props): void {
 export function trackScreen(name: string, props?: Props): void {
   if (!ready) return;
   const base = typeof window !== 'undefined' ? window.location.origin : '';
+  const path = `/play/${name}`;
   posthogJs.capture('$pageview', {
     ...clean(props),
     screen: name,
-    $current_url: `${base}/play/${name}`,
+    $current_url: `${base}${path}`,
+    // posthog-js recalcule `$pathname` depuis window.location, qui ne bouge
+    // jamais ici : sans cette ligne il annonce « /play » pendant que
+    // `$current_url` dit « /play/daily ». Les deux se contredisaient, et c'est
+    // `$pathname` que lit le rapport Web Analytics.
+    $pathname: path,
   });
 }
 

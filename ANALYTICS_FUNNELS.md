@@ -1,54 +1,49 @@
-# PostHog — funnels & rétention à configurer (runbook)
+# PostHog — tableaux de bord
 
-Les événements sont tous émis par `src/lib/analytics.ts` (catalogue typé). Ce
-document liste les insights à créer **dans le dashboard PostHog** (eu.i.posthog.com)
-— ils ne peuvent pas être créés depuis le code.
+**Ce document ne se suit plus à la main.** Les tableaux de bord et leurs
+insights sont décrits dans [`scripts/posthog_dashboards.mjs`](scripts/posthog_dashboards.mjs)
+et appliqués par ce script. Il rapproche par nom : le relancer met à jour
+l'existant au lieu de dupliquer.
 
-## 1. Rétention
+```bash
+node scripts/posthog_dashboards.mjs --dry-run    # montre le plan, n'écrit rien
+node scripts/posthog_dashboards.mjs              # applique
+node scripts/posthog_dashboards.mjs --only "Modes de jeu"
+```
 
-| Insight | Config PostHog |
+Il lui faut une clé personnelle PostHog dans `.env.secrets` (gitignoré) —
+portées `dashboard:write`, `insight:write`, `project:read` :
+
+```
+POSTHOG_PERSONAL_API_KEY=phx_...
+```
+
+## Les cinq tableaux de bord
+
+| Tableau de bord | Ce qu'il répond |
 |---|---|
-| Rétention J1 / J7 / J30 | Insight → Retention · événement de départ : `signed_up` · retour : `game_started` OU `daily_opened` · périodes : Day 1, 7, 30 |
-| Rétention des joueurs daily | Retention · départ : `daily_completed` · retour : `daily_completed` (jour suivant) — mesure l'efficacité du streak |
+| **Vue d'ensemble** (épinglé) | Qui joue, sur quelle surface, d'où viennent les nouveaux, et l'entonnoir lecteur d'un guide → joueur |
+| **Rétention & habitude** | Est-ce qu'ils reviennent ? Rétention J1–J30, daily → daily, fidélité, streak |
+| **Modes de jeu** | Ce qui est joué, où l'on abandonne, santé du matchmaking et du mode Langues |
+| **Économie & monétisation** | Entonnoir boutique, achats, taux d'échec des pubs récompensées, quêtes |
+| **Croissance & parrainage** | Parrainage, partages sortants, invitations de match |
 
-## 2. Funnel d'activation (nouveau joueur)
+## Ce qu'il faut savoir pour les lire
 
-Insight → Funnel, fenêtre 7 jours :
-1. `signed_up`
-2. `game_completed` (première partie solo)
-3. `match_started` (premier match en ligne)
-4. `match_completed` où `result = won`
+- **`platform` et `surface`** séparent web / iOS / Android et jeu / site de
+  contenu. Ce sont des super-propriétés attachées à chaque événement. Elles sont
+  `null` sur les versions natives installées avant le build qui les introduit :
+  une répartition par plateforme ne devient fiable qu'après renouvellement du
+  parc.
+- **Les écrans du jeu** arrivent en `$pageview` avec un chemin virtuel
+  (`/play/menu`, `/play/daily`) : l'URL réelle de la SPA ne change jamais, donc
+  sans cela tout le jeu se réduirait à une seule ligne dans le rapport Pages.
+- **Le site de contenu** (landing, guides) n'est mesuré que depuis le
+  2026-08-23. Aucune comparaison avec l'avant n'a de sens.
+- **Les affichages en barres** rendent `aggregated_value` et non `count` — un
+  script de vérification qui somme `count` conclura à tort « aucune donnée ».
 
-Chute attendue la plus forte entre 2 et 3 → mesurer avant/après les quêtes
-(`online_play` pousse vers le online).
+## Alerte à créer à la main
 
-## 3. Funnel boutique (monétisation future)
-
-Insight → Funnel, fenêtre 3 jours :
-1. `shop_opened`
-2. `shop_item_viewed` (ajouté 2026-07-02 — preview d'un item)
-3. `cosmetic_purchased` OU `bundle_purchased`
-
-À surveiller : le taux 2→3 selon `item_id` et la part du `featured_purchased`
-(vitrine -30 %).
-
-## 4. Quêtes & streak (ajoutés 2026-07-02)
-
-| Événement | Propriétés | Usage |
-|---|---|---|
-| `quest_claimed` | `quest`, `coins` | Trend quotidien : % de DAU qui réclament ≥1 quête ; répartition par quête |
-| `streak_bonus_awarded` | `streak`, `coins` | Compter les joueurs atteignant les paliers 7/30 j |
-
-Funnel d'engagement quêtes : `daily_opened` → `quest_claimed` (fenêtre 1 jour).
-
-## 5. Bots vs humains (santé du matchmaking)
-
-Trend : `bot_match_started` / (`bot_match_started` + `match_started` où
-`is_ranked = true`) — si > 50 %, la file ranked manque de joueurs aux heures
-creuses → envisager d'élargir la fenêtre de matchmaking avant le fallback bot.
-
-## 6. Alerte
-
-PostHog → Alerts : si `daily_completed` quotidien chute de > 50 % vs moyenne
-7 jours → mail. (Complète l'alerte cron `cron_run_log` déjà affichée dans
-l'écran admin.)
+PostHog → Alerts : si `daily_completed` quotidien chute de plus de 50 % contre
+la moyenne 7 jours → e-mail. (Complète l'alerte `cron_run_log` de l'écran admin.)
