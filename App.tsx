@@ -142,12 +142,20 @@ function AppContent() {
 
   // Screen tracking. Navigation is custom (pageStack + gameMode + matchData),
   // so PostHog autocapture can't see it — derive a name and report it ourselves.
+  // `matchData` est remplacé à chaque mise à jour temps réel (manche suivante,
+  // score adverse…), ce qui refaisait partir une vue d'écran identique plusieurs
+  // fois par match et gonflait les pages vues : on ne réémet que si l'écran
+  // change réellement.
+  const lastScreen = useRef<string | null>(null);
   useEffect(() => {
     let name: string;
     if (nav.currentPage) name = nav.currentPage.name;
     else if (match.matchData) name = `match:${gameMode}`;
     else if (gameMode !== 'menu') name = `game:${gameMode}`;
     else name = 'menu';
+    const key = `${name}|${nav.playType ?? ''}`;
+    if (lastScreen.current === key) return;
+    lastScreen.current = key;
     trackScreen(name, { play_type: nav.playType ?? undefined });
   }, [nav.currentPage, gameMode, match.matchData, nav.playType]);
 

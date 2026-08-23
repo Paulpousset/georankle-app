@@ -7,6 +7,7 @@ const mockCapture = jest.fn();
 const mockScreen = jest.fn();
 const mockIdentify = jest.fn();
 const mockReset = jest.fn();
+const mockRegister = jest.fn();
 
 jest.mock('posthog-react-native', () =>
   jest.fn().mockImplementation(() => ({
@@ -14,6 +15,7 @@ jest.mock('posthog-react-native', () =>
     screen: mockScreen,
     identify: mockIdentify,
     reset: mockReset,
+    register: mockRegister,
   })),
 );
 
@@ -33,6 +35,7 @@ afterEach(() => {
   mockScreen.mockClear();
   mockIdentify.mockClear();
   mockReset.mockClear();
+  mockRegister.mockClear();
 });
 
 afterAll(() => {
@@ -72,6 +75,21 @@ describe('analytics with a PostHog key', () => {
 
     analytics.resetIdentity();
     expect(mockReset).toHaveBeenCalledTimes(1);
+  });
+
+});
+
+describe('platform tagging', () => {
+  it('registers the surface as a super property at load time', () => {
+    // Sans cette super-propriété, les events web, iOS et Android tombent dans
+    // le même seau et tout comptage par surface est faux. `register` est appelé
+    // à la construction du client, d'où le rechargement du module ici.
+    process.env.EXPO_PUBLIC_POSTHOG_KEY = 'phc_test_key';
+    jest.resetModules();
+    loadAnalytics();
+    expect(mockRegister).toHaveBeenCalledWith(
+      expect.objectContaining({ platform: expect.any(String), surface: 'app' }),
+    );
   });
 });
 

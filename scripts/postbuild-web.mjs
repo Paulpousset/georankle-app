@@ -12,12 +12,15 @@
  *   2. lui donne un vrai <head> et un <noscript> qui décrit le jeu et renvoie
  *      vers les pages de contenu, pour qu'aucune URL du site ne soit jamais
  *      une page blanche ;
- *   3. installe la landing (public/landing.html) comme page d'accueil.
+ *   3. installe la landing (public/landing.html) comme page d'accueil ;
+ *   4. injecte /site-analytics.js dans chaque page de contenu — sans quoi
+ *      tout le trafic SEO du site (landing, guides, à-propos…) est invisible
+ *      dans PostHog, l'app étant la seule surface instrumentée.
  *
  * Il est idempotent et échoue bruyamment : si la structure du template Expo
  * change, le build s'arrête au lieu de déployer une coquille non traitée.
  */
-import { readFileSync, writeFileSync, rmSync, copyFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, rmSync, copyFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 const DIST = join(process.cwd(), 'dist');
@@ -86,4 +89,44 @@ writeFileSync(appHtml, html, 'utf8');
 rmSync(shell);
 copyFileSync(landing, shell);
 
-console.log('[postbuild-web] app.html enrichi, landing installée en page d\'accueil');
+/**
+ * Injecte l'analytics du site dans toutes les pages de contenu.
+ *
+ * app.html est exclu : la SPA embarque déjà posthog-js (src/lib/analytics.web.ts)
+ * et un second `init()` sur la même clé dédoublerait les pages vues.
+ * L'injection est idempotente — une page qui porte déjà la balise est laissée
+ * telle quelle, pour que relancer le postbuild sur un dist existant soit sûr.
+ */
+const ANALYTICS_TAG = '<script defer src="/site-analytics.js"></script>';
+const SKIP = new Set(['app.html']);
+
+if (!existsSync(join(DIST, 'site-analytics.js'))) {
+  fail('dist/site-analytics.js introuvable — public/site-analytics.js a-t-il été copié ?');
+}
+
+/** Toutes les pages .html de dist, récursivement (les guides sont en sous-dossiers). */
+function htmlFiles(dir) {
+  const out = [];
+  for (const entry of readdirSync(dir)) {
+    // _expo contient le bundle JS, jamais de page à instrumenter.
+    if (entry === '_expo' || entry === 'assets') continue;
+    const full = join(dir, entry);
+    if (statSync(full).isDirectory()) out.push(...htmlFiles(full));
+    else if (entry.endsWith('.html')) out.push(full);
+  }
+  return out;
+}
+
+let injected = 0;
+for (const file of htmlFiles(DIST)) {
+  if (SKIP.has(file.slice(DIST.length + 1))) continue;
+  const page = readFileSync(file, 'utf8');
+  if (page.includes('/site-analytics.js')) continue;
+  if (!page.includes('</head>')) fail(`page sans </head> : ${file}`);
+  writeFileSync(file, page.replace('</head>', `  ${ANALYTICS_TAG}\n</head>`), 'utf8');
+  injected += 1;
+}
+
+console.log(
+  `[postbuild-web] app.html enrichi, landing installée en page d'accueil, analytics injectée dans ${injected} page(s)`,
+);
