@@ -1,0 +1,145 @@
+{
+  "label": "Nederlands",
+  "chrome": {
+    "home": "Home",
+    "guides": "Gidsen",
+    "about": "Over het spel",
+    "contact": "Contact",
+    "privacy": "Privacy",
+    "play": "Spelen",
+    "modes": "Spelmodi",
+    "online": "Online",
+    "faq": "Veelgestelde vragen",
+    "playNow": "Nu spelen",
+    "skipToContent": "Naar de inhoud",
+    "languageLabel": "Taal",
+    "footerTagline": "GeoG — gratis aardrijkskundespel: vlaggen, hoofdsteden en landen van de wereld.",
+    "footerCoords": "47°N 2°O · Gemaakt met ✦ voor ontdekkingsreizigers.",
+    "readNext": "Lees verder",
+    "relatedModes": "Andere spelmodi",
+    "sourceNote": "Spelgegevens",
+    "country": "Land",
+    "capital": "Hoofdstad",
+    "flag": "Vlag",
+    "neighbours": "Buurlanden",
+    "population": "Bevolking",
+    "area": "Oppervlakte (km²)",
+    "continent": "Werelddeel",
+    "haveApp": "Heb je de app al?",
+    "openInApp": "Openen in de app",
+    "dismiss": "Sluiten"
+  },
+  "slugs": {
+    "about": "over-het-spel",
+    "contact": "contact",
+    "privacy": "privacy"
+  },
+  "modes": {
+    "mode-flags": {
+      "name": "Vlaggen",
+      "slug": "vlaggenspel"
+    },
+    "mode-capitals": {
+      "name": "Hoofdsteden",
+      "slug": "hoofdsteden-quiz"
+    },
+    "mode-globe": {
+      "name": "3D-globe",
+      "slug": "3d-globe"
+    },
+    "mode-silhouettes": {
+      "name": "Silhouetten",
+      "slug": "silhouetten-van-landen"
+    },
+    "mode-borders": {
+      "name": "Grenzen",
+      "slug": "grenzenspel"
+    },
+    "mode-guess": {
+      "name": "Raad het land",
+      "slug": "raad-het-land"
+    },
+    "mode-rankle": {
+      "name": "Rankle",
+      "slug": "rankle"
+    },
+    "mode-higherlower": {
+      "name": "Hoger of lager",
+      "slug": "hoger-of-lager"
+    },
+    "mode-daily": {
+      "name": "Dagelijkse uitdaging",
+      "slug": "dagelijkse-uitdaging"
+    },
+    "mode-online": {
+      "name": "Online duels",
+      "slug": "online-duels"
+    },
+    "mode-ranked": {
+      "name": "Ranked-modus",
+      "slug": "ranked-modus"
+    },
+    "mode-story": {
+      "name": "Verhaalmodus",
+      "slug": "verhaalmodus"
+    }
+  },
+  "home": {
+    "title": "GeoG — gratis aardrijkskundespel: vlaggen, hoofdsteden, landen",
+    "description": "Speel gratis met de aardrijkskunde van de wereld: vlaggen, hoofdsteden, 3D-globe, silhouetten van landen en een dagelijkse uitdaging over alle 195 landen. Zonder account, meteen in de browser.",
+    "ogTitle": "GeoG — het aardrijkskundespel",
+    "h1": "GeoG, het aardrijkskundespel met alle {{countries}} landen",
+    "standfirst": "Vlaggen, hoofdsteden, 3D-globe, silhouetten en grenzen: {{modes}} spelmodi om de wereld te leren in partijtjes van drie minuten. Gratis, zonder account, in de browser of op je telefoon.",
+    "modesHeading": "De {{modes}} spelmodi",
+    "modesIntro": "Elke modus traint een ander stuk van de kaart: herkennen, plaatsen, vergelijken. Kies er een en begin met één tik.",
+    "howHeading": "Zo speel je",
+    "howBody": "Elke partij bestaat uit een paar korte rondes. Afhankelijk van het spel tik, kies of plaats je je antwoord; hoe preciezer, hoe meer punten. Geen stressende aftelklok, en de regels van een modus verschijnen vanzelf als je hem voor het eerst opent.",
+    "ctaTitle": "Begin een partij",
+    "ctaText": "Gratis, zonder account, meteen in de browser.",
+    "faq": [
+      {
+        "q": "Heb je een account nodig om te spelen?",
+        "a": "Nee. Alle solomodi en de dagelijkse uitdaging speel je zonder account. Het gratis account dient alleen om je voortgang te bewaren, online te spelen en in de ranglijsten te verschijnen."
+      },
+      {
+        "q": "Hoeveel landen zitten er in het spel?",
+        "a": "De {{countries}} lidstaten van de VN, niet alleen de dertig die iedereen kent. Ministaten en eilanden horen erbij."
+      },
+      {
+        "q": "Is de dagelijkse uitdaging voor iedereen hetzelfde?",
+        "a": "Ja. Elke dag krijgen alle spelers ter wereld precies dezelfde reeks vragen, en je kunt je resultaat vergelijken met dat van je vrienden."
+      }
+    ]
+  },
+  "mode": {
+    "titleSuffix": "gratis aardrijkskundespel",
+    "descriptionTail": "Gratis, zonder account, in de browser of op je telefoon.",
+    "howHeading": "Zo speel je",
+    "tipsHeading": "Handig om te weten",
+    "ctaTitle": "Nu spelen",
+    "otherModes": "De andere spelmodi"
+  },
+  "about": {
+    "title": "Over het spel — wie GeoG maakt",
+    "description": "GeoG is een gratis, onafhankelijk aardrijkskundespel: 12 modi, 195 landen, open data. Wie het maakt en met welke bronnen.",
+    "h1": "Over het spel",
+    "p1": "GeoG is een onafhankelijk aardrijkskundespel, gemaakt door één persoon. Het idee is simpel: de wereld leren in korte partijtjes, zonder opdringerige reclame en zonder verplicht account.",
+    "p2": "De landgegevens komen uit open bronnen — Wereldbank, Unesco, Verenigde Naties — en worden regelmatig bijgewerkt. De {{countries}} landen in het spel zijn de lidstaten van de VN.",
+    "p3": "Het spel draait in de browser en bestaat ook als app voor iPhone en Android. Zie je een fout in de gegevens of een kromme vertaling: schrijf ons, dat wordt snel rechtgezet."
+  },
+  "contact": {
+    "title": "Contact — GeoG",
+    "description": "Schrijf ons: fouten in de gegevens, ideeën voor spelmodi, vertaalproblemen of vragen over privacy.",
+    "h1": "Contact",
+    "p1": "Een verkeerd gegeven, een kromme vertaling, een idee voor een spelmodus? Schrijf naar contact@playgeog.com en je krijgt antwoord.",
+    "p2": "Voor alles rond je persoonsgegevens of het verwijderen van je account gebruik je hetzelfde adres, met vermelding van de betreffende gebruikersnaam."
+  },
+  "privacy": {
+    "title": "Privacyverklaring — GeoG",
+    "description": "Welke gegevens GeoG verzamelt, waarvoor ze dienen en hoe je verwijdering vraagt.",
+    "h1": "Privacyverklaring",
+    "p1": "GeoG kun je spelen zonder account en zonder enig persoonsgegeven af te staan. Maak je een account aan, dan bewaren we alleen je e-mailadres, je gebruikersnaam en je spelresultaten.",
+    "p2": "De app meet anoniem welke schermen gebruikt worden om het spel te verbeteren, en kan advertenties tonen. We verkopen je gegevens nooit.",
+    "p3": "Je kunt je account en alle bijbehorende gegevens verwijderen in het spel zelf, bij je profiel, of door te schrijven naar contact@playgeog.com."
+  }
+}

@@ -1,0 +1,145 @@
+{
+  "label": "Italiano",
+  "chrome": {
+    "home": "Home",
+    "guides": "Guide",
+    "about": "Sul gioco",
+    "contact": "Contatti",
+    "privacy": "Privacy",
+    "play": "Gioca",
+    "modes": "Modalità",
+    "online": "Online",
+    "faq": "Domande frequenti",
+    "playNow": "Gioca ora",
+    "skipToContent": "Vai al contenuto",
+    "languageLabel": "Lingua",
+    "footerTagline": "GeoG — gioco di geografia gratuito: bandiere, capitali e paesi del mondo.",
+    "footerCoords": "47°N 2°E · Fatto con ✦ per gli esploratori.",
+    "readNext": "Da leggere dopo",
+    "relatedModes": "Altre modalità di gioco",
+    "sourceNote": "Dati del gioco",
+    "country": "Paese",
+    "capital": "Capitale",
+    "flag": "Bandiera",
+    "neighbours": "Paesi confinanti",
+    "population": "Popolazione",
+    "area": "Superficie (km²)",
+    "continent": "Continente",
+    "haveApp": "Hai già l'app?",
+    "openInApp": "Apri nell'app",
+    "dismiss": "Chiudi"
+  },
+  "slugs": {
+    "about": "sul-gioco",
+    "contact": "contatti",
+    "privacy": "privacy"
+  },
+  "modes": {
+    "mode-flags": {
+      "name": "Bandiere",
+      "slug": "gioco-delle-bandiere"
+    },
+    "mode-capitals": {
+      "name": "Capitali",
+      "slug": "quiz-sulle-capitali"
+    },
+    "mode-globe": {
+      "name": "Globo 3D",
+      "slug": "globo-3d"
+    },
+    "mode-silhouettes": {
+      "name": "Sagome",
+      "slug": "sagome-dei-paesi"
+    },
+    "mode-borders": {
+      "name": "Confini",
+      "slug": "gioco-dei-confini"
+    },
+    "mode-guess": {
+      "name": "Indovina il paese",
+      "slug": "indovina-il-paese"
+    },
+    "mode-rankle": {
+      "name": "Rankle",
+      "slug": "rankle"
+    },
+    "mode-higherlower": {
+      "name": "Più o meno",
+      "slug": "piu-o-meno-paesi"
+    },
+    "mode-daily": {
+      "name": "Sfida del giorno",
+      "slug": "sfida-del-giorno"
+    },
+    "mode-online": {
+      "name": "Duelli online",
+      "slug": "duelli-online"
+    },
+    "mode-ranked": {
+      "name": "Modalità competitiva",
+      "slug": "modalita-competitiva"
+    },
+    "mode-story": {
+      "name": "Modalità storia",
+      "slug": "modalita-storia"
+    }
+  },
+  "home": {
+    "title": "GeoG — gioco di geografia gratis: bandiere, capitali e paesi",
+    "description": "Gioca gratis con la geografia del mondo: bandiere, capitali, globo 3D, sagome e una sfida quotidiana sui 195 paesi. Senza account, direttamente nel browser.",
+    "ogTitle": "GeoG — il gioco di geografia",
+    "h1": "GeoG, il gioco di geografia dei {{countries}} paesi",
+    "standfirst": "Bandiere, capitali, globo 3D, sagome e confini: {{modes}} modalità di gioco per imparare il mondo in partite da tre minuti. Gratis, senza account, nel browser o sul telefono.",
+    "modesHeading": "Le {{modes}} modalità di gioco",
+    "modesIntro": "Ogni modalità allena una parte diversa della carta: riconoscere, localizzare, confrontare. Scegli la tua e parti con un tocco.",
+    "howHeading": "Come si gioca",
+    "howBody": "Ogni partita è fatta di poche rapide manche. A seconda del gioco tocchi, scegli o posizioni la tua risposta; più sei preciso, più punti prendi. Nessun cronometro stressante, e le regole di ogni modalità compaiono la prima volta che la apri.",
+    "ctaTitle": "Inizia una partita",
+    "ctaText": "Gratis, senza account, direttamente nel browser.",
+    "faq": [
+      {
+        "q": "Serve un account per giocare?",
+        "a": "No. Tutte le modalità in solitaria e la sfida del giorno si giocano senza account. L'account gratuito serve solo a salvare i progressi, giocare online e comparire nelle classifiche."
+      },
+      {
+        "q": "Quanti paesi ci sono nel gioco?",
+        "a": "I {{countries}} paesi membri dell'ONU, non solo i trenta che conoscono tutti. Ci sono anche i microstati e le isole."
+      },
+      {
+        "q": "La sfida del giorno è uguale per tutti?",
+        "a": "Sì. Ogni giorno tutti i giocatori del mondo ricevono esattamente la stessa sequenza di domande, e si può confrontare il risultato con quello degli amici."
+      }
+    ]
+  },
+  "mode": {
+    "titleSuffix": "gioco di geografia gratis",
+    "descriptionTail": "Gratis, senza account, nel browser o sul telefono.",
+    "howHeading": "Come si gioca",
+    "tipsHeading": "Cosa conviene sapere",
+    "ctaTitle": "Gioca ora",
+    "otherModes": "Le altre modalità di gioco"
+  },
+  "about": {
+    "title": "Sul gioco — chi fa GeoG",
+    "description": "GeoG è un gioco di geografia gratuito e indipendente: 12 modalità, 195 paesi, dati aperti. Chi lo fa e con quali fonti.",
+    "h1": "Sul gioco",
+    "p1": "GeoG è un gioco di geografia indipendente, fatto da una persona sola. L'idea è semplice: imparare il mondo giocando partite brevi, senza pubblicità invadente e senza obbligo di creare un account.",
+    "p2": "I dati sui paesi vengono da fonti aperte — Banca Mondiale, Unesco, Nazioni Unite — e sono aggiornati con regolarità. I {{countries}} paesi del gioco sono gli Stati membri dell'ONU.",
+    "p3": "Il gioco funziona nel browser ed esiste anche come applicazione per iPhone e Android. Se trovi un dato sbagliato o una traduzione storta, scrivici: si corregge in fretta."
+  },
+  "contact": {
+    "title": "Contatti — GeoG",
+    "description": "Scrivici: errori nei dati, idee per nuove modalità, problemi di traduzione o domande sulla privacy.",
+    "h1": "Contatti",
+    "p1": "Un dato sbagliato, una traduzione storta, un'idea per una modalità di gioco? Scrivi a contact@playgeog.com e avrai una risposta.",
+    "p2": "Per qualsiasi questione sui tuoi dati personali o sulla cancellazione dell'account, usa lo stesso indirizzo indicando il nome utente in questione."
+  },
+  "privacy": {
+    "title": "Informativa sulla privacy — GeoG",
+    "description": "Quali dati raccoglie GeoG, a cosa servono e come chiederne la cancellazione.",
+    "h1": "Informativa sulla privacy",
+    "p1": "A GeoG si può giocare senza account e senza fornire alcun dato personale. Se crei un account, conserviamo soltanto la tua email, il tuo nome utente e i tuoi risultati di gioco.",
+    "p2": "L'applicazione misura in forma anonima l'uso delle schermate per migliorare il gioco e può mostrare pubblicità. Non vendiamo mai i tuoi dati.",
+    "p3": "Puoi cancellare il tuo account e tutti i suoi dati dal gioco stesso, nel tuo profilo, oppure scrivendo a contact@playgeog.com."
+  }
+}

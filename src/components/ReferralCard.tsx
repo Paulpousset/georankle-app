@@ -44,9 +44,7 @@ export function ReferralCard(): React.ReactElement | null {
     const link = myReferralLink(info.code);
     Share.share({
       message: tr(
-        language,
-        `Rejoins-moi sur GeoG 🌍 — on gagne tous les deux 50 pièces : ${link}`,
-        `Join me on GeoG 🌍 — we both earn 50 coins: ${link}`,
+        language, 'Rejoins-moi sur GeoG 🌍 — on gagne tous les deux 50 pièces : {0}', 'Join me on GeoG 🌍 — we both earn 50 coins: {0}', [link],
       ),
     }).catch(() => {});
   }, [info, language]);
@@ -62,7 +60,7 @@ export function ReferralCard(): React.ReactElement | null {
       track('referral_redeemed', { coins: res.coins });
       showAlert(
         tr(language, '🎉 Parrainage validé', '🎉 Referral applied'),
-        tr(language, `Vous gagnez chacun ${res.coins} pièces.`, `You both earn ${res.coins} coins.`),
+        tr(language, 'Vous gagnez chacun {0} pièces.', 'You both earn {0} coins.', [res.coins]),
       );
       refresh();
     } else {
@@ -97,7 +95,7 @@ export function ReferralCard(): React.ReactElement | null {
         <Text style={[styles.code, { color: c.accent }]}>{info.code}</Text>
         {info.count > 0 && (
           <Text style={[styles.count, { color: c.textMuted }]}>
-            {tr(language, `${info.count} filleul(s)`, `${info.count} joined`)}
+            {tr(language, '{0} filleul(s)', '{0} joined', [info.count])}
           </Text>
         )}
       </View>

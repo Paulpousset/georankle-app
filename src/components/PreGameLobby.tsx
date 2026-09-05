@@ -13,6 +13,7 @@ import { FONTS } from '../theme/typography';
 import { PlayerGlobe } from './PlayerGlobe';
 import { a11yHidden, announce } from '../lib/a11y';
 import { useEventCallback } from '../lib/useEventCallback';
+import { tr } from '../i18n';
 
 interface PlayerProfile {
   id: string;
@@ -59,7 +60,7 @@ export function PreGameLobby({
   useEffect(() => {
     if (countdown <= 0) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      announce(language === 'fr' ? "C'est parti !" : "Let's go!");
+      announce(tr(language, 'C\'est parti !', 'Let\'s go!'));
       readyStable();
       return;
     }
@@ -72,25 +73,25 @@ export function PreGameLobby({
     classic: 'Rankle',
     streak: 'Mode Streak',
     versus: 'Mode Versus',
-    globe: language === 'fr' ? 'Globe Géo' : 'Geo Globe',
-    guess: language === 'fr' ? 'Devine le Pays' : 'Guess Country',
-    regions: language === 'fr' ? 'Défis Pays' : 'Country Challenges',
-    challenge: language === 'fr' ? 'Quiz Pays' : 'Country Quiz',
+    globe: tr(language, 'Globe Géo', 'Geo Globe'),
+    guess: tr(language, 'Devine le Pays', 'Guess Country'),
+    regions: tr(language, 'Défis Pays', 'Country Challenges'),
+    challenge: tr(language, 'Quiz Pays', 'Country Quiz'),
   };
   const modeLabel = matchData.game_data?.is_custom
-    ? (language === 'fr' ? 'Partie perso' : 'Custom game')
+    ? (tr(language, 'Partie perso', 'Custom game'))
     : MODE_LABELS[matchData.game_mode] ?? 'Mode Versus';
 
   const renderPlayer = (profile: PlayerProfile | null, isCurrentUser: boolean) => (
     <PlayerGlobe
       config={profile?.avatar_config ?? null}
       photoUrl={profile?.avatar_url ?? null}
-      username={profile?.username ?? (language === 'fr' ? 'Joueur' : 'Player')}
+      username={profile?.username ?? (tr(language, 'Joueur', 'Player'))}
       size={116}
       label={
         isCurrentUser
-          ? (language === 'fr' ? 'VOUS' : 'YOU')
-          : (language === 'fr' ? 'ADVERSAIRE' : 'OPPONENT')
+          ? (tr(language, 'VOUS', 'YOU'))
+          : (tr(language, 'ADVERSAIRE', 'OPPONENT'))
       }
       accent={isCurrentUser ? '#2a6e3f' : undefined}
       animate
@@ -110,7 +111,7 @@ export function PreGameLobby({
 
         <View style={{ alignItems: 'center', gap: 6 }}>
           <Text style={{ color: c.textMuted, fontSize: 13, fontFamily: FONTS.mono }}>
-            {language === 'fr' ? 'contre' : 'vs'}
+            {tr(language, 'contre', 'vs')}
           </Text>
           <View
             style={{
@@ -130,12 +131,8 @@ export function PreGameLobby({
 
       <Text style={{ color: c.textMuted, fontFamily: FONTS.mono, fontSize: 14, marginTop: 48 }}>
         {countdown > 0
-          ? language === 'fr'
-            ? `La partie commence dans ${countdown}…`
-            : `Game starts in ${countdown}…`
-          : language === 'fr'
-            ? "C'est parti !"
-            : "Let's go!"}
+          ? tr(language, 'La partie commence dans {0}…', 'Game starts in {0}…', [countdown])
+          : tr(language, 'C\'est parti !', 'Let\'s go!')}
       </Text>
     </SafeAreaView>
   );

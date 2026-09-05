@@ -6,6 +6,8 @@ import Constants from 'expo-constants';
 
 import { supabase } from './supabase';
 import { log } from './log';
+import { tr } from '../i18n';
+import type { Language } from '../types';
 
 /**
  * AsyncStorage keys for the daily reminder. The reminder is ON by default for
@@ -115,7 +117,7 @@ export async function getDailyReminderPrefs(): Promise<DailyReminderPrefs> {
  * user has explicitly opted out. Safe to call on every launch / language change —
  * it replaces any prior schedule and no-ops on web or after an explicit opt-out.
  */
-export async function ensureDailyReminder(language: 'fr' | 'en' = 'fr'): Promise<void> {
+export async function ensureDailyReminder(language: Language = 'fr'): Promise<void> {
   if (Platform.OS === 'web') return;
   try {
     const enabled = await AsyncStorage.getItem(REMINDER_ENABLED_KEY);
@@ -155,7 +157,7 @@ let schedulingChain: Promise<boolean> = Promise.resolve(false);
 
 export async function scheduleDailyReminder(
   time: string,
-  language: 'fr' | 'en' = 'fr',
+  language: Language = 'fr',
 ): Promise<boolean> {
   if (Platform.OS === 'web') return false;
   const run = schedulingChain.then(() => doScheduleDailyReminder(time, language), () => doScheduleDailyReminder(time, language));
@@ -187,7 +189,7 @@ export async function isLeagueReminderEnabled(): Promise<boolean> {
  * opted in — same replace-any-prior semantics as ensureDailyReminder. No-ops on
  * web and for users who never enabled it.
  */
-export async function ensureLeagueReminder(language: 'fr' | 'en' = 'fr'): Promise<void> {
+export async function ensureLeagueReminder(language: Language = 'fr'): Promise<void> {
   if (Platform.OS === 'web') return;
   try {
     if ((await AsyncStorage.getItem(LEAGUE_REMINDER_ENABLED_KEY)) !== '1') return;
@@ -206,7 +208,7 @@ let leagueSchedulingChain: Promise<boolean> = Promise.resolve(false);
  * 10:00 local time. Requests the OS permission if needed; returns false when
  * denied (callers surface that) or on web/simulators.
  */
-export async function enableLeagueReminder(language: 'fr' | 'en' = 'fr'): Promise<boolean> {
+export async function enableLeagueReminder(language: Language = 'fr'): Promise<boolean> {
   if (Platform.OS === 'web') return false;
   const run = leagueSchedulingChain.then(
     () => doEnableLeagueReminder(language),
@@ -216,7 +218,7 @@ export async function enableLeagueReminder(language: 'fr' | 'en' = 'fr'): Promis
   return run;
 }
 
-async function doEnableLeagueReminder(language: 'fr' | 'en'): Promise<boolean> {
+async function doEnableLeagueReminder(language: Language): Promise<boolean> {
   try {
     if (!(await ensurePermissionGranted())) return false;
 
@@ -226,11 +228,9 @@ async function doEnableLeagueReminder(language: 'fr' | 'en'): Promise<boolean> {
 
     const id = await Notifications.scheduleNotificationAsync({
       content: {
-        title: language === 'fr' ? 'Ta ligue t’attend 🏆' : 'Your league is waiting 🏆',
+        title: tr(language, 'Ta ligue t’attend 🏆', 'Your league is waiting 🏆'),
         body:
-          language === 'fr'
-            ? 'Les 3 défis du jour sont tombés — joue-les avant tes amis !'
-            : 'Today’s 3 challenges just dropped — play them before your friends!',
+          tr(language, 'Les 3 défis du jour sont tombés — joue-les avant tes amis !', 'Today’s 3 challenges just dropped — play them before your friends!'),
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DAILY,
@@ -266,7 +266,7 @@ export async function disableLeagueReminder(): Promise<void> {
 
 async function doScheduleDailyReminder(
   time: string,
-  language: 'fr' | 'en',
+  language: Language,
 ): Promise<boolean> {
   try {
     if (!(await ensurePermissionGranted())) return false;
@@ -278,11 +278,9 @@ async function doScheduleDailyReminder(
     const [h, m] = time.split(':').map((n) => parseInt(n, 10));
     const id = await Notifications.scheduleNotificationAsync({
       content: {
-        title: language === 'fr' ? 'GeoRankle' : 'GeoRankle',
+        title: 'GeoG',
         body:
-          language === 'fr'
-            ? 'Ton défi du jour t’attend 🌍'
-            : 'Your daily challenge is waiting 🌍',
+          tr(language, 'Ton défi du jour t’attend 🌍', 'Your daily challenge is waiting 🌍'),
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DAILY,

@@ -56,9 +56,7 @@ export function passwordError(language: Language, password: string): string | nu
   if (!password) return null;
   if (password.length < PASSWORD_MIN) {
     return tr(
-      language,
-      `Le mot de passe doit faire au moins ${PASSWORD_MIN} caractères`,
-      `Password must be at least ${PASSWORD_MIN} characters`,
+      language, 'Le mot de passe doit faire au moins {0} caractères', 'Password must be at least {0} characters', [PASSWORD_MIN],
     );
   }
   if (isCommonPassword(password)) {
@@ -93,13 +91,11 @@ export function usernameError(language: Language, username: string): string | nu
   if (!v) return null;
   if (v.length < USERNAME_MIN) {
     return tr(
-      language,
-      `Au moins ${USERNAME_MIN} caractères`,
-      `At least ${USERNAME_MIN} characters`,
+      language, 'Au moins {0} caractères', 'At least {0} characters', [USERNAME_MIN],
     );
   }
   if (v.length > USERNAME_MAX) {
-    return tr(language, `Au plus ${USERNAME_MAX} caractères`, `At most ${USERNAME_MAX} characters`);
+    return tr(language, 'Au plus {0} caractères', 'At most {0} characters', [USERNAME_MAX]);
   }
   if (!/^[\p{L}\p{N} _.-]+$/u.test(v)) {
     return tr(

@@ -77,7 +77,7 @@ export function useSocialNotifications() {
           if (row.status !== 'pending') return;
           setPendingFriendCount((n) => n + 1);
           const name = await lookupUsername(row.user_id1);
-          toast.info(tr(langRef.current, `${name} veut être votre ami`, `${name} wants to be friends`));
+          toast.info(tr(langRef.current, '{0} veut être votre ami', '{0} wants to be friends', [name]));
         },
       )
       // Someone accepted a request I sent (I am user_id1). NEW carries user_id1,
@@ -90,7 +90,7 @@ export function useSocialNotifications() {
           if (row.status !== 'accepted') return;
           const name = await lookupUsername(row.user_id2);
           toast.success(
-            tr(langRef.current, `${name} a accepté votre demande d’ami`, `${name} accepted your friend request`),
+            tr(langRef.current, '{0} a accepté votre demande d’ami', '{0} accepted your friend request', [name]),
           );
         },
       )

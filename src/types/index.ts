@@ -6,7 +6,32 @@
  * where the source data is loose (e.g. the JSON-backed maps keyed by theme id).
  */
 
-export type Language = 'fr' | 'en';
+/**
+ * Les langues de l'interface. Le français et l'anglais sont écrits en dur dans
+ * le code (`tr(language, fr, en)`) ; les quatorze autres passent par les
+ * catalogues de `src/i18n/catalog/`, indexés sur la chaîne anglaise.
+ *
+ * ⚠️ Toute langue ajoutée ici doit l'être aussi dans `src/i18n/locales.ts`
+ * (métadonnées + police), dans `src/i18n/catalog/index.ts` (chargement) et
+ * dans `site/lib/routes.mjs` (URL du site). Un test le vérifie.
+ */
+export type Language =
+  | 'fr'
+  | 'en'
+  | 'es'
+  | 'pt'
+  | 'de'
+  | 'it'
+  | 'ru'
+  | 'tr'
+  | 'pl'
+  | 'nl'
+  | 'id'
+  | 'vi'
+  | 'th'
+  | 'uk'
+  | 'ro'
+  | 'el';
 
 /** A localized string pair as stored in the game data. */
 export interface LocalizedLabel {
@@ -136,6 +161,14 @@ export interface Match {
   p1_finished_round: boolean;
   p2_finished_round: boolean;
   game_data: MatchGameData | null;
+  /**
+   * L'accord de revanche, porté par le match joué (voir rematch.sql) :
+   * qui l'a demandée, et l'id de la partie née quand les deux ont accepté.
+   * En lecture seule pour le client — seules les RPC `request_rematch` /
+   * `cancel_rematch` les écrivent.
+   */
+  rematch_requested_by?: string | null;
+  rematch_match_id?: string | null;
   [key: string]: unknown;
 }
 

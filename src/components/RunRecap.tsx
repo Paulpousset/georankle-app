@@ -63,9 +63,7 @@ export function RunRecap({ entries, mistakesFirst = true, maxHeight = 260 }: Run
           {missed === 0
             ? tr(language, 'SANS FAUTE', 'FLAWLESS')
             : tr(
-                language,
-                `CE QUE TU AS RATÉ · ${missed}`,
-                `WHAT YOU MISSED · ${missed}`,
+                language, 'CE QUE TU AS RATÉ · {0}', 'WHAT YOU MISSED · {0}', [missed],
               )}
         </Text>
         <ScrollView
@@ -77,16 +75,12 @@ export function RunRecap({ entries, mistakesFirst = true, maxHeight = 260 }: Run
             const answerLine = e.ok
               ? e.correctAnswer
               : tr(
-                  language,
-                  `${e.yourAnswer || '—'}  →  ${e.correctAnswer}`,
-                  `${e.yourAnswer || '—'}  →  ${e.correctAnswer}`,
+                  language, '{0}  →  {1}', '{0}  →  {1}', [e.yourAnswer || '—', e.correctAnswer],
                 );
             const label = e.ok
-              ? tr(language, `${e.prompt}, correct`, `${e.prompt}, correct`)
+              ? tr(language, '{0}, correct', '{0}, correct', [e.prompt])
               : tr(
-                  language,
-                  `${e.prompt}, raté. Ta réponse ${e.yourAnswer || 'aucune'}. Bonne réponse ${e.correctAnswer}`,
-                  `${e.prompt}, missed. You answered ${e.yourAnswer || 'nothing'}. Correct answer ${e.correctAnswer}`,
+                  language, '{0}, raté. Ta réponse {1}. Bonne réponse {2}', '{0}, missed. You answered {3}. Correct answer {2}', [e.prompt, e.yourAnswer || 'aucune', e.correctAnswer, e.yourAnswer || 'nothing'],
                 );
             return (
               <TouchableOpacity

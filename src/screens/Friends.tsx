@@ -191,9 +191,7 @@ export default function Friends({ onBack, onOpenPlayer, onRequestsChanged }: Fri
           onPress={() => onOpenPlayer?.(friendData.id, friendData.username)}
           accessibilityRole="button"
           accessibilityLabel={tr(
-            language,
-            `Voir le profil de ${friendData.username}`,
-            `View ${friendData.username}'s profile`,
+            language, 'Voir le profil de {0}', 'View {0}\'s profile', [friendData.username],
           )}
         >
           <Text style={[styles.usernameText, { color: c.text }]} numberOfLines={1}>
@@ -223,9 +221,7 @@ export default function Friends({ onBack, onOpenPlayer, onRequestsChanged }: Fri
           onPress={() => item.user1 && onOpenPlayer?.(item.user1.id, item.user1.username)}
           accessibilityRole="button"
           accessibilityLabel={tr(
-            language,
-            `${item.user1?.username} veut être votre ami. Voir son profil`,
-            `${item.user1?.username} wants to be friends. View their profile`,
+            language, '{0} veut être votre ami. Voir son profil', '{0} wants to be friends. View their profile', [item.user1?.username],
           )}
         >
           <Text style={[styles.usernameText, { color: c.text }]} numberOfLines={2}>
@@ -265,9 +261,7 @@ export default function Friends({ onBack, onOpenPlayer, onRequestsChanged }: Fri
         onPress={() => onOpenPlayer?.(item.id, item.username)}
         accessibilityRole="button"
         accessibilityLabel={tr(
-          language,
-          `Voir le profil de ${item.username}`,
-          `View ${item.username}'s profile`,
+          language, 'Voir le profil de {0}', 'View {0}\'s profile', [item.username],
         )}
       >
         <Text style={[styles.usernameText, { color: c.text }]} numberOfLines={1}>
@@ -294,14 +288,14 @@ export default function Friends({ onBack, onOpenPlayer, onRequestsChanged }: Fri
         ? [
             {
               type: 'header',
-              title: language === 'fr' ? 'Demandes en attente' : 'Pending requests',
+              title: tr(language, 'Demandes en attente', 'Pending requests'),
             },
             ...pendingRequests.map((r) => ({ ...r, type: 'pending' })),
           ]
         : []),
       ...(friends.length > 0
         ? [
-            { type: 'header', title: language === 'fr' ? 'Mes amis' : 'My friends' },
+            { type: 'header', title: tr(language, 'Mes amis', 'My friends') },
             ...friends.map((f) => ({ ...f, type: 'friend' })),
           ]
         : []),
@@ -337,7 +331,7 @@ export default function Friends({ onBack, onOpenPlayer, onRequestsChanged }: Fri
             <ArrowLeft color={c.accent} size={20} />
           </TouchableOpacity>
           <Text style={[styles.title, isDarkMode ? styles.titleDark : styles.titleLight]}>
-            {language === 'fr' ? 'Amis' : 'Friends'}
+            {tr(language, 'Amis', 'Friends')}
           </Text>
           <View style={{ width: 44 }} />
         </View>
@@ -348,7 +342,7 @@ export default function Friends({ onBack, onOpenPlayer, onRequestsChanged }: Fri
               styles.searchInput,
               { backgroundColor: c.card, borderColor: c.border, color: c.text },
             ]}
-            placeholder={language === 'fr' ? 'Rechercher un pseudo...' : 'Search a username...'}
+            placeholder={tr(language, 'Rechercher un pseudo...', 'Search a username...')}
             placeholderTextColor={c.textFaint}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -377,9 +371,7 @@ export default function Friends({ onBack, onOpenPlayer, onRequestsChanged }: Fri
           <View style={styles.section}>
             <Text style={[styles.emptyText, { color: c.textMuted }]}>
               {tr(
-                language,
-                `Aucun joueur trouvé pour « ${searchQuery} ».`,
-                `No player found for “${searchQuery}”.`,
+                language, 'Aucun joueur trouvé pour « {0} ».', 'No player found for “{0}”.', [searchQuery],
               )}
             </Text>
           </View>
@@ -393,7 +385,7 @@ export default function Friends({ onBack, onOpenPlayer, onRequestsChanged }: Fri
                 { color: c.textMuted },
               ]}
             >
-              {language === 'fr' ? 'Résultats' : 'Results'}
+              {tr(language, 'Résultats', 'Results')}
             </Text>
             <FlatList
               data={searchResults}
@@ -418,9 +410,7 @@ export default function Friends({ onBack, onOpenPlayer, onRequestsChanged }: Fri
                     { color: c.textFaint },
                   ]}
                 >
-                  {language === 'fr'
-                    ? "Vous n'avez pas encore d'amis."
-                    : 'You have no friends yet.'}
+                  {tr(language, 'Vous n\'avez pas encore d\'amis.', 'You have no friends yet.')}
                 </Text>
               ) : null
             }

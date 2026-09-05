@@ -73,8 +73,8 @@ export function RewardedAdButton({ context, onEarned }: RewardedAdButtonProps) {
       const result = await showRewardedAd();
       if (result.granted) {
         const coins = result.coins ?? REWARDED_COINS;
-        toast.success(tr(language, `+${coins} pièces !`, `+${coins} coins!`));
-        announce(tr(language, `${coins} pièces gagnées`, `${coins} coins earned`));
+        toast.success(tr(language, '+{0} pièces !', '+{0} coins!', [coins]));
+        announce(tr(language, '{0} pièces gagnées', '{0} coins earned', [coins]));
         track('rewarded_ad_earned', { context, coins });
         onEarned?.(coins);
       } else if (result.reason === 'capped') {
@@ -95,9 +95,7 @@ export function RewardedAdButton({ context, onEarned }: RewardedAdButtonProps) {
 
   const counter = remaining !== null ? ` (${remaining}/${REWARDED_DAILY_CAP})` : '';
   const label = tr(
-    language,
-    `Regarder une pub : ${REWARDED_COINS} pièces${counter}`,
-    `Watch an ad: ${REWARDED_COINS} coins${counter}`,
+    language, 'Regarder une pub : {0} pièces{1}', 'Watch an ad: {0} coins{1}', [REWARDED_COINS, counter],
   );
 
   const GOLD = '#f5b301';

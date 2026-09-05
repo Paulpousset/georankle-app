@@ -1,0 +1,145 @@
+{
+  "label": "Türkçe",
+  "chrome": {
+    "home": "Ana sayfa",
+    "guides": "Rehberler",
+    "about": "Oyun hakkında",
+    "contact": "İletişim",
+    "privacy": "Gizlilik",
+    "play": "Oyna",
+    "modes": "Modlar",
+    "online": "Çevrimiçi",
+    "faq": "Sık sorulan sorular",
+    "playNow": "Hemen oyna",
+    "skipToContent": "İçeriğe geç",
+    "languageLabel": "Dil",
+    "footerTagline": "GeoG — ücretsiz coğrafya oyunu: dünyanın bayrakları, başkentleri ve ülkeleri.",
+    "footerCoords": "47°K 2°D · Kâşifler için ✦ ile yapıldı.",
+    "readNext": "Sırada",
+    "relatedModes": "Diğer oyun modları",
+    "sourceNote": "Oyun verileri",
+    "country": "Ülke",
+    "capital": "Başkent",
+    "flag": "Bayrak",
+    "neighbours": "Komşu ülkeler",
+    "population": "Nüfus",
+    "area": "Yüzölçümü (km²)",
+    "continent": "Kıta",
+    "haveApp": "Uygulama zaten sende mi?",
+    "openInApp": "Uygulamada aç",
+    "dismiss": "Kapat"
+  },
+  "slugs": {
+    "about": "oyun-hakkinda",
+    "contact": "iletisim",
+    "privacy": "gizlilik"
+  },
+  "modes": {
+    "mode-flags": {
+      "name": "Bayraklar",
+      "slug": "bayrak-oyunu"
+    },
+    "mode-capitals": {
+      "name": "Başkentler",
+      "slug": "baskent-testi"
+    },
+    "mode-globe": {
+      "name": "3B küre",
+      "slug": "3b-kure"
+    },
+    "mode-silhouettes": {
+      "name": "Siluetler",
+      "slug": "ulke-siluetleri"
+    },
+    "mode-borders": {
+      "name": "Sınırlar",
+      "slug": "sinir-oyunu"
+    },
+    "mode-guess": {
+      "name": "Ülkeyi bil",
+      "slug": "ulkeyi-bil"
+    },
+    "mode-rankle": {
+      "name": "Rankle",
+      "slug": "rankle"
+    },
+    "mode-higherlower": {
+      "name": "Daha çok mu az mı",
+      "slug": "daha-cok-mu-az-mi"
+    },
+    "mode-daily": {
+      "name": "Günün görevi",
+      "slug": "gunun-gorevi"
+    },
+    "mode-online": {
+      "name": "Çevrimiçi düellolar",
+      "slug": "cevrimici-duellolar"
+    },
+    "mode-ranked": {
+      "name": "Dereceli mod",
+      "slug": "dereceli-mod"
+    },
+    "mode-story": {
+      "name": "Hikâye modu",
+      "slug": "hikaye-modu"
+    }
+  },
+  "home": {
+    "title": "GeoG — ücretsiz coğrafya oyunu: bayraklar, başkentler, ülkeler",
+    "description": "Dünya coğrafyasını ücretsiz oyna: bayraklar, başkentler, 3B küre, ülke siluetleri ve 195 ülkeyi kapsayan günlük görev. Hesap gerekmez, doğrudan tarayıcıda.",
+    "ogTitle": "GeoG — coğrafya oyunu",
+    "h1": "GeoG, {{countries}} ülkenin coğrafya oyunu",
+    "standfirst": "Bayraklar, başkentler, 3B küre, siluetler ve sınırlar: dünyayı üç dakikalık partiler hâlinde öğrenmek için {{modes}} oyun modu. Ücretsiz, hesapsız, tarayıcıda ya da telefonda.",
+    "modesHeading": "{{modes}} oyun modu",
+    "modesIntro": "Her mod haritanın başka bir yanını çalıştırır: tanımak, yerini bulmak, karşılaştırmak. Birini seç ve tek dokunuşla başla.",
+    "howHeading": "Nasıl oynanır",
+    "howBody": "Her parti birkaç kısa turdan oluşur. Oyuna göre cevabına dokunur, seçer ya da yerleştirirsin; ne kadar isabetli olursan o kadar çok puan alırsın. Strese sokan sayaç yok, bir modu ilk açtığında kuralları kendiliğinden çıkar.",
+    "ctaTitle": "Bir parti başlat",
+    "ctaText": "Ücretsiz, hesapsız, doğrudan tarayıcıda.",
+    "faq": [
+      {
+        "q": "Oynamak için hesap açmak gerekir mi?",
+        "a": "Hayır. Tüm tek kişilik modlar ve günün görevi hesapsız oynanır. Ücretsiz hesap yalnızca ilerlemeni kaydetmek, çevrimiçi oynamak ve sıralamalarda görünmek içindir."
+      },
+      {
+        "q": "Oyunda kaç ülke var?",
+        "a": "BM üyesi {{countries}} ülke — yalnızca herkesin bildiği otuz tanesi değil. Mikro devletler ve adalar da dâhil."
+      },
+      {
+        "q": "Günün görevi herkes için aynı mı?",
+        "a": "Evet. Her gün dünyadaki tüm oyuncular tam olarak aynı soru dizisini alır ve sonucunu arkadaşlarınınkiyle karşılaştırabilir."
+      }
+    ]
+  },
+  "mode": {
+    "titleSuffix": "ücretsiz coğrafya oyunu",
+    "descriptionTail": "Ücretsiz, hesapsız, tarayıcıda ya da telefonda.",
+    "howHeading": "Nasıl oynanır",
+    "tipsHeading": "Bilmekte fayda var",
+    "ctaTitle": "Hemen oyna",
+    "otherModes": "Diğer oyun modları"
+  },
+  "about": {
+    "title": "Oyun hakkında — GeoG'yi kim yapıyor",
+    "description": "GeoG ücretsiz ve bağımsız bir coğrafya oyunu: 12 mod, 195 ülke, açık veri. Kim yapıyor ve hangi kaynaklarla.",
+    "h1": "Oyun hakkında",
+    "p1": "GeoG, tek bir kişinin yaptığı bağımsız bir coğrafya oyunu. Fikir basit: kısa partiler oynayarak dünyayı öğrenmek — rahatsız edici reklam yok, hesap zorunluluğu yok.",
+    "p2": "Ülke verileri açık kaynaklardan geliyor: Dünya Bankası, UNESCO, Birleşmiş Milletler; düzenli olarak güncelleniyor. Oyundaki {{countries}} ülke, BM üyesi devletlerdir.",
+    "p3": "Oyun tarayıcıda çalışır, ayrıca iPhone ve Android uygulaması olarak da vardır. Veride bir hata ya da bozuk bir çeviri görürsen yaz: hızlıca düzeltilir."
+  },
+  "contact": {
+    "title": "İletişim — GeoG",
+    "description": "Bize yaz: veri hataları, oyun modu fikirleri, çeviri sorunları ya da gizlilikle ilgili sorular.",
+    "h1": "İletişim",
+    "p1": "Yanlış bir veri, bozuk bir çeviri, bir oyun modu fikri mi var? contact@playgeog.com adresine yaz, cevap alırsın.",
+    "p2": "Kişisel verilerinle ya da hesabının silinmesiyle ilgili her konuda aynı adrese, ilgili kullanıcı adını belirterek yazabilirsin."
+  },
+  "privacy": {
+    "title": "Gizlilik politikası — GeoG",
+    "description": "GeoG hangi verileri topluyor, ne işe yarıyorlar ve silinmelerini nasıl istersin.",
+    "h1": "Gizlilik politikası",
+    "p1": "GeoG hesapsız ve hiçbir kişisel veri vermeden oynanabilir. Hesap açarsan yalnızca e-posta adresini, kullanıcı adını ve oyun sonuçlarını saklarız.",
+    "p2": "Uygulama, oyunu iyileştirmek için hangi ekranların kullanıldığını anonim olarak ölçer ve reklam gösterebilir. Verilerini asla satmayız.",
+    "p3": "Hesabını ve ona ait tüm verileri oyunun içinden, profilinden silebilir ya da contact@playgeog.com adresine yazabilirsin."
+  }
+}

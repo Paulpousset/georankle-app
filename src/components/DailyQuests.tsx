@@ -44,8 +44,8 @@ export function DailyQuests() {
       const result = await claimQuest(quest.id);
       if (result.claimed) {
         const coins = result.coins_awarded ?? quest.reward;
-        toast.success(tr(language, `+${coins} pièces !`, `+${coins} coins!`));
-        announce(tr(language, `${coins} pièces récupérées`, `${coins} coins claimed`));
+        toast.success(tr(language, '+{0} pièces !', '+{0} coins!', [coins]));
+        announce(tr(language, '{0} pièces récupérées', '{0} coins claimed', [coins]));
         track('quest_claimed', { quest: quest.id, coins });
       } else if (result.reason === 'already_claimed') {
         toast.info(tr(language, 'Déjà récupérée.', 'Already claimed.'));
@@ -115,7 +115,7 @@ export function DailyQuests() {
                 onPress={() => onClaim(q)}
                 disabled={claiming === q.id}
                 {...a11yButton(
-                  tr(language, `Récupérer ${q.reward} pièces`, `Claim ${q.reward} coins`),
+                  tr(language, 'Récupérer {0} pièces', 'Claim {0} coins', [q.reward]),
                   { disabled: claiming === q.id },
                 )}
                 style={{
@@ -145,7 +145,7 @@ export function DailyQuests() {
                 accessibilityLabel={
                   q.claimed
                     ? tr(language, 'Récompense récupérée', 'Reward claimed')
-                    : tr(language, `Récompense : ${q.reward} pièces`, `Reward: ${q.reward} coins`)
+                    : tr(language, 'Récompense : {0} pièces', 'Reward: {0} coins', [q.reward])
                 }
               >
                 <Coins color={q.claimed ? c.textFaint : '#ffd700'} size={13} />

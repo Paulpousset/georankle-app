@@ -1,0 +1,145 @@
+{
+  "label": "Deutsch",
+  "chrome": {
+    "home": "Startseite",
+    "guides": "Ratgeber",
+    "about": "Über das Spiel",
+    "contact": "Kontakt",
+    "privacy": "Datenschutz",
+    "play": "Spielen",
+    "modes": "Modi",
+    "online": "Online",
+    "faq": "Häufige Fragen",
+    "playNow": "Jetzt spielen",
+    "skipToContent": "Zum Inhalt springen",
+    "languageLabel": "Sprache",
+    "footerTagline": "GeoG — kostenloses Geografiespiel: Flaggen, Hauptstädte und Länder der Welt.",
+    "footerCoords": "47°N 2°O · Mit ✦ für Entdecker gemacht.",
+    "readNext": "Weiterlesen",
+    "relatedModes": "Andere Spielmodi",
+    "sourceNote": "Spieldaten",
+    "country": "Land",
+    "capital": "Hauptstadt",
+    "flag": "Flagge",
+    "neighbours": "Nachbarländer",
+    "population": "Bevölkerung",
+    "area": "Fläche (km²)",
+    "continent": "Kontinent",
+    "haveApp": "Du hast die App schon?",
+    "openInApp": "In der App öffnen",
+    "dismiss": "Schließen"
+  },
+  "slugs": {
+    "about": "ueber-das-spiel",
+    "contact": "kontakt",
+    "privacy": "datenschutz"
+  },
+  "modes": {
+    "mode-flags": {
+      "name": "Flaggen",
+      "slug": "flaggen-quiz"
+    },
+    "mode-capitals": {
+      "name": "Hauptstädte",
+      "slug": "hauptstaedte-quiz"
+    },
+    "mode-globe": {
+      "name": "3D-Globus",
+      "slug": "3d-globus"
+    },
+    "mode-silhouettes": {
+      "name": "Umrisse",
+      "slug": "laender-umrisse"
+    },
+    "mode-borders": {
+      "name": "Grenzen",
+      "slug": "grenzen-spiel"
+    },
+    "mode-guess": {
+      "name": "Land erraten",
+      "slug": "land-erraten"
+    },
+    "mode-rankle": {
+      "name": "Rankle",
+      "slug": "rankle"
+    },
+    "mode-higherlower": {
+      "name": "Höher oder niedriger",
+      "slug": "hoeher-oder-niedriger"
+    },
+    "mode-daily": {
+      "name": "Tagesaufgabe",
+      "slug": "tagesaufgabe"
+    },
+    "mode-online": {
+      "name": "Online-Duelle",
+      "slug": "online-duelle"
+    },
+    "mode-ranked": {
+      "name": "Ranglistenmodus",
+      "slug": "ranglistenmodus"
+    },
+    "mode-story": {
+      "name": "Story-Modus",
+      "slug": "story-modus"
+    }
+  },
+  "home": {
+    "title": "GeoG — kostenloses Geografiespiel: Flaggen, Hauptstädte, Länder",
+    "description": "Spiel kostenlos mit der Geografie der Welt: Flaggen, Hauptstädte, 3D-Globus, Länderumrisse und eine Tagesaufgabe zu allen 195 Ländern. Ohne Konto, direkt im Browser.",
+    "ogTitle": "GeoG — das Geografiespiel",
+    "h1": "GeoG, das Geografiespiel mit allen {{countries}} Ländern",
+    "standfirst": "Flaggen, Hauptstädte, 3D-Globus, Umrisse und Grenzen: {{modes}} Spielmodi, um die Welt in Partien von drei Minuten zu lernen. Kostenlos, ohne Konto, im Browser oder auf dem Handy.",
+    "modesHeading": "Die {{modes}} Spielmodi",
+    "modesIntro": "Jeder Modus übt einen anderen Teil der Karte: erkennen, verorten, vergleichen. Such dir einen aus und leg mit einem Tipp los.",
+    "howHeading": "So wird gespielt",
+    "howBody": "Jede Partie besteht aus ein paar kurzen Runden. Je nach Spiel tippst, wählst oder platzierst du deine Antwort; je genauer du bist, desto mehr Punkte gibt es. Kein stressiger Countdown — und die Regeln eines Modus erscheinen beim ersten Öffnen von selbst.",
+    "ctaTitle": "Starte eine Partie",
+    "ctaText": "Kostenlos, ohne Konto, direkt im Browser.",
+    "faq": [
+      {
+        "q": "Braucht man ein Konto zum Spielen?",
+        "a": "Nein. Alle Solo-Modi und die Tagesaufgabe laufen ohne Konto. Das kostenlose Konto braucht man nur, um den Fortschritt zu sichern, online zu spielen und in den Bestenlisten aufzutauchen."
+      },
+      {
+        "q": "Wie viele Länder kommen im Spiel vor?",
+        "a": "Die {{countries}} Mitgliedstaaten der UNO, nicht nur die dreißig, die jeder kennt. Kleinstaaten und Inseln sind dabei."
+      },
+      {
+        "q": "Ist die Tagesaufgabe für alle gleich?",
+        "a": "Ja. Jeden Tag bekommen alle Spielerinnen und Spieler weltweit genau dieselbe Fragenfolge, und man kann sein Ergebnis mit dem der Freunde vergleichen."
+      }
+    ]
+  },
+  "mode": {
+    "titleSuffix": "kostenloses Geografiespiel",
+    "descriptionTail": "Kostenlos, ohne Konto, im Browser oder auf dem Handy.",
+    "howHeading": "So wird gespielt",
+    "tipsHeading": "Gut zu wissen",
+    "ctaTitle": "Jetzt spielen",
+    "otherModes": "Die anderen Spielmodi"
+  },
+  "about": {
+    "title": "Über GeoG — wer dieses Geografiespiel macht",
+    "description": "GeoG ist ein kostenloses, unabhängiges Geografiespiel: 12 Modi, 195 Länder, offene Daten. Wer dahintersteckt und welche Quellen es nutzt.",
+    "h1": "Über GeoG",
+    "p1": "GeoG ist ein unabhängiges Geografiespiel, gemacht von einer einzigen Person. Die Idee ist einfach: die Welt in kurzen Partien lernen, ohne aufdringliche Werbung und ohne Kontozwang.",
+    "p2": "Die Länderdaten stammen aus offenen Quellen — Weltbank, UNESCO, Vereinte Nationen — und werden regelmäßig aktualisiert. Die {{countries}} Länder des Spiels sind die Mitgliedstaaten der UNO.",
+    "p3": "Das Spiel läuft im Browser und gibt es auch als App für iPhone und Android. Wenn dir ein Datenfehler oder eine schiefe Übersetzung auffällt: schreib uns, das wird schnell korrigiert."
+  },
+  "contact": {
+    "title": "Kontakt — GeoG",
+    "description": "Schreib uns: Datenfehler, Ideen für Spielmodi, Übersetzungsprobleme oder Fragen zum Datenschutz.",
+    "h1": "Kontakt",
+    "p1": "Eine falsche Angabe, eine schiefe Übersetzung, eine Idee für einen Spielmodus? Schreib an contact@playgeog.com — du bekommst eine Antwort.",
+    "p2": "Für alles rund um deine personenbezogenen Daten oder das Löschen deines Kontos nimm dieselbe Adresse und nenne den betreffenden Nutzernamen."
+  },
+  "privacy": {
+    "title": "Datenschutzerklärung — GeoG",
+    "description": "Welche Daten GeoG erhebt, wozu sie dienen und wie du ihre Löschung verlangst.",
+    "h1": "Datenschutzerklärung",
+    "p1": "GeoG lässt sich ohne Konto und ohne Angabe personenbezogener Daten spielen. Wenn du ein Konto anlegst, speichern wir nur deine E-Mail-Adresse, deinen Nutzernamen und deine Spielergebnisse.",
+    "p2": "Die App misst anonym, welche Bildschirme genutzt werden, um das Spiel zu verbessern, und kann Werbung anzeigen. Wir verkaufen deine Daten nicht.",
+    "p3": "Du kannst dein Konto und alle zugehörigen Daten direkt im Spiel in deinem Profil löschen oder eine Mail an contact@playgeog.com schreiben."
+  }
+}

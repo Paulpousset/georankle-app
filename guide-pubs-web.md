@@ -1,4 +1,4 @@
-# Pubs sur le web — état et marche à suivre (mis à jour le 16/08/2026)
+# Pubs sur le web — état et marche à suivre (mis à jour le 05/09/2026)
 
 ## Où on en est
 
@@ -82,6 +82,50 @@ sans contenu d'éditeur. `/play` reste un écran de jeu. Tant que `web_ads` est 
 flag ne doit être activé **qu'après** l'approbation du site. Pour consolider,
 il faudra enrichir `/play` d'un vrai contenu (règles, conseils, description des
 modes) autour du jeu.
+
+## Le refus du 05/09/2026 — quatrième examen
+
+Quatre refus d'affilée, motif « contenu à faible valeur informative ». Audit de
+la production, page par page :
+
+**1. Googlebot n'a jamais vu une ligne de code AdSense.** `ads-content.js` ne
+chargeait la bibliothèque qu'au-dessus de **1120 px de large**. Googlebot rend
+les pages en ~412 px (mobile) et ~1024 px (ordinateur) : les deux passent sous
+le seuil. Aucune page du site ne chargeait donc `adsbygoogle.js` du point de vue
+de Google, et pas un seul `<ins class="adsbygoogle">` n'existait dans le DOM
+qu'il voit. L'accueil, `/play` et `/privacy.html` n'avaient même pas le script
+dans le HTML.
+
+*Corrigé* : le code AdSense est désormais dans le `<head>` de toutes les pages
+qui ont le droit d'afficher des annonces (`ADSENSE_HEAD`, site/lib/layout.mjs),
+accueil et `/play` compris — pas sur `/privacy` ni sur le 404. `ads-content.js`
+ne charge plus la bibliothèque, il ne fait plus qu'injecter les unités, toujours
+au-dessus de 1120 px seulement.
+⚠️ La règle « jamais de bandeau sur mobile » ne repose plus que sur **un seul**
+garde-fou : les **Auto ads doivent rester désactivées** dans la console. Avant,
+l'absence de bibliothèque en dessous du seuil servait de second filet ; ce filet
+n'existe plus.
+
+**2. `/play` était une page vide.** Dix mots de contenu éditorial, indexable,
+dans le sitemap — et la destination du bouton « Jouer » de **46 des 96 pages**
+du site. Un examinateur qui suit l'appel à l'action principal atterrissait sur
+une coquille. C'est mot pour mot le motif n°1 du refus du 16/08, jamais corrigé.
+
+*Corrigé* : `/play` porte maintenant un vrai bloc éditorial sous le jeu
+(site/lib/playDoc.mjs) — défi du jour, les 12 modes avec leurs règles, le barème
+0–1000, les commandes, compte ou pas, FAQ, liens de pied de page. **963 mots en
+français, 913 en anglais.** Le jeu garde exactement une hauteur d'écran
+(`#root` en `100dvh`) et le texte se lit en défilant.
+
+**3. Ce qui n'était PAS en cause.** Le contenu des 96 pages est réellement
+distinct : chevauchement de 6-grammes entre pages sœurs (`drapeaux-europe` vs
+`drapeaux-asie`, etc.) mesuré à **3–5 %**. Rien de dupliqué ni de généré en
+série. `ads.txt` et `app-ads.txt` répondent 200 avec le bon éditeur, les URLs
+inexistantes renvoient un vrai 404, les pages institutionnelles existent.
+
+**4. Reste à faire.** Une quarantaine de pages tiennent entre 428 et 660 mots.
+C'est mince pour AdSense, surtout quand chacune se termine par un bouton vers
+l'app. À étoffer si un cinquième refus tombe.
 
 ## Répartition cible des formats
 

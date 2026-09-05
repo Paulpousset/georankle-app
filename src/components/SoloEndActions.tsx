@@ -21,6 +21,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { a11yButton, a11yHidden } from '../lib/a11y';
+import { ScoreText } from './ScoreText';
 import { tr } from '../i18n';
 
 interface SoloEndActionsProps {
@@ -78,7 +79,7 @@ export function SoloEndActions({
       <Icon color={kind === 'primary' ? '#fff' : c.text} size={17} {...a11yHidden} />
       {/* Deux boutons côte à côte sur un écran de 360 px : sans rétrécissement,
           « Nouvelle partie » se faisait couper en « Nouvelle par… ». */}
-      <Text
+      <ScoreText
         numberOfLines={1}
         adjustsFontSizeToFit
         minimumFontScale={0.8}
@@ -90,7 +91,7 @@ export function SoloEndActions({
         }}
       >
         {label}
-      </Text>
+      </ScoreText>
     </TouchableOpacity>
   );
 

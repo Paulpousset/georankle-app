@@ -10,6 +10,7 @@ import { FONTS } from '../theme/typography';
 import { formatMatchScore } from '../lib/match';
 import { a11yButton, announce } from '../lib/a11y';
 import { ScoreText } from './ScoreText';
+import { tr } from '../i18n';
 
 interface WaitingOpponentProps {
   myScore: number;
@@ -57,9 +58,7 @@ export function WaitingOpponent({
   useEffect(() => {
     if (forfeitAvailable && onClaimForfeit) {
       announce(
-        language === 'fr'
-          ? "L'adversaire semble avoir quitté. Tu peux réclamer la victoire."
-          : 'The opponent seems to have left. You can claim the win.',
+        tr(language, 'L\'adversaire semble avoir quitté. Tu peux réclamer la victoire.', 'The opponent seems to have left. You can claim the win.'),
       );
     }
   }, [forfeitAvailable, onClaimForfeit, language]);
@@ -67,7 +66,7 @@ export function WaitingOpponent({
   // Let screen-reader users know the round is over and we're waiting on the
   // opponent (this screen otherwise has no focusable element to convey it).
   useEffect(() => {
-    announce(language === 'fr' ? "En attente de l'adversaire" : 'Waiting for opponent');
+    announce(tr(language, 'En attente de l\'adversaire', 'Waiting for opponent'));
   }, [language]);
 
   // Label and value must both follow the mode actually being played. Only
@@ -76,22 +75,20 @@ export function WaitingOpponent({
   // the unit can never drift from the other match screens.
   const scoreLabel =
     gameMode === 'streak' || gameMode === 'higherlower'
-      ? language === 'fr' ? 'Série' : 'Streak'
+      ? tr(language, 'Série', 'Streak')
       : gameMode === 'classic'
-        ? language === 'fr' ? 'Efficacité' : 'Efficiency'
-        : language === 'fr' ? 'Points' : 'Points';
+        ? tr(language, 'Efficacité', 'Efficiency')
+        : tr(language, 'Points', 'Points');
 
   const scoreDisplay = formatMatchScore(gameMode, myScore);
 
   const confirmLeave = () => {
     showAlert(
-      language === 'fr' ? 'Quitter la partie ?' : 'Leave the match?',
-      language === 'fr'
-        ? "L'adversaire semble absent. Tu peux quitter et revenir au menu."
-        : 'The opponent seems away. You can leave and return to the menu.',
+      tr(language, 'Quitter la partie ?', 'Leave the match?'),
+      tr(language, 'L\'adversaire semble absent. Tu peux quitter et revenir au menu.', 'The opponent seems away. You can leave and return to the menu.'),
       [
-        { text: language === 'fr' ? 'Continuer d’attendre' : 'Keep waiting', style: 'cancel' },
-        { text: language === 'fr' ? 'Quitter' : 'Leave', style: 'destructive', onPress: onLeave },
+        { text: tr(language, 'Continuer d’attendre', 'Keep waiting'), style: 'cancel' },
+        { text: tr(language, 'Quitter', 'Leave'), style: 'destructive', onPress: onLeave },
       ],
     );
   };
@@ -104,7 +101,7 @@ export function WaitingOpponent({
         <ScoreText
           numberOfLines={1}
           adjustsFontSizeToFit
-          accessibilityLabel={language === 'fr' ? `Ton score : ${scoreDisplay}` : `Your score: ${scoreDisplay}`}
+          accessibilityLabel={tr(language, 'Ton score : {0}', 'Your score: {0}', [scoreDisplay])}
           style={{ fontSize: 48, fontFamily: FONTS.headingBlack, color: '#2a6e3f' }}
         >
           {scoreDisplay}
@@ -115,22 +112,20 @@ export function WaitingOpponent({
       <View style={{ alignItems: 'center', gap: 16 }}>
         <ActivityIndicator size="large" color={c.accent} />
         <Text style={{ color: c.text, fontSize: 16, fontFamily: FONTS.mono }}>
-          {language === 'fr' ? "En attente de l'adversaire…" : 'Waiting for opponent…'}
+          {tr(language, 'En attente de l\'adversaire…', 'Waiting for opponent…')}
         </Text>
       </View>
 
       {onClaimForfeit && forfeitAvailable && (
         <View style={{ alignItems: 'center', gap: 12, paddingHorizontal: 32 }}>
           <Text style={{ color: c.textMuted, fontSize: 13, fontFamily: FONTS.mono, textAlign: 'center' }}>
-            {language === 'fr'
-              ? "L'adversaire semble avoir quitté la partie."
-              : 'The opponent seems to have left the match.'}
+            {tr(language, 'L\'adversaire semble avoir quitté la partie.', 'The opponent seems to have left the match.')}
           </Text>
           <TouchableOpacity
             onPress={onClaimForfeit}
             disabled={claimingForfeit}
             {...a11yButton(
-              language === 'fr' ? 'Réclamer la victoire' : 'Claim the win',
+              tr(language, 'Réclamer la victoire', 'Claim the win'),
               { disabled: claimingForfeit },
             )}
             style={{
@@ -146,7 +141,7 @@ export function WaitingOpponent({
           >
             {claimingForfeit && <ActivityIndicator size="small" color="#fff" />}
             <Text style={{ color: '#fff', fontFamily: FONTS.monoBold, fontSize: 15 }}>
-              {language === 'fr' ? 'Réclamer la victoire' : 'Claim the win'}
+              {tr(language, 'Réclamer la victoire', 'Claim the win')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -155,7 +150,7 @@ export function WaitingOpponent({
       {onLeave && canLeave && (
         <TouchableOpacity
           onPress={confirmLeave}
-          {...a11yButton(language === 'fr' ? 'Quitter la partie' : 'Leave the match')}
+          {...a11yButton(tr(language, 'Quitter la partie', 'Leave the match'))}
           style={{
             paddingHorizontal: 24,
             paddingVertical: 12,
@@ -166,7 +161,7 @@ export function WaitingOpponent({
           }}
         >
           <Text style={{ color: c.textMuted, fontFamily: FONTS.monoBold, fontSize: 13 }}>
-            {language === 'fr' ? 'Quitter' : 'Leave match'}
+            {tr(language, 'Quitter', 'Leave match')}
           </Text>
         </TouchableOpacity>
       )}

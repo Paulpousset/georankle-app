@@ -3,7 +3,7 @@
     "name": "GeoG",
     "slug": "geog",
     "scheme": "geog",
-    "version": "5.4.0",
+    "version": "5.5.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -94,7 +94,10 @@
       },
       "entitlements": {
         "aps-environment": "production"
-      }
+      },
+      "associatedDomains": [
+        "applinks:playgeog.com"
+      ]
     },
     "android": {
       "package": "com.paulpousset.geog",
@@ -115,6 +118,91 @@
               "scheme": "https",
               "host": "playgeog.com",
               "pathPrefix": "/invite.html"
+            },
+            {
+              "scheme": "https",
+              "host": "playgeog.com",
+              "pathPrefix": "/play"
+            },
+            {
+              "scheme": "https",
+              "host": "playgeog.com",
+              "pathPrefix": "/daily"
+            },
+            {
+              "scheme": "https",
+              "host": "playgeog.com",
+              "pathPrefix": "/en/play"
+            },
+            {
+              "scheme": "https",
+              "host": "playgeog.com",
+              "pathPrefix": "/es/play"
+            },
+            {
+              "scheme": "https",
+              "host": "playgeog.com",
+              "pathPrefix": "/pt/play"
+            },
+            {
+              "scheme": "https",
+              "host": "playgeog.com",
+              "pathPrefix": "/de/play"
+            },
+            {
+              "scheme": "https",
+              "host": "playgeog.com",
+              "pathPrefix": "/it/play"
+            },
+            {
+              "scheme": "https",
+              "host": "playgeog.com",
+              "pathPrefix": "/ru/play"
+            },
+            {
+              "scheme": "https",
+              "host": "playgeog.com",
+              "pathPrefix": "/tr/play"
+            },
+            {
+              "scheme": "https",
+              "host": "playgeog.com",
+              "pathPrefix": "/pl/play"
+            },
+            {
+              "scheme": "https",
+              "host": "playgeog.com",
+              "pathPrefix": "/nl/play"
+            },
+            {
+              "scheme": "https",
+              "host": "playgeog.com",
+              "pathPrefix": "/id/play"
+            },
+            {
+              "scheme": "https",
+              "host": "playgeog.com",
+              "pathPrefix": "/vi/play"
+            },
+            {
+              "scheme": "https",
+              "host": "playgeog.com",
+              "pathPrefix": "/th/play"
+            },
+            {
+              "scheme": "https",
+              "host": "playgeog.com",
+              "pathPrefix": "/uk/play"
+            },
+            {
+              "scheme": "https",
+              "host": "playgeog.com",
+              "pathPrefix": "/ro/play"
+            },
+            {
+              "scheme": "https",
+              "host": "playgeog.com",
+              "pathPrefix": "/el/play"
             }
           ],
           "category": [

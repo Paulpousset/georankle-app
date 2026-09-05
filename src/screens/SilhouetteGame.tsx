@@ -111,7 +111,7 @@ export default function SilhouetteGame({
   training = false,
 }: SilhouetteGameProps) {
   const { isDarkMode, setIsDarkMode } = useTheme();
-  const { language, setLanguage } = useLanguage();
+  const { language, openLanguagePicker } = useLanguage();
   const toast = useToast();
   const c = getColors(isDarkMode);
 
@@ -204,8 +204,8 @@ export default function SilhouetteGame({
     ).catch(() => {});
     announce(
       correct
-        ? tr(language, `Bonne réponse, +${points}`, `Correct, +${points}`)
-        : tr(language, `Mauvaise réponse. ${correctName}`, `Wrong. ${correctName}`),
+        ? tr(language, 'Bonne réponse, +{0}', 'Correct, +{0}', [points])
+        : tr(language, 'Mauvaise réponse. {0}', 'Wrong. {0}', [correctName]),
     );
     setFeedback({ correct, points, answer: correctName });
   };
@@ -231,9 +231,7 @@ export default function SilhouetteGame({
     setGameOver(true);
     announce(
       tr(
-        language,
-        `Partie terminée. Score ${finalScore}.`,
-        `Game over. Score ${finalScore}.`,
+        language, 'Partie terminée. Score {0}.', 'Game over. Score {0}.', [finalScore],
       ),
     );
     if (isDaily) {
@@ -363,7 +361,7 @@ export default function SilhouetteGame({
           </View>
 
           <TouchableOpacity
-            onPress={() => setLanguage(language === 'fr' ? 'en' : 'fr')}
+            onPress={openLanguagePicker}
             style={[styles.iconBtn, { backgroundColor: c.surface, borderColor: c.border, minWidth: 40, alignItems: 'center' }]}
             hitSlop={ICON_HIT_SLOP}
             {...a11yButton(tr(language, 'Changer de langue', 'Change language'))}
@@ -501,7 +499,7 @@ export default function SilhouetteGame({
               <Text style={[styles.feedbackSub, { color: c.text }]}>
                 {feedback.correct
                   ? `+${feedback.points} ${tr(language, 'point(s)', 'point(s)')}`
-                  : tr(language, `La réponse était : ${feedback.answer}`, `The answer was: ${feedback.answer}`)}
+                  : tr(language, 'La réponse était : {0}', 'The answer was: {0}', [feedback.answer])}
               </Text>
               {/* Entraînement: the reveal is the lesson, so the country's facts
                   are one tap away instead of waiting for the end-of-run recap. */}
@@ -557,7 +555,7 @@ export default function SilhouetteGame({
             </Text>
             <ScoreText style={[styles.gameOverScore, { color: c.text }]}>{score}</ScoreText>
             <Text style={{ color: c.textMuted, fontFamily: FONTS.mono, fontSize: 14, marginBottom: 16, textAlign: 'center' }}>
-              {tr(language, `${correctCount} / ${run.length} bonnes réponses`, `${correctCount} / ${run.length} correct`)}
+              {tr(language, '{0} / {1} bonnes réponses', '{0} / {1} correct', [correctCount, run.length])}
             </Text>
 
             {!isDaily && !isOnline && <OffLeaderboardNotice run={{ scope, review: isReview, training }} color={c.textMuted} />}
@@ -587,8 +585,8 @@ export default function SilhouetteGame({
                     style={[styles.recapRow, i > 0 && { borderTopWidth: 1, borderTopColor: c.border }]}
                     {...a11yButton(
                       h?.correct
-                        ? tr(language, `${name}, bonne réponse, +${h.points} points`, `${name}, correct, +${h.points} points`)
-                        : tr(language, `${name}, mauvaise réponse`, `${name}, wrong`),
+                        ? tr(language, '{0}, bonne réponse, +{1} points', '{0}, correct, +{1} points', [name, h.points])
+                        : tr(language, '{0}, mauvaise réponse', '{0}, wrong', [name]),
                       { hint: tr(language, 'Voir la fiche du pays', 'See the country facts') },
                     )}
                   >

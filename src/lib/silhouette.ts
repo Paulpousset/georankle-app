@@ -8,12 +8,14 @@
  * Everything is seeded, so daily and online rounds are identical for everyone
  * sharing the seed.
  */
+import type { Language } from '../types';
 import rawWorldPolygons from '../../assets/world_polygons.json';
 import rawCountriesStats from '../../assets/countries_stats.json';
 import { filterCca3sByContinent, type ContinentId } from '../data/continents';
 import { orderCca3sByReview } from './reviewOrder';
 import { createSeededRng, seededShuffle } from './rng';
 import { COUNTRY_ALIASES } from './answerMatch';
+import { countryAnswerNames, countryName } from './geoNames';
 
 interface PolyEntry {
   id: string;
@@ -162,23 +164,23 @@ export function buildSilhouetteRun(
 }
 
 /** Localized display name for an option (falls back to the cca3). */
-export function silhouetteCountryName(cca3: string, lang: 'fr' | 'en'): string {
+export function silhouetteCountryName(cca3: string, lang: Language): string {
   const s = STATS_BY_ID.get(cca3);
   if (!s) return cca3;
-  return lang === 'fr' ? s.name : s.name_en ?? s.name;
+  return countryName(s, lang);
 }
 
 /**
- * Every accepted spelling for a typed (CASH) answer — both language names, so a
- * player can answer "Germany" or "Allemagne" whatever the UI language is.
+ * Toutes les orthographes acceptées d'une réponse tapée (CASH) : les seize
+ * langues du jeu plus les alias partagés. Un joueur peut répondre « Germany »,
+ * « Allemagne », « Deutschland » ou « Германия » quelle que soit la langue de
+ * l'interface — le clavier dont il dispose ne doit jamais coûter un point.
  */
 export function silhouetteAcceptedAnswers(cca3: string): string[] {
   const s = STATS_BY_ID.get(cca3);
   if (!s) return [cca3];
-  // Include the shared aliases (USA, UK, Birmanie…) so a typed CASH answer
-  // accepts the same spellings as every other mode.
   const aliases = COUNTRY_ALIASES[cca3] ?? [];
-  return Array.from(new Set([s.name, s.name_en ?? s.name, ...aliases].filter(Boolean)));
+  return Array.from(new Set([...countryAnswerNames(s), ...aliases].filter(Boolean)));
 }
 
 /**

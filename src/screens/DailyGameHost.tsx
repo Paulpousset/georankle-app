@@ -72,9 +72,7 @@ export default function DailyGameHost({
     if (state.streakBonus > 0) {
       toast.success(
         tr(
-          language,
-          `Palier de série ${state.streak} jours : +${state.streakBonus} pièces !`,
-          `${state.streak}-day streak milestone: +${state.streakBonus} coins!`,
+          language, 'Palier de série {0} jours : +{1} pièces !', '{0}-day streak milestone: +{1} coins!', [state.streak, state.streakBonus],
         ),
       );
       track('streak_bonus_awarded', { streak: state.streak, coins: state.streakBonus });

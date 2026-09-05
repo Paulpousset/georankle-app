@@ -6,6 +6,7 @@ import type { RankInfo } from '../lib/ranked';
 import { FONTS } from '../theme/typography';
 import { WORLD_POLYS } from '../data/worldPolys';
 import { ringToPath, graticule } from '../lib/globeProjection';
+import { tr } from '../i18n';
 
 // Globe center [centerLon, centerLat] per rank — each rank shows a different face of Earth
 const RANK_VIEW: Record<string, [number, number]> = {
@@ -209,7 +210,7 @@ function RankGlobeBase({
             textTransform: 'uppercase',
           }}
         >
-          {language === 'fr' ? rank.nameFr : rank.name}
+          {tr(language, rank.nameFr, rank.name)}
         </Text>
       )}
     </View>

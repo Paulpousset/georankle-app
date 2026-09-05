@@ -80,7 +80,7 @@ export function PlayerGlobe({
 
   const part = useMemo(() => equippedGlobePart(config), [config]);
   const rarity = part ? RARITY_META[part.rarity] : null;
-  const globeName = part ? (language === 'fr' ? part.nameFr : part.nameEn) : null;
+  const globeName = part ? (tr(language, part.nameFr, part.nameEn)) : null;
   const ring = accent ?? (rarity?.color ?? c.border);
 
   // `username` absent = vitrine sans pseudo (écran solo) ; `null` = joueur
@@ -136,9 +136,7 @@ export function PlayerGlobe({
           activeOpacity={0.85}
           {...a11yButton(
             tr(
-              language,
-              `Globe de ${name}${globeName ? ` : ${globeName}` : ''}`,
-              `${name}'s globe${globeName ? `: ${globeName}` : ''}`,
+              language, 'Globe de {0}{1}', '{0}\'s globe{2}', [name, globeName ? ` : ${globeName}` : '', globeName ? `: ${globeName}` : ''],
             ),
             { hint: actionLabel },
           )}
@@ -150,9 +148,7 @@ export function PlayerGlobe({
           accessible
           accessibilityRole="image"
           accessibilityLabel={tr(
-            language,
-            `Globe de ${name}${globeName ? ` : ${globeName}` : ''}`,
-            `${name}'s globe${globeName ? `: ${globeName}` : ''}`,
+            language, 'Globe de {0}{1}', '{0}\'s globe{2}', [name, globeName ? ` : ${globeName}` : '', globeName ? `: ${globeName}` : ''],
           )}
         >
           {globe}

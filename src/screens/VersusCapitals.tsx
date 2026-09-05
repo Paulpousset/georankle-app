@@ -66,6 +66,7 @@ function createSeededRng(seed: number) {
 }
 
 import { isMobileLayout as isMobile } from '../lib/layout';
+import { capitalAnswerNames, capitalName, countryAnswerNames, countryName } from '../lib/geoNames';
 
 interface VersusCapitalsProps {
   setGameMode: (mode: GameMode) => void;
@@ -256,13 +257,11 @@ export default function VersusCapitals({
     if (localBanner) {
       announce(
         tr(
-          language,
-          `Au tour de ${localBanner.names[localBanner.currentIdx]}`,
-          `${localBanner.names[localBanner.currentIdx]}'s turn`,
+          language, 'Au tour de {0}', '{0}\'s turn', [localBanner.names[localBanner.currentIdx]],
         ),
       );
     } else if (numPlayers > 1) {
-      announce(tr(language, `Au tour du joueur ${currentPlayer}`, `Player ${currentPlayer}'s turn`));
+      announce(tr(language, 'Au tour du joueur {0}', 'Player {0}\'s turn', [currentPlayer]));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPlayer]);
@@ -314,8 +313,8 @@ export default function VersusCapitals({
     const wrs = [...scopedWrong, ...worldWrong];
 
     const getOptionName = (c: any) => {
-      if (activeType === 'CAPITAL') return language === 'fr' ? c.capital_fr || c.capital : c.capital;
-      return language === 'fr' ? c.name : c.name_en || c.name;
+      if (activeType === 'CAPITAL') return capitalName(c, language);
+      return countryName(c, language);
     };
 
     const carreOptions = [
@@ -350,9 +349,7 @@ export default function VersusCapitals({
         cca3: question?.cca3,
         prompt:
           currentQuestionType === 'CAPITAL'
-            ? language === 'fr'
-              ? question.name
-              : question.name_en || question.name
+            ? countryName(question, language)
             : tr(language, 'Ce drapeau', 'This flag'),
         yourAnswer: isCorrect ? undefined : given,
         correctAnswer,
@@ -368,12 +365,8 @@ export default function VersusCapitals({
     const points = selectedMode === 'CASH' ? 5 : selectedMode === 'CARRE' ? 3 : 1;
     const correctAnswer =
       currentQuestionType === 'CAPITAL'
-        ? language === 'fr'
-          ? question.capital_fr || question.capital
-          : question.capital
-        : language === 'fr'
-          ? question.name
-          : question.name_en || question.name;
+        ? capitalName(question, language)
+        : countryName(question, language);
     setFeedback({
       correct: isCorrect,
       selectedId: option.id,
@@ -388,8 +381,8 @@ export default function VersusCapitals({
 
     announce(
       isCorrect
-        ? tr(language, `Bonne réponse, plus ${points} point(s)`, `Correct, plus ${points} point(s)`)
-        : tr(language, `Mauvaise réponse, la réponse était ${correctAnswer}`, `Wrong, the answer was ${correctAnswer}`),
+        ? tr(language, 'Bonne réponse, plus {0} point(s)', 'Correct, plus {0} point(s)', [points])
+        : tr(language, 'Mauvaise réponse, la réponse était {0}', 'Wrong, the answer was {0}', [correctAnswer]),
     );
 
     if (isCorrect) {
@@ -406,17 +399,16 @@ export default function VersusCapitals({
     const points = 5;
     const correctAnswer =
       currentQuestionType === 'CAPITAL'
-        ? language === 'fr'
-          ? question.capital_fr || question.capital
-          : question.capital
-        : language === 'fr'
-          ? question.name
-          : question.name_en || question.name;
+        ? capitalName(question, language)
+        : countryName(question, language);
 
-    // FLAG questions expect a country name → accept alternate spellings (aliases).
-    const aliases =
-      currentQuestionType === 'FLAG' ? COUNTRY_ALIASES[question.cca3] : undefined;
-    const isCorrect = isAnswerClose(cashInput, correctAnswer, aliases);
+    // Une réponse tapée est acceptée dans n'importe laquelle des seize langues,
+    // plus les alias partagés (USA, UK, Birmanie…) pour les questions drapeau.
+    const accepted =
+      currentQuestionType === 'FLAG'
+        ? [...countryAnswerNames(question), ...(COUNTRY_ALIASES[question.cca3] ?? [])]
+        : capitalAnswerNames(question);
+    const isCorrect = isAnswerClose(cashInput, correctAnswer, accepted);
 
     setFeedback({ correct: isCorrect, mode: 'CASH', answer: correctAnswer, points: points });
 
@@ -426,8 +418,8 @@ export default function VersusCapitals({
 
     announce(
       isCorrect
-        ? tr(language, `Bonne réponse, plus ${points} point(s)`, `Correct, plus ${points} point(s)`)
-        : tr(language, `Mauvaise réponse, la réponse était ${correctAnswer}`, `Wrong, the answer was ${correctAnswer}`),
+        ? tr(language, 'Bonne réponse, plus {0} point(s)', 'Correct, plus {0} point(s)', [points])
+        : tr(language, 'Mauvaise réponse, la réponse était {0}', 'Wrong, the answer was {0}', [correctAnswer]),
     );
 
     if (isCorrect) {
@@ -558,20 +550,20 @@ export default function VersusCapitals({
 
       // Announce the final outcome + score for screen-reader users.
       if (numPlayers === 1) {
-        announce(tr(language, `Terminé. Score ${scores[1]} points`, `Done. Score ${scores[1]} points`));
+        announce(tr(language, 'Terminé. Score {0} points', 'Done. Score {0} points', [scores[1]]));
       } else {
         const setScore = `${scores[1]} - ${scores[2]}${numPlayers! >= 3 ? ` - ${scores[3]}` : ''}${numPlayers === 4 ? ` - ${scores[4]}` : ''}`;
         if (matchIsOver) {
           announce(
             roundWinner === 0
-              ? tr(language, `Match nul. Score ${setScore}`, `Match drawn. Score ${setScore}`)
-              : tr(language, `Joueur ${roundWinner} gagne le match. Score ${setScore}`, `Player ${roundWinner} wins the match. Score ${setScore}`),
+              ? tr(language, 'Match nul. Score {0}', 'Match drawn. Score {0}', [setScore])
+              : tr(language, 'Joueur {0} gagne le match. Score {1}', 'Player {0} wins the match. Score {1}', [roundWinner, setScore]),
           );
         } else {
           announce(
             roundWinner === 0
-              ? tr(language, `Égalité. Score ${setScore}`, `Tie. Score ${setScore}`)
-              : tr(language, `Joueur ${roundWinner} gagne la manche. Score ${setScore}`, `Player ${roundWinner} wins the set. Score ${setScore}`),
+              ? tr(language, 'Égalité. Score {0}', 'Tie. Score {0}', [setScore])
+              : tr(language, 'Joueur {0} gagne la manche. Score {1}', 'Player {0} wins the set. Score {1}', [roundWinner, setScore]),
           );
         }
       }
@@ -778,9 +770,9 @@ export default function VersusCapitals({
             <Text style={[styles.menuTitle, { color: c.text }]} maxFontSizeMultiplier={1.3}>
               {soloMode
                 ? gameType === 'CAPITAL'
-                  ? language === 'fr' ? 'CAPITALES' : 'CAPITALS'
-                  : language === 'fr' ? 'DRAPEAUX' : 'FLAGS'
-                : language === 'fr' ? 'VERSUS' : 'VERSUS'}
+                  ? tr(language, 'CAPITALES', 'CAPITALS')
+                  : tr(language, 'DRAPEAUX', 'FLAGS')
+                : tr(language, 'VERSUS', 'VERSUS')}
             </Text>
 
             {!soloMode && <View
@@ -807,7 +799,7 @@ export default function VersusCapitals({
                     fontWeight: '900',
                   }}
                 >
-                  {language === 'fr' ? 'CAPITALES' : 'CAPITALS'}
+                  {tr(language, 'CAPITALES', 'CAPITALS')}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -824,7 +816,7 @@ export default function VersusCapitals({
                     fontWeight: '900',
                   }}
                 >
-                  {language === 'fr' ? 'DRAPEAUX' : 'FLAGS'}
+                  {tr(language, 'DRAPEAUX', 'FLAGS')}
                 </Text>
               </TouchableOpacity>
             </View>}
@@ -840,7 +832,7 @@ export default function VersusCapitals({
                   letterSpacing: 1,
                 }}
               >
-                {language === 'fr' ? 'FORMAT DU MATCH' : 'MATCH FORMAT'}
+                {tr(language, 'FORMAT DU MATCH', 'MATCH FORMAT')}
               </Text>
               <View
                 style={{
@@ -860,7 +852,7 @@ export default function VersusCapitals({
                     ]}
                     onPress={() => setMatchFormat(format)}
                     {...a11yButton(
-                      tr(language, `Format au meilleur des ${format}`, `Best of ${format} format`),
+                      tr(language, 'Format au meilleur des {0}', 'Best of {0} format', [format]),
                       { selected: matchFormat === format },
                     )}
                   >
@@ -889,7 +881,7 @@ export default function VersusCapitals({
                   letterSpacing: 1,
                 }}
               >
-                {language === 'fr' ? 'TOURS PAR MANCHE' : 'TURNS PER SET'}
+                {tr(language, 'TOURS PAR MANCHE', 'TURNS PER SET')}
               </Text>
               <View
                 style={{
@@ -909,7 +901,7 @@ export default function VersusCapitals({
                     ]}
                     onPress={() => setTotalRounds(rounds)}
                     {...a11yButton(
-                      tr(language, `${rounds} tours par manche`, `${rounds} turns per set`),
+                      tr(language, '{0} tours par manche', '{0} turns per set', [rounds]),
                       { selected: totalRounds === rounds },
                     )}
                   >
@@ -936,7 +928,7 @@ export default function VersusCapitals({
                   })}
                 >
                   <Timer color="#fff" size={28} />
-                  <Text style={styles.playerPickText}>{language === 'fr' ? 'JOUER' : 'PLAY'}</Text>
+                  <Text style={styles.playerPickText}>{tr(language, 'JOUER', 'PLAY')}</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -1272,10 +1264,10 @@ export default function VersusCapitals({
             ]}
           >
             {localBanner
-            ? `${language === 'fr' ? 'Tour de' : 'Turn:'} ${localBanner.names[localBanner.currentIdx]}`
+            ? `${tr(language, 'Tour de', 'Turn:')} ${localBanner.names[localBanner.currentIdx]}`
             : numPlayers === 1
-            ? `${language === 'fr' ? 'Question' : 'Question'} ${currentRound}/${totalRounds}`
-            : language === 'fr' ? `Tour Joueur ${currentPlayer}` : `Player ${currentPlayer}'s Turn`}
+            ? `${tr(language, 'Question', 'Question')} ${currentRound}/${totalRounds}`
+            : tr(language, 'Tour Joueur {0}', 'Player {0}\'s Turn', [currentPlayer])}
           </Text>
 
           {!isMobile ? (
@@ -1283,17 +1275,13 @@ export default function VersusCapitals({
               <Image source={{ uri: getFlagUrl(question.cca3) }} style={styles.flag} />
               {currentQuestionType === 'CAPITAL' && (
                 <Text style={[styles.countryName, { color: c.text }]} maxFontSizeMultiplier={1.3}>
-                  {language === 'fr' ? question.name : question.name_en || question.name}
+                  {countryName(question, language)}
                 </Text>
               )}
               <Text style={[styles.instruction, { color: c.textMuted }]}>
                 {currentQuestionType === 'CAPITAL'
-                  ? language === 'fr'
-                    ? 'Quelle est la capitale ?'
-                    : 'What is the capital?'
-                  : language === 'fr'
-                    ? 'Quel est ce pays ?'
-                    : 'What is this country?'}
+                  ? tr(language, 'Quelle est la capitale ?', 'What is the capital?')
+                  : tr(language, 'Quel est ce pays ?', 'What is this country?')}
               </Text>
             </View>
           ) : (
@@ -1312,17 +1300,13 @@ export default function VersusCapitals({
                         { fontSize: 22, textAlign: 'left' },
                       ]}
                     >
-                      {language === 'fr' ? question.name : question.name_en || question.name}
+                      {countryName(question, language)}
                     </Text>
                   )}
                   <Text style={[styles.instruction, { color: c.textMuted, marginTop: 2, fontSize: 12 }]}>
                     {currentQuestionType === 'CAPITAL'
-                      ? language === 'fr'
-                        ? 'Quelle est la capitale ?'
-                        : 'What is the capital?'
-                      : language === 'fr'
-                        ? 'Quel est ce pays ?'
-                        : 'What is this country?'}
+                      ? tr(language, 'Quelle est la capitale ?', 'What is the capital?')
+                      : tr(language, 'Quel est ce pays ?', 'What is this country?')}
                   </Text>
                 </View>
               </View>
@@ -1466,9 +1450,7 @@ export default function VersusCapitals({
                   {feedback.correct
                     ? `+${feedback.points} point(s)`
                     : tr(
-                        language,
-                        `La réponse était : ${feedback.answer}`,
-                        `The answer was: ${feedback.answer}`,
+                        language, 'La réponse était : {0}', 'The answer was: {0}', [feedback.answer],
                       )}
                 </Text>
 
@@ -1498,12 +1480,8 @@ export default function VersusCapitals({
                       style={{ color: feedback.correct ? '#8b1a1a' : '#2a6e3f', fontWeight: 'bold' }}
                     >
                       {feedback.correct
-                        ? language === 'fr'
-                          ? 'MARQUER COMME FAUX'
-                          : 'MARK AS WRONG'
-                        : language === 'fr'
-                          ? 'MARQUER COMME JUSTE'
-                          : 'MARK AS CORRECT'}
+                        ? tr(language, 'MARQUER COMME FAUX', 'MARK AS WRONG')
+                        : tr(language, 'MARQUER COMME JUSTE', 'MARK AS CORRECT')}
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -1521,13 +1499,13 @@ export default function VersusCapitals({
             )}
             <ScoreText style={[styles.winnerTitle, { color: c.text }]}>
               {numPlayers === 1
-                ? language === 'fr' ? 'TERMINÉ !' : 'DONE!'
+                ? tr(language, 'TERMINÉ !', 'DONE!')
                 : !matchOver
                   ? winner === 0
-                    ? language === 'fr' ? 'ÉGALITÉ !' : 'TIE !'
+                    ? tr(language, 'ÉGALITÉ !', 'TIE !')
                     : `MANCHE GAGNÉE P${winner}`
                   : matchWinner === 0
-                    ? language === 'fr' ? 'ÉGALITÉ DU MATCH !' : 'MATCH TIE !'
+                    ? tr(language, 'ÉGALITÉ DU MATCH !', 'MATCH TIE !')
                     : `VICTOIRE DU MATCH P${matchWinner} !`}
             </ScoreText>
 
@@ -1535,8 +1513,8 @@ export default function VersusCapitals({
               style={[styles.finalScore, { color: c.textMuted }, { marginBottom: 10 }]}
             >
               {numPlayers === 1
-                ? `${language === 'fr' ? 'Score :' : 'Score:'} ${scores[1]} pts`
-                : `${language === 'fr' ? 'Score de la manche :' : 'Set score:'} ${scores[1]} - ${scores[2]}${numPlayers >= 3 ? ` - ${scores[3]}` : ''}${numPlayers === 4 ? ` - ${scores[4]}` : ''}`}
+                ? `${tr(language, 'Score :', 'Score:')} ${scores[1]} pts`
+                : `${tr(language, 'Score de la manche :', 'Set score:')} ${scores[1]} - ${scores[2]}${numPlayers >= 3 ? ` - ${scores[3]}` : ''}${numPlayers === 4 ? ` - ${scores[4]}` : ''}`}
             </ScoreText>
 
             {soloMode && !isDaily && (
@@ -1572,7 +1550,7 @@ export default function VersusCapitals({
                 }}
               >
                 <ScoreText style={[styles.finalScore, { color: '#c04a1a', fontSize: 24 }]}>
-                  {language === 'fr' ? 'Match :' : 'Match:'}
+                  {tr(language, 'Match :', 'Match:')}
                 </ScoreText>
                 <StarScore color="#c04a1a" value={matchScores[1]} size={22} />
                 <Text style={{ color: '#c04a1a', fontSize: 22, fontWeight: 'bold' }}>–</Text>
@@ -1597,7 +1575,7 @@ export default function VersusCapitals({
                 >
                   <Share2 color="#fff" size={18} />
                   <Text style={styles.resetBtnText}>
-                    {language === 'fr' ? 'PARTAGER' : 'SHARE'}
+                    {tr(language, 'PARTAGER', 'SHARE')}
                   </Text>
                 </TouchableOpacity>
               ) : numPlayers === 1 ? (
@@ -1608,7 +1586,7 @@ export default function VersusCapitals({
                     {...a11yButton(tr(language, 'Rejouer la même partie', 'Replay the same game'))}
                   >
                     <Text style={styles.resetBtnText}>
-                      {language === 'fr' ? 'REJOUER LA MÊME PARTIE' : 'REPLAY THE SAME GAME'}
+                      {tr(language, 'REJOUER LA MÊME PARTIE', 'REPLAY THE SAME GAME')}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -1620,7 +1598,7 @@ export default function VersusCapitals({
                     {...a11yButton(tr(language, 'Nouvelle partie', 'New game'))}
                   >
                     <Text style={styles.resetBtnText}>
-                      {language === 'fr' ? 'NOUVELLE PARTIE' : 'NEW GAME'}
+                      {tr(language, 'NOUVELLE PARTIE', 'NEW GAME')}
                     </Text>
                   </TouchableOpacity>
                 </>
@@ -1631,7 +1609,7 @@ export default function VersusCapitals({
                   {...a11yButton(tr(language, 'Manche suivante', 'Next set'))}
                 >
                   <Text style={styles.resetBtnText}>
-                    {language === 'fr' ? 'MANCHE SUIVANTE' : 'NEXT SET'}
+                    {tr(language, 'MANCHE SUIVANTE', 'NEXT SET')}
                   </Text>
                 </TouchableOpacity>
               ) : (
@@ -1642,7 +1620,7 @@ export default function VersusCapitals({
                     {...a11yButton(tr(language, 'Rejouer la même partie', 'Replay the same game'))}
                   >
                     <Text style={styles.resetBtnText}>
-                      {language === 'fr' ? 'REJOUER LA MÊME PARTIE' : 'REPLAY THE SAME GAME'}
+                      {tr(language, 'REJOUER LA MÊME PARTIE', 'REPLAY THE SAME GAME')}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -1654,7 +1632,7 @@ export default function VersusCapitals({
                     {...a11yButton(tr(language, 'Nouveau match', 'New match'))}
                   >
                     <Text style={styles.resetBtnText}>
-                      {language === 'fr' ? 'NOUVEAU MATCH' : 'NEW MATCH'}
+                      {tr(language, 'NOUVEAU MATCH', 'NEW MATCH')}
                     </Text>
                   </TouchableOpacity>
                 </>
@@ -1668,7 +1646,7 @@ export default function VersusCapitals({
                 {...a11yButton(tr(language, 'Menu principal', 'Main menu'))}
               >
                 <Text style={styles.resetBtnText}>
-                  {language === 'fr' ? 'MENU PRINCIPAL' : 'MAIN MENU'}
+                  {tr(language, 'MENU PRINCIPAL', 'MAIN MENU')}
                 </Text>
               </TouchableOpacity>
             </View>

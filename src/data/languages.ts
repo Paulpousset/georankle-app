@@ -13,6 +13,9 @@
  * src/lib/silhouette.ts sits next to src/data/challenges.ts.
  */
 
+import type { Language } from '../types';
+import { tr } from '../i18n';
+import { allTranslations } from '../i18n/catalog';
 import rawLanguages from '../../assets/languages.json';
 
 /** Writing system. Drives the "same script" distractor tier in Text mode. */
@@ -102,10 +105,10 @@ export function getLanguageDef(code: string): LanguageDef | undefined {
 }
 
 /** Localized display name (falls back to the code for an unknown language). */
-export function languageName(code: string, lang: 'fr' | 'en'): string {
+export function languageName(code: string, lang: Language): string {
   const def = BY_CODE.get(code);
   if (!def) return code;
-  return lang === 'fr' ? def.nameFr : def.nameEn;
+  return tr(lang, def.nameFr, def.nameEn);
 }
 
 /**
@@ -118,7 +121,13 @@ export function languageName(code: string, lang: 'fr' | 'en'): string {
 export function languageAcceptedAnswers(code: string): string[] {
   const def = BY_CODE.get(code);
   if (!def) return [code];
-  return Array.from(new Set([def.nameFr, def.nameEn, ...(def.aliases ?? [])].filter(Boolean)));
+  // `allTranslations` ajoute le nom de la langue dans les quatorze langues du
+  // catalogue : « Néerlandais », « Dutch », « Nederlands », « Голландский »…
+  return Array.from(
+    new Set(
+      [def.nameFr, def.nameEn, ...allTranslations(def.nameEn), ...(def.aliases ?? [])].filter(Boolean),
+    ),
+  );
 }
 
 /**

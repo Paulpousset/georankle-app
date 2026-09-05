@@ -19,6 +19,9 @@
   <meta name="twitter:description" content="Le quiz de géographie du jour. On gagne tous les deux 50 pièces." />
   <meta name="twitter:image" content="https://playgeog.com/og-invite.png" />
 
+  <!-- Le pont web → app : redirection Android automatique + boutons ci-dessous. -->
+  <script src="/open-in-app.js"></script>
+
   <style>
     :root {
       --bg: #f2e8d0; --card: #fffaf0; --ink: #1e2a22; --muted: #5a6b5f;
@@ -75,7 +78,7 @@
     <a class="btn" id="playBtn" href="/play">🌍 Jouer maintenant (sans installer)</a>
     <a class="btn" id="iosBtn" href="https://apps.apple.com/app/id6779650018">📲 Installer sur iPhone</a>
     <a class="btn" id="androidBtn" href="https://play.google.com/store/apps/details?id=com.paulpousset.geog">🤖 Installer sur Android</a>
-    <a class="btn ghost" id="openBtn" href="#">J'ai déjà l'app — ouvrir</a>
+    <a class="btn ghost" id="openBtn" data-geog-open href="#">J'ai déjà l'app — ouvrir</a>
 
     <p class="foot">Ton code s'applique automatiquement à ta première partie. S'il ne s'applique pas, entre-le dans l'écran <strong>Amis → Parrainage</strong>.</p>
   </main>
@@ -92,7 +95,10 @@
       var openBtn = document.getElementById('openBtn');
       openBtn.href = 'geog://invite' + (code ? ('?code=' + code) : '');
       // "Play now" opens the browser daily, carrying the code for attribution.
-      document.getElementById('playBtn').href = '/play' + (code ? ('?code=' + code) : '');
+      // `web=1` = choix explicite du navigateur : open-in-app.js ne proposera
+      // plus l'app sur la page d'arrivée (et ne redirigera pas).
+      document.getElementById('playBtn').href =
+        '/play?web=1' + (code ? ('&code=' + code) : '');
 
       // Show only the relevant store button by platform (both stay as fallback).
       var ua = navigator.userAgent || '';

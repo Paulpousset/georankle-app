@@ -27,15 +27,25 @@ import {
 } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { DIST, ORIGIN, ROOT } from './lib/paths.mjs';
-import { LOCALES, LOCALE_META, ROUTES, alternates, href, routesIn } from './lib/routes.mjs';
-import { renderPage, attr } from './lib/layout.mjs';
+import {
+  LOCALES,
+  LOCALE_META,
+  DEFAULT_LOCALE,
+  ROUTES,
+  alternates,
+  href,
+  routesIn,
+} from './lib/routes.mjs';
+import { renderPage, attr, ADSENSE_HEAD } from './lib/layout.mjs';
 import { loadPage, interpolate, extractFaq } from './lib/content.mjs';
+import { playDoc, playBar, PLAY_DOC_CSS } from './lib/playDoc.mjs';
 import { article, faqPage, videoGame, render as renderJsonLd } from './lib/jsonld.mjs';
 import { buildSitemap } from './lib/sitemap.mjs';
 import { validate } from './lib/validate.mjs';
 import { strings } from './lib/strings.mjs';
 import { COUNTRY_COUNT, MODE_COUNT } from './lib/constants.mjs';
 import { assertPartition } from './lib/continents.mjs';
+import { localeData } from './lib/siteLocales.mjs';
 
 function fail(message) {
   console.error(`\n[site] ${message}\n`);
@@ -129,8 +139,25 @@ function buildAppShell(locale) {
   const s = strings(locale);
   const canonical = `${ORIGIN}${href('play', locale)}`;
   const meta = LOCALE_META[locale];
-  const copy =
-    locale === 'fr'
+  const generated = localeData(locale);
+  const copy = generated
+    ? {
+        // Les quatorze langues générées reprennent l'accroche de leur page
+        // d'accueil : une seule source par langue, et la coquille du jeu ne
+        // dérive pas du reste du site.
+        title: `${generated.chrome.play} — ${generated.home.ogTitle}`,
+        description: generated.home.description,
+        ogTitle: `${generated.chrome.play} — GeoG`,
+        ogDescription: generated.home.standfirst.replace(/\{\{modes\}\}/g, String(MODE_COUNT)),
+        h1: generated.home.ogTitle,
+        intro: generated.home.howBody,
+        pitch: generated.home.standfirst
+          .replace(/\{\{countries\}\}/g, String(COUNTRY_COUNT))
+          .replace(/\{\{modes\}\}/g, String(MODE_COUNT)),
+        lead: generated.home.modesIntro,
+        all: generated.chrome.modes,
+      }
+    : locale === 'fr'
       ? {
           title: 'Jouer au défi du jour — GeoG, jeu de géographie',
           description: `Le défi du jour de GeoG : drapeaux, capitales, globe 3D et silhouettes, une série identique pour tous les joueurs du monde. Gratuit, sans compte, directement dans le navigateur.`,
@@ -172,22 +199,37 @@ ${alternates('play')
     <meta property="og:locale" content="${meta.ogLocale}" />
 ${LOCALES.filter((l) => l !== locale)
   .map((l) => `    <meta property="og:locale:alternate" content="${LOCALE_META[l].ogLocale}" />`)
-  .join('\n')}`;
+  .join('\n')}
+${ADSENSE_HEAD}
+    <!-- Le pont web → app. Un lien de parrainage (?code=) ou d'invitation de
+         ligue (?league=) atterrit ici : si l'application est installée, elle
+         doit prendre le relais, sinon le code n'est jamais crédité ni la ligue
+         rejointe. Chargé avant le bundle de jeu pour que la redirection Android
+         parte tout de suite ; inerte sans ces paramètres, et inerte aussi avec
+         web=1 (le joueur a choisi le navigateur). Voir public/open-in-app.js. -->
+    <script>window.GEOG_APP_LINK=${JSON.stringify({ have: s.haveApp, open: s.openInApp, close: s.dismiss })};</script>
+    <script src="/open-in-app.js"></script>
+${PLAY_DOC_CSS}`;
 
   html = replaceOnce(html, '<title>GeoG</title>', head, 'balise title');
 
-  const guideLinks = [
-    'guide-countries-count',
-    'guide-flags',
-    'guide-capitals',
-    'guide-borders',
-  ]
-    .map((id) => {
-      const page = loadPage(locale, id) || loadPage('fr', id);
-      const target = href(id, locale);
-      return `          <li><a href="${target}">${attr(page.meta.linkTitle || page.meta.title)}</a></li>`;
-    })
-    .join('\n');
+  // Sans JavaScript, on propose ce qui existe VRAIMENT dans cette langue : les
+  // guides pour le français et l'anglais, les pages de mode pour les autres —
+  // envoyer un lecteur grec sur un guide français serait pire que rien.
+  const fallbackLinks = generated
+    ? ['mode-flags', 'mode-capitals', 'mode-globe', 'mode-daily']
+        .map(
+          (id) =>
+            `          <li><a href="${href(id, locale)}">${attr(generated.modes[id].name)}</a></li>`,
+        )
+        .join('\n')
+    : ['guide-countries-count', 'guide-flags', 'guide-capitals', 'guide-borders']
+        .map((id) => {
+          const page = loadPage(locale, id) || loadPage('fr', id);
+          const target = href(id, locale);
+          return `          <li><a href="${target}">${attr(page.meta.linkTitle || page.meta.title)}</a></li>`;
+        })
+        .join('\n');
 
   const noscript = `<noscript>
       <div style="max-width:640px;margin:60px auto;padding:0 24px;font-family:Georgia,serif;line-height:1.7;color:#2c1810;">
@@ -198,8 +240,8 @@ ${LOCALES.filter((l) => l !== locale)
         <p style="margin-bottom:16px;">${copy.pitch}</p>
         <p>${copy.lead}</p>
         <ul>
-${guideLinks}
-          <li><a href="${href('guides', locale)}">${copy.all}</a> · <a href="${href('about', locale)}">${strings(locale).about}</a> · <a href="${href('contact', locale)}">${strings(locale).contact}</a></li>
+${fallbackLinks}
+          <li>${generated ? '' : `<a href="${href('guides', locale)}">${copy.all}</a> · `}<a href="${href('about', locale)}">${strings(locale).about}</a> · <a href="${href('contact', locale)}">${strings(locale).contact}</a></li>
         </ul>
       </div>
     </noscript>`;
@@ -210,17 +252,49 @@ ${guideLinks}
     noscript,
     'bloc noscript',
   );
-  void s;
+
+  // Le contenu éditorial vient APRÈS `#root` : le jeu garde un écran plein et
+  // le texte se lit en défilant. Voir site/lib/playDoc.mjs pour le pourquoi.
+  html = replaceOnce(
+    html,
+    '<div id="root"></div>',
+    `${playBar(locale)}\n  <div id="root"></div>\n${playDoc(locale)}`,
+    'racine React',
+  );
   return html;
 }
 
-const SHELL_FILES = { fr: 'app.html', en: 'app-en.html' };
+/**
+ * Un fichier de coquille par langue : `/es/play` doit servir un `<head>` en
+ * espagnol, canonique de lui-même. Le bundle JavaScript, lui, est le même pour
+ * tout le monde — c'est l'app qui choisit sa langue au démarrage.
+ */
+const SHELL_FILES = {
+  fr: 'app.html',
+  en: 'app-en.html',
+  ...Object.fromEntries(LOCALES.filter((l) => l !== 'fr' && l !== 'en').map((l) => [l, `app-${l}.html`])),
+};
 const shells = {};
 for (const locale of LOCALES) {
   shells[locale] = buildAppShell(locale);
   emit(SHELL_FILES[locale], shells[locale]);
 }
 if (!CHECK_ONLY && existsSync(shellPath)) rmSync(shellPath);
+
+/**
+ * Le pont web → app doit être dans CHAQUE coquille, textes traduits compris.
+ * Une langue ajoutée sans ses trois phrases afficherait une barre « undefined »
+ * aux joueurs qui arrivent par un lien de parrainage ou de ligue.
+ */
+for (const locale of LOCALES) {
+  const s = strings(locale);
+  for (const key of ['haveApp', 'openInApp', 'dismiss']) {
+    if (!s[key]) fail(`${locale} : texte « ${key} » manquant (barre « ouvrir dans l'app »)`);
+  }
+  if (!shells[locale].includes('/open-in-app.js')) {
+    fail(`${locale} : coquille sans le pont web → app (public/open-in-app.js)`);
+  }
+}
 
 // ── 2. Les pages de contenu ───────────────────────────────────────────────────
 
@@ -256,7 +330,12 @@ for (const locale of LOCALES) {
     if (!page.meta.modified) fail(`${page.file} : « modified » manquant (sert au sitemap et au JSON-LD)`);
 
     const { html: bodyRaw, lists } = interpolate(page.body, { locale, file: page.file, routeId: r.id });
-    const isLanding = r.kind === 'landing';
+    // L'accueil français et anglais est une landing sur mesure (son propre
+    // `<style>`, sa propre mise en page). Les quatorze langues générées passent
+    // par le gabarit commun : même barre de navigation, même pied de page, même
+    // fil d'Ariane que leurs pages de mode — cohérent, et rien à maintenir en
+    // double.
+    const isLanding = r.kind === 'landing' && !localeData(locale);
     const [headExtra, body] = isLanding ? splitLanding(bodyRaw, page.file) : ['', bodyRaw];
 
     const url = `${ORIGIN}${r.paths[locale]}`;
@@ -363,6 +442,7 @@ ${LOCALES.filter((l) => l !== locale)
   <link rel="stylesheet" href="/fonts/fonts.css" />
 ${renderJsonLd(jsonLd)}
   <script defer src="/site-analytics.js"></script>
+${ADSENSE_HEAD}
 ${headExtra.trimEnd()}
 </head>
 ${body}
@@ -389,15 +469,46 @@ emit(
   `User-agent: *
 Allow: /
 
-# Coquilles brutes de l'application (servies via /play et /en/play) : sans
-# intérêt pour l'indexation, et c'est le genre de page vide qui fait échouer
-# une revue AdSense si elle est explorée directement.
+# Coquilles brutes de l'application (servies via /play, /en/play, /es/play…) :
+# sans intérêt pour l'indexation, et c'est le genre de page vide qui fait
+# échouer une revue AdSense si elle est explorée directement.
 Disallow: /app.html
-Disallow: /app-en.html
+${LOCALES.filter((l) => l !== DEFAULT_LOCALE)
+  .map((l) => `Disallow: /app-${l}.html`)
+  .join('\n')}
 
 Sitemap: ${ORIGIN}/sitemap.xml
 `,
 );
+
+/**
+ * Le contrôle des redirections Vercel.
+ *
+ * Chaque langue a besoin de deux choses côté hébergeur, que le build ne peut
+ * pas produire lui-même : la redirection `/xx` → `/xx/` et la réécriture de
+ * `/xx/play` vers sa coquille d'application. Ajouter une langue sans les
+ * ajouter donne un 404 sur le bouton « Jouer » — le seul lien qui compte. On
+ * relit donc `vercel.json` et on refuse de construire s'il manque une entrée.
+ */
+function checkVercelRoutes() {
+  const file = join(ROOT, 'vercel.json');
+  const conf = JSON.parse(readFileSync(file, 'utf8'));
+  const redirects = new Set((conf.redirects || []).map((r) => r.source));
+  const rewrites = new Map((conf.rewrites || []).map((r) => [r.source, r.destination]));
+  const holes = [];
+  for (const locale of LOCALES) {
+    if (locale === DEFAULT_LOCALE) continue;
+    if (!redirects.has(`/${locale}`)) holes.push(`redirects: /${locale} → /${locale}/`);
+    for (const source of [`/${locale}/play`, `/${locale}/play/`]) {
+      if (rewrites.get(source) !== `/app-${locale}.html`) {
+        holes.push(`rewrites: ${source} → /app-${locale}.html`);
+      }
+    }
+  }
+  if (holes.length) fail(`vercel.json, entrées manquantes :\n  - ${holes.join('\n  - ')}`);
+}
+
+checkVercelRoutes();
 
 // La landing n'existe plus comme fichier autonome : son ancienne URL
 // /landing.html dupliquait la page d'accueil. Une redirection la remplace

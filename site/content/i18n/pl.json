@@ -1,0 +1,145 @@
+{
+  "label": "Polski",
+  "chrome": {
+    "home": "Strona główna",
+    "guides": "Poradniki",
+    "about": "O grze",
+    "contact": "Kontakt",
+    "privacy": "Prywatność",
+    "play": "Graj",
+    "modes": "Tryby",
+    "online": "Online",
+    "faq": "Częste pytania",
+    "playNow": "Zagraj teraz",
+    "skipToContent": "Przejdź do treści",
+    "languageLabel": "Język",
+    "footerTagline": "GeoG — darmowa gra geograficzna: flagi, stolice i państwa świata.",
+    "footerCoords": "47°N 2°E · Zrobione z ✦ dla odkrywców.",
+    "readNext": "Czytaj dalej",
+    "relatedModes": "Inne tryby gry",
+    "sourceNote": "Dane gry",
+    "country": "Państwo",
+    "capital": "Stolica",
+    "flag": "Flaga",
+    "neighbours": "Państwa sąsiednie",
+    "population": "Ludność",
+    "area": "Powierzchnia (km²)",
+    "continent": "Kontynent",
+    "haveApp": "Masz już aplikację?",
+    "openInApp": "Otwórz w aplikacji",
+    "dismiss": "Zamknij"
+  },
+  "slugs": {
+    "about": "o-grze",
+    "contact": "kontakt",
+    "privacy": "prywatnosc"
+  },
+  "modes": {
+    "mode-flags": {
+      "name": "Flagi",
+      "slug": "gra-we-flagi"
+    },
+    "mode-capitals": {
+      "name": "Stolice",
+      "slug": "quiz-ze-stolic"
+    },
+    "mode-globe": {
+      "name": "Globus 3D",
+      "slug": "globus-3d"
+    },
+    "mode-silhouettes": {
+      "name": "Kształty",
+      "slug": "ksztalty-panstw"
+    },
+    "mode-borders": {
+      "name": "Granice",
+      "slug": "gra-w-granice"
+    },
+    "mode-guess": {
+      "name": "Zgadnij państwo",
+      "slug": "zgadnij-panstwo"
+    },
+    "mode-rankle": {
+      "name": "Rankle",
+      "slug": "rankle"
+    },
+    "mode-higherlower": {
+      "name": "Więcej czy mniej",
+      "slug": "wiecej-czy-mniej"
+    },
+    "mode-daily": {
+      "name": "Wyzwanie dnia",
+      "slug": "wyzwanie-dnia"
+    },
+    "mode-online": {
+      "name": "Pojedynki online",
+      "slug": "pojedynki-online"
+    },
+    "mode-ranked": {
+      "name": "Tryb rankingowy",
+      "slug": "tryb-rankingowy"
+    },
+    "mode-story": {
+      "name": "Tryb fabularny",
+      "slug": "tryb-fabularny"
+    }
+  },
+  "home": {
+    "title": "GeoG — darmowa gra geograficzna: flagi, stolice, państwa",
+    "description": "Graj za darmo w geografię świata: flagi, stolice, globus 3D, kształty państw i codzienne wyzwanie obejmujące 195 państw. Bez konta, prosto w przeglądarce.",
+    "ogTitle": "GeoG — gra geograficzna",
+    "h1": "GeoG — gra geograficzna o wszystkich {{countries}} państwach",
+    "standfirst": "Flagi, stolice, globus 3D, kształty i granice: {{modes}} trybów gry, żeby uczyć się świata w partiach po trzy minuty. Za darmo, bez konta, w przeglądarce albo na telefonie.",
+    "modesHeading": "{{modes}} trybów gry",
+    "modesIntro": "Każdy tryb ćwiczy inną stronę mapy: rozpoznawanie, lokalizowanie, porównywanie. Wybierz swój i zacznij jednym dotknięciem.",
+    "howHeading": "Jak się gra",
+    "howBody": "Każda partia to kilka krótkich rund. Zależnie od gry dotykasz, wybierasz albo ustawiasz swoją odpowiedź; im celniej, tym więcej punktów. Żadnego stresującego odliczania, a zasady trybu pokazują się same przy pierwszym uruchomieniu.",
+    "ctaTitle": "Zacznij partię",
+    "ctaText": "Za darmo, bez konta, prosto w przeglądarce.",
+    "faq": [
+      {
+        "q": "Czy do gry potrzebne jest konto?",
+        "a": "Nie. Wszystkie tryby dla jednego gracza i wyzwanie dnia działają bez konta. Darmowe konto służy tylko do zapisywania postępów, gry online i pojawiania się w rankingach."
+      },
+      {
+        "q": "Ile państw jest w grze?",
+        "a": "{{countries}} państw członkowskich ONZ, a nie tylko te trzydzieści, które zna każdy. Mikropaństwa i wyspy też się liczą."
+      },
+      {
+        "q": "Czy wyzwanie dnia jest takie samo dla wszystkich?",
+        "a": "Tak. Każdego dnia wszyscy gracze na świecie dostają dokładnie tę samą serię pytań, więc wynik można porównać z wynikiem znajomych."
+      }
+    ]
+  },
+  "mode": {
+    "titleSuffix": "darmowa gra geograficzna",
+    "descriptionTail": "Za darmo, bez konta, w przeglądarce albo na telefonie.",
+    "howHeading": "Jak się gra",
+    "tipsHeading": "Warto wiedzieć",
+    "ctaTitle": "Zagraj teraz",
+    "otherModes": "Pozostałe tryby gry"
+  },
+  "about": {
+    "title": "O grze — kto tworzy GeoG",
+    "description": "GeoG to darmowa, niezależna gra geograficzna: 12 trybów, 195 państw, otwarte dane. Kto ją tworzy i na jakich źródłach.",
+    "h1": "O grze",
+    "p1": "GeoG to niezależna gra geograficzna, którą robi jedna osoba. Pomysł jest prosty: uczyć się świata w krótkich partiach, bez nachalnych reklam i bez obowiązkowego konta.",
+    "p2": "Dane o państwach pochodzą z otwartych źródeł — Bank Światowy, UNESCO, ONZ — i są regularnie aktualizowane. {{countries}} państw w grze to państwa członkowskie ONZ.",
+    "p3": "Gra działa w przeglądarce, jest też aplikacja na iPhone'a i Androida. Jeśli zauważysz błąd w danych albo kulawe tłumaczenie — napisz, poprawka pojawi się szybko."
+  },
+  "contact": {
+    "title": "Kontakt — GeoG",
+    "description": "Napisz do nas: błędy w danych, pomysły na tryby gry, problemy z tłumaczeniem albo pytania o prywatność.",
+    "h1": "Kontakt",
+    "p1": "Błędna dana, kulawe tłumaczenie, pomysł na tryb gry? Napisz na contact@playgeog.com — dostaniesz odpowiedź.",
+    "p2": "We wszystkich sprawach dotyczących danych osobowych albo usunięcia konta pisz na ten sam adres, podając nazwę użytkownika, o którą chodzi."
+  },
+  "privacy": {
+    "title": "Polityka prywatności — GeoG",
+    "description": "Jakie dane zbiera GeoG, do czego służą i jak poprosić o ich usunięcie.",
+    "h1": "Polityka prywatności",
+    "p1": "W GeoG można grać bez konta i bez podawania jakichkolwiek danych osobowych. Jeśli zakładasz konto, przechowujemy tylko adres e-mail, nazwę użytkownika i wyniki gier.",
+    "p2": "Aplikacja anonimowo mierzy, które ekrany są używane, żeby ulepszać grę, i może wyświetlać reklamy. Nigdy nie sprzedajemy twoich danych.",
+    "p3": "Konto i wszystkie jego dane możesz usunąć w samej grze, w swoim profilu, albo pisząc na contact@playgeog.com."
+  }
+}

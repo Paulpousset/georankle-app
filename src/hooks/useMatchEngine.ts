@@ -161,7 +161,7 @@ export function useMatchEngine({ setGameMode, clearPages }: MatchEngineDeps) {
             ? (['partie perso', 'a custom game'] as const)
             : MODE_LABELS[match.game_mode] ?? [match.game_mode, match.game_mode];
           toast.info(
-            tr(langRef.current, `${name} vous défie en ${fr} !`, `${name} challenges you in ${en}!`),
+            tr(langRef.current, '{0} vous défie en {1} !', '{0} challenges you in {2}!', [name, fr, en]),
           );
         },
       )
@@ -391,6 +391,18 @@ export function useMatchEngine({ setGameMode, clearPages }: MatchEngineDeps) {
     // Entering a live match: drop the page history so leaving the match lands
     // on the menu rather than back inside matchmaking.
     clearPages();
+    // Repartir d'une ardoise propre. Sans ça, enchaîner sur une nouvelle partie
+    // depuis l'écran de fin (revanche, invitation acceptée sur place) laissait
+    // `matchPhase` à 'match_over' : le Router teste cette phase AVANT le lobby,
+    // on restait donc devant le résultat du match précédent, la nouvelle partie
+    // chargée derrière. C'est ce qui faisait qu'« accepter » ne rejoignait rien.
+    setMatchPhase('playing');
+    setRoundSummaryData(null);
+    setAllRounds([]);
+    setMyCurrentRoundScore(0);
+    setRankResult(null);
+    setCoinsAwarded(null);
+    setForfeitAvailable(false);
     setMatchData(match);
     // Remember the active match so it can be resumed after a disconnect / menu exit.
     setActiveMatch(match.id, Date.now());

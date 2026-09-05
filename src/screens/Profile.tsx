@@ -501,7 +501,7 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
               <TouchableOpacity
                 onPress={onOpenShop}
                 style={[styles.avatarActionBtn, { backgroundColor: c.background, borderColor: c.border }]}
-                {...a11yButton(tr(language, `Boutique, ${coins} pièces`, `Shop, ${coins} coins`))}
+                {...a11yButton(tr(language, 'Boutique, {0} pièces', 'Shop, {0} coins', [coins]))}
               >
                 <Coins color="#ffd700" size={15} />
                 <Text style={[styles.avatarActionText, { color: c.text }]}>{coins}</Text>
@@ -572,7 +572,7 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
               <RankGlobe rank={rank} size={72} showName={false} language={language} spin />
               <View style={{ flex: 1, marginLeft: 14 }}>
                 <Text style={[styles.rankName, { color: rank.color }]}>
-                  {language === 'fr' ? rank.nameFr : rank.name}
+                  {tr(language, rank.nameFr, rank.name)}
                 </Text>
                 <ScoreText style={[styles.eloText, { color: c.text }]}>
                   {elo} <Text style={{ color: c.textFaint, fontSize: 12 }}>ELO</Text>
@@ -666,7 +666,7 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
               onPress={cycleReminderTime}
               disabled={!reminderOn}
               style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6, opacity: reminderOn ? 1 : 0.5 }}
-              {...a11yButton(tr(language, `Heure du rappel, ${reminderTime}`, `Reminder time, ${reminderTime}`), {
+              {...a11yButton(tr(language, 'Heure du rappel, {0}', 'Reminder time, {0}', [reminderTime]), {
                 hint: tr(language, 'Appuyer pour changer', 'Tap to change'),
                 disabled: !reminderOn,
               })}

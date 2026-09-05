@@ -4,7 +4,48 @@
     "details": [
       {
         "appID": "HAMS39CUCG.com.paulpousset.geog",
-        "paths": [ "/invite.html", "/invite.html*" ]
+        "appIDs": [
+          "HAMS39CUCG.com.paulpousset.geog"
+        ],
+        "paths": [
+          "/invite.html",
+          "/play",
+          "/play/",
+          "/daily",
+          "/*/play",
+          "/*/play/"
+        ],
+        "components": [
+          {
+            "/": "/*",
+            "?": {
+              "web": "1"
+            },
+            "exclude": true,
+            "comment": "web=1 : le joueur a demandé le navigateur, on n'ouvre pas l'app"
+          },
+          {
+            "/": "/invite.html",
+            "comment": "lien de parrainage"
+          },
+          {
+            "/": "/play",
+            "comment": "defi du jour + invitation de ligue"
+          },
+          {
+            "/": "/play/"
+          },
+          {
+            "/": "/daily"
+          },
+          {
+            "/": "/*/play",
+            "comment": "les quinze langues prefixees"
+          },
+          {
+            "/": "/*/play/"
+          }
+        ]
       }
     ]
   }

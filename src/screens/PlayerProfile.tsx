@@ -130,7 +130,7 @@ export default function PlayerProfile({
     track('player_profile_viewed', { user_id: userId });
   }, [userId]);
 
-  const username = snapshot?.username || initialUsername || (language === 'fr' ? 'Joueur' : 'Player');
+  const username = snapshot?.username || initialUsername || (tr(language, 'Joueur', 'Player'));
   const elo = snapshot?.elo ?? 1000;
   const wins = snapshot?.wins ?? 0;
   const losses = snapshot?.losses ?? 0;
@@ -366,7 +366,7 @@ export default function PlayerProfile({
                 <RankGlobe rank={rank} size={72} showName={false} language={language} spin />
                 <View style={{ flex: 1, marginLeft: 14 }}>
                   <Text style={[styles.rankName, { color: rank.color }]} numberOfLines={1}>
-                    {language === 'fr' ? rank.nameFr : rank.name}
+                    {tr(language, rank.nameFr, rank.name)}
                   </Text>
                   <ScoreText style={[styles.eloText, { color: c.text }]} numberOfLines={1}>
                     {elo} <Text style={{ color: c.textFaint, fontSize: 12 }}>ELO</Text>

@@ -36,7 +36,7 @@ import { isAnswerClose, normalizeAnswer } from '../lib/answerMatch';
 import { createSeededRng, seededShuffle } from '../lib/rng';
 import { normalizeRoundScore } from '../lib/score';
 import { prefetchFlagSlugs } from '../lib/flags';
-import type { Match } from '../types';
+import type { Match, Language } from '../types';
 import {
   CHALLENGE_QUESTIONS_ONLINE, CHALLENGE_QUESTIONS_SOLO,
   type Challenge, type ChallengeEntity,
@@ -72,7 +72,7 @@ type Feedback = { correct: boolean; points: number; answer: string };
 const MODE_POINTS: Record<QuizMode, number> = { DUO: 1, CARRE: 3, CASH: 5 };
 
 /** CASH match: numbers compared numerically/exactly, names fuzzily. */
-function matchesCash(input: string, e: ChallengeEntity, kind: 'number' | 'name', lang: 'fr' | 'en'): boolean {
+function matchesCash(input: string, e: ChallengeEntity, kind: 'number' | 'name', lang: Language): boolean {
   const a = normalizeAnswer(input);
   if (!a) return false;
   if (kind === 'number') {
@@ -191,8 +191,8 @@ export default function ChallengeQuiz({
       correct ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Error,
     ).catch(() => {});
     announce(correct
-      ? tr(language, `Bonne réponse, +${points}`, `Correct, +${points}`)
-      : tr(language, `Mauvaise réponse. ${correctAnswer}`, `Wrong. ${correctAnswer}`));
+      ? tr(language, 'Bonne réponse, +{0}', 'Correct, +{0}', [points])
+      : tr(language, 'Mauvaise réponse. {0}', 'Wrong. {0}', [correctAnswer]));
     setFeedback({ correct, points, answer: correctAnswer });
   };
 
@@ -276,7 +276,7 @@ export default function ChallengeQuiz({
           <ScoreText style={[styles.bigScore, { color: '#2a6e3f' }]}>{score}</ScoreText>
           <Text style={[styles.resultSub, { color: c.textMuted }]}>{tr(language, 'points', 'points')}</Text>
           <Text style={[styles.resultSub, { color: c.textMuted, marginTop: 6 }]}>
-            {tr(language, `${correctCount} / ${questions.length} bonnes réponses`, `${correctCount} / ${questions.length} correct`)}
+            {tr(language, '{0} / {1} bonnes réponses', '{0} / {1} correct', [correctCount, questions.length])}
           </Text>
 
           <SoloCoinReward
@@ -315,7 +315,7 @@ export default function ChallengeQuiz({
           <ArrowLeft color={c.text} size={22} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: c.text }]} numberOfLines={1}>
-          {language === 'fr' ? challenge.titleFr : challenge.titleEn}
+          {tr(language, challenge.titleFr, challenge.titleEn)}
         </Text>
         <ScoreText style={[styles.headerScore, { color: '#2a6e3f' }]}>{score}</ScoreText>
       </View>
@@ -335,7 +335,7 @@ export default function ChallengeQuiz({
             </Text>
           )}
           <Text style={[styles.instruction, { color: c.textMuted }]}>
-            {language === 'fr' ? challenge.questionFr : challenge.questionEn}
+            {tr(language, challenge.questionFr, challenge.questionEn)}
           </Text>
         </View>
 
@@ -380,7 +380,7 @@ export default function ChallengeQuiz({
               hitSlop={ICON_HIT_SLOP}
               {...a11yButton(tr(language, 'Retour', 'Back'))}
             >
-              <Text style={{ color: '#4a9eff', fontWeight: 'bold' }}>← {language === 'fr' ? 'RETOUR' : 'BACK'}</Text>
+              <Text style={{ color: '#4a9eff', fontWeight: 'bold' }}>← {tr(language, 'RETOUR', 'BACK')}</Text>
             </TouchableOpacity>
             <TextInput
               style={[styles.cashInput, !isDarkMode && styles.cashInputLight]}
@@ -426,7 +426,7 @@ export default function ChallengeQuiz({
               <Text style={[styles.feedbackSub, { color: c.text }]}>
                 {feedback.correct
                   ? `+${feedback.points} ${tr(language, 'point(s)', 'point(s)')}`
-                  : tr(language, `La réponse était : ${feedback.answer}`, `The answer was: ${feedback.answer}`)}
+                  : tr(language, 'La réponse était : {0}', 'The answer was: {0}', [feedback.answer])}
               </Text>
               <TouchableOpacity
                 style={[styles.nextBtn, { backgroundColor: c.accentStrong }]}

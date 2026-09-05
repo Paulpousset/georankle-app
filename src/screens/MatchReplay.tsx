@@ -110,9 +110,7 @@ export default function MatchReplay({ match, onExit }: MatchReplayProps) {
           </ScoreText>
           <Text style={{ color: c.textMuted, fontFamily: FONTS.mono, fontSize: 13, textAlign: 'center' }}>
             {tr(
-              language,
-              `Moyenne sur ${scores.length} manche${scores.length > 1 ? 's' : ''} · sur 1000`,
-              `Average over ${scores.length} round${scores.length > 1 ? 's' : ''} · out of 1000`,
+              language, 'Moyenne sur {0} manche{1} · sur 1000', 'Average over {0} round{1} · out of 1000', [scores.length, scores.length > 1 ? 's' : ''],
             )}
           </Text>
           <Text style={{ color: c.textFaint, fontFamily: FONTS.mono, fontSize: 11, textAlign: 'center', maxWidth: 300 }}>

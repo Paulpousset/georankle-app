@@ -50,7 +50,7 @@ export function CountryFactCard({ cca3, onClose }: CountryFactCardProps) {
             <Image
               source={{ uri: getFlagUrl(facts.cca3) }}
               style={styles.flag}
-              {...a11yImage(tr(language, `Drapeau : ${facts.name}`, `Flag: ${facts.name}`))}
+              {...a11yImage(tr(language, 'Drapeau : {0}', 'Flag: {0}', [facts.name]))}
             />
             <View style={{ flex: 1 }}>
               <Text style={[styles.kicker, { color: c.textFaint }]}>
@@ -97,13 +97,7 @@ export function CountryFactCard({ cca3, onClose }: CountryFactCardProps) {
                     style={[styles.rankRow, { borderColor: c.border }]}
                     accessible
                     accessibilityLabel={tr(
-                      language,
-                      `${r.label} : ${r.rank}ᵉ sur ${r.total}${
-                        r.position === 'bottom' ? `, ${r.fromEnd}ᵉ en partant de la fin` : ''
-                      }. ${r.hint}`,
-                      `${r.label}: ranked ${r.rank} of ${r.total}${
-                        r.position === 'bottom' ? `, ${r.fromEnd}${r.fromEnd === 1 ? 'st' : 'th'} from last` : ''
-                      }. ${r.hint}`,
+                      language, '{0} : {1}ᵉ sur {2}{3}. {4}', '{0}: ranked {1} of {2}{5}. {4}', [r.label, r.rank, r.total, r.position === 'bottom' ? `, ${r.fromEnd}ᵉ en partant de la fin` : '', r.hint, r.position === 'bottom' ? `, ${r.fromEnd}${r.fromEnd === 1 ? 'st' : 'th'} from last` : ''],
                     )}
                   >
                     <View

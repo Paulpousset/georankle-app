@@ -24,7 +24,7 @@ import { tr } from '../i18n';
 import { getColors, PALETTE } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { hoverLift } from '../lib/webHover';
-import type { GameMode } from '../types';
+import type { GameMode, Language } from '../types';
 
 /** Short mode names, only ever used to explain a worldwide fallback. */
 const MODE_NAMES: Partial<Record<GameMode, { fr: string; en: string }>> = {
@@ -38,8 +38,8 @@ const MODE_NAMES: Partial<Record<GameMode, { fr: string; en: string }>> = {
   'quiz-flag': { fr: 'Drapeaux', en: 'Flags' },
 };
 
-const modeNames = (modes: GameMode[], language: 'fr' | 'en') =>
-  modes.map((m) => (language === 'fr' ? MODE_NAMES[m]?.fr : MODE_NAMES[m]?.en) ?? m).join(', ');
+const modeNames = (modes: GameMode[], language: Language) =>
+  modes.map((m) => (MODE_NAMES[m] ? tr(language, MODE_NAMES[m].fr, MODE_NAMES[m].en) : m)).join(', ');
 
 interface ContinentChipProps {
   scope: ContinentId | null;
@@ -58,18 +58,15 @@ export function ContinentChip({ scope, onChange, training, onChangeTraining, ope
 
   const active = CONTINENTS.find((x) => x.id === scope) ?? null;
   const label = active
-    ? (language === 'fr' ? active.fr : active.en)
+    ? (tr(language, active.fr, active.en))
     : tr(language, 'Monde', 'World');
 
   const select = (next: ContinentId | null) => {
     onChange(next);
     setOpen(false);
-    const name = next
-      ? (language === 'fr'
-          ? CONTINENTS.find((x) => x.id === next)?.fr
-          : CONTINENTS.find((x) => x.id === next)?.en) ?? next
-      : tr(language, 'Monde', 'World');
-    announce(tr(language, `Zone : ${name}`, `Zone: ${name}`));
+    const continent = next ? CONTINENTS.find((x) => x.id === next) : undefined;
+    const name = continent ? tr(language, continent.fr, continent.en) : next ?? tr(language, 'Monde', 'World');
+    announce(tr(language, 'Zone : {0}', 'Zone: {0}', [name]));
   };
 
   return (
@@ -83,7 +80,7 @@ export function ContinentChip({ scope, onChange, training, onChangeTraining, ope
             borderColor: scope ? PALETTE.oceanBlue : c.border,
           },
         ]}
-        {...a11yButton(tr(language, `Zone de jeu : ${label}`, `Play zone: ${label}`), {
+        {...a11yButton(tr(language, 'Zone de jeu : {0}', 'Play zone: {0}', [label]), {
           hint: tr(language, 'Choisir un continent', 'Pick a continent'),
         })}
         {...hoverLift}
@@ -152,15 +149,13 @@ export function ContinentChip({ scope, onChange, training, onChangeTraining, ope
                   <ZoneRow
                     key={cont.id}
                     continent={cont.id}
-                    label={language === 'fr' ? cont.fr : cont.en}
+                    label={tr(language, cont.fr, cont.en)}
                     sub={
                       missing.length
                         ? tr(
-                            language,
-                            `${count} pays · ${modeNames(missing, 'fr')} reste${missing.length > 1 ? 'nt' : ''} en monde`,
-                            `${count} countries · ${modeNames(missing, 'en')} stay${missing.length > 1 ? '' : 's'} worldwide`,
+                            language, '{0} pays · {1} reste{2} en monde', '{0} countries · {3} stay{4} worldwide', [count, modeNames(missing, 'fr'), missing.length > 1 ? 'nt' : '', modeNames(missing, 'en'), missing.length > 1 ? '' : 's'],
                           )
-                        : tr(language, `${count} pays`, `${count} countries`)
+                        : tr(language, '{0} pays', '{0} countries', [count])
                     }
                     selected={scope === cont.id}
                     onPress={() => select(cont.id)}
@@ -229,7 +224,7 @@ interface ZoneRowProps {
   selected: boolean;
   onPress: () => void;
   colors: ReturnType<typeof getColors>;
-  language: 'fr' | 'en';
+  language: Language;
 }
 
 function ZoneRow({ continent, label, sub, selected, onPress, colors, language }: ZoneRowProps) {

@@ -30,13 +30,14 @@ import { a11yButton, announce, ICON_HIT_SLOP } from '../lib/a11y';
 // Partagé avec la revanche (lib/rematch) : les deux doivent produire le MÊME
 // game_data, c'est lui que les deux clients lisent pour jouer la même partie.
 import { buildClassicSessions } from '../lib/rematch';
+import { countryName } from '../lib/geoNames';
 
 type MatchmakingView = 'lobby' | 'create' | 'waiting' | 'friends' | 'region-picker';
 
 /** Short level label for the lobby rows / summaries. */
 function regionLevelLabel(level: string | undefined, lang: Language): string {
-  if (level === 'departments') return lang === 'fr' ? 'Départements' : 'Departments';
-  return lang === 'fr' ? 'Régions' : 'Regions';
+  if (level === 'departments') return tr(lang, 'Départements', 'Departments');
+  return tr(lang, 'Régions', 'Regions');
 }
 
 interface PublicMatchItem {
@@ -72,20 +73,20 @@ const QUESTION_TYPES = [
 
 function modeName(mode: MatchMode, lang: Language): string {
   if (mode === 'classic') return 'Rankle';
-  if (mode === 'streak') return 'Streak';
-  if (mode === 'globe') return lang === 'fr' ? 'Globe Géo' : 'Geo Globe';
-  if (mode === 'guess') return lang === 'fr' ? 'Devine le Pays' : 'Guess Country';
-  if (mode === 'regions') return lang === 'fr' ? 'Défis Pays' : 'Country Challenges';
-  if (mode === 'challenge') return lang === 'fr' ? 'Quiz Pays' : 'Country Quiz';
-  if (mode === 'silhouette') return 'Silhouette';
-  if (mode === 'borders') return lang === 'fr' ? 'Frontières' : 'Borders';
-  if (mode === 'higherlower') return lang === 'fr' ? 'Plus ou Moins' : 'Higher or Lower';
-  if (mode === 'languages') return lang === 'fr' ? 'Langues' : 'Languages';
+  if (mode === 'streak') return tr(lang, 'Streak', 'Streak');
+  if (mode === 'globe') return tr(lang, 'Globe Géo', 'Geo Globe');
+  if (mode === 'guess') return tr(lang, 'Devine le Pays', 'Guess Country');
+  if (mode === 'regions') return tr(lang, 'Défis Pays', 'Country Challenges');
+  if (mode === 'challenge') return tr(lang, 'Quiz Pays', 'Country Quiz');
+  if (mode === 'silhouette') return tr(lang, 'Silhouette', 'Silhouette');
+  if (mode === 'borders') return tr(lang, 'Frontières', 'Borders');
+  if (mode === 'higherlower') return tr(lang, 'Plus ou Moins', 'Higher or Lower');
+  if (mode === 'languages') return tr(lang, 'Langues', 'Languages');
   return 'Versus';
 }
 
 function formatBestOf(bo: number, lang: Language): string {
-  return lang === 'fr' ? `BO${bo}` : `BO${bo}`;
+  return tr(lang, 'BO{0}', 'BO{0}', [bo]);
 }
 
 // Stable references so FlatList rows aren't re-created on every parent render.
@@ -118,13 +119,13 @@ const PublicMatchRow = React.memo(function PublicMatchRow({
       />
       <View style={{ flex: 1 }}>
         <Text style={[styles.matchCreator, { color: colors.text }]}>
-          {item.creator_username ?? (language === 'fr' ? 'Joueur' : 'Player')}
+          {item.creator_username ?? (tr(language, 'Joueur', 'Player'))}
         </Text>
         <Text style={[styles.matchSub, { color: colors.textMuted }]} numberOfLines={1}>
           {formatBestOf(item.best_of, language)}
           {gameMode === 'versus' && gdata.questionType ? ` · ${gdata.questionType}` : ''}
           {gameMode === 'versus' && gdata.roundsPerSet ? ` · ${gdata.roundsPerSet} rounds` : ''}
-          {gameMode === 'regions' && gdata.country ? ` · ${language === 'fr' ? gdata.country.name : (gdata.country.name_en ?? gdata.country.name)}` : ''}
+          {gameMode === 'regions' && gdata.country ? ` · ${countryName(gdata.country, language)}` : ''}
           {gameMode === 'regions' && gdata.level ? ` · ${regionLevelLabel(gdata.level, language)}` : ''}
         </Text>
       </View>
@@ -133,7 +134,7 @@ const PublicMatchRow = React.memo(function PublicMatchRow({
         onPress={() => onJoin(item)}
         disabled={busy}
         {...a11yButton(
-          tr(language, `Rejoindre la partie de ${item.creator_username ?? 'Joueur'}`, `Join ${item.creator_username ?? 'Player'}'s match`),
+          tr(language, 'Rejoindre la partie de {0}', 'Join {1}\'s match', [item.creator_username ?? 'Joueur', item.creator_username ?? 'Player']),
           { disabled: busy, busy },
         )}
       >
@@ -177,7 +178,7 @@ const FriendRow = React.memo(function FriendRow({
         style={[styles.joinBtn, busy && { opacity: 0.6 }]}
         onPress={() => onInvite(friend.id)}
         disabled={busy}
-        {...a11yButton(tr(language, `Inviter ${friend.username}`, `Invite ${friend.username}`), {
+        {...a11yButton(tr(language, 'Inviter {0}', 'Invite {0}', [friend.username]), {
           disabled: busy,
           busy,
         })}
@@ -418,8 +419,8 @@ export default function Matchmaking({
       if (regionPicks.length === 0) {
         setCreating(false);
         showAlert(
-          language === 'fr' ? 'Choisis un pays' : 'Pick a country',
-          language === 'fr' ? "Sélectionne d'abord un pays et un niveau." : 'Select a country and level first.',
+          tr(language, 'Choisis un pays', 'Pick a country'),
+          tr(language, 'Sélectionne d\'abord un pays et un niveau.', 'Select a country and level first.'),
         );
         return;
       }
@@ -463,8 +464,8 @@ export default function Matchmaking({
           .catch(() => {});
       }
     } else {
-      showAlert(language === 'fr' ? 'Erreur' : 'Error',
-        language === 'fr' ? 'Impossible de créer la partie' : 'Could not create match');
+      showAlert(tr(language, 'Erreur', 'Error'),
+        tr(language, 'Impossible de créer la partie', 'Could not create match'));
     }
   }, [userId, gameMode, isPublic, bestOf, questionType, roundsPerSet, regionPicks, language]);
 
@@ -486,11 +487,11 @@ export default function Matchmaking({
 
   const cancelMatch = () => {
     showAlert(
-      language === 'fr' ? 'Annuler la partie ?' : 'Cancel match?',
-      language === 'fr' ? 'La partie en attente sera annulée.' : 'The pending match will be cancelled.',
+      tr(language, 'Annuler la partie ?', 'Cancel match?'),
+      tr(language, 'La partie en attente sera annulée.', 'The pending match will be cancelled.'),
       [
-        { text: language === 'fr' ? 'Continuer' : 'Keep waiting', style: 'cancel' },
-        { text: language === 'fr' ? 'Annuler' : 'Cancel', style: 'destructive', onPress: doCancelMatch },
+        { text: tr(language, 'Continuer', 'Keep waiting'), style: 'cancel' },
+        { text: tr(language, 'Annuler', 'Cancel'), style: 'destructive', onPress: doCancelMatch },
       ],
     );
   };
@@ -523,10 +524,16 @@ export default function Matchmaking({
       />
       <View style={{ flex: 1 }}>
         <Text style={[styles.playerName, { color: textPrimary }]}>
-          {playerStats.username ?? (language === 'fr' ? 'Joueur' : 'Player')}
+          {playerStats.username ?? (tr(language, 'Joueur', 'Player'))}
         </Text>
         <Text style={[styles.playerSub, { color: textSecondary }]}>
-          {gameMode === 'streak' ? 'GeoStreak' : gameMode === 'versus' ? 'Versus' : gameMode === 'globe' ? 'Globe Géo' : 'GeoG'}
+          {gameMode === 'streak'
+            ? 'GeoStreak'
+            : gameMode === 'versus'
+              ? 'Versus'
+              : gameMode === 'globe'
+                ? tr(language, 'Globe Géo', 'Geo Globe')
+                : 'GeoG'}
         </Text>
       </View>
       <View style={styles.winBadge}>
@@ -535,7 +542,7 @@ export default function Matchmaking({
           {winRate !== null ? `${winRate}%` : '--'}
         </Text>
         <Text style={[styles.winLabel, { color: textSecondary }]}>
-          {language === 'fr' ? 'victoires' : 'win rate'}
+          {tr(language, 'victoires', 'win rate')}
         </Text>
       </View>
     </View>
@@ -585,14 +592,14 @@ export default function Matchmaking({
 
       <View style={styles.sectionHeader}>
         <Text style={[styles.sectionTitle, { color: textSecondary }]}>
-          {language === 'fr' ? 'PARTIES EN ATTENTE' : 'OPEN MATCHES'}
+          {tr(language, 'PARTIES EN ATTENTE', 'OPEN MATCHES')}
           {publicMatches.length > 0 ? ` (${publicMatches.length})` : ''}
         </Text>
         <TouchableOpacity
           onPress={fetchPublicMatches}
           style={styles.refreshBtn}
           accessibilityRole="button"
-          accessibilityLabel={language === 'fr' ? 'Rafraîchir la liste' : 'Refresh list'}
+          accessibilityLabel={tr(language, 'Rafraîchir la liste', 'Refresh list')}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <RefreshCw size={16} color={accent} />
@@ -604,7 +611,7 @@ export default function Matchmaking({
       ) : publicMatches.length === 0 ? (
         <View style={[styles.emptyCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
           <Text style={[styles.emptyText, { color: textSecondary }]}>
-            {language === 'fr' ? 'Aucune partie ouverte pour ce mode.' : 'No open matches for this mode.'}
+            {tr(language, 'Aucune partie ouverte pour ce mode.', 'No open matches for this mode.')}
           </Text>
         </View>
       ) : (
@@ -624,7 +631,7 @@ export default function Matchmaking({
       >
         <Plus size={20} color="#fff" />
         <Text style={styles.createBtnText}>
-          {language === 'fr' ? 'Créer une partie' : 'Create a match'}
+          {tr(language, 'Créer une partie', 'Create a match')}
         </Text>
       </TouchableOpacity>
     </ScrollView>
@@ -635,7 +642,7 @@ export default function Matchmaking({
   const renderCreate = () => (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}>
       <Text style={[styles.formTitle, { color: textPrimary }]}>
-        {language === 'fr' ? 'Format du match' : 'Match format'}
+        {tr(language, 'Format du match', 'Match format')}
       </Text>
       <View style={styles.optRow}>
         {[1, 3, 5].map((bo) => (
@@ -647,7 +654,7 @@ export default function Matchmaking({
               bestOf === bo && styles.optBtnActive,
             ]}
             onPress={() => setBestOf(bo)}
-            {...a11yButton(tr(language, `Format BO${bo}`, `Best of ${bo}`), { selected: bestOf === bo })}
+            {...a11yButton(tr(language, 'Format BO{0}', 'Best of {0}', [bo]), { selected: bestOf === bo })}
           >
             <Text style={[styles.optBtnText, { color: bestOf === bo ? accent : textSecondary }]}>
               BO{bo}
@@ -659,7 +666,7 @@ export default function Matchmaking({
       {gameMode === 'versus' && (
         <>
           <Text style={[styles.formTitle, { color: textPrimary }]}>
-            {language === 'fr' ? 'Type de questions' : 'Question type'}
+            {tr(language, 'Type de questions', 'Question type')}
           </Text>
           <View style={styles.optRow}>
             {QUESTION_TYPES.map((qt) => {
@@ -673,11 +680,11 @@ export default function Matchmaking({
                   questionType === qt.id && styles.optBtnActive,
                 ]}
                 onPress={() => setQuestionType(qt.id)}
-                {...a11yButton(language === 'fr' ? qt.labelFr : qt.labelEn, { selected: questionType === qt.id })}
+                {...a11yButton(tr(language, qt.labelFr, qt.labelEn), { selected: questionType === qt.id })}
               >
                 <Icon color={questionType === qt.id ? accent : textSecondary} size={20} />
                 <Text style={[styles.optBtnText, { color: questionType === qt.id ? accent : textSecondary, fontSize: 12 }]}>
-                  {language === 'fr' ? qt.labelFr : qt.labelEn}
+                  {tr(language, qt.labelFr, qt.labelEn)}
                 </Text>
               </TouchableOpacity>
               );
@@ -685,7 +692,7 @@ export default function Matchmaking({
           </View>
 
           <Text style={[styles.formTitle, { color: textPrimary }]}>
-            {language === 'fr' ? 'Rounds par manche' : 'Rounds per set'}
+            {tr(language, 'Rounds par manche', 'Rounds per set')}
           </Text>
           <View style={styles.optRow}>
             {[3, 5, 10].map((r) => (
@@ -697,7 +704,7 @@ export default function Matchmaking({
                   roundsPerSet === r && styles.optBtnActive,
                 ]}
                 onPress={() => setRoundsPerSet(r)}
-                {...a11yButton(tr(language, `${r} rounds par manche`, `${r} rounds per set`), { selected: roundsPerSet === r })}
+                {...a11yButton(tr(language, '{0} rounds par manche', '{0} rounds per set', [r]), { selected: roundsPerSet === r })}
               >
                 <Text style={[styles.optBtnText, { color: roundsPerSet === r ? accent : textSecondary }]}>
                   {r}
@@ -711,14 +718,14 @@ export default function Matchmaking({
       {gameMode === 'regions' && (
         <>
           <Text style={[styles.formTitle, { color: textPrimary }]}>
-            {language === 'fr' ? 'Pays & niveau' : 'Country & level'}
+            {tr(language, 'Pays & niveau', 'Country & level')}
           </Text>
           <TouchableOpacity
             style={[styles.regionPickBtn, { backgroundColor: cardBg, borderColor: regionPicks.length ? accent : cardBorder }]}
             onPress={() => setView('region-picker')}
             {...a11yButton(
               regionPicks.length
-                ? tr(language, `${regionPicks.length} pays choisi(s), changer`, `${regionPicks.length} countries chosen, change`)
+                ? tr(language, '{0} pays choisi(s), changer', '{0} countries chosen, change', [regionPicks.length])
                 : tr(language, 'Choisir un ou plusieurs pays', 'Choose one or more countries'),
             )}
           >
@@ -727,17 +734,17 @@ export default function Matchmaking({
               {regionPicks.length ? (
                 <>
                   <Text style={[styles.regionPickName, { color: textPrimary }]} numberOfLines={1}>
-                    {regionPicks.map((p) => (language === 'fr' ? p.name : (p.name_en ?? p.name))).join(', ')}
+                    {regionPicks.map((p) => countryName(p, language)).join(', ')}
                   </Text>
                   <Text style={[styles.regionPickSub, { color: textSecondary }]}>
                     {regionPicks.length === 1
                       ? regionLevelLabel(regionPicks[0].level, language)
-                      : tr(language, `Mix · ${regionPicks.length} pays`, `Mix · ${regionPicks.length} countries`)}
+                      : tr(language, 'Mix · {0} pays', 'Mix · {0} countries', [regionPicks.length])}
                   </Text>
                 </>
               ) : (
                 <Text style={[styles.regionPickName, { color: textSecondary }]}>
-                  {language === 'fr' ? 'Choisir un ou plusieurs pays…' : 'Choose one or more countries…'}
+                  {tr(language, 'Choisir un ou plusieurs pays…', 'Choose one or more countries…')}
                 </Text>
               )}
             </View>
@@ -745,7 +752,7 @@ export default function Matchmaking({
           </TouchableOpacity>
 
           <Text style={[styles.formTitle, { color: textPrimary }]}>
-            {language === 'fr' ? 'Régions par manche' : 'Regions per round'}
+            {tr(language, 'Régions par manche', 'Regions per round')}
           </Text>
           <View style={styles.optRow}>
             {[3, 5, 10].map((r) => (
@@ -757,7 +764,7 @@ export default function Matchmaking({
                   roundsPerSet === r && styles.optBtnActive,
                 ]}
                 onPress={() => setRoundsPerSet(r)}
-                {...a11yButton(tr(language, `${r} régions par manche`, `${r} regions per round`), { selected: roundsPerSet === r })}
+                {...a11yButton(tr(language, '{0} régions par manche', '{0} regions per round', [r]), { selected: roundsPerSet === r })}
               >
                 <Text style={[styles.optBtnText, { color: roundsPerSet === r ? accent : textSecondary }]}>
                   {r}
@@ -769,7 +776,7 @@ export default function Matchmaking({
       )}
 
       <Text style={[styles.formTitle, { color: textPrimary }]}>
-        {language === 'fr' ? 'Visibilité' : 'Visibility'}
+        {tr(language, 'Visibilité', 'Visibility')}
       </Text>
       <View style={styles.optRow}>
         <TouchableOpacity
@@ -783,10 +790,10 @@ export default function Matchmaking({
         >
           <Globe size={18} color={isPublic ? accent : textSecondary} />
           <Text style={[styles.visBtnText, { color: isPublic ? accent : textSecondary }]}>
-            {language === 'fr' ? 'Publique' : 'Public'}
+            {tr(language, 'Publique', 'Public')}
           </Text>
           <Text style={[styles.visDesc, { color: textSecondary }]}>
-            {language === 'fr' ? 'Visible par tous' : 'Open to everyone'}
+            {tr(language, 'Visible par tous', 'Open to everyone')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -798,8 +805,8 @@ export default function Matchmaking({
           onPress={() => {
             if (gameMode === 'regions' && regionPicks.length === 0) {
               showAlert(
-                language === 'fr' ? 'Choisis un pays' : 'Pick a country',
-                language === 'fr' ? "Sélectionne d'abord un pays et un niveau." : 'Select a country and level first.',
+                tr(language, 'Choisis un pays', 'Pick a country'),
+                tr(language, 'Sélectionne d\'abord un pays et un niveau.', 'Select a country and level first.'),
               );
               return;
             }
@@ -809,10 +816,10 @@ export default function Matchmaking({
         >
           <Users size={18} color={!isPublic ? accent : textSecondary} />
           <Text style={[styles.visBtnText, { color: !isPublic ? accent : textSecondary }]}>
-            {language === 'fr' ? 'Privée' : 'Private'}
+            {tr(language, 'Privée', 'Private')}
           </Text>
           <Text style={[styles.visDesc, { color: textSecondary }]}>
-            {language === 'fr' ? 'Inviter un ami' : 'Invite a friend'}
+            {tr(language, 'Inviter un ami', 'Invite a friend')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -829,7 +836,7 @@ export default function Matchmaking({
           <>
             <Plus size={20} color="#fff" />
             <Text style={styles.createBtnText}>
-              {language === 'fr' ? 'Créer la partie' : 'Create match'}
+              {tr(language, 'Créer la partie', 'Create match')}
             </Text>
           </>
         )}
@@ -848,7 +855,7 @@ export default function Matchmaking({
       ListEmptyComponent={
         <View style={[styles.emptyCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
           <Text style={[styles.emptyText, { color: textSecondary }]}>
-            {language === 'fr' ? 'Aucun ami trouvé.' : 'No friends found.'}
+            {tr(language, 'Aucun ami trouvé.', 'No friends found.')}
           </Text>
         </View>
       }
@@ -863,8 +870,8 @@ export default function Matchmaking({
       <ActivityIndicator size="large" color={accent} />
       <Text style={[styles.waitingTitle, { color: textPrimary }]}>
         {matchState?.is_public
-          ? (language === 'fr' ? "Recherche d'un adversaire..." : 'Finding an opponent...')
-          : (language === 'fr' ? "En attente de l'ami..." : 'Waiting for your friend...')}
+          ? (tr(language, 'Recherche d\'un adversaire...', 'Finding an opponent...'))
+          : (tr(language, 'En attente de l\'ami...', 'Waiting for your friend...'))}
       </Text>
       {renderPlayerCard()}
       <TouchableOpacity
@@ -872,7 +879,7 @@ export default function Matchmaking({
         onPress={cancelMatch}
         {...a11yButton(tr(language, 'Annuler la partie', 'Cancel match'))}
       >
-        <Text style={styles.cancelBtnText}>{language === 'fr' ? 'Annuler' : 'Cancel'}</Text>
+        <Text style={styles.cancelBtnText}>{tr(language, 'Annuler', 'Cancel')}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -889,10 +896,10 @@ export default function Matchmaking({
   };
 
   const headerTitle = () => {
-    if (view === 'create') return language === 'fr' ? 'Créer une partie' : 'Create a match';
-    if (view === 'friends') return language === 'fr' ? 'Choisir un ami' : 'Choose a friend';
-    if (view === 'waiting') return language === 'fr' ? 'En attente...' : 'Waiting...';
-    return `${language === 'fr' ? 'Multi · ' : 'Online · '}${modeName(gameMode, language)}`;
+    if (view === 'create') return tr(language, 'Créer une partie', 'Create a match');
+    if (view === 'friends') return tr(language, 'Choisir un ami', 'Choose a friend');
+    if (view === 'waiting') return tr(language, 'En attente...', 'Waiting...');
+    return `${tr(language, 'Multi · ', 'Online · ')}${modeName(gameMode, language)}`;
   };
 
   // ─── Render ───────────────────────────────────────────────────────────────────

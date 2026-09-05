@@ -47,6 +47,7 @@ import { useMyGameGlobe } from '../lib/myGlobe';
 import { TopInsetBar } from '../components/TopInsetBar';
 
 import { isMobileLayout as isMobile } from '../lib/layout';
+import { countryName } from '../lib/geoNames';
 
 /**
  * A finished classic session, captured so it can be reviewed read-only later
@@ -151,7 +152,7 @@ export function ClassicGame({
   training = false,
 }: ClassicGameProps) {
   const { isDarkMode, toggleTheme } = useTheme();
-  const { language, toggleLanguage } = useLanguage();
+  const { language, openLanguagePicker } = useLanguage();
   const toast = useToast();
   const c = getColors(isDarkMode);
   // In review mode the relevant state is seeded from the captured session so the
@@ -360,7 +361,7 @@ export function ClassicGame({
     setSelections((prev) => ({
       ...prev,
       [themeId]: {
-        countryName: language === 'fr' ? country.name : country.name_en || country.name,
+        countryName: countryName(country, language),
         rank,
         cca3: country.cca3,
       },
@@ -389,9 +390,7 @@ export function ClassicGame({
 
         announce(
           tr(
-            language,
-            `Session terminée. Score total ${finalScore}, efficacité ${gameEfficiency}%.`,
-            `Session finished. Total score ${finalScore}, efficiency ${gameEfficiency}%.`,
+            language, 'Session terminée. Score total {0}, efficacité {1}%.', 'Session finished. Total score {0}, efficiency {1}%.', [finalScore, gameEfficiency],
           ),
         );
 
@@ -444,7 +443,7 @@ export function ClassicGame({
           const fullSelections: SelectionMap = {
             ...selections,
             [themeId]: {
-              countryName: language === 'fr' ? country.name : country.name_en || country.name,
+              countryName: countryName(country, language),
               rank,
               cca3: country.cca3,
             },
@@ -639,7 +638,7 @@ export function ClassicGame({
                     )}
                   </TouchableOpacity>
                   <TouchableOpacity
-                    onPress={toggleLanguage}
+                    onPress={openLanguagePicker}
                     hitSlop={ICON_HIT_SLOP}
                     {...a11yButton(tr(language, 'Changer de langue', 'Change language'))}
                     style={[
@@ -751,7 +750,7 @@ export function ClassicGame({
                   )}
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={toggleLanguage}
+                  onPress={openLanguagePicker}
                   hitSlop={ICON_HIT_SLOP}
                   {...a11yButton(tr(language, 'Changer de langue', 'Change language'))}
                   style={[
@@ -815,9 +814,7 @@ export function ClassicGame({
                     style={[styles.countryFlag, { height: 50, width: 75, marginVertical: 4 }]}
                   />
                   <Text style={[themeStyles.countryName, { fontSize: 28, marginVertical: 2 }]}>
-                    {language === 'fr'
-                      ? currentCountry.name
-                      : currentCountry.name_en || currentCountry.name}
+                    {countryName(currentCountry, language)}
                   </Text>
                   <Text style={[themeStyles.instruction, { fontSize: 13, marginTop: 2 }]}>
                     {tr(
@@ -853,9 +850,7 @@ export function ClassicGame({
                           { fontSize: 26, textAlign: 'left', fontWeight: '900' },
                         ]}
                       >
-                        {language === 'fr'
-                          ? currentCountry.name
-                          : currentCountry.name_en || currentCountry.name}
+                        {countryName(currentCountry, language)}
                       </Text>
                       <Text
                         style={[
@@ -925,9 +920,7 @@ export function ClassicGame({
                         {...a11yButton(
                           isUsed
                             ? tr(
-                                language,
-                                `${themeName}, attribué à ${selection.countryName}, rang ${selection.rank}`,
-                                `${themeName}, assigned to ${selection.countryName}, rank ${selection.rank}`,
+                                language, '{0}, attribué à {1}, rang {2}', '{0}, assigned to {1}, rank {2}', [themeName, selection.countryName, selection.rank],
                               )
                             : themeName,
                           {
@@ -958,7 +951,7 @@ export function ClassicGame({
                         onPress={() => setShowThemeInfo(theme)}
                         hitSlop={ICON_HIT_SLOP}
                         {...a11yButton(
-                          tr(language, `Infos sur le thème ${themeName}`, `Info about ${themeName} theme`),
+                          tr(language, 'Infos sur le thème {0}', 'Info about {0} theme', [themeName]),
                         )}
                         style={{ padding: 5 }}
                       >
@@ -1122,11 +1115,10 @@ export function ClassicGame({
                       // Defensive: an interrupted/degenerate session can leave a
                       // theme without a pick — skip the row instead of crashing.
                       if (!selection || !optimal) return null;
-                      const optimalCountryName =
-                        language === 'fr'
-                          ? optimal.countryName
-                          : gameData.countries.find((co) => co.cca3 === optimal.cca3)?.name_en ||
-                            optimal.countryName;
+                      const optimalCountry = gameData.countries.find((co) => co.cca3 === optimal.cca3);
+                      const optimalCountryName = optimalCountry
+                        ? countryName(optimalCountry, language)
+                        : optimal.countryName;
                       return (
                         <View
                           key={theme.id}

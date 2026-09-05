@@ -10,6 +10,7 @@ import type { Language } from '../types';
 import type { DailyResult } from './daily';
 import { dailyModeLabel, getPuzzleNumber } from './daily';
 import { SITE_DOMAIN, playLink } from './links';
+import { tr } from '../i18n';
 
 /** One-line score summary used when a mode ships no emoji grid yet. */
 function scoreLine(result: DailyResult, language: Language): string {
@@ -18,29 +19,24 @@ function scoreLine(result: DailyResult, language: Language): string {
       return `${result.score}%`;
     case 'streak':
     case 'higherlower':
-      return tr(language, `Série de ${result.score}`, `Streak of ${result.score}`);
+      return tr(language, 'Série de {0}', 'Streak of {0}', [result.score]);
     case 'silhouette':
     case 'languages':
     case 'challenge':
       // DUO/CARRÉ/CASH points (the 🟩/🟥 grid already shows how many were right).
-      return tr(language, `${result.score} pts`, `${result.score} pts`);
+      return tr(language, '{0} pts', '{0} pts', [result.score]);
     case 'borders':
       return result.score > 0
-        ? tr(language, `Relié ! ${result.score} pts`, `Linked! ${result.score} pts`)
+        ? tr(language, 'Relié ! {0} pts', 'Linked! {0} pts', [result.score])
         : tr(language, 'Non relié', 'Not linked');
     default:
-      return tr(language, `Score : ${result.score}`, `Score: ${result.score}`);
+      return tr(language, 'Score : {0}', 'Score: {0}', [result.score]);
   }
-}
-
-// Local copy to avoid importing the i18n React surface into this pure helper.
-function tr(language: Language, fr: string, en: string): string {
-  return language === 'fr' ? fr : en;
 }
 
 /**
  * Build the shareable text block, e.g.:
- *   🌍 GeoRankle — Rankle #312
+ *   🌍 GeoG — Rankle #312
  *   🟩🟩🟨🟩🟥🟩🟨🟩  87%
  *   🔥 Série 5
  *   playgeog.com

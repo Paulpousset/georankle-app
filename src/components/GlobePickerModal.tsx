@@ -61,7 +61,7 @@ export function GlobePickerModal({ visible, onClose, current, onPick, onOpenShop
   const { isDarkMode } = useTheme();
   const { language } = useLanguage();
   const c = getColors(isDarkMode);
-  const t = (fr: string, en: string) => tr(language, fr, en);
+  const t = (fr: string, en: string, args?: readonly unknown[]) => tr(language, fr, en, args);
 
   const [owned, setOwned] = useState<Set<string> | null>(null);
 
@@ -136,13 +136,13 @@ export function GlobePickerModal({ visible, onClose, current, onPick, onOpenShop
                     styles.tile,
                     { borderColor: on ? c.accent : c.border, backgroundColor: c.card },
                   ]}
-                  {...a11yButton(language === 'fr' ? part.nameFr : part.nameEn, { selected: on })}
+                  {...a11yButton(tr(language, part.nameFr, part.nameEn), { selected: on })}
                 >
                   <View style={styles.art}>
                     <WorldAvatar config={tileConfig(part)} size={64} round />
                   </View>
                   <Text style={[styles.name, { color: c.text }]} numberOfLines={2}>
-                    {language === 'fr' ? part.nameFr : part.nameEn}
+                    {tr(language, part.nameFr, part.nameEn)}
                   </Text>
                   {on ? <Check color={c.accent} size={14} /> : null}
                 </TouchableOpacity>

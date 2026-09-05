@@ -435,9 +435,7 @@ export default function RankedMatchmaking({
             }}
             accessible
             accessibilityLabel={tr(
-              language,
-              `${season.name}, se termine dans ${season.daysLeft} jours`,
-              `${season.name}, ends in ${season.daysLeft} days`,
+              language, '{0}, se termine dans {1} jours', '{0}, ends in {1} days', [season.name, season.daysLeft],
             )}
           >
             <CalendarDays color="#c4872a" size={16} />
@@ -445,7 +443,7 @@ export default function RankedMatchmaking({
               {season.name}
             </Text>
             <Text style={{ fontFamily: FONTS.mono, color: textSecondary, fontSize: 12 }}>
-              {tr(language, `fin dans ${season.daysLeft} j`, `ends in ${season.daysLeft} d`)}
+              {tr(language, 'fin dans {0} j', 'ends in {0} d', [season.daysLeft])}
             </Text>
           </View>
         )}
@@ -476,7 +474,7 @@ export default function RankedMatchmaking({
               <Text style={[styles.progressLabel, { color: textSecondary }]}>
                 {`+${eloToNextRank} → `}
                 <Text style={{ color: nextRank.color }}>
-                  {language === 'fr' ? nextRank.nameFr : nextRank.name}
+                  {tr(language, nextRank.nameFr, nextRank.name)}
                 </Text>
               </Text>
             ) : (
@@ -569,7 +567,7 @@ export default function RankedMatchmaking({
                   <RankGlobe rank={r} size={36} showName={false} />
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.rankRowName, { color: isCurrentRank ? r.color : textPrimary }]}>
-                      {language === 'fr' ? r.nameFr : r.name}
+                      {tr(language, r.nameFr, r.name)}
                       {isCurrentRank && (
                         <Text style={{ color: r.color, fontSize: 11 }}>
                           {tr(language, '  ← vous êtes ici', '  ← you are here')}

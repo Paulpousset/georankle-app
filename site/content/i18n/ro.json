@@ -1,0 +1,145 @@
+{
+  "label": "Română",
+  "chrome": {
+    "home": "Acasă",
+    "guides": "Ghiduri",
+    "about": "Despre joc",
+    "contact": "Contact",
+    "privacy": "Confidențialitate",
+    "play": "Joacă",
+    "modes": "Moduri",
+    "online": "Online",
+    "faq": "Întrebări frecvente",
+    "playNow": "Joacă acum",
+    "skipToContent": "Sari la conținut",
+    "languageLabel": "Limbă",
+    "footerTagline": "GeoG — joc de geografie gratuit: steaguri, capitale și țările lumii.",
+    "footerCoords": "47°N 2°E · Făcut cu ✦ pentru exploratori.",
+    "readNext": "De citit mai departe",
+    "relatedModes": "Alte moduri de joc",
+    "sourceNote": "Datele jocului",
+    "country": "Țară",
+    "capital": "Capitală",
+    "flag": "Steag",
+    "neighbours": "Țări vecine",
+    "population": "Populație",
+    "area": "Suprafață (km²)",
+    "continent": "Continent",
+    "haveApp": "Ai deja aplicația?",
+    "openInApp": "Deschide în aplicație",
+    "dismiss": "Închide"
+  },
+  "slugs": {
+    "about": "despre-joc",
+    "contact": "contact",
+    "privacy": "confidentialitate"
+  },
+  "modes": {
+    "mode-flags": {
+      "name": "Steaguri",
+      "slug": "jocul-steagurilor"
+    },
+    "mode-capitals": {
+      "name": "Capitale",
+      "slug": "test-capitale"
+    },
+    "mode-globe": {
+      "name": "Glob 3D",
+      "slug": "glob-3d"
+    },
+    "mode-silhouettes": {
+      "name": "Siluete",
+      "slug": "siluete-de-tari"
+    },
+    "mode-borders": {
+      "name": "Granițe",
+      "slug": "jocul-granitelor"
+    },
+    "mode-guess": {
+      "name": "Ghicește țara",
+      "slug": "ghiceste-tara"
+    },
+    "mode-rankle": {
+      "name": "Rankle",
+      "slug": "rankle"
+    },
+    "mode-higherlower": {
+      "name": "Mai mult sau mai puțin",
+      "slug": "mai-mult-sau-mai-putin"
+    },
+    "mode-daily": {
+      "name": "Provocarea zilei",
+      "slug": "provocarea-zilei"
+    },
+    "mode-online": {
+      "name": "Dueluri online",
+      "slug": "dueluri-online"
+    },
+    "mode-ranked": {
+      "name": "Mod clasat",
+      "slug": "mod-clasat"
+    },
+    "mode-story": {
+      "name": "Mod poveste",
+      "slug": "mod-poveste"
+    }
+  },
+  "home": {
+    "title": "GeoG — joc de geografie gratuit: steaguri, capitale, țări",
+    "description": "Joacă gratuit cu geografia lumii: steaguri, capitale, glob 3D, siluete de țări și o provocare zilnică despre toate cele 195 de țări. Fără cont, direct în browser.",
+    "ogTitle": "GeoG — jocul de geografie",
+    "h1": "GeoG, jocul de geografie al celor {{countries}} de țări",
+    "standfirst": "Steaguri, capitale, glob 3D, siluete și granițe: {{modes}} moduri de joc ca să înveți lumea în partide de trei minute. Gratuit, fără cont, în browser sau pe telefon.",
+    "modesHeading": "Cele {{modes}} moduri de joc",
+    "modesIntro": "Fiecare mod antrenează altă latură a hărții: să recunoști, să localizezi, să compari. Alege-l pe al tău și pornește dintr-o singură atingere.",
+    "howHeading": "Cum se joacă",
+    "howBody": "Fiecare partidă are câteva runde scurte. În funcție de joc, atingi, alegi sau plasezi răspunsul; cu cât ești mai precis, cu atât primești mai multe puncte. Fără cronometru stresant, iar regulile unui mod apar singure prima dată când îl deschizi.",
+    "ctaTitle": "Începe o partidă",
+    "ctaText": "Gratuit, fără cont, direct în browser.",
+    "faq": [
+      {
+        "q": "E nevoie de cont ca să joci?",
+        "a": "Nu. Toate modurile solo și provocarea zilei se joacă fără cont. Contul gratuit serveşte doar ca să-ți salvezi progresul, să joci online și să apari în clasamente."
+      },
+      {
+        "q": "Câte țări sunt în joc?",
+        "a": "Cele {{countries}} de state membre ONU, nu doar cele treizeci pe care le știe toată lumea. Microstatele și insulele sunt incluse."
+      },
+      {
+        "q": "Provocarea zilei e la fel pentru toți?",
+        "a": "Da. În fiecare zi, toți jucătorii din lume primesc exact aceeași serie de întrebări, iar rezultatul poate fi comparat cu al prietenilor."
+      }
+    ]
+  },
+  "mode": {
+    "titleSuffix": "joc de geografie gratuit",
+    "descriptionTail": "Gratuit, fără cont, în browser sau pe telefon.",
+    "howHeading": "Cum se joacă",
+    "tipsHeading": "Bine de știut",
+    "ctaTitle": "Joacă acum",
+    "otherModes": "Celelalte moduri de joc"
+  },
+  "about": {
+    "title": "Despre joc — cine face GeoG",
+    "description": "GeoG este un joc de geografie gratuit și independent: 12 moduri, 195 de țări, date deschise. Cine îl face și din ce surse.",
+    "h1": "Despre joc",
+    "p1": "GeoG este un joc de geografie independent, făcut de un singur om. Ideea e simplă: să înveți lumea jucând partide scurte, fără reclame agasante și fără obligația de a-ți face cont.",
+    "p2": "Datele despre țări vin din surse deschise — Banca Mondială, UNESCO, Națiunile Unite — și sunt actualizate periodic. Cele {{countries}} de țări din joc sunt statele membre ONU.",
+    "p3": "Jocul merge în browser și există și ca aplicație pentru iPhone și Android. Dacă vezi o dată greșită sau o traducere strâmbă, scrie-ne: se corectează repede."
+  },
+  "contact": {
+    "title": "Contact — GeoG",
+    "description": "Scrie-ne: erori în date, idei de moduri de joc, probleme de traducere sau întrebări despre confidențialitate.",
+    "h1": "Contact",
+    "p1": "O informație greșită, o traducere strâmbă, o idee de mod de joc? Scrie la contact@playgeog.com și vei primi răspuns.",
+    "p2": "Pentru orice chestiune legată de datele tale personale sau de ștergerea contului, folosește aceeași adresă, menționând numele de utilizator în cauză."
+  },
+  "privacy": {
+    "title": "Politica de confidențialitate — GeoG",
+    "description": "Ce date colectează GeoG, la ce folosesc și cum ceri ștergerea lor.",
+    "h1": "Politica de confidențialitate",
+    "p1": "GeoG se poate juca fără cont și fără să dai vreo dată personală. Dacă îți faci cont, păstrăm doar adresa de e-mail, numele de utilizator și rezultatele tale de joc.",
+    "p2": "Aplicația măsoară anonim ce ecrane sunt folosite, ca să îmbunătățească jocul, și poate afișa reclame. Nu îți vindem niciodată datele.",
+    "p3": "Îți poți șterge contul și toate datele lui din joc, din profilul tău, sau scriind la contact@playgeog.com."
+  }
+}

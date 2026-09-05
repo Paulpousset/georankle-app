@@ -13,16 +13,20 @@
  *   2. **une langue absente n'apparaît pas** dans les alternates — un hreflang
  *      qui pointe vers une 404 annule le bénéfice de tout le bloc.
  *
- * ⚠️ Les 4 autres langues des fiches store (ES/PT/DE/IT) ne sont PAS ici :
- * l'app ne parle que français et anglais (`src/types/index.ts`,
- * `Language = 'fr' | 'en'`). Traduire le site sans traduire le jeu enverrait
- * un hispanophone sur une interface qu'il ne lit pas. Voir SEO-AUDIT.md §2.
+ * Depuis que l'app parle seize langues, le site les suit — mais pas au même
+ * niveau : le français et l'anglais publient les 48 pages écrites à la main
+ * (guides, atlas), les quatorze autres publient l'accueil, la coquille du jeu,
+ * les douze pages de mode et les trois pages institutionnelles, générées depuis
+ * `site/content/i18n/` et les catalogues de l'app (voir siteLocales.mjs).
+ * Une langue qui n'a pas une page ne la déclare pas : la règle 2 ci-dessus fait
+ * le reste, et aucun hreflang ne pointe vers une 404.
  */
 import { MODES } from './modes.mjs';
 import { CONTINENTS } from './continents.mjs';
+import { SITE_LOCALES, SITE_LOCALE_META, localeData } from './siteLocales.mjs';
 
 /** Les langues que le site publie réellement. */
-export const LOCALES = ['fr', 'en'];
+export const LOCALES = ['fr', 'en', ...SITE_LOCALES];
 
 /** Le français est servi à la racine : c'est la langue sans préfixe. */
 export const DEFAULT_LOCALE = 'fr';
@@ -34,7 +38,23 @@ export const X_DEFAULT_LOCALE = 'en';
 export const LOCALE_META = {
   fr: { hreflang: 'fr', ogLocale: 'fr_FR', label: 'Français', htmlLang: 'fr' },
   en: { hreflang: 'en', ogLocale: 'en_US', label: 'English', htmlLang: 'en' },
+  ...Object.fromEntries(
+    SITE_LOCALES.map((locale) => [
+      locale,
+      { ...SITE_LOCALE_META[locale], label: localeData(locale).label },
+    ]),
+  ),
 };
+
+/** `/es/`, `/es/play`, `/es/juego-de-banderas/`… — le préfixe de langue est l'espace de nommage. */
+function localized(locale, slug) {
+  return slug ? `/${locale}/${slug}/` : `/${locale}/`;
+}
+
+/** Les chemins d'une route dans les quatorze langues générées. */
+function generatedPaths(build) {
+  return Object.fromEntries(SITE_LOCALES.map((locale) => [locale, build(locale, localeData(locale))]));
+}
 
 /**
  * `kind` sert au gabarit et au sitemap :
@@ -47,14 +67,56 @@ export const LOCALE_META = {
  *   - `atlas`   : page continent avec tableau de données (phase 3)
  */
 const CORE = [
-  { id: 'home', kind: 'landing', priority: 1.0, changefreq: 'weekly', paths: { fr: '/', en: '/en/' } },
-  { id: 'play', kind: 'app', priority: 0.6, changefreq: 'daily', paths: { fr: '/play', en: '/en/play' } },
+  {
+    id: 'home',
+    kind: 'landing',
+    priority: 1.0,
+    changefreq: 'weekly',
+    paths: { fr: '/', en: '/en/', ...generatedPaths((locale) => localized(locale, '')) },
+  },
+  {
+    id: 'play',
+    kind: 'app',
+    priority: 0.6,
+    changefreq: 'daily',
+    paths: { fr: '/play', en: '/en/play', ...generatedPaths((locale) => `/${locale}/play`) },
+  },
   { id: 'guides', kind: 'hub', priority: 0.9, changefreq: 'weekly', paths: { fr: '/guides/', en: '/en/guides/' } },
-  { id: 'about', kind: 'page', priority: 0.5, changefreq: 'monthly', paths: { fr: '/a-propos/', en: '/en/about/' } },
-  { id: 'contact', kind: 'page', priority: 0.4, changefreq: 'yearly', paths: { fr: '/contact/', en: '/en/contact/' } },
+  {
+    id: 'about',
+    kind: 'page',
+    priority: 0.5,
+    changefreq: 'monthly',
+    paths: {
+      fr: '/a-propos/',
+      en: '/en/about/',
+      ...generatedPaths((locale, data) => localized(locale, data.slugs.about)),
+    },
+  },
+  {
+    id: 'contact',
+    kind: 'page',
+    priority: 0.4,
+    changefreq: 'yearly',
+    paths: {
+      fr: '/contact/',
+      en: '/en/contact/',
+      ...generatedPaths((locale, data) => localized(locale, data.slugs.contact)),
+    },
+  },
   // `/privacy.html` est référencé par les fiches des stores et par l'app :
   // l'URL ne peut pas changer, on lui donne juste une version anglaise propre.
-  { id: 'privacy', kind: 'page', priority: 0.2, changefreq: 'yearly', paths: { fr: '/privacy.html', en: '/en/privacy/' } },
+  {
+    id: 'privacy',
+    kind: 'page',
+    priority: 0.2,
+    changefreq: 'yearly',
+    paths: {
+      fr: '/privacy.html',
+      en: '/en/privacy/',
+      ...generatedPaths((locale, data) => localized(locale, data.slugs.privacy)),
+    },
+  },
 ];
 
 /** Les six guides piliers, écrits avant ce générateur. */
@@ -98,7 +160,11 @@ const MODE_ROUTES = MODES.map((mode) => ({
   kind: 'mode',
   priority: 0.8,
   changefreq: 'monthly',
-  paths: { fr: mode.fr.slug, en: mode.en.slug },
+  paths: {
+    fr: mode.fr.slug,
+    en: mode.en.slug,
+    ...generatedPaths((locale, data) => localized(locale, data.modes[mode.id].slug)),
+  },
   mode: mode.id,
 }));
 

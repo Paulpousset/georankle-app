@@ -49,6 +49,8 @@ import { useMyGameGlobe } from '../lib/myGlobe';
 import { TopInsetBar } from '../components/TopInsetBar';
 
 import { isMobileLayout as isMobile } from '../lib/layout';
+import { countryName } from '../lib/geoNames';
+import { themeDisplay } from '../lib/themeDisplay';
 
 /** Reveal linger before the next pair (correct) or game over (wrong). */
 const NEXT_DELAY = 1400;
@@ -99,7 +101,7 @@ export default function HigherLowerGame({
   training = false,
 }: HigherLowerGameProps) {
   const { isDarkMode, setIsDarkMode } = useTheme();
-  const { language, setLanguage } = useLanguage();
+  const { language, openLanguagePicker } = useLanguage();
   const toast = useToast();
   const c = getColors(isDarkMode);
 
@@ -219,8 +221,8 @@ export default function HigherLowerGame({
     // theme, which country actually won it, and by how much.
     const winner = higherSide(pair) === 'a' ? pair.a : pair.b;
     const loser = higherSide(pair) === 'a' ? pair.b : pair.a;
-    const nameOf = (e: typeof winner) => (language === 'fr' ? e.name : e.name_en);
-    const valueOf = (e: typeof winner) => (language === 'fr' ? e.display_fr : e.display_en);
+    const nameOf = (e: typeof winner) => countryName(e, language);
+    const valueOf = (e: typeof winner) => themeDisplay(pair.themeId, e, language);
     // Built eagerly rather than through a setState updater: a wrong answer
     // ends the run in this same handler, and `recap` state wouldn't have
     // flushed in time to include the losing pair.
@@ -237,7 +239,7 @@ export default function HigherLowerGame({
     setRecap(nextRecap);
 
     if (correct) {
-      announce(tr(language, `Correct ! Série ${score + 1}`, `Correct! Chain ${score + 1}`));
+      announce(tr(language, 'Correct ! Série {0}', 'Correct! Chain {0}', [score + 1]));
       setScore((prev) => prev + 1);
       timerRef.current = setTimeout(() => {
         answeredRef.current = false;
@@ -256,9 +258,7 @@ export default function HigherLowerGame({
       // is to keep meeting countries instead of restarting every few seconds.
       announce(
         tr(
-          language,
-          `Faux. ${valueOf(winner) || nameOf(winner)}. On continue.`,
-          `Wrong. ${valueOf(winner) || nameOf(winner)}. Keep going.`,
+          language, 'Faux. {0}. On continue.', 'Wrong. {0}. Keep going.', [valueOf(winner) || nameOf(winner)],
         ),
       );
       timerRef.current = setTimeout(() => {
@@ -273,7 +273,7 @@ export default function HigherLowerGame({
       }, GAME_OVER_DELAY);
     } else {
       announce(
-        tr(language, `Faux ! Perdu. Ton score : ${score}`, `Wrong! Game over. Your score: ${score}`),
+        tr(language, 'Faux ! Perdu. Ton score : {0}', 'Wrong! Game over. Your score: {0}', [score]),
       );
       finishRun(score, nextRecap);
     }
@@ -296,16 +296,16 @@ export default function HigherLowerGame({
   const theme = (gameData.themes as Record<string, { label: { fr: string; en?: string } }>)[
     pair.themeId
   ];
-  const themeLabel = language === 'fr' ? theme?.label.fr : theme?.label.en ?? theme?.label.fr;
+  const themeLabel = tr(language, theme?.label.fr, theme?.label.en ?? theme?.label.fr);
   const themeDesc = getThemeShortDescription(pair.themeId, language);
   const winner = higherSide(pair);
 
   const countryCard = (side: 'a' | 'b') => {
     const entry = pair[side];
-    const name = language === 'fr' ? entry.name : entry.name_en;
+    const name = countryName(entry, language);
     const revealed = picked !== null;
     const isWinner = winner === side;
-    const display = language === 'fr' ? entry.display_fr : entry.display_en;
+    const display = themeDisplay(pair.themeId, entry, language);
     return (
       <TouchableOpacity
         key={side}
@@ -380,7 +380,7 @@ export default function HigherLowerGame({
           </View>
 
           <TouchableOpacity
-            onPress={() => setLanguage(language === 'fr' ? 'en' : 'fr')}
+            onPress={openLanguagePicker}
             style={[styles.iconBtn, { backgroundColor: c.surface, borderColor: c.border, minWidth: 40, alignItems: 'center' }]}
             hitSlop={ICON_HIT_SLOP}
             {...a11yButton(tr(language, 'Changer de langue', 'Change language'))}

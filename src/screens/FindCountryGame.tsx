@@ -47,6 +47,7 @@ import rawWorldPolygons from '../../assets/world_polygons.json';
 import { a11yButton, a11yHidden, announce, a11yImage, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
 import { TopInsetBar } from '../components/TopInsetBar';
+import { countryName } from '../lib/geoNames';
 
 const DEFAULT_ROUNDS = 5;
 
@@ -523,15 +524,54 @@ function handleTap(tx,ty){
   postMsg({type:'COUNTRY_SELECTED',cca3:hit});
 }
 
-window.resetRound=function(){sel=null;locked=false;hov=null;resultMode=false;resultCorrect=null;resultPicked=null;canvas.style.cursor='default';render();};
-// Reveal: straight back to the world view, centred on the answer (same rule as
-// the 3D builder).
+// The reveal now leaves the globe zoomed on the answer, so the next round has to
+// take it back to the world view — it is the board every round starts from.
+window.resetRound=function(){sel=null;locked=false;hov=null;resultMode=false;resultCorrect=null;resultPicked=null;canvas.style.cursor='default';
+  zoom=1;R=Rb;
+  var zr0=document.getElementById('zr');if(zr0)zr0.style.display='none';
+  render();};
+// Angular radius (degrees) of a country around its label point, measured on its
+// LARGEST ring only: taken over every ring, French Guiana would size the reveal
+// of France and Alaska that of the United States.
+function shapeSpan(id,clat,clng){
+  var poly=null;
+  for(var i=0;i<POLYGONS.length;i++)if(POLYGONS[i].id===id){poly=POLYGONS[i];break;}
+  if(!poly)return null;
+  var main=poly.r[0];
+  for(var ri=1;ri<poly.r.length;ri++)if(poly.r[ri].length>main.length)main=poly.r[ri];
+  if(!main||!main.length)return null;
+  var max=0,step=Math.max(1,Math.floor(main.length/120));
+  for(var k=0;k<main.length;k+=step){
+    var d=angDist(clat,clng,main[k][1],main[k][0]);
+    if(d>max)max=d;}
+  return max;
+}
+// Reveal: centred on the answer, at a zoom that SITUATES it (same rule as the 3D
+// builder). The world view this replaced left Monaco as three pixels of
+// vermilion, but a close-up is just as useless: the answer is sized to a sixth
+// of the half-screen, i.e. five to six times its own width of surroundings. The
+// dot microstates (Monaco, Andorre, Singapour...) have no polygon and a marker
+// that keeps its screen size at every zoom, so they get one fixed regional view
+// instead. The clamps are [1x, 6x] and 4x here against [1x, 3.5x] and 2.5x on
+// the WebGL globe for the same framing: this map is orthographic, where the zoom
+// bites far less than under a perspective camera.
 function frameReveal(correct){
   var t=COUNTRIES.find(function(c){return c.cca3===correct;});
-  if(t){rotLon=t.lng;rotLat=Math.max(-60,Math.min(60,t.lat));}
-  zoom=1;R=Rb;
+  if(!t){zoom=1;R=Rb;return;}
+  var span=shapeSpan(correct,t.lat,t.lng);
+  if(span===null)zoom=4;
+  else{
+    var ang=Math.max(0.004,Math.min(80,span))*Math.PI/180;
+    var z=(0.18*Math.min(W,H)/2)/Math.sin(ang)/Rb;
+    zoom=Math.max(1,Math.min(6,z));
+  }
+  // The +-60 deg clamp is a world-view rule; framed on the country itself, the
+  // centre IS the answer or the answer falls off the screen.
+  var lim=zoom>1.2?85:60;
+  rotLon=t.lng;rotLat=Math.max(-lim,Math.min(lim,t.lat));
+  R=Rb*zoom;
   var zr=document.getElementById('zr');
-  if(zr)zr.style.display='none';
+  if(zr)zr.style.display=zoom>1.05?'flex':'none';
 }
 window.showResult=function(correct,picked){
   locked=true;hov=null;canvas.style.cursor='default';
@@ -684,15 +724,15 @@ export default function FindCountryGame({
   }, [globeSkin, isDarkMode]);
   const current = rounds[index];
   const isCorrect = selectedCca3 === current.cca3;
-  const countryName = language === 'fr' ? current.name : (current.name_en ?? current.name);
+  const localName = countryName(current, language);
 
   // Announce each find result (correct/wrong + the target name) for screen readers.
   useEffect(() => {
     if (phase !== 'result') return;
     announce(
       isCorrect
-        ? tr(language, `Correct ! ${countryName}`, `Correct! ${countryName}`)
-        : tr(language, `Raté ! C'était ${countryName}`, `Wrong! It was ${countryName}`),
+        ? tr(language, 'Correct ! {0}', 'Correct! {0}', [countryName])
+        : tr(language, 'Raté ! C\'était {0}', 'Wrong! It was {0}', [countryName]),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
@@ -703,9 +743,7 @@ export default function FindCountryGame({
     const correctCount = score / 1000;
     announce(
       tr(
-        language,
-        `Partie terminée. Score : ${correctCount} sur ${totalRounds}.`,
-        `Game over. Score: ${correctCount} out of ${totalRounds}.`,
+        language, 'Partie terminée. Score : {0} sur {1}.', 'Game over. Score: {0} out of {1}.', [correctCount, totalRounds],
       ),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -955,7 +993,7 @@ export default function FindCountryGame({
           <View style={styles.promptRow}>
             <Image source={{ uri: getFlagUrl(current.cca3) }} style={styles.promptFlag} />
             <Text style={[styles.promptName, { color: colors.text }]}>
-              {language === 'fr' ? current.name : (current.name_en ?? current.name)}
+              {countryName(current, language)}
             </Text>
           </View>
         </View>
@@ -1081,7 +1119,7 @@ export default function FindCountryGame({
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 }}>
                   <Image source={{ uri: getFlagUrl(current.cca3) }} style={styles.resultFlag} />
                   <Text style={styles.resultName}>
-                    {language === 'fr' ? current.name : (current.name_en ?? current.name)}
+                    {countryName(current, language)}
                   </Text>
                 </View>
               </View>

@@ -65,6 +65,7 @@ import {
 } from '../lib/customMatch';
 import type { AvatarConfig, Language, Match } from '../types';
 import type { Json } from '../types/database';
+import { countryName } from '../lib/geoNames';
 
 type BuilderView = 'lobby' | 'builder' | 'friends' | 'waiting' | 'region-pick' | 'challenge-pick';
 
@@ -117,7 +118,7 @@ interface CustomMatchmakingProps {
 /** "Capitales des États" for a round's quiz id (empty if the id went stale). */
 const challengeRoundLabel = (id: string, lang: Language): string => {
   const ch = getChallenge(id);
-  return ch ? (lang === 'fr' ? ch.titleFr : ch.titleEn) : '';
+  return ch ? (tr(lang, ch.titleFr, ch.titleEn)) : '';
 };
 
 const keyExtractor = (item: { id: string }) => item.id;
@@ -158,7 +159,7 @@ const PublicCustomRow = React.memo(function PublicCustomRow({
         style={styles.joinBtn}
         onPress={() => onJoin(item)}
         {...a11yButton(
-          tr(language, `Rejoindre la partie de ${item.creator_username ?? 'Joueur'}`, `Join ${item.creator_username ?? 'Player'}'s match`),
+          tr(language, 'Rejoindre la partie de {0}', 'Join {1}\'s match', [item.creator_username ?? 'Joueur', item.creator_username ?? 'Player']),
         )}
       >
         <Text style={styles.joinBtnText}>{tr(language, 'Rejoindre', 'Join')}</Text>
@@ -524,11 +525,11 @@ export default function CustomMatchmaking({ onBack, onStartMatch }: CustomMatchm
           {/* Format summary */}
           <View style={[styles.infoBanner, { backgroundColor: c.card, borderColor: c.border }]}>
             <Text style={{ fontFamily: FONTS.monoBold, color: c.text, fontSize: 13 }}>
-              {tr(language, `BO${bestOf} · Premier à ${winTarget(bestOf)} manche(s)`, `BO${bestOf} · First to ${winTarget(bestOf)} round(s)`)}
+              {tr(language, 'BO{0} · Premier à {1} manche(s)', 'BO{0} · First to {1} round(s)', [bestOf, winTarget(bestOf)])}
             </Text>
             <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 11, marginTop: 2 }}>
               {playerCount > 2
-                ? tr(language, `Chacun pour soi · ${playerCount} joueurs`, `Free-for-all · ${playerCount} players`)
+                ? tr(language, 'Chacun pour soi · {0} joueurs', 'Free-for-all · {0} players', [playerCount])
                 : tr(language, 'Chaque manche est un mode joué à 2', 'Each round is one mode played head-to-head')}
             </Text>
           </View>
@@ -578,7 +579,7 @@ export default function CustomMatchmaking({ onBack, onStartMatch }: CustomMatchm
                     <Icon color={acc} size={20} {...a11yHidden} />
                     <Text style={{ flex: 1, fontFamily: FONTS.monoBold, color: c.text, fontSize: 14 }} numberOfLines={1}>
                       {modeKeyLabel(r.key, language)}
-                      {r.region ? ` · ${language === 'fr' ? r.region.name : (r.region.name_en ?? r.region.name)}` : ''}
+                      {r.region ? ` · ${countryName(r.region, language)}` : ''}
                       {r.challengeId ? ` · ${challengeRoundLabel(r.challengeId, language)}` : ''}
                     </Text>
                     <TouchableOpacity
@@ -726,7 +727,7 @@ export default function CustomMatchmaking({ onBack, onStartMatch }: CustomMatchm
               style={styles.joinBtn}
               onPress={() => inviteFriend(friend.id)}
               disabled={creating}
-              {...a11yButton(tr(language, `Inviter ${friend.username}`, `Invite ${friend.username}`), { disabled: creating })}
+              {...a11yButton(tr(language, 'Inviter {0}', 'Invite {0}', [friend.username]), { disabled: creating })}
             >
               <Text style={styles.joinBtnText}>{tr(language, 'Inviter', 'Invite')}</Text>
             </TouchableOpacity>

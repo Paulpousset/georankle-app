@@ -12,7 +12,7 @@
  */
 
 import { showAlert } from '../lib/alert';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -97,7 +97,7 @@ const PublicRow = React.memo(function PublicRow({
       <TouchableOpacity
         style={styles.joinBtn}
         onPress={() => onJoin(item)}
-        {...a11yButton(tr(language, `Rejoindre la partie de ${item.creator_username ?? 'Joueur'}`, `Join ${item.creator_username ?? 'Player'}'s match`))}
+        {...a11yButton(tr(language, 'Rejoindre la partie de {0}', 'Join {1}\'s match', [item.creator_username ?? 'Joueur', item.creator_username ?? 'Player']))}
       >
         <Text style={styles.joinBtnText}>{tr(language, 'Rejoindre', 'Join')}</Text>
         <ChevronRight size={14} color="#fff" />
@@ -127,7 +127,13 @@ export default function ChallengeMatchmaking({ challengeId, onBack, onStartMatch
   const [matchState, setMatchState] = useState<any>(null);
   const [friends, setFriends] = useState<any[]>([]);
 
-  const title = challenge ? (language === 'fr' ? challenge.titleFr : challenge.titleEn) : '';
+  // `useMemo` n'est pas de la superstition : un appel de fonction nu au premier
+  // niveau du composant fait renoncer le compilateur React, qui cesse alors de
+  // préserver la mémoïsation des `useCallback` plus bas (lint en erreur).
+  const title = useMemo(
+    () => (challenge ? tr(language, challenge.titleFr, challenge.titleEn) : ''),
+    [challenge, language],
+  );
 
   // ─── Data ──────────────────────────────────────────────────────────────────
 
@@ -425,7 +431,7 @@ export default function ChallengeMatchmaking({ challengeId, onBack, onStartMatch
               style={styles.joinBtn}
               onPress={() => createMatch(friend.id)}
               disabled={creating}
-              {...a11yButton(tr(language, `Inviter ${friend.username}`, `Invite ${friend.username}`), { disabled: creating })}
+              {...a11yButton(tr(language, 'Inviter {0}', 'Invite {0}', [friend.username]), { disabled: creating })}
             >
               <Text style={styles.joinBtnText}>{tr(language, 'Inviter', 'Invite')}</Text>
             </TouchableOpacity>

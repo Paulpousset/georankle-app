@@ -17,6 +17,7 @@ import { createSeededRng, seededShuffle } from './rng';
 import { gameData as gd } from '../data/gameData';
 import { pickRoundCountries } from './matchCountries';
 import type { Language, MatchMode } from '../types';
+import { tr } from '../i18n';
 
 const SESSION_SIZE = 8;
 
@@ -121,7 +122,7 @@ export interface CustomGameData {
 }
 
 export const modeKeyLabel = (key: OnlineModeKey, lang: Language): string =>
-  lang === 'fr' ? ONLINE_MODES[key].fr : ONLINE_MODES[key].en;
+  tr(lang, ONLINE_MODES[key].fr, ONLINE_MODES[key].en);
 
 let roundCounter = 0;
 export const newCustomRound = (
@@ -208,9 +209,7 @@ export function summariseCustomModes(gameData: unknown, lang: Language): string 
   const rounds = gdAny?.rounds;
   if (!rounds?.length) return '';
   const labels = rounds.map((r) => {
-    if (r.mode === 'versus') return lang === 'fr'
-      ? (r.questionType === 'FLAG' ? 'Drapeaux' : 'Capitales')
-      : (r.questionType === 'FLAG' ? 'Flags' : 'Capitals');
+    if (r.mode === 'versus') return tr(lang, (r.questionType === 'FLAG' ? 'Drapeaux' : 'Capitales'), (r.questionType === 'FLAG' ? 'Flags' : 'Capitals'));
     const key = (Object.keys(ONLINE_MODES) as OnlineModeKey[]).find((k) => ONLINE_MODES[k].mode === r.mode);
     return key ? modeKeyLabel(key, lang) : r.mode;
   });

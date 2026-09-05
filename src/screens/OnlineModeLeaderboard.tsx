@@ -81,7 +81,7 @@ export function OnlineModeLeaderboard({ mode, accent, onOpenPlayer }: Props) {
 
     const usernameMap: Record<string, string> = {};
     for (const p of profiles ?? []) {
-      usernameMap[p.id] = p.username ?? (language === 'fr' ? 'Anonyme' : 'Anonymous');
+      usernameMap[p.id] = p.username ?? (tr(language, 'Anonyme', 'Anonymous'));
     }
 
     return Object.entries(stats)
@@ -108,7 +108,7 @@ export function OnlineModeLeaderboard({ mode, accent, onOpenPlayer }: Props) {
   const renderItem = useCallback(
     ({ item, index }: { item: WinEntry; index: number }) => {
       const isTop3 = index < 3;
-      const rankLabel = tr(language, `Rang ${index + 1}`, `Rank ${index + 1}`);
+      const rankLabel = tr(language, 'Rang {0}', 'Rank {0}', [index + 1]);
       return (
         <TouchableOpacity
           activeOpacity={onOpenPlayer ? 0.6 : 1}
@@ -160,9 +160,7 @@ export function OnlineModeLeaderboard({ mode, accent, onOpenPlayer }: Props) {
       onRetry={refetch}
       loadingContent={<SkeletonRows />}
       errorLabel={
-        language === 'fr'
-          ? 'Impossible de charger le classement.'
-          : 'Could not load the leaderboard.'
+        tr(language, 'Impossible de charger le classement.', 'Could not load the leaderboard.')
       }
     >
       <FlatList
@@ -172,7 +170,7 @@ export function OnlineModeLeaderboard({ mode, accent, onOpenPlayer }: Props) {
         contentContainerStyle={{ padding: 10, paddingBottom: 20 }}
         ListEmptyComponent={
           <Text style={{ textAlign: 'center', marginTop: 40, fontFamily: FONTS.mono, color: c.textMuted }}>
-            {language === 'fr' ? 'Aucune partie enregistrée' : 'No games recorded yet'}
+            {tr(language, 'Aucune partie enregistrée', 'No games recorded yet')}
           </Text>
         }
       />

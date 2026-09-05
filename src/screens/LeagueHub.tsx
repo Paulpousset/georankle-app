@@ -114,7 +114,7 @@ export default function LeagueHub({ onBack, onOpenLeague, currentUserId }: Leagu
     track('league_joined');
     setCode('');
     toast.success(
-      tr(language, `Bienvenue dans « ${res.league?.name} » !`, `Welcome to “${res.league?.name}”!`),
+      tr(language, 'Bienvenue dans « {0} » !', 'Welcome to “{0}”!', [res.league?.name]),
     );
     refetch();
   };
@@ -318,7 +318,7 @@ export default function LeagueHub({ onBack, onOpenLeague, currentUserId }: Leagu
                       {l.ownerId === currentUserId ? <Crown color="#c4872a" size={14} /> : null}
                     </View>
                     <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 11 }}>
-                      {tr(language, `${l.memberCount} membre(s)`, `${l.memberCount} member(s)`)} · {l.code}
+                      {tr(language, '{0} membre(s)', '{0} member(s)', [l.memberCount])} · {l.code}
                     </Text>
                   </View>
                   <ChevronRight color={c.textMuted} size={20} />

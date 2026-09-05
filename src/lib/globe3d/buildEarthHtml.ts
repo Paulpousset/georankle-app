@@ -449,6 +449,45 @@ function updateCamera(){
   camera.updateProjectionMatrix();
   needsRender=true;}
 
+// ── Framing helpers (shared by the reveal and by Régions' country fit) ───────
+// Where a point 'ang' radians off the view centre lands, in px from the centre,
+// at a given zoom. The flat maps could invert this in closed form (orthographic:
+// R·sin θ); a perspective camera cannot — it magnifies the centre far more than
+// the limb, which is why reusing the 2D formula here framed France so tight that
+// Corsica fell off the screen. Mirrors updateCamera exactly, so a binary search
+// on it lands on the real fit.
+function projRadius(ang,z){
+  var want=(baseR*z)/(H/2);
+  var a=Math.atan(Math.tan(FOVY/2)*want),fov=FOVY;
+  if(a>A_MAX){a=A_MAX;fov=2*Math.atan(Math.tan(A_MAX)/Math.max(0.001,want));}
+  var d=1/Math.sin(Math.max(0.03,a));
+  return (H/2)*(Math.sin(ang)/Math.max(0.001,d-Math.cos(ang)))/Math.tan(fov/2);}
+// The zoom at which a shape of angular radius angDeg fills 'frac' of the
+// half-screen (44 bisections ≈ exact).
+function fitZoom(angDeg,frac){
+  var ang=Math.max(0.02,Math.min(80,angDeg))*Math.PI/180;
+  var target=frac*Math.min(W,H)/2,lo=0.2,hi=400;
+  for(var i=0;i<44;i++){var mid=(lo+hi)/2;
+    if(projRadius(ang,mid)>target)hi=mid;else lo=mid;}
+  return (lo+hi)/2;}
+// Angular radius (degrees) of a drawn shape around a centre, measured on its
+// LARGEST ring only: taken over every ring, French Guiana would size the reveal
+// of France and Alaska that of the United States — the far territory decides the
+// framing and the country the player must learn is a speck in the middle.
+function shapeSpan(id,clat,clng){
+  var idx=polyMap[id];
+  if(idx===undefined)return null;
+  var rings=POLYGONS[idx].r,main=rings[0];
+  for(var ri=1;ri<rings.length;ri++)if(rings[ri].length>main.length)main=rings[ri];
+  if(!main||!main.length)return null;
+  var c=llToVec(clat,clng,1),max=0;
+  var step=Math.max(1,Math.floor(main.length/120));
+  for(var i=0;i<main.length;i+=step){
+    var v=llToVec(main[i][1],main[i][0],1);
+    var d=Math.acos(Math.max(-1,Math.min(1,v.x*c.x+v.y*c.y+v.z*c.z)));
+    if(d>max)max=d;}
+  return max*180/Math.PI;}
+
 // ── Skinned planet: the Blender rig, same assembly as <AvatarPreview3D> ──────
 // Equirect pack texture on the sphere + the shared globe_land.glb continent
 // relief (two shells: 'landtex' wears the style texture, 'landink' is the
@@ -626,7 +665,7 @@ function buildCrispLines(){
 // sphere cannot register: the higher the zoom, the further the relief's walls
 // slide off the borders drawn underneath them. Up close the map has to be a
 // map, so the planet flattens and the crisp lines land exactly on the texture.
-var landObj=null;
+var landObj=null,propsObj=null;
 function updateCrispLines(){
   if(crispLines){
     // Regions open already zoomed on a country: their borders are the board, so
@@ -640,6 +679,17 @@ function updateCrispLines(){
     var flat=Math.max(0,Math.min(1,(zoom-3)/3)); // 3× → 6×
     landObj.visible=flat<1;
     landObj.scale.setScalar(1-0.02*flat);        // sink the crust back into the sphere
+  }
+  if(propsObj){
+    // Peaks, volcanoes and ice crystals STAND ON the crust: at world zoom they
+    // are the planet the player bought, but zoomed in they stand in front of the
+    // board — a summit in the Alps hides Monaco, one in the Pyrenees hides
+    // Andorra, and the highlight coat is painted below them. They sink into the
+    // sphere as the player closes in, and are gone by 2.6× — DOT_PICK_ZOOM, the
+    // zoom from which the microstates they cover become pickable at all.
+    var sink=Math.max(0,Math.min(1,(zoom-1.5)/1.1));
+    propsObj.visible=sink<1;
+    propsObj.scale.setScalar(1-0.1*sink); // 0.9 buries even the tallest prop
   }
   needsRender=true;
 }
@@ -669,7 +719,8 @@ function loadRig(tex){
     loader.load(SKIN.propsModel,function(g){
       var props=g.scene;remapMaterials(props);
       props.rotation.y=Math.PI/2;globe.add(props);
-      setupPropsAnims(props);needsRender=true;
+      propsObj=props;setupPropsAnims(props);
+      updateCrispLines(); // the GLB lands async: apply the current sink at once
     },undefined,function(){});
   }
 }
@@ -1013,15 +1064,35 @@ function gameInit(){
   };
   repaintStates();
 }
-window.resetRound=function(){sel=null;hov=null;locked=false;resultMode=false;resultCorrect=null;resultPicked=null;document.body.style.cursor='default';repaintStates();};
-// Reveal: straight back to the world view, centred on the answer. Framing the
-// answer to its own size (an earlier attempt) came out far too zoomed on small
-// countries — what the player needs to learn is WHERE it sits on the globe, not
-// a close-up of its outline.
+// The reveal now leaves the globe zoomed on the answer, so the next round has to
+// take it back to the world view — it is the board every round starts from.
+window.resetRound=function(){sel=null;hov=null;locked=false;resultMode=false;resultCorrect=null;resultPicked=null;document.body.style.cursor='default';setZoom(1);repaintStates();};
+// Reveal: centred on the answer, at a zoom that SITUATES it. The world view it
+// replaced was too far — Monaco came back as three pixels of vermilion and the
+// player had to zoom in by hand to see their own answer — but a close-up is just
+// as useless: what has to be learnt is where the country sits, not what its
+// outline looks like from 300 km. So the answer is sized to a sixth of the
+// half-screen — five to six times its own width of surroundings — and never
+// closer than 3.5× (~±1150 km, a good slice of a continent). Russia and the
+// United States keep the plain world view.
+var REVEAL_FILL=0.18,REVEAL_ZMIN=1,REVEAL_ZMAX=3.5;
+// The dot microstates (Monaco, Andorre, Singapour…) have no polygon at all, and
+// their marker keeps its screen size at every zoom: closing in on them shows
+// nothing more and only throws away the surroundings that place them. They get
+// one fixed regional view (~±1750 km — Monaco on a map of Europe).
+var DOT_REVEAL_ZOOM=2.5;
 function frameReveal(correct){
   var t=centreMap[correct];
-  if(t){rotLon=t.lng;rotLat=Math.max(-60,Math.min(60,t.lat));applyRotation();}
-  setZoom(1);
+  if(!t){setZoom(1);return;}
+  var span=shapeSpan(correct,t.lat,t.lng);
+  var z=span===null?DOT_REVEAL_ZOOM
+    :Math.max(REVEAL_ZMIN,Math.min(REVEAL_ZMAX,fitZoom(span,REVEAL_FILL)));
+  // The ±60° clamp is a world-view rule (a polar centre buys a useless view of
+  // the ice cap); framed on the country itself, the centre IS the answer or the
+  // answer falls off the screen.
+  var lim=z>1.2?85:60;
+  rotLon=t.lng;rotLat=Math.max(-lim,Math.min(lim,t.lat));
+  applyRotation();setZoom(z);
 }
 window.showResult=function(correct,picked){
   locked=true;hov=null;document.body.style.cursor='default';
@@ -1235,36 +1306,46 @@ function updateMarks(){
     o.geometry.setDrawRange(0,pos.length/3);
     o.visible=pos.length>0;});
   needsRender=true;}
-// Fit the country: an orthographic point at angle θ lands at R·sin(θ) from the
-// centre, so size the globe until the farthest region sits at ~84% of the disc.
-var atFit=false;
-// Where a point ang radians off the view centre lands, in px from the centre,
-// at a given zoom. The flat maps could invert this in closed form (orthographic:
-// R·sin θ); a perspective camera cannot — it magnifies the centre far more than
-// the limb, which is why reusing the 2D formula here framed France so tight that
-// Corsica fell off the screen. Mirrors updateCamera exactly, so a binary search
-// on it lands on the real fit.
-function projRadius(ang,z){
-  var want=(baseR*z)/(H/2);
-  var a=Math.atan(Math.tan(FOVY/2)*want),fov=FOVY;
-  if(a>A_MAX){a=A_MAX;fov=2*Math.atan(Math.tan(A_MAX)/Math.max(0.001,want));}
-  var d=1/Math.sin(Math.max(0.03,a));
-  return (H/2)*(Math.sin(ang)/Math.max(0.001,d-Math.cos(ang)))/Math.tan(fov/2);}
+// Fit the country: the farthest region sits at ~84% of the half-screen (see
+// fitZoom/projRadius in the core).
+// Which automatic framing the view is on, so a resize can re-apply it: 'country'
+// (the board), 'reveal' (the answer), null once the player has zoomed themselves.
+var fitMode=null;
+function countryAng(){return Math.min(80,VIEW.maxAng*1.12+1.5);}
+function countryZoom(){return fitZoom(countryAng(),0.84);}
 function frameCountry(){
   rotLon=VIEW.clng;rotLat=Math.max(-85,Math.min(85,VIEW.clat));
-  var ang=Math.min(80,VIEW.maxAng*1.12+1.5)*Math.PI/180;
-  // …so the farthest region sits at ~84% of the half-screen, like the 2D map.
-  var target=0.84*Math.min(W,H)/2,lo=0.2,hi=400;
-  for(var i=0;i<44;i++){var mid=(lo+hi)/2;
-    if(projRadius(ang,mid)>target)hi=mid;else lo=mid;}
-  var z=(lo+hi)/2;
+  var z=countryZoom();
   ZMAX=Math.max(16,z*6);ZMIN=Math.min(0.9,z*0.4);
-  applyRotation();setZoom(z);atFit=true;}
+  applyRotation();setZoom(z);fitMode='country';}
+// Reveal: close in on the answer, but only as far as SITUATING it needs. A
+// French department at the country fit is a few pixels of green on a phone — the
+// player had to zoom in by hand to see the region they had just been asked for —
+// while the zoom they were hunting at (up to 30×) shows nothing but its own
+// interior, and a region one cannot place among the others teaches nothing.
+// The region is sized to ~15% of the half-screen…
+var REVEAL_FILL=0.15;
+// …and the country stays the frame of reference: the view never closes in past
+// the point where the country's own extent reaches 1.3 half-screens. Being a fit
+// on the COUNTRY, that ceiling sizes itself — about 1.5× the country view on
+// Russia or the United States (where a region must be read against all the
+// others), 1.3× on Belgium (where the country view is already a close-up).
+var REVEAL_MAX_COUNTRY=1.30;
+function frameReveal(correct){
+  var d=dotMap[correct],zc=countryZoom();
+  var cLat=d?d.lat:VIEW.clat,cLng=d?d.lng:VIEW.clng;
+  var span=shapeSpan(correct,cLat,cLng);
+  var zmax=fitZoom(countryAng(),REVEAL_MAX_COUNTRY);
+  var z=span===null?zc:Math.max(zc,Math.min(zmax,fitZoom(span,REVEAL_FILL)));
+  rotLon=cLng;rotLat=Math.max(-85,Math.min(85,cLat));
+  applyRotation();setZoom(z);fitMode='reveal';}
 // The globe box shrinks when the result banner opens (and grows back on the next
 // round). Re-fit rather than keep the pixel size, or half the country is simply
 // cropped away at the very moment the answer is revealed. A player who zoomed in
 // themselves keeps their view.
-window.addEventListener('resize',function(){if(atFit)frameCountry();});
+window.addEventListener('resize',function(){
+  if(fitMode==='country')frameCountry();
+  else if(fitMode==='reveal'&&resultCorrect)frameReveal(resultCorrect);});
 function gameInit(){
   var mk=function(size,vc){
     var m=new THREE.PointsMaterial({size:size,sizeAttenuation:false,transparent:true,
@@ -1274,7 +1355,7 @@ function gameInit(){
     o.visible=false;globe.add(o);return o;};
   markHalo=mk(22,false);markHalo.renderOrder=8;
   markDot=mk(14,true);markDot.renderOrder=9;
-  onZoomCb=function(){atFit=false;};
+  onZoomCb=function(){fitMode=null;};
   onTapCb=function(x,y){
     if(locked)return;
     var hit=pickAt(x,y);
@@ -1290,15 +1371,15 @@ function gameInit(){
   postMsg({type:'MAP_READY'});}
 // ⟲ goes back to the country, not to world zoom: the world is not the board here.
 window.__recenter=function(){frameCountry();};
+// The reveal now leaves the globe zoomed on the answer, so the next round has to
+// take it back to the whole country — that is the board.
 window.resetRound=function(){
   sel=null;hov=null;locked=false;resultMode=false;resultCorrect=null;resultPicked=null;
-  document.body.style.cursor='default';repaintStates();};
+  document.body.style.cursor='default';frameCountry();repaintStates();};
 window.showResult=function(correct,picked){
   locked=true;hov=null;document.body.style.cursor='default';
   resultMode=true;resultCorrect=correct;resultPicked=picked;
-  // Straight back to the whole country: after hunting a region at 30x, a reveal
-  // left at that zoom shows nothing but the answer's own interior.
-  frameCountry();
+  frameReveal(correct);
   repaintStates();};`;
   return core(
     {

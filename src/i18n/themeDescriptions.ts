@@ -1,4 +1,5 @@
 import type { Language, LocalizedLabel } from '../types';
+import { tr } from './';
 
 /**
  * Human-readable explanations for each ranking theme, keyed by theme id.
@@ -174,8 +175,8 @@ const THEME_DESCRIPTIONS: Record<string, LocalizedLabel> = {
 /** Returns the localized description for a theme, or a fallback string. */
 export function getThemeDescription(themeId: string, language: Language): string {
   const description = THEME_DESCRIPTIONS[themeId];
-  if (description) return language === 'fr' ? description.fr : description.en;
-  return language === 'fr' ? 'Informations non disponibles.' : 'Information not available.';
+  if (description) return tr(language, description.fr, description.en);
+  return tr(language, 'Informations non disponibles.', 'Information not available.');
 }
 
 /**

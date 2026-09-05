@@ -10,6 +10,12 @@
  * seules des formats et placent en priorité des bandeaux d'ancrage sur mobile,
  * ce qu'on refuse. Les Auto ads doivent rester DÉSACTIVÉES dans la console.
  *
+ * ⚠️ Ce script ne charge PLUS la bibliothèque AdSense (05/09/2026). Elle est
+ * désormais dans le `<head>` de chaque page, posée par site/lib/layout.mjs :
+ * le chargement conditionné à la largeur cachait le code à Googlebot, qui rend
+ * en ~412 px et ~1024 px, donc toujours sous le seuil de 1120 px. Le site
+ * paraissait dépourvu de code AdSense et l'examen ne pouvait pas aboutir.
+ *
  * Les unités sont volontairement hors du flux de lecture :
  *   - deux rails verticaux dans les gouttières vides de part et d'autre de
  *     l'article (760px centré), jamais par-dessus le texte ;
@@ -66,28 +72,12 @@
     }
   }
 
-  /* La bibliothèque AdSense n'est chargée que sur grand écran. C'est la
-     garantie la plus solide du « jamais sur mobile » : sur téléphone, le script
-     adsbygoogle n'existe pas dans la page, donc même des Auto ads activées par
-     erreur dans la console n'ont rien à quoi s'accrocher. */
-  function loadLibrary() {
-    if (document.querySelector('script[data-geog-adsense]')) return;
-    var s = document.createElement('script');
-    s.async = true;
-    s.crossOrigin = 'anonymous';
-    s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + CLIENT;
-    s.setAttribute('data-geog-adsense', '1');
-    document.head.appendChild(s);
-  }
-
   function mount() {
     var size = railSize();
     if (!size) return; // mobile et petits écrans : on s'arrête ici, définitivement
 
     var article = document.querySelector('article');
     if (!article) return;
-
-    loadLibrary();
 
     /* --- rails latéraux --- */
     ['left', 'right'].forEach(function (side) {

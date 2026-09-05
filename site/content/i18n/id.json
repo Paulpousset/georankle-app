@@ -1,0 +1,145 @@
+{
+  "label": "Bahasa Indonesia",
+  "chrome": {
+    "home": "Beranda",
+    "guides": "Panduan",
+    "about": "Tentang game",
+    "contact": "Kontak",
+    "privacy": "Privasi",
+    "play": "Main",
+    "modes": "Mode",
+    "online": "Online",
+    "faq": "Pertanyaan umum",
+    "playNow": "Main sekarang",
+    "skipToContent": "Lompat ke konten",
+    "languageLabel": "Bahasa",
+    "footerTagline": "GeoG — game geografi gratis: bendera, ibu kota, dan negara-negara dunia.",
+    "footerCoords": "47°LU 2°BT · Dibuat dengan ✦ untuk para penjelajah.",
+    "readNext": "Baca berikutnya",
+    "relatedModes": "Mode permainan lain",
+    "sourceNote": "Data game",
+    "country": "Negara",
+    "capital": "Ibu kota",
+    "flag": "Bendera",
+    "neighbours": "Negara tetangga",
+    "population": "Populasi",
+    "area": "Luas wilayah (km²)",
+    "continent": "Benua",
+    "haveApp": "Sudah punya aplikasinya?",
+    "openInApp": "Buka di aplikasi",
+    "dismiss": "Tutup"
+  },
+  "slugs": {
+    "about": "tentang-game",
+    "contact": "kontak",
+    "privacy": "privasi"
+  },
+  "modes": {
+    "mode-flags": {
+      "name": "Bendera",
+      "slug": "tebak-bendera"
+    },
+    "mode-capitals": {
+      "name": "Ibu kota",
+      "slug": "kuis-ibu-kota"
+    },
+    "mode-globe": {
+      "name": "Globe 3D",
+      "slug": "globe-3d"
+    },
+    "mode-silhouettes": {
+      "name": "Siluet",
+      "slug": "siluet-negara"
+    },
+    "mode-borders": {
+      "name": "Perbatasan",
+      "slug": "permainan-perbatasan"
+    },
+    "mode-guess": {
+      "name": "Tebak negara",
+      "slug": "tebak-negara"
+    },
+    "mode-rankle": {
+      "name": "Rankle",
+      "slug": "rankle"
+    },
+    "mode-higherlower": {
+      "name": "Lebih besar atau kecil",
+      "slug": "lebih-besar-atau-kecil"
+    },
+    "mode-daily": {
+      "name": "Tantangan harian",
+      "slug": "tantangan-harian"
+    },
+    "mode-online": {
+      "name": "Duel online",
+      "slug": "duel-online"
+    },
+    "mode-ranked": {
+      "name": "Mode peringkat",
+      "slug": "mode-peringkat"
+    },
+    "mode-story": {
+      "name": "Mode cerita",
+      "slug": "mode-cerita"
+    }
+  },
+  "home": {
+    "title": "GeoG — game geografi gratis: bendera, ibu kota, negara",
+    "description": "Main geografi dunia gratis: bendera, ibu kota, globe 3D, siluet negara, dan tantangan harian yang mencakup 195 negara. Tanpa akun, langsung di browser.",
+    "ogTitle": "GeoG — game geografi",
+    "h1": "GeoG, game geografi {{countries}} negara",
+    "standfirst": "Bendera, ibu kota, globe 3D, siluet, dan perbatasan: {{modes}} mode permainan untuk belajar dunia dalam partai tiga menit. Gratis, tanpa akun, di browser atau di ponsel.",
+    "modesHeading": "{{modes}} mode permainan",
+    "modesIntro": "Setiap mode melatih sisi peta yang berbeda: mengenali, menempatkan, membandingkan. Pilih satu dan mulai dengan sekali ketuk.",
+    "howHeading": "Cara bermain",
+    "howBody": "Satu partai terdiri dari beberapa ronde singkat. Tergantung modenya, kamu mengetuk, memilih, atau menempatkan jawabanmu; makin tepat, makin banyak poin. Tidak ada hitung mundur yang bikin tegang, dan aturan tiap mode muncul sendiri saat pertama kali dibuka.",
+    "ctaTitle": "Mulai satu partai",
+    "ctaText": "Gratis, tanpa akun, langsung di browser.",
+    "faq": [
+      {
+        "q": "Apakah perlu akun untuk bermain?",
+        "a": "Tidak. Semua mode solo dan tantangan harian bisa dimainkan tanpa akun. Akun gratis hanya diperlukan untuk menyimpan progres, bermain online, dan masuk papan peringkat."
+      },
+      {
+        "q": "Berapa negara yang ada di dalam game?",
+        "a": "{{countries}} negara anggota PBB, bukan cuma tiga puluh yang dikenal semua orang. Negara-negara mikro dan negara kepulauan ikut masuk."
+      },
+      {
+        "q": "Apakah tantangan harian sama untuk semua orang?",
+        "a": "Ya. Setiap hari seluruh pemain di dunia mendapat urutan pertanyaan yang persis sama, jadi hasilnya bisa dibandingkan dengan hasil teman-temanmu."
+      }
+    ]
+  },
+  "mode": {
+    "titleSuffix": "game geografi gratis",
+    "descriptionTail": "Gratis, tanpa akun, di browser atau di ponsel.",
+    "howHeading": "Cara bermain",
+    "tipsHeading": "Perlu diketahui",
+    "ctaTitle": "Main sekarang",
+    "otherModes": "Mode permainan lainnya"
+  },
+  "about": {
+    "title": "Tentang game — siapa yang membuat GeoG",
+    "description": "GeoG adalah game geografi gratis dan independen: 12 mode, 195 negara, data terbuka. Siapa pembuatnya dan dari sumber mana datanya.",
+    "h1": "Tentang game",
+    "p1": "GeoG adalah game geografi independen yang dibuat oleh satu orang. Idenya sederhana: belajar dunia lewat partai-partai singkat, tanpa iklan yang mengganggu dan tanpa wajib bikin akun.",
+    "p2": "Data negara berasal dari sumber terbuka — Bank Dunia, UNESCO, Perserikatan Bangsa-Bangsa — dan diperbarui secara berkala. {{countries}} negara di dalam game adalah negara anggota PBB.",
+    "p3": "Game ini jalan di browser dan juga tersedia sebagai aplikasi iPhone dan Android. Kalau kamu menemukan data yang salah atau terjemahan yang janggal, tulis ke kami: perbaikannya cepat."
+  },
+  "contact": {
+    "title": "Kontak — GeoG",
+    "description": "Hubungi kami: kesalahan data, ide mode permainan, masalah terjemahan, atau pertanyaan soal privasi.",
+    "h1": "Kontak",
+    "p1": "Data yang salah, terjemahan yang janggal, ide mode permainan? Tulis ke contact@playgeog.com, kamu akan dibalas.",
+    "p2": "Untuk semua hal soal data pribadimu atau penghapusan akun, pakai alamat yang sama dan sebutkan nama pengguna yang dimaksud."
+  },
+  "privacy": {
+    "title": "Kebijakan privasi — GeoG",
+    "description": "Data apa yang dikumpulkan GeoG, untuk apa, dan bagaimana meminta penghapusannya.",
+    "h1": "Kebijakan privasi",
+    "p1": "GeoG bisa dimainkan tanpa akun dan tanpa memberikan data pribadi apa pun. Kalau kamu membuat akun, kami hanya menyimpan alamat email, nama pengguna, dan hasil permainanmu.",
+    "p2": "Aplikasi mengukur secara anonim layar mana yang dipakai agar game bisa diperbaiki, dan dapat menampilkan iklan. Kami tidak pernah menjual datamu.",
+    "p3": "Kamu bisa menghapus akun dan seluruh datanya langsung dari dalam game, di halaman profil, atau dengan menulis ke contact@playgeog.com."
+  }
+}

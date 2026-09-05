@@ -1,0 +1,145 @@
+{
+  "label": "Tiếng Việt",
+  "chrome": {
+    "home": "Trang chủ",
+    "guides": "Cẩm nang",
+    "about": "Về trò chơi",
+    "contact": "Liên hệ",
+    "privacy": "Quyền riêng tư",
+    "play": "Chơi",
+    "modes": "Chế độ",
+    "online": "Trực tuyến",
+    "faq": "Câu hỏi thường gặp",
+    "playNow": "Chơi ngay",
+    "skipToContent": "Tới nội dung",
+    "languageLabel": "Ngôn ngữ",
+    "footerTagline": "GeoG — trò chơi địa lý miễn phí: quốc kỳ, thủ đô và các quốc gia trên thế giới.",
+    "footerCoords": "47°B 2°Đ · Làm với ✦ cho những người thích khám phá.",
+    "readNext": "Đọc tiếp",
+    "relatedModes": "Các chế độ chơi khác",
+    "sourceNote": "Dữ liệu trò chơi",
+    "country": "Quốc gia",
+    "capital": "Thủ đô",
+    "flag": "Quốc kỳ",
+    "neighbours": "Các nước láng giềng",
+    "population": "Dân số",
+    "area": "Diện tích (km²)",
+    "continent": "Châu lục",
+    "haveApp": "Bạn đã có ứng dụng?",
+    "openInApp": "Mở trong ứng dụng",
+    "dismiss": "Đóng"
+  },
+  "slugs": {
+    "about": "ve-tro-choi",
+    "contact": "lien-he",
+    "privacy": "quyen-rieng-tu"
+  },
+  "modes": {
+    "mode-flags": {
+      "name": "Quốc kỳ",
+      "slug": "doan-quoc-ky"
+    },
+    "mode-capitals": {
+      "name": "Thủ đô",
+      "slug": "cau-do-thu-do"
+    },
+    "mode-globe": {
+      "name": "Quả cầu 3D",
+      "slug": "qua-cau-3d"
+    },
+    "mode-silhouettes": {
+      "name": "Hình bóng",
+      "slug": "hinh-bong-quoc-gia"
+    },
+    "mode-borders": {
+      "name": "Biên giới",
+      "slug": "tro-choi-bien-gioi"
+    },
+    "mode-guess": {
+      "name": "Đoán quốc gia",
+      "slug": "doan-quoc-gia"
+    },
+    "mode-rankle": {
+      "name": "Rankle",
+      "slug": "rankle"
+    },
+    "mode-higherlower": {
+      "name": "Hơn hay kém",
+      "slug": "hon-hay-kem"
+    },
+    "mode-daily": {
+      "name": "Thử thách mỗi ngày",
+      "slug": "thu-thach-moi-ngay"
+    },
+    "mode-online": {
+      "name": "Đấu trực tuyến",
+      "slug": "dau-truc-tuyen"
+    },
+    "mode-ranked": {
+      "name": "Chế độ xếp hạng",
+      "slug": "che-do-xep-hang"
+    },
+    "mode-story": {
+      "name": "Chế độ cốt truyện",
+      "slug": "che-do-cot-truyen"
+    }
+  },
+  "home": {
+    "title": "GeoG — trò chơi địa lý miễn phí: quốc kỳ, thủ đô, quốc gia",
+    "description": "Chơi địa lý thế giới miễn phí: quốc kỳ, thủ đô, quả cầu 3D, hình bóng quốc gia và thử thách mỗi ngày trải khắp 195 nước. Không cần tài khoản, chơi thẳng trên trình duyệt.",
+    "ogTitle": "GeoG — trò chơi địa lý",
+    "h1": "GeoG, trò chơi địa lý của {{countries}} quốc gia",
+    "standfirst": "Quốc kỳ, thủ đô, quả cầu 3D, hình bóng và biên giới: {{modes}} chế độ chơi để học cả thế giới trong những ván ba phút. Miễn phí, không cần tài khoản, trên trình duyệt hoặc điện thoại.",
+    "modesHeading": "{{modes}} chế độ chơi",
+    "modesIntro": "Mỗi chế độ rèn một mặt khác nhau của tấm bản đồ: nhận ra, định vị, so sánh. Chọn một chế độ và bắt đầu chỉ với một chạm.",
+    "howHeading": "Cách chơi",
+    "howBody": "Mỗi ván gồm vài lượt ngắn. Tùy trò, bạn chạm, chọn hoặc đặt câu trả lời của mình; càng chính xác thì càng nhiều điểm. Không có đồng hồ đếm ngược gây căng thẳng, và luật của mỗi chế độ tự hiện ra ở lần mở đầu tiên.",
+    "ctaTitle": "Bắt đầu một ván",
+    "ctaText": "Miễn phí, không cần tài khoản, chơi thẳng trên trình duyệt.",
+    "faq": [
+      {
+        "q": "Có cần tài khoản để chơi không?",
+        "a": "Không. Mọi chế độ chơi một mình và thử thách mỗi ngày đều chơi được mà không cần tài khoản. Tài khoản miễn phí chỉ dùng để lưu tiến trình, chơi trực tuyến và xuất hiện trên bảng xếp hạng."
+      },
+      {
+        "q": "Trò chơi có bao nhiêu quốc gia?",
+        "a": "{{countries}} quốc gia thành viên Liên Hợp Quốc, chứ không chỉ ba chục nước ai cũng biết. Các tiểu quốc và đảo quốc đều có mặt."
+      },
+      {
+        "q": "Thử thách mỗi ngày có giống nhau với mọi người không?",
+        "a": "Có. Mỗi ngày, tất cả người chơi trên thế giới nhận đúng cùng một chuỗi câu hỏi, nên bạn có thể so kết quả với bạn bè."
+      }
+    ]
+  },
+  "mode": {
+    "titleSuffix": "trò chơi địa lý miễn phí",
+    "descriptionTail": "Miễn phí, không cần tài khoản, trên trình duyệt hoặc điện thoại.",
+    "howHeading": "Cách chơi",
+    "tipsHeading": "Nên biết",
+    "ctaTitle": "Chơi ngay",
+    "otherModes": "Các chế độ chơi khác"
+  },
+  "about": {
+    "title": "Về trò chơi — ai làm ra GeoG",
+    "description": "GeoG là trò chơi địa lý miễn phí và độc lập: 12 chế độ, 195 quốc gia, dữ liệu mở. Ai làm ra nó và dựa trên nguồn nào.",
+    "h1": "Về trò chơi",
+    "p1": "GeoG là một trò chơi địa lý độc lập do một người làm. Ý tưởng rất đơn giản: học thế giới qua những ván chơi ngắn, không quảng cáo phiền phức và không bắt buộc lập tài khoản.",
+    "p2": "Dữ liệu về các quốc gia lấy từ nguồn mở — Ngân hàng Thế giới, UNESCO, Liên Hợp Quốc — và được cập nhật đều đặn. {{countries}} quốc gia trong trò chơi là các nước thành viên Liên Hợp Quốc.",
+    "p3": "Trò chơi chạy trên trình duyệt, đồng thời có ứng dụng cho iPhone và Android. Nếu bạn thấy dữ liệu sai hay bản dịch gượng, hãy viết cho chúng tôi: sẽ sửa nhanh."
+  },
+  "contact": {
+    "title": "Liên hệ — GeoG",
+    "description": "Viết cho chúng tôi: dữ liệu sai, ý tưởng chế độ chơi, lỗi dịch hoặc thắc mắc về quyền riêng tư.",
+    "h1": "Liên hệ",
+    "p1": "Một dữ liệu sai, một bản dịch gượng, một ý tưởng chế độ chơi? Hãy viết tới contact@playgeog.com, bạn sẽ nhận được trả lời.",
+    "p2": "Mọi vấn đề về dữ liệu cá nhân hay việc xóa tài khoản, xin dùng cùng địa chỉ đó và cho biết tên người dùng liên quan."
+  },
+  "privacy": {
+    "title": "Chính sách quyền riêng tư — GeoG",
+    "description": "GeoG thu thập dữ liệu gì, dùng để làm gì và làm sao yêu cầu xóa.",
+    "h1": "Chính sách quyền riêng tư",
+    "p1": "Bạn có thể chơi GeoG mà không cần tài khoản và không cung cấp bất kỳ dữ liệu cá nhân nào. Nếu bạn tạo tài khoản, chúng tôi chỉ lưu địa chỉ email, tên người dùng và kết quả chơi.",
+    "p2": "Ứng dụng đo ẩn danh xem những màn hình nào được dùng để cải thiện trò chơi, và có thể hiển thị quảng cáo. Chúng tôi không bao giờ bán dữ liệu của bạn.",
+    "p3": "Bạn có thể xóa tài khoản cùng toàn bộ dữ liệu của nó ngay trong trò chơi, ở trang hồ sơ, hoặc bằng cách viết tới contact@playgeog.com."
+  }
+}

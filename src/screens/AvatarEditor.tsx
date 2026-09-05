@@ -334,7 +334,7 @@ export default function AvatarEditor({ onBack, onOpenShop, onOpenGlobeLab }: Ava
                       key={tint}
                       onPress={() => selectTint(tint)}
                       style={[styles.swatch, { backgroundColor: tint, borderColor: selected ? c.text : c.border, borderWidth: selected ? 3 : 1 }]}
-                      {...a11yButton(tr(language, `Couleur ${tint}`, `Color ${tint}`), { selected })}
+                      {...a11yButton(tr(language, 'Couleur {0}', 'Color {0}', [tint]), { selected })}
                     />
                   );
                 })}
@@ -346,12 +346,12 @@ export default function AvatarEditor({ onBack, onOpenShop, onOpenGlobeLab }: Ava
               {parts.map((part) => {
                 const ownedPart = isOwned(part);
                 const selected = activeLayer?.id === part.id;
-                const partName = language === 'fr' ? part.nameFr : part.nameEn;
+                const partName = tr(language, part.nameFr, part.nameEn);
                 const tileLabel = ownedPart
                   ? partName
                   : part.exclusive
-                  ? tr(language, `${partName}, récompense du Mode Histoire`, `${partName}, Story Mode reward`)
-                  : tr(language, `${partName}, verrouillé, ${part.price} pièces`, `${partName}, locked, ${part.price} coins`);
+                  ? tr(language, '{0}, récompense du Mode Histoire', '{0}, Story Mode reward', [partName])
+                  : tr(language, '{0}, verrouillé, {1} pièces', '{0}, locked, {1} coins', [partName, part.price]);
                 return (
                   <TouchableOpacity
                     key={part.id}
@@ -371,7 +371,7 @@ export default function AvatarEditor({ onBack, onOpenShop, onOpenGlobeLab }: Ava
                       <View style={[styles.rarityDot, { backgroundColor: RARITY_META[part.rarity].color }]} />
                     )}
                     <Text style={[styles.tileName, { color: c.text }]} numberOfLines={1}>
-                      {language === 'fr' ? part.nameFr : part.nameEn}
+                      {tr(language, part.nameFr, part.nameEn)}
                     </Text>
                     {!ownedPart && (
                       <View style={styles.lockRow}>

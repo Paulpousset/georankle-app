@@ -66,3 +66,6 @@ coverage/
 /android
 .vercel
 .env*
+
+# Captures du playtest multilingue (node scripts/i18n_playtest.mjs)
+.playtest-i18n/

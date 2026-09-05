@@ -63,6 +63,7 @@ import FindCountryGame from './FindCountryGame';
 import FindRegionGame from './FindRegionGame';
 import RegionCountryPicker, { type RegionPick } from './RegionCountryPicker';
 import { ClassicGame, type ClassicSessionResult } from './ClassicGame';
+import { countryName } from '../lib/geoNames';
 
 // ─── Mode catalogue ───────────────────────────────────────────────────────────
 
@@ -131,7 +132,7 @@ function toMatchMode(mode: ModeKey): MatchMode {
 /** "Capitales des États" for a manche's quiz id (empty if the id went stale). */
 function quizLabel(id: string, lang: Language): string {
   const ch = getChallenge(id);
-  return ch ? (lang === 'fr' ? ch.titleFr : ch.titleEn) : '';
+  return ch ? (tr(lang, ch.titleFr, ch.titleEn)) : '';
 }
 
 function versusType(mode: ModeKey): string | undefined {
@@ -373,9 +374,7 @@ export default function LocalParcours({
     handledKey.current = '';
     announce(
       tr(
-        language,
-        `Au tour de ${names[playerIdx]}`,
-        `${names[playerIdx]}'s turn`,
+        language, 'Au tour de {0}', '{0}\'s turn', [names[playerIdx]],
       ),
     );
     setStep({ phase: 'play', mancheIdx, questionIdx, playerIdx });
@@ -389,9 +388,7 @@ export default function LocalParcours({
       if (winner) {
         announce(
           tr(
-            language,
-            `Partie terminée. ${winner.name} gagne avec ${winner.total} points.`,
-            `Game over. ${winner.name} wins with ${winner.total} points.`,
+            language, 'Partie terminée. {0} gagne avec {1} points.', 'Game over. {0} wins with {1} points.', [winner.name, winner.total],
           ),
         );
       }
@@ -646,7 +643,7 @@ export default function LocalParcours({
             <Stepper onPress={() => setPlayerCount(numPlayers - 1)} disabled={numPlayers <= 2} icon={Minus} c={c} label={tr(language, 'Retirer un joueur', 'Remove a player')} />
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 18 }}>
               <Users color={c.text} size={20} {...a11yHidden} />
-              <Text style={{ fontFamily: FONTS.monoBold, color: c.text, fontSize: 20 }} accessibilityLabel={tr(language, `${numPlayers} joueurs`, `${numPlayers} players`)}>{numPlayers}</Text>
+              <Text style={{ fontFamily: FONTS.monoBold, color: c.text, fontSize: 20 }} accessibilityLabel={tr(language, '{0} joueurs', '{0} players', [numPlayers])}>{numPlayers}</Text>
             </View>
             <Stepper onPress={() => setPlayerCount(numPlayers + 1)} disabled={numPlayers >= 8} icon={Plus} c={c} label={tr(language, 'Ajouter un joueur', 'Add a player')} />
           </View>
@@ -677,7 +674,7 @@ export default function LocalParcours({
                       returnKeyType="done"
                       onSubmitEditing={() => setEditingIdx(null)}
                       onBlur={() => setEditingIdx(null)}
-                      accessibilityLabel={tr(language, `Nom du joueur ${i + 1}`, `Player ${i + 1} name`)}
+                      accessibilityLabel={tr(language, 'Nom du joueur {0}', 'Player {0} name', [i + 1])}
                       style={{ flex: 1, color: c.text, fontFamily: FONTS.monoBold, fontSize: 15, padding: 0 }}
                     />
                     <TouchableOpacity
@@ -699,7 +696,7 @@ export default function LocalParcours({
                   key={i}
                   onPress={() => setEditingIdx(i)}
                   {...a11yButton(
-                    tr(language, `Renommer ${hasName ? name : placeholder}`, `Rename ${hasName ? name : placeholder}`),
+                    tr(language, 'Renommer {0}', 'Rename {0}', [hasName ? name : placeholder]),
                     { hint: tr(language, 'Touchez pour modifier le nom', 'Tap to edit the name') },
                   )}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: c.card, borderRadius: 14, padding: 11 }}
@@ -766,7 +763,7 @@ export default function LocalParcours({
                     <Text style={{ flex: 1, fontFamily: FONTS.monoBold, color: c.text, fontSize: 14 }}>
                       {tr(language, def.fr, def.en)}
                       {m.region?.length
-                        ? ` · ${m.region.map((p) => (language === 'fr' ? p.name : (p.name_en ?? p.name))).join(', ')}`
+                        ? ` · ${m.region.map((p) => countryName(p, language)).join(', ')}`
                         : ''}
                       {m.challengeId ? ` · ${quizLabel(m.challengeId, language)}` : ''}
                     </Text>
@@ -907,7 +904,7 @@ export default function LocalParcours({
           <TouchableOpacity
             onPress={() => startPlayerTurn(step.mancheIdx, step.questionIdx, step.playerIdx)}
             {...a11yButton(
-              tr(language, `Commencer le tour de ${names[step.playerIdx]}`, `Start ${names[step.playerIdx]}'s turn`),
+              tr(language, 'Commencer le tour de {0}', 'Start {0}\'s turn', [names[step.playerIdx]]),
             )}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: def.accent, borderRadius: 16, paddingVertical: 15, paddingHorizontal: 44 }}
           >
@@ -968,7 +965,7 @@ export default function LocalParcours({
                     <TouchableOpacity
                       style={{ flex: 1 }}
                       onPress={() => setReview({ mancheIdx: step.mancheIdx, playerIdx: r.p })}
-                      {...a11yButton(tr(language, `Voir la partie idéale de ${r.name}`, `View ${r.name}'s ideal game`))}
+                      {...a11yButton(tr(language, 'Voir la partie idéale de {0}', 'View {0}\'s ideal game', [r.name]))}
                     >
                       <Text style={{ fontFamily: FONTS.monoBold, color: c.text, fontSize: 15 }}>{r.name}</Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
@@ -1022,7 +1019,7 @@ export default function LocalParcours({
           {standings[0] && (
             <View
               style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}
-              accessibilityLabel={tr(language, `Gagnant : ${standings[0].name}`, `Winner: ${standings[0].name}`)}
+              accessibilityLabel={tr(language, 'Gagnant : {0}', 'Winner: {0}', [standings[0].name])}
             >
               <Trophy color={PALETTE.sand} size={16} {...a11yHidden} />
               <Text style={{ fontFamily: FONTS.monoBold, color: PALETTE.sand, fontSize: 16 }}>
@@ -1083,7 +1080,7 @@ export default function LocalParcours({
                       <TouchableOpacity
                         key={p}
                         onPress={() => setReview({ mancheIdx: mi, playerIdx: p })}
-                        {...a11yButton(tr(language, `Voir la partie idéale de ${name}`, `View ${name}'s ideal game`))}
+                        {...a11yButton(tr(language, 'Voir la partie idéale de {0}', 'View {0}\'s ideal game', [name]))}
                         style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}
                       >
                         <Eye color={c.accent} size={11} {...a11yHidden} />

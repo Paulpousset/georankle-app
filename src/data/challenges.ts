@@ -12,8 +12,10 @@
  * USA · state flags (flag → state name).
  */
 
+import type { Language } from '../types';
 import { getSubdivisionFlagUrl } from '../lib/flags';
 import { createSeededRng } from '../lib/rng';
+import { tr } from '../i18n';
 
 /** What the question shows. */
 export type ChallengePromptKind = 'text' | 'flag';
@@ -440,14 +442,14 @@ const COUNTRY_LABELS: Record<string, [string, string]> = {
   CAN: ['Canada', 'Canada'],
 };
 
-export function countryLabel(cca3: string, lang: 'fr' | 'en'): string {
+export function countryLabel(cca3: string, lang: Language): string {
   const l = COUNTRY_LABELS[cca3];
-  return l ? (lang === 'fr' ? l[0] : l[1]) : cca3;
+  return l ? (tr(lang, l[0], l[1])) : cca3;
 }
 
 /** Compact one-line name for a quiz, e.g. "🇺🇸 Capitales des États". */
-export function challengeLabel(ch: Challenge, lang: 'fr' | 'en'): string {
-  return `${ch.emoji} ${lang === 'fr' ? ch.titleFr : ch.titleEn}`;
+export function challengeLabel(ch: Challenge, lang: Language): string {
+  return `${ch.emoji} ${tr(lang, ch.titleFr, ch.titleEn)}`;
 }
 
 export function getChallenge(id: string): Challenge | undefined {
@@ -475,12 +477,12 @@ export function challengesByCountry(): { country: string; emoji: string; items: 
 
 // ── Per-entity accessors (language-aware) ────────────────────────────────────
 
-export function entityAnswer(e: ChallengeEntity, lang: 'fr' | 'en'): string {
-  return lang === 'fr' ? e.answerFr : e.answerEn;
+export function entityAnswer(e: ChallengeEntity, lang: Language): string {
+  return tr(lang, e.answerFr, e.answerEn);
 }
 
-export function entityPrompt(e: ChallengeEntity, lang: 'fr' | 'en'): string {
-  return (lang === 'fr' ? e.promptFr : e.promptEn) ?? '';
+export function entityPrompt(e: ChallengeEntity, lang: Language): string {
+  return e.promptFr ? tr(lang, e.promptFr, e.promptEn ?? e.promptFr) : '';
 }
 
 export function entityFlagUrl(e: ChallengeEntity): string | null {
@@ -500,7 +502,7 @@ export function pickDistractors(
   entities: ChallengeEntity[],
   correct: ChallengeEntity,
   count: number,
-  lang: 'fr' | 'en',
+  lang: Language,
   rng: () => number,
 ): string[] {
   const correctAns = entityAnswer(correct, lang);

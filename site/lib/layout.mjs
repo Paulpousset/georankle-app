@@ -49,6 +49,31 @@ const FONTS = `  <link rel="preload" href="/fonts/playfair-display-700-latin.wof
   <link rel="stylesheet" href="/fonts/fonts.css" />`;
 
 /**
+ * Le code AdSense, dans le `<head>` de toutes les pages qui ont le droit
+ * d'afficher des annonces.
+ *
+ * ⚠️ Il DOIT être ici, et pas seulement dans `ads-content.js`.
+ * Jusqu'au 05/09/2026 la bibliothèque n'était chargée qu'au-dessus de 1120 px
+ * de large. Or Googlebot rend les pages en ~412 px (mobile) et ~1024 px
+ * (ordinateur) : les deux passent sous le seuil. Autrement dit, aucun robot de
+ * Google n'a jamais vu une seule ligne de code AdSense sur playgeog.com — ce
+ * qui rendait chaque demande d'examen invérifiable. Le site a été refusé
+ * quatre fois.
+ *
+ * Charger la bibliothèque ne crée AUCUNE annonce par elle-même : les
+ * emplacements restent décidés par `public/ads-content.js`, qui continue de
+ * n'injecter aucune unité en dessous de 1120 px. La règle produit « jamais de
+ * bandeau sur mobile » tient donc toujours — mais elle repose désormais sur UN
+ * SEUL garde-fou de plus : les **Auto ads doivent rester désactivées** dans la
+ * console AdSense, sinon Google placera de lui-même des ancres en bas des
+ * écrans mobiles. Voir guide-pubs-web.md.
+ */
+export const AD_CLIENT = 'ca-pub-2429865520138981';
+
+export const ADSENSE_HEAD = `  <meta name="google-adsense-account" content="${AD_CLIENT}" />
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${AD_CLIENT}" crossorigin="anonymous"></script>`;
+
+/**
  * Le bloc `<link rel="alternate">` d'une page.
  *
  * Trois règles, toutes vérifiées par `site/lib/validate.mjs` après génération :
@@ -95,6 +120,17 @@ export function languageSwitch(routeId, locale, className) {
   return `<span class="${className}" role="group" aria-label="${attr(strings(locale).languageLabel)}">${links}</span>`;
 }
 
+/**
+ * Un lien de navigation — vide si la route n'existe pas dans cette langue.
+ *
+ * Les dix-huit guides et l'atlas ne sont écrits qu'en français et en anglais :
+ * sans ce garde-fou, la barre de navigation espagnole enverrait vers l'article
+ * français, ce qui est un lien mort pour le lecteur comme pour le moteur.
+ */
+function link(id, locale, label) {
+  return exists(id, locale) ? `<a href="${href(id, locale)}">${label}</a>` : '';
+}
+
 /** La barre de navigation commune aux pages de contenu. */
 function nav(routeId, locale) {
   const s = strings(locale);
@@ -105,8 +141,8 @@ function nav(routeId, locale) {
         <b>GeoG</b>
       </a>
       <div class="nav-links">
-        <a href="${href('guides', locale)}">${s.guides}</a>
-        <a href="${href('about', locale)}">${s.about}</a>
+        ${link('guides', locale, s.guides)}
+        ${link('about', locale, s.about)}
         ${languageSwitch(routeId, locale, 'lang-switch')}
         <a class="nav-cta" href="${href('play', locale)}">${s.play}</a>
       </div>
@@ -120,12 +156,12 @@ function footer(routeId, locale) {
   const switcher = languageSwitch(routeId, locale, 'lang-switch lang-switch-foot');
   return `  <footer>
     <div class="f-links">
-      <a href="${href('home', locale)}">${s.home}</a>
-      <a href="${href('guides', locale)}">${s.guides}</a>
-      <a href="${href('play', locale)}">${s.play}</a>
-      <a href="${href('about', locale)}">${s.about}</a>
-      <a href="${href('contact', locale)}">${s.contact}</a>
-      <a href="${href('privacy', locale)}">${s.privacy}</a>
+      ${link('home', locale, s.home)}
+      ${link('guides', locale, s.guides)}
+      ${link('play', locale, s.play)}
+      ${link('about', locale, s.about)}
+      ${link('contact', locale, s.contact)}
+      ${link('privacy', locale, s.privacy)}
     </div>
     ${switcher ? `<p class="f-lang">${switcher}</p>` : ''}
     <p>${s.footerTagline}</p>
@@ -221,9 +257,11 @@ ${blocks}
   <script defer src="/site-analytics.js"></script>${
     ads
       ? `
-  <!-- Publicités : emplacements injectés par ads-content.js, uniquement au-dessus
-       de 1120px. Aucune annonce sur mobile, et la bibliothèque AdSense n'est même
-       pas chargée en dessous de ce seuil. -->
+${ADSENSE_HEAD}
+  <!-- Emplacements injectés par ads-content.js, uniquement au-dessus de 1120px.
+       Aucune annonce sur mobile : la bibliothèque ci-dessus est chargée partout
+       (pour que Googlebot la voie), mais aucune unité n'est créée en dessous du
+       seuil. Les Auto ads doivent rester DÉSACTIVÉES dans la console. -->
   <script defer src="/ads-content.js"></script>`
       : ''
   }

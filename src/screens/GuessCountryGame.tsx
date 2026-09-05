@@ -49,6 +49,7 @@ import { PlayerGlobe } from '../components/PlayerGlobe';
 import { useMyGameGlobe } from '../lib/myGlobe';
 import { OffLeaderboardNotice } from '../components/OffLeaderboardNotice';
 import { CountryFactCard } from '../components/CountryFactCard';
+import { ScoreText } from '../components/ScoreText';
 import { recordRun } from '../lib/reviewPool';
 import { getFlagUrl } from '../lib/flags';
 import { COUNTRY_ALIASES } from '../lib/answerMatch';
@@ -71,6 +72,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { tr } from '../i18n';
 import { a11yButton, announce, a11yImage, a11yHidden, ICON_HIT_SLOP } from '../lib/a11y';
 import { useStageWidth } from '../lib/stage';
+import { countryAnswerNames, countryName } from '../lib/geoNames';
 
 /** Atlas line-icon per comparison category (rendered white on the colored tile). */
 const CAT_ICONS: Record<CatId, ComponentType<AtlasIconProps>> = {
@@ -370,12 +372,15 @@ export default function GuessCountryGame({
     return () => { supabase.removeChannel(channel); };
   }, [matchData?.id, user?.id]);
 
+  // La recherche accepte les seize langues, pas seulement les deux d'origine :
+  // un joueur grec tape « Γερμανία », un Turc « Almanya », et les alias partagés
+  // (USA, UK, Birmanie…) continuent de fonctionner pour tout le monde.
   const fuse = useMemo(
     () =>
       new Fuse(
         (gameData as any).countries.map((c: any) => ({
           ...c,
-          _aliases: (COUNTRY_ALIASES[c.cca3] ?? []).join(' '),
+          _aliases: [...countryAnswerNames(c), ...(COUNTRY_ALIASES[c.cca3] ?? [])].join(' '),
         })),
         { keys: ['name', 'name_en', '_aliases'], threshold: 0.3 },
       ),
@@ -410,9 +415,7 @@ export default function GuessCountryGame({
       setSubmitted(true);
       announce(
         tr(
-          language,
-          `Bravo ! C'était ${countryName(target.country)}, en ${newGuessCount} ${newGuessCount === 1 ? 'essai' : 'essais'}, ${score} points`,
-          `Well done! It was ${countryName(target.country)}, in ${newGuessCount} ${newGuessCount === 1 ? 'try' : 'tries'}, ${score} points`,
+          language, 'Bravo ! C\'était {0}, en {1} {2}, {3} points', 'Well done! It was {0}, in {1} {4}, {3} points', [localName(target.country), newGuessCount, newGuessCount === 1 ? 'essai' : 'essais', score, newGuessCount === 1 ? 'try' : 'tries'],
         ),
       );
       if (isDaily) {
@@ -430,8 +433,8 @@ export default function GuessCountryGame({
           void recordRun('guess', [
             {
               cca3: target.country.cca3,
-              prompt: countryName(target.country),
-              correctAnswer: countryName(target.country),
+              prompt: localName(target.country),
+              correctAnswer: localName(target.country),
               ok: newGuessCount <= GUESS_MASTERY_TRIES,
             },
           ]);
@@ -444,9 +447,7 @@ export default function GuessCountryGame({
     } else {
       announce(
         tr(
-          language,
-          `Faux. ${countryName(guessedCountry)}. Essai numéro ${newGuessCount}`,
-          `Wrong. ${countryName(guessedCountry)}. Guess number ${newGuessCount}`,
+          language, 'Faux. {0}. Essai numéro {1}', 'Wrong. {0}. Guess number {1}', [localName(guessedCountry), newGuessCount],
         ),
       );
     }
@@ -460,9 +461,7 @@ export default function GuessCountryGame({
     setMyScore(0);
     announce(
       tr(
-        language,
-        `Abandonné. C'était ${countryName(target.country)}`,
-        `Given up. It was ${countryName(target.country)}`,
+        language, 'Abandonné. C\'était {0}', 'Given up. It was {0}', [localName(target.country)],
       ),
     );
     if (onRoundComplete) onRoundComplete(normalizeRoundScore('guess', 0));
@@ -489,7 +488,7 @@ export default function GuessCountryGame({
   const inputBg  = dark ? '#132040' : '#e8d9b8';
   const accentColor = dark ? '#4a9eff' : '#c04a1a';
 
-  const countryName = (c: any) => (language === 'fr' ? c.name : c.name_en) ?? c.name;
+  const localName = (c: any) => countryName(c, language);
 
   // 3 colonnes exactes. On retranche : scroll padding (14×2) + bordures carte (1.5×2)
   // + tileGrid padding (8×2) + 2 gaps (8×2) + une marge de sécurité de 2px pour
@@ -519,7 +518,7 @@ export default function GuessCountryGame({
           <Home color={textPri} size={22} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: textPri }]}>
-          {language === 'fr' ? 'Devine le Pays' : 'Guess the Country'}
+          {tr(language, 'Devine le Pays', 'Guess the Country')}
         </Text>
         {isOnline ? (
           <View style={styles.onlineScoreRow}>
@@ -532,9 +531,7 @@ export default function GuessCountryGame({
           <View style={[styles.countBadge, { backgroundColor: `${accentColor}18`, borderColor: border }]}>
             <Text style={[styles.countText, { color: accentColor }]}>
               {guesses.length}{' '}
-              {language === 'fr'
-                ? 'essai' + (guesses.length !== 1 ? 's' : '')
-                : guesses.length !== 1 ? 'tries' : 'try'}
+              {tr(language, 'essai' + (guesses.length !== 1 ? 's' : ''), guesses.length !== 1 ? 'tries' : 'try')}
             </Text>
           </View>
         )}
@@ -553,7 +550,7 @@ export default function GuessCountryGame({
                 <Search color={textSec} size={20} style={{ marginLeft: 14 }} />
                 <TextInput
                   style={[styles.searchInput, { color: textPri }]}
-                  placeholder={language === 'fr' ? 'Tapez un pays…' : 'Type a country…'}
+                  placeholder={tr(language, 'Tapez un pays…', 'Type a country…')}
                   placeholderTextColor={textSec}
                   value={search}
                   onChangeText={handleSearch}
@@ -582,12 +579,12 @@ export default function GuessCountryGame({
                         i < suggestions.length - 1 && { borderBottomWidth: 1, borderBottomColor: border },
                       ]}
                       onPress={() => handleGuess(c)}
-                      {...a11yButton(countryName(c), {
+                      {...a11yButton(localName(c), {
                         hint: tr(language, 'Proposer ce pays', 'Guess this country'),
                       })}
                     >
                       <Image source={{ uri: getFlagUrl(c.cca3) }} style={styles.suggFlag} />
-                      <Text style={[styles.suggName, { color: textPri }]}>{countryName(c)}</Text>
+                      <Text style={[styles.suggName, { color: textPri }]}>{localName(c)}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -610,7 +607,7 @@ export default function GuessCountryGame({
                 >
                   <Flag size={14} color="#8b1a1a" />
                   <Text style={styles.giveUpText}>
-                    {language === 'fr' ? 'Abandonner (0 pt)' : 'Give up (0 pt)'}
+                    {tr(language, 'Abandonner (0 pt)', 'Give up (0 pt)')}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -624,12 +621,12 @@ export default function GuessCountryGame({
                 <AtlasLose color={PALETTE.dangerRed} size={44} />
               </View>
               <Text style={[styles.winTitle, { color: textPri }]}>
-                {language === 'fr' ? 'Abandonné' : 'Given up'}
+                {tr(language, 'Abandonné', 'Given up')}
               </Text>
               <Image source={{ uri: getFlagUrl(target.country.cca3) }} style={styles.winFlag} />
-              <Text style={[styles.winCountry, { color: textPri }]}>{countryName(target.country)}</Text>
+              <Text style={[styles.winCountry, { color: textPri }]}>{localName(target.country)}</Text>
               <Text style={[styles.winSub, { color: textSec }]}>
-                {language === 'fr' ? "En attente de l'adversaire…" : 'Waiting for opponent…'}
+                {tr(language, 'En attente de l\'adversaire…', 'Waiting for opponent…')}
               </Text>
             </View>
           )}
@@ -644,15 +641,13 @@ export default function GuessCountryGame({
                 <AtlasWin color={PALETTE.success} size={44} />
               </View>
               <Text style={[styles.winTitle, { color: textPri }]}>
-                {language === 'fr' ? 'Bravo !' : 'Well done!'}
+                {tr(language, 'Bravo !', 'Well done!')}
               </Text>
               <Image source={{ uri: getFlagUrl(target.country.cca3) }} style={styles.winFlag} />
-              <Text style={[styles.winCountry, { color: textPri }]}>{countryName(target.country)}</Text>
+              <Text style={[styles.winCountry, { color: textPri }]}>{localName(target.country)}</Text>
               <Text style={[styles.winSub, { color: textSec }]}>
                 {guesses.length}{' '}
-                {language === 'fr'
-                  ? guesses.length === 1 ? 'essai' : 'essais'
-                  : guesses.length === 1 ? 'try' : 'tries'}
+                {tr(language, guesses.length === 1 ? 'essai' : 'essais', guesses.length === 1 ? 'try' : 'tries')}
                 {isOnline && (
                   <Text style={{ color: accentColor, fontWeight: '700' }}>
                     {' '}· {myScore} pts
@@ -686,7 +681,7 @@ export default function GuessCountryGame({
               )}
               {isOnline ? (
                 <Text style={[styles.winSub, { color: textSec }]}>
-                  {language === 'fr' ? "En attente de l'adversaire…" : 'Waiting for opponent…'}
+                  {tr(language, 'En attente de l\'adversaire…', 'Waiting for opponent…')}
                 </Text>
               ) : isDaily ? (
                 <TouchableOpacity
@@ -695,7 +690,7 @@ export default function GuessCountryGame({
                   {...a11yButton(tr(language, 'Partager', 'Share'))}
                 >
                   <Share2 color="#fff" size={18} />
-                  <Text style={styles.replayText}>{language === 'fr' ? 'Partager' : 'Share'}</Text>
+                  <Text style={styles.replayText}>{tr(language, 'Partager', 'Share')}</Text>
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity
@@ -704,7 +699,7 @@ export default function GuessCountryGame({
                   {...a11yButton(tr(language, 'Rejouer', 'Play again'))}
                 >
                   <RefreshCcw color="#fff" size={18} />
-                  <Text style={styles.replayText}>{language === 'fr' ? 'Rejouer' : 'Play Again'}</Text>
+                  <Text style={styles.replayText}>{tr(language, 'Rejouer', 'Play Again')}</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -719,17 +714,15 @@ export default function GuessCountryGame({
           {guesses.length === 0 && !won && !submitted && (
             <>
               <Text style={[styles.hint, { color: textSec }]}>
-                {language === 'fr'
-                  ? isOnline
+                {tr(language, isOnline
                     ? 'Même pays pour les deux joueurs — moins d\'essais = plus de points (max 1000).'
-                    : 'Tentatives illimitées — chaque réponse compare vos stats avec celles du pays mystère.'
-                  : isOnline
+                    : 'Tentatives illimitées — chaque réponse compare vos stats avec celles du pays mystère.', isOnline
                     ? 'Same country for both players — fewer guesses = more points (max 1000).'
-                    : 'Unlimited tries — each guess compares its stats to the mystery country.'}
+                    : 'Unlimited tries — each guess compares its stats to the mystery country.')}
               </Text>
 
               <Text style={[styles.previewTitle, { color: textSec }]}>
-                {language === 'fr' ? 'Ce que vous allez comparer' : "What you'll compare"}
+                {tr(language, 'Ce que vous allez comparer', 'What you\'ll compare')}
               </Text>
               <View style={[styles.previewCard, { backgroundColor: cardBg, borderColor: border }]}>
                 <View style={styles.tileGrid}>
@@ -745,14 +738,14 @@ export default function GuessCountryGame({
                         <View style={styles.tileEmoji} {...a11yHidden}>
                           <Icon color="#fff" size={24} />
                         </View>
-                        <Text
+                        <ScoreText
                           style={styles.tileLabel}
                           numberOfLines={1}
                           adjustsFontSizeToFit
                           minimumFontScale={0.7}
                         >
-                          {language === 'fr' ? cat.fr : cat.en}
-                        </Text>
+                          {tr(language, cat.fr, cat.en)}
+                        </ScoreText>
                         <Text style={styles.tileValue}>?</Text>
                       </RevealTile>
                     );
@@ -787,7 +780,7 @@ export default function GuessCountryGame({
                   </View>
                   <Image source={{ uri: getFlagUrl(g.country.cca3) }} style={styles.guessFlag} />
                   <Text style={[styles.guessName, { color: textPri }]} numberOfLines={1}>
-                    {countryName(g.country)}
+                    {localName(g.country)}
                   </Text>
                   {g.isCorrect && (
                     <View style={styles.correctBadge} {...a11yImage(tr(language, 'Correct', 'Correct'))}>
@@ -817,20 +810,20 @@ export default function GuessCountryGame({
                         <View style={styles.tileEmoji} {...a11yHidden}>
                           <Icon color="#fff" size={24} />
                         </View>
-                        <Text
+                        <ScoreText
                           style={styles.tileLabel}
                           numberOfLines={1}
                           adjustsFontSizeToFit
                           minimumFontScale={0.7}
                         >
-                          {language === 'fr' ? cat.fr : cat.en}
-                        </Text>
+                          {tr(language, cat.fr, cat.en)}
+                        </ScoreText>
                         {cell?.value === '🎯' ? (
                           <AtlasTarget color="#fff" size={16} />
                         ) : (
-                          <Text style={styles.tileValue} numberOfLines={1} adjustsFontSizeToFit>
+                          <ScoreText style={styles.tileValue} numberOfLines={1} adjustsFontSizeToFit>
                             {cell?.value ?? '?'}
-                          </Text>
+                          </ScoreText>
                         )}
                         {cell?.hint && <TileHint hint={cell.hint} />}
                       </RevealTile>

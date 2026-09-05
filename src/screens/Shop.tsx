@@ -221,7 +221,7 @@ export default function Shop({ onBack, onEditAvatar, onOpenGlobeLab }: ShopProps
     setAvatarConfig(next);
     void cacheEquippedGlobe(next);
     track('avatar_equipped', { category: part.category, item_id: part.id });
-    announce(tr(language, `${part.nameFr} équipé`, `${part.nameEn} equipped`));
+    announce(tr(language, '{0} équipé', '{1} equipped', [part.nameFr, part.nameEn]));
   }, [avatarConfig, language]);
 
   const buy = async (part: CosmeticPart) => {
@@ -243,9 +243,9 @@ export default function Shop({ onBack, onEditAvatar, onOpenGlobeLab }: ShopProps
       if (featured?.itemId === part.id) track('featured_purchased', { item_id: part.id, price });
       setPreviewPart(null);
       // Post-purchase flow: offer to equip the new item right away.
-      const itemName = language === 'fr' ? part.nameFr : part.nameEn;
+      const itemName = tr(language, part.nameFr, part.nameEn);
       showAlert(
-        tr(language, `${itemName} acheté !`, `${itemName} purchased!`),
+        tr(language, '{0} acheté !', '{0} purchased!', [itemName]),
         tr(language, "L'équiper sur ton monde maintenant ?", 'Equip it on your world now?'),
         [
           { text: tr(language, 'Plus tard', 'Later'), style: 'cancel' },
@@ -259,9 +259,7 @@ export default function Shop({ onBack, onEditAvatar, onOpenGlobeLab }: ShopProps
       showAlert(
         tr(language, 'Achat impossible', 'Purchase failed'),
         tr(
-          language,
-          `Ton achat n'a pas pu être finalisé. Vérifie ta connexion et réessaie.\n\n${result.message}`,
-          `Your purchase could not be completed. Check your connection and try again.\n\n${result.message}`,
+          language, 'Ton achat n\'a pas pu être finalisé. Vérifie ta connexion et réessaie.\n\n{0}', 'Your purchase could not be completed. Check your connection and try again.\n\n{0}', [result.message],
         ),
       );
     }
@@ -269,7 +267,7 @@ export default function Shop({ onBack, onEditAvatar, onOpenGlobeLab }: ShopProps
   };
 
   const buyBundle = (bundle: CosmeticBundle) => {
-    const name = language === 'fr' ? bundle.nameFr : bundle.nameEn;
+    const name = tr(language, bundle.nameFr, bundle.nameEn);
     if (balance < bundle.price) {
       showAlert(
         tr(language, 'Solde insuffisant', 'Insufficient funds'),
@@ -281,9 +279,7 @@ export default function Shop({ onBack, onEditAvatar, onOpenGlobeLab }: ShopProps
     showAlert(
       name,
       tr(
-        language,
-        `Acheter ${missing.length} objet${missing.length > 1 ? 's' : ''} pour ${bundle.price} pièces ?`,
-        `Buy ${missing.length} item${missing.length > 1 ? 's' : ''} for ${bundle.price} coins?`,
+        language, 'Acheter {0} objet{1} pour {2} pièces ?', 'Buy {0} item{1} for {2} coins?', [missing.length, missing.length > 1 ? 's' : '', bundle.price],
       ),
       [
         { text: tr(language, 'Annuler', 'Cancel'), style: 'cancel' },
@@ -302,9 +298,7 @@ export default function Shop({ onBack, onEditAvatar, onOpenGlobeLab }: ShopProps
               });
               track('bundle_purchased', { bundle_id: bundle.id, price: bundle.price });
               announce(tr(
-                language,
-                `${name} acheté. Nouveau solde : ${result.newBalance} pièces.`,
-                `${name} purchased. New balance: ${result.newBalance} coins.`,
+                language, '{0} acheté. Nouveau solde : {1} pièces.', '{0} purchased. New balance: {1} coins.', [name, result.newBalance],
               ));
             } else {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
@@ -343,7 +337,7 @@ export default function Shop({ onBack, onEditAvatar, onOpenGlobeLab }: ShopProps
       <View style={[styles.rarityBadge, { backgroundColor: meta.color + '22', borderColor: meta.color }]}>
         <View style={[styles.rarityDot, { backgroundColor: meta.color }]} />
         <Text style={[styles.rarityText, { color: meta.color }]}>
-          {language === 'fr' ? meta.labelFr : meta.labelEn}
+          {tr(language, meta.labelFr, meta.labelEn)}
         </Text>
       </View>
     );
@@ -376,12 +370,12 @@ export default function Shop({ onBack, onEditAvatar, onOpenGlobeLab }: ShopProps
       const itemOwned = owned.has(part.id);
       const price = effectivePrice(part);
       const affordable = balance >= price;
-      const itemName = language === 'fr' ? part.nameFr : part.nameEn;
+      const itemName = tr(language, part.nameFr, part.nameEn);
       const meta = RARITY_META[part.rarity];
       const glow = part.rarity === 'epic' || part.rarity === 'legendary';
       const stateLabel = itemOwned
         ? tr(language, 'possédé', 'owned')
-        : tr(language, `${price} pièces`, `${price} coins`);
+        : tr(language, '{0} pièces', '{0} coins', [price]);
       return (
         <TouchableOpacity
           key={part.id}
@@ -495,9 +489,7 @@ export default function Shop({ onBack, onEditAvatar, onOpenGlobeLab }: ShopProps
               style={[styles.featuredCard, { borderColor: (featMeta?.color ?? c.accent) + 'aa' }]}
               {...a11yButton(
                 tr(
-                  language,
-                  `Vitrine du jour : ${featuredPart.nameFr}, ${featured.price} pièces au lieu de ${featured.basePrice}`,
-                  `Today's featured: ${featuredPart.nameEn}, ${featured.price} coins instead of ${featured.basePrice}`,
+                  language, 'Vitrine du jour : {0}, {1} pièces au lieu de {2}', 'Today\'s featured: {3}, {1} coins instead of {2}', [featuredPart.nameFr, featured.price, featured.basePrice, featuredPart.nameEn],
                 ),
               )}
             >
@@ -515,7 +507,7 @@ export default function Shop({ onBack, onEditAvatar, onOpenGlobeLab }: ShopProps
                   </Text>
                 </View>
                 <Text style={[styles.featuredName, { color: '#f5efdf' }]} numberOfLines={1}>
-                  {language === 'fr' ? featuredPart.nameFr : featuredPart.nameEn}
+                  {tr(language, featuredPart.nameFr, featuredPart.nameEn)}
                 </Text>
                 <View style={styles.priceRow}>
                   <Coins color="#ffd700" size={13} />
@@ -542,9 +534,7 @@ export default function Shop({ onBack, onEditAvatar, onOpenGlobeLab }: ShopProps
                 style={[styles.bundleCard, { backgroundColor: c.card, borderColor: RARITY_META.epic.color + '77', opacity: allOwned ? 0.55 : 1 }]}
                 {...a11yButton(
                   tr(
-                    language,
-                    `${bundle.nameFr}, ${allOwned ? 'possédé' : `${bundle.price} pièces au lieu de ${base}`}`,
-                    `${bundle.nameEn}, ${allOwned ? 'owned' : `${bundle.price} coins instead of ${base}`}`,
+                    language, '{0}, {1}', '{2}, {3}', [bundle.nameFr, allOwned ? 'possédé' : `${bundle.price} pièces au lieu de ${base}`, bundle.nameEn, allOwned ? 'owned' : `${bundle.price} coins instead of ${base}`],
                   ),
                   { disabled: allOwned || busy, busy },
                 )}
@@ -563,11 +553,11 @@ export default function Shop({ onBack, onEditAvatar, onOpenGlobeLab }: ShopProps
                   <View style={styles.featuredTitleRow}>
                     <Package size={12} color={RARITY_META.epic.color} />
                     <Text style={[styles.bundleName, { color: c.text }]} numberOfLines={1}>
-                      {language === 'fr' ? bundle.nameFr : bundle.nameEn}
+                      {tr(language, bundle.nameFr, bundle.nameEn)}
                     </Text>
                   </View>
                   <Text style={[styles.bundleCount, { color: c.textMuted }]}>
-                    {tr(language, `${bundle.itemIds.length} objets`, `${bundle.itemIds.length} items`)}
+                    {tr(language, '{0} objets', '{0} items', [bundle.itemIds.length])}
                   </Text>
                 </View>
                 {busy ? (
@@ -751,7 +741,7 @@ export default function Shop({ onBack, onEditAvatar, onOpenGlobeLab }: ShopProps
               <>
                 <RarityBadge part={previewPart} />
                 <Text style={[styles.itemName, { color: c.text }]}>
-                  {language === 'fr' ? previewPart.nameFr : previewPart.nameEn}
+                  {tr(language, previewPart.nameFr, previewPart.nameEn)}
                 </Text>
 
                 {isOwned ? (
@@ -766,7 +756,7 @@ export default function Shop({ onBack, onEditAvatar, onOpenGlobeLab }: ShopProps
                     onPress={() => buy(previewPart)}
                     disabled={buying === previewPart.id}
                     {...a11yButton(
-                      tr(language, `Acheter pour ${previewPrice} pièces`, `Buy for ${previewPrice} coins`),
+                      tr(language, 'Acheter pour {0} pièces', 'Buy for {0} coins', [previewPrice]),
                       {
                         disabled: buying === previewPart.id,
                         busy: buying === previewPart.id,

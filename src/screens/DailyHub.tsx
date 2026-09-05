@@ -204,7 +204,7 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
           <View style={{ alignItems: 'center' }}>
             <View
               style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}
-              {...a11yImage(tr(language, `Série de ${streak} jours`, `${streak}-day streak`))}
+              {...a11yImage(tr(language, 'Série de {0} jours', '{0}-day streak', [streak]))}
             >
               <AtlasFlame color={FLAME} size={24} />
               <ScoreText style={{ fontFamily: FONTS.headingBlack, color: FLAME, fontSize: 28 }}>
@@ -323,7 +323,7 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
                     onPress={() => setHelpMode(mode)}
                     style={{ padding: 8 }}
                     hitSlop={ICON_HIT_SLOP}
-                    {...a11yButton(tr(language, `Comment jouer à ${dailyModeLabel(mode, language)}`, `How to play ${dailyModeLabel(mode, language)}`), {
+                    {...a11yButton(tr(language, 'Comment jouer à {0}', 'How to play {0}', [dailyModeLabel(mode, language)]), {
                       hint: tr(language, 'Voir les règles de ce mode', 'See this mode’s rules'),
                     })}
                   >

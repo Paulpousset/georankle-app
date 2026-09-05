@@ -62,7 +62,7 @@ export function ThemeInfoModal({ theme, onClose }: ThemeInfoModalProps) {
               onPress={onClose}
               style={{ padding: 10 }}
               accessibilityRole="button"
-              accessibilityLabel={language === 'fr' ? 'Fermer' : 'Close'}
+              accessibilityLabel={tr(language, 'Fermer', 'Close')}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <X color={c.textMuted} size={24} />

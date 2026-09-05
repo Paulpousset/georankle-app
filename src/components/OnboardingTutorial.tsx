@@ -326,27 +326,6 @@ export function OnboardingTutorial({ visible, steps, measureTarget, onFinish }: 
           <View style={[StyleSheet.absoluteFill, { backgroundColor: dim }]} />
         )}
 
-        {/* ---- skip ("Passer") — always reachable, hidden on the last step ---- */}
-        {!isLast && (
-          <TouchableOpacity
-            onPress={onFinish}
-            style={{
-              position: 'absolute',
-              top: insets.top + 8,
-              right: 14,
-              backgroundColor: 'rgba(0,0,0,0.32)',
-              borderRadius: 12,
-              paddingVertical: 7,
-              paddingHorizontal: 13,
-            }}
-            {...a11yButton(tr(language, 'Passer le tutoriel', 'Skip tutorial'))}
-          >
-            <Text style={{ fontFamily: FONTS.mono, fontSize: 11, color: '#fff' }}>
-              {tr(language, 'Passer', 'Skip')}
-            </Text>
-          </TouchableOpacity>
-        )}
-
         {/* ---- callout card ---- */}
         {ring ? (
           <View
@@ -391,9 +370,40 @@ export function OnboardingTutorial({ visible, steps, measureTarget, onFinish }: 
             {cardInner}
           </View>
         ) : (
-          <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', padding: 12 }]}>
+          // `box-none` : ce conteneur couvre tout l'écran mais ne doit pas
+          // intercepter les taps (sinon il avale le bouton « Passer »).
+          <View
+            pointerEvents="box-none"
+            style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', padding: 12 }]}
+          >
             <View style={cardStyle}>{cardInner}</View>
           </View>
+        )}
+        {/* ---- skip ("Passer") — always reachable, hidden on the last step ----
+             Rendu en DERNIER et avec zIndex/elevation au-dessus de la carte :
+             sinon la carte (elevation 10, et plein écran quand elle est centrée)
+             passe devant et le tap n'arrive jamais jusqu'ici. */}
+        {!isLast && (
+          <TouchableOpacity
+            onPress={onFinish}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={{
+              position: 'absolute',
+              top: insets.top + 8,
+              right: 14,
+              backgroundColor: 'rgba(0,0,0,0.32)',
+              borderRadius: 12,
+              paddingVertical: 9,
+              paddingHorizontal: 14,
+              zIndex: 20,
+              elevation: 20,
+            }}
+            {...a11yButton(tr(language, 'Passer le tutoriel', 'Skip tutorial'))}
+          >
+            <Text style={{ fontFamily: FONTS.mono, fontSize: 11, color: '#fff' }}>
+              {tr(language, 'Passer', 'Skip')}
+            </Text>
+          </TouchableOpacity>
         )}
       </View>
     </Modal>

@@ -1,5 +1,5 @@
 import { showAlert } from '../lib/alert';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
@@ -38,7 +38,8 @@ import {
 } from '../lib/validation';
 import { FONTS } from '../theme/typography';
 import { PALETTE } from '../theme/colors';
-import type { Language } from '../types';
+import type { Language, LocalizedLabel } from '../types';
+import { pickLabel, tr } from '../i18n';
 
 type Mode = 'login' | 'signup' | 'forgot' | 'profile';
 
@@ -127,68 +128,42 @@ const Auth = ({ onAuthSuccess, language, initialMode = 'login' }: AuthProps) => 
     }
   };
 
-  const t = {
-    fr: {
-      email: 'Email',
-      password: 'Mot de passe',
-      confirmPassword: 'Confirmer le mot de passe',
-      username: 'Pseudo',
-      login: 'Se connecter',
-      signup: "S'inscrire",
-      noAccount: "Pas de compte ? S'inscrire",
-      haveAccount: 'Déjà un compte ? Se connecter',
-      forgot: 'Mot de passe oublié ?',
-      resetTitle: 'Mot de passe oublié',
-      resetIntro:
-        'Saisis ton email : on t’envoie un lien pour choisir un nouveau mot de passe.',
-      sendReset: 'Envoyer le lien',
-      resetSentTitle: 'Email envoyé !',
-      resetSentBody:
-        'Vérifie ta boîte de réception (et les spams) pour réinitialiser ton mot de passe.',
-      backToLogin: 'Retour à la connexion',
-      error: 'Erreur',
-      success: 'Succès',
-      checkEmail: "Vérifiez vos emails pour confirmer l'inscription !",
-      passwordsDontMatch: 'Les mots de passe ne correspondent pas',
-      invalidEmail: 'Adresse email invalide',
-      invalidUsername: 'Pseudo invalide',
-      joinTitle: 'Rejoins GeoGames',
-      benefitsTitle: 'Crée ton compte pour :',
-      benefit1: 'Sauvegarder ta progression et tes records',
-      benefit2: 'Jouer en ligne en 1v1 et multijoueur',
-      benefit3: 'Gagner des pièces et débloquer la boutique',
-      benefit4: 'Te faire des amis et grimper au classement',
-    },
-    en: {
-      email: 'Email',
-      password: 'Password',
-      confirmPassword: 'Confirm Password',
-      username: 'Username',
-      login: 'Login',
-      signup: 'Sign Up',
-      noAccount: "Don't have an account? Sign up",
-      haveAccount: 'Already have an account? Login',
-      forgot: 'Forgot password?',
-      resetTitle: 'Forgot password',
-      resetIntro: 'Enter your email and we’ll send you a link to choose a new password.',
-      sendReset: 'Send link',
-      resetSentTitle: 'Email sent!',
-      resetSentBody: 'Check your inbox (and spam) to reset your password.',
-      backToLogin: 'Back to login',
-      error: 'Error',
-      success: 'Success',
-      checkEmail: 'Check your email for confirmation link!',
-      passwordsDontMatch: 'Passwords do not match',
-      invalidEmail: 'Invalid email address',
-      invalidUsername: 'Invalid username',
-      joinTitle: 'Join GeoGames',
-      benefitsTitle: 'Create an account to:',
-      benefit1: 'Save your progress and records',
-      benefit2: 'Play online 1v1 and multiplayer',
-      benefit3: 'Earn coins and unlock the shop',
-      benefit4: 'Add friends and climb the leaderboard',
-    },
-  }[language];
+  // Les libellés de l'écran, en paires { fr, en } : `pickLabel` les fait
+  // passer par le catalogue des quatorze autres langues.
+  const LABELS: Record<string, LocalizedLabel> = {
+    email: { fr: 'Email', en: 'Email' },
+    password: { fr: 'Mot de passe', en: 'Password' },
+    confirmPassword: { fr: 'Confirmer le mot de passe', en: 'Confirm Password' },
+    username: { fr: 'Pseudo', en: 'Username' },
+    login: { fr: 'Se connecter', en: 'Login' },
+    signup: { fr: "S'inscrire", en: 'Sign Up' },
+    noAccount: { fr: "Pas de compte ? S'inscrire", en: "Don't have an account? Sign up" },
+    haveAccount: { fr: 'Déjà un compte ? Se connecter', en: 'Already have an account? Login' },
+    forgot: { fr: 'Mot de passe oublié ?', en: 'Forgot password?' },
+    resetTitle: { fr: 'Mot de passe oublié', en: 'Forgot password' },
+    resetIntro: { fr: 'Saisis ton email : on t’envoie un lien pour choisir un nouveau mot de passe.', en: 'Enter your email and we’ll send you a link to choose a new password.' },
+    sendReset: { fr: 'Envoyer le lien', en: 'Send link' },
+    resetSentTitle: { fr: 'Email envoyé !', en: 'Email sent!' },
+    resetSentBody: { fr: 'Vérifie ta boîte de réception (et les spams) pour réinitialiser ton mot de passe.', en: 'Check your inbox (and spam) to reset your password.' },
+    backToLogin: { fr: 'Retour à la connexion', en: 'Back to login' },
+    error: { fr: 'Erreur', en: 'Error' },
+    success: { fr: 'Succès', en: 'Success' },
+    checkEmail: { fr: "Vérifiez vos emails pour confirmer l'inscription !", en: 'Check your email for confirmation link!' },
+    passwordsDontMatch: { fr: 'Les mots de passe ne correspondent pas', en: 'Passwords do not match' },
+    invalidEmail: { fr: 'Adresse email invalide', en: 'Invalid email address' },
+    invalidUsername: { fr: 'Pseudo invalide', en: 'Invalid username' },
+    joinTitle: { fr: 'Rejoins GeoGames', en: 'Join GeoGames' },
+    benefitsTitle: { fr: 'Crée ton compte pour :', en: 'Create an account to:' },
+    benefit1: { fr: 'Sauvegarder ta progression et tes records', en: 'Save your progress and records' },
+    benefit2: { fr: 'Jouer en ligne en 1v1 et multijoueur', en: 'Play online 1v1 and multiplayer' },
+    benefit3: { fr: 'Gagner des pièces et débloquer la boutique', en: 'Earn coins and unlock the shop' },
+    benefit4: { fr: 'Te faire des amis et grimper au classement', en: 'Add friends and climb the leaderboard' },
+  };
+  const t = useMemo(
+    () => Object.fromEntries(Object.entries(LABELS).map(([key, label]) => [key, pickLabel(label, language)])) as Record<keyof typeof LABELS, string>,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [language],
+  );
 
   async function updateUsername() {
     if (!isValidUsername(username)) {
@@ -208,7 +183,7 @@ const Auth = ({ onAuthSuccess, language, initialMode = 'login' }: AuthProps) => 
       .upsert({ id: user.id, username: username.trim(), updated_at: new Date().toISOString() });
 
     if (error) showAlert(t.error, error.message);
-    else showAlert(t.success, language === 'fr' ? 'Profil mis à jour !' : 'Profile updated!');
+    else showAlert(t.success, tr(language, 'Profil mis à jour !', 'Profile updated!'));
     setLoading(false);
   }
 
@@ -227,9 +202,7 @@ const Auth = ({ onAuthSuccess, language, initialMode = 'login' }: AuthProps) => 
       showAlert(
         t.error,
         error.message === 'Invalid login credentials'
-          ? language === 'fr'
-            ? 'Email ou mot de passe incorrect'
-            : 'Invalid email or password'
+          ? tr(language, 'Email ou mot de passe incorrect', 'Invalid email or password')
           : error.message,
       );
     } else {
@@ -303,7 +276,7 @@ const Auth = ({ onAuthSuccess, language, initialMode = 'login' }: AuthProps) => 
     } else {
       // Email confirmation enabled: prompt the user to check their inbox.
       track('signed_up');
-      showAlert(language === 'fr' ? 'Compte créé !' : 'Account created!', t.checkEmail);
+      showAlert(tr(language, 'Compte créé !', 'Account created!'), t.checkEmail);
       setMode('login');
     }
     setLoading(false);
@@ -314,7 +287,7 @@ const Auth = ({ onAuthSuccess, language, initialMode = 'login' }: AuthProps) => 
       <View style={styles.card}>
         {mode === 'profile' ? (
           <View>
-            <Text style={styles.title}>{language === 'fr' ? 'Mon Profil' : 'My Profile'}</Text>
+            <Text style={styles.title}>{tr(language, 'Mon Profil', 'My Profile')}</Text>
 
             <View style={{ alignItems: 'center', marginBottom: 20 }}>
               <View
@@ -335,7 +308,7 @@ const Auth = ({ onAuthSuccess, language, initialMode = 'login' }: AuthProps) => 
 
               <View style={[styles.inputContainer, { marginBottom: 10, width: '100%' }]}>
                 <TextInput
-                  placeholder={language === 'fr' ? 'Pseudo' : 'Username'}
+                  placeholder={tr(language, 'Pseudo', 'Username')}
                   value={username}
                   onChangeText={setUsername}
                   style={styles.input}
@@ -345,18 +318,18 @@ const Auth = ({ onAuthSuccess, language, initialMode = 'login' }: AuthProps) => 
                   maxLength={USERNAME_MAX}
                   returnKeyType="done"
                   onSubmitEditing={updateUsername}
-                  accessibilityLabel={language === 'fr' ? 'Pseudo' : 'Username'}
+                  accessibilityLabel={tr(language, 'Pseudo', 'Username')}
                 />
                 <TouchableOpacity
                   onPress={updateUsername}
                   disabled={loading}
                   {...a11yButton(
-                    language === 'fr' ? 'Enregistrer le pseudo' : 'Save username',
+                    tr(language, 'Enregistrer le pseudo', 'Save username'),
                     { disabled: loading },
                   )}
                 >
                   <Text style={{ color: PALETTE.vermilion, fontFamily: FONTS.monoBold, paddingRight: 10 }}>
-                    {language === 'fr' ? 'OK' : 'SET'}
+                    {tr(language, 'OK', 'SET')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -375,7 +348,7 @@ const Auth = ({ onAuthSuccess, language, initialMode = 'login' }: AuthProps) => 
                 textAlign: 'center',
               }}
             >
-              {language === 'fr' ? 'Vos records' : 'Your records'}
+              {tr(language, 'Vos records', 'Your records')}
             </Text>
 
             <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
@@ -404,9 +377,9 @@ const Auth = ({ onAuthSuccess, language, initialMode = 'login' }: AuthProps) => 
                 setPassword('');
                 onAuthSuccess();
               }}
-              {...a11yButton(language === 'fr' ? 'Déconnexion' : 'Logout')}
+              {...a11yButton(tr(language, 'Déconnexion', 'Logout'))}
             >
-              <Text style={styles.buttonText}>{language === 'fr' ? 'Déconnexion' : 'Logout'}</Text>
+              <Text style={styles.buttonText}>{tr(language, 'Déconnexion', 'Logout')}</Text>
             </TouchableOpacity>
           </View>
         ) : mode === 'forgot' ? (
@@ -636,12 +609,8 @@ const Auth = ({ onAuthSuccess, language, initialMode = 'login' }: AuthProps) => 
               {...a11yButton(mode === 'login' ? t.noAccount : t.haveAccount, {
                 hint:
                   mode === 'login'
-                    ? language === 'fr'
-                      ? "Bascule vers la création de compte"
-                      : 'Switches to account creation'
-                    : language === 'fr'
-                      ? 'Bascule vers la connexion'
-                      : 'Switches to login',
+                    ? tr(language, 'Bascule vers la création de compte', 'Switches to account creation')
+                    : tr(language, 'Bascule vers la connexion', 'Switches to login'),
               })}
             >
               <Text style={styles.switchText}>

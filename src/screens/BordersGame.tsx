@@ -46,7 +46,7 @@ import { track } from '../lib/analytics';
 import { saveSoloScore } from '../lib/soloResult';
 import { awardSoloCoins } from '../lib/coins';
 import { useToast } from '../components/ToastProvider';
-import type { GameMode, Match } from '../types';
+import type { GameMode, Match, Language } from '../types';
 import { getColors } from '../theme/colors';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -61,6 +61,7 @@ import { useMyGameGlobe } from '../lib/myGlobe';
 import { TopInsetBar } from '../components/TopInsetBar';
 
 import { isMobileLayout as isMobile } from '../lib/layout';
+import { countryName } from '../lib/geoNames';
 
 interface StatEntry {
   cca3: string;
@@ -72,10 +73,10 @@ interface StatEntry {
 const COUNTRIES = rawCountriesStats as StatEntry[];
 const NAME_BY_ID = new Map(COUNTRIES.map((c) => [c.cca3, c]));
 
-function countryName(cca3: string, lang: 'fr' | 'en'): string {
+function localCountryName(cca3: string, lang: Language): string {
   const c = NAME_BY_ID.get(cca3);
   if (!c) return cca3;
-  return lang === 'fr' ? c.name : c.name_en ?? c.name;
+  return countryName(c, lang);
 }
 
 interface WorldPolygon {
@@ -396,7 +397,7 @@ export default function BordersGame({
   onOpenShop,
 }: BordersGameProps) {
   const { isDarkMode, setIsDarkMode } = useTheme();
-  const { language, setLanguage } = useLanguage();
+  const { language, openLanguagePicker } = useLanguage();
   const toast = useToast();
   const c = getColors(isDarkMode);
 
@@ -472,14 +473,14 @@ export default function BordersGame({
   const highlights = useMemo<Highlight[]>(() => {
     const list: Highlight[] = chain.map((id, i) => ({
       id,
-      name: countryName(id, language),
+      name: localCountryName(id, language),
       flag: getFlagUrl(id),
       kind: i === 0 ? 'start' : i === chain.length - 1 ? 'last' : 'chain',
     }));
     if (!chain.includes(puzzle.target)) {
       list.push({
         id: puzzle.target,
-        name: countryName(puzzle.target, language),
+        name: localCountryName(puzzle.target, language),
         flag: getFlagUrl(puzzle.target),
         kind: 'target',
       });
@@ -489,7 +490,7 @@ export default function BordersGame({
       const used = new Set(list.map((h) => h.id));
       for (const id of idealPath) {
         if (used.has(id)) continue;
-        list.push({ id, name: countryName(id, language), flag: getFlagUrl(id), kind: 'ideal' });
+        list.push({ id, name: localCountryName(id, language), flag: getFlagUrl(id), kind: 'ideal' });
       }
     }
     return list;
@@ -595,9 +596,7 @@ export default function BordersGame({
       const touchesEarlier = chain.some((link) => sharesBorder(link, cca3));
       if (touchesEarlier) {
         const msg = tr(
-          language,
-          `${countryName(cca3, language)} touche la chaîne, mais il faut continuer depuis ${countryName(last, language)}.`,
-          `${countryName(cca3, language)} touches the chain, but you must continue from ${countryName(last, language)}.`,
+          language, '{0} touche la chaîne, mais il faut continuer depuis {1}.', '{0} touches the chain, but you must continue from {1}.', [localCountryName(cca3, language), localCountryName(last, language)],
         );
         toast.info(msg);
         announce(msg);
@@ -607,9 +606,7 @@ export default function BordersGame({
       setMisses(newMisses);
       flashLifeLost();
       const msg = tr(
-        language,
-        `${countryName(cca3, language)} ne touche pas ${countryName(last, language)}.`,
-        `${countryName(cca3, language)} does not border ${countryName(last, language)}.`,
+        language, '{0} ne touche pas {1}.', '{0} does not border {1}.', [localCountryName(cca3, language), localCountryName(last, language)],
       );
       toast.error(msg);
       announce(msg);
@@ -620,9 +617,7 @@ export default function BordersGame({
     const newChain = [...chain, cca3];
     setChain(newChain);
     const addedMsg = tr(
-      language,
-      `${countryName(cca3, language)} ajouté ✓`,
-      `${countryName(cca3, language)} added ✓`,
+      language, '{0} ajouté ✓', '{0} added ✓', [localCountryName(cca3, language)],
     );
     toast.success(addedMsg);
     announce(addedMsg);
@@ -681,7 +676,7 @@ export default function BordersGame({
       >
         <Image source={{ uri: getFlagUrl(cca3) }} style={styles.chipFlag} accessible={false} />
         <Text style={[styles.chipText, { color: palette.text }]} numberOfLines={1}>
-          {countryName(cca3, language)}
+          {localCountryName(cca3, language)}
         </Text>
       </View>
     );
@@ -715,9 +710,7 @@ export default function BordersGame({
             style={[styles.statsPill, { backgroundColor: c.surface, borderColor: c.border }]}
             accessible
             accessibilityLabel={tr(
-              language,
-              `${stepsUsed} étapes sur ${maxSteps}`,
-              `${stepsUsed} of ${maxSteps} steps`,
+              language, '{0} étapes sur {1}', '{0} of {1} steps', [stepsUsed, maxSteps],
             )}
           >
             <Route size={14} color={c.accent} {...a11yHidden} />
@@ -729,9 +722,7 @@ export default function BordersGame({
             style={[styles.statsPill, { backgroundColor: c.surface, borderColor: c.border }]}
             accessible
             accessibilityLabel={tr(
-              language,
-              `${BORDERS_MAX_MISSES - misses} vies restantes`,
-              `${BORDERS_MAX_MISSES - misses} lives left`,
+              language, '{0} vies restantes', '{0} lives left', [BORDERS_MAX_MISSES - misses],
             )}
           >
             <View style={{ flexDirection: 'row', gap: 3 }} {...a11yHidden}>
@@ -747,7 +738,7 @@ export default function BordersGame({
           </View>
 
           <TouchableOpacity
-            onPress={() => setLanguage(language === 'fr' ? 'en' : 'fr')}
+            onPress={openLanguagePicker}
             style={[styles.iconBtn, { backgroundColor: c.surface, borderColor: c.border, minWidth: 40, alignItems: 'center' }]}
             hitSlop={ICON_HIT_SLOP}
             {...a11yButton(tr(language, 'Changer de langue', 'Change language'))}
@@ -796,9 +787,7 @@ export default function BordersGame({
       >
         <Text style={[styles.question, { color: c.textMuted }]}>
           {tr(
-            language,
-            `Relie les deux pays par leurs frontières (optimal : ${puzzle.optimal} étapes).`,
-            `Link the two countries through land borders (optimal: ${puzzle.optimal} steps).`,
+            language, 'Relie les deux pays par leurs frontières (optimal : {0} étapes).', 'Link the two countries through land borders (optimal: {0} steps).', [puzzle.optimal],
           )}
         </Text>
 
@@ -889,9 +878,7 @@ export default function BordersGame({
           <View style={{ width: '100%', maxWidth: 480, gap: 8 }}>
             <Text style={[styles.searchLabel, { color: c.textMuted }]}>
               {tr(
-                language,
-                `Un pays qui touche ${countryName(chain[chain.length - 1], language)}`,
-                `A country bordering ${countryName(chain[chain.length - 1], language)}`,
+                language, 'Un pays qui touche {0}', 'A country bordering {0}', [localCountryName(chain[chain.length - 1], language)],
               )}
             </Text>
             <View style={[styles.searchBar, { backgroundColor: c.card, borderColor: c.border }]}>
@@ -925,7 +912,7 @@ export default function BordersGame({
                     key={s.cca3}
                     onPress={() => submitCountry(s.cca3)}
                     style={[styles.suggestionRow, { borderBottomColor: c.border }]}
-                    {...a11yButton(countryName(s.cca3, language))}
+                    {...a11yButton(localCountryName(s.cca3, language))}
                   >
                     <Image
                       source={{ uri: getFlagUrl(s.cca3) }}
@@ -933,7 +920,7 @@ export default function BordersGame({
                       accessible={false}
                     />
                     <Text style={{ color: c.text, fontFamily: FONTS.heading, fontSize: 16 }}>
-                      {countryName(s.cca3, language)}
+                      {localCountryName(s.cca3, language)}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -965,11 +952,9 @@ export default function BordersGame({
             </ScoreText>
             <Text style={{ color: c.text, fontFamily: FONTS.mono, fontSize: 15 }}>
               {outcome === 'won'
-                ? tr(language, `Score : ${currentScore()} / 1000`, `Score: ${currentScore()} / 1000`)
+                ? tr(language, 'Score : {0} / 1000', 'Score: {0} / 1000', [currentScore()])
                 : tr(
-                    language,
-                    `Chemin optimal : ${puzzle.optimal} étapes.`,
-                    `Optimal path: ${puzzle.optimal} steps.`,
+                    language, 'Chemin optimal : {0} étapes.', 'Optimal path: {0} steps.', [puzzle.optimal],
                   )}
             </Text>
 
@@ -985,9 +970,7 @@ export default function BordersGame({
                   style={[styles.routeCard, { backgroundColor: c.card, borderColor: '#8a63e8', marginBottom: 0 }]}
                   accessible
                   accessibilityLabel={tr(
-                    language,
-                    `Un chemin idéal : ${idealPath.map((id) => countryName(id, language)).join(', ')}`,
-                    `An ideal path: ${idealPath.map((id) => countryName(id, language)).join(', ')}`,
+                    language, 'Un chemin idéal : {0}', 'An ideal path: {0}', [idealPath.map((id) => localCountryName(id, language)).join(', ')],
                   )}
                 >
                   <Text
@@ -1002,9 +985,7 @@ export default function BordersGame({
                     {...a11yHidden}
                   >
                     {tr(
-                      language,
-                      `UN CHEMIN IDÉAL (${puzzle.optimal} ÉTAPES)`,
-                      `AN IDEAL PATH (${puzzle.optimal} STEPS)`,
+                      language, 'UN CHEMIN IDÉAL ({0} ÉTAPES)', 'AN IDEAL PATH ({0} STEPS)', [puzzle.optimal],
                     )}
                   </Text>
                   <View style={styles.routeChain} {...a11yHidden}>

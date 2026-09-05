@@ -10,13 +10,21 @@
  * COUNTRY_ALIASES under the country's cca3. This file is the single place to do so.
  */
 
-/** Lowercase, strip accents, drop spaces/punctuation. "Congo (Rép. dém.)" → "congorepdem". */
+/**
+ * Minuscules, sans accents ni ponctuation : « Congo (Rép. dém.) » → « congorepdem ».
+ *
+ * ⚠️ On retire une liste de séparateurs, et surtout PAS « tout ce qui n'est pas
+ * a-z0-9 » : depuis que l'app parle russe, ukrainien, grec et thaï, une telle
+ * règle réduisait chaque réponse tapée à la chaîne vide — donc jamais juste.
+ */
+const SEPARATORS = /[\s'’‘`´.,;:!?()[\]{}«»"“”\-–—_/\\]/g;
+
 export const normalizeAnswer = (s: string): string =>
   s
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '') // retire les accents
-    .replace(/[^a-z0-9]/g, '') // retire espaces, tirets, apostrophes…
+    .replace(/[\u0300-\u036f]/g, '') // retire les accents latins, grecs et cyrilliques
+    .replace(SEPARATORS, '')
     .trim();
 
 /** Levenshtein edit distance between two strings. */

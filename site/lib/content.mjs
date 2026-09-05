@@ -28,6 +28,7 @@ import { countriesOf } from './continents.mjs';
 import { modeById } from './modes.mjs';
 import { itemList } from './jsonld.mjs';
 import { languageSwitch } from './layout.mjs';
+import { generatedPage } from './generated.mjs';
 
 /** Sépare l'entête `clé: valeur` du corps HTML. */
 function splitFrontMatter(raw, file) {
@@ -129,7 +130,12 @@ function text(fragment) {
 /** Charge un fragment, ou `null` si la page n'existe pas dans cette langue. */
 export function loadPage(locale, id) {
   const file = join(CONTENT, locale, `${id}.html`);
-  if (!existsSync(file)) return null;
+  if (!existsSync(file)) {
+    // Pas de fragment écrit à la main : les quatorze langues générées
+    // construisent la page à la volée (voir generated.mjs). Le fichier, quand
+    // il existe, gagne toujours — traduire une page à la main reste possible.
+    return generatedPage(locale, id);
+  }
   const raw = readFileSync(file, 'utf8');
   const { meta, body } = splitFrontMatter(raw, `${locale}/${id}.html`);
   for (const key of ['title', 'description']) {

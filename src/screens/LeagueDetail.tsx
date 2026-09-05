@@ -52,9 +52,7 @@ const PERIODS: { key: LeaguePeriod; fr: string; en: string }[] = [
  *  a manual fallback for players who already have the app open. */
 function inviteMessage(league: League, language: Language): string {
   return tr(
-    language,
-    `Rejoins ma ligue « ${league.name} » sur GeoG ! 3 défis géo par jour, on se classe entre nous.\n👉 ${leagueLink(league.code)}\n(ou entre le code ${league.code} dans l'app)`,
-    `Join my league “${league.name}” on GeoG! 3 geo challenges a day, private leaderboard.\n👉 ${leagueLink(league.code)}\n(or enter code ${league.code} in the app)`,
+    language, 'Rejoins ma ligue « {0} » sur GeoG ! 3 défis géo par jour, on se classe entre nous.\n👉 {1}\n(ou entre le code {2} dans l\'app)', 'Join my league “{0}” on GeoG! 3 geo challenges a day, private leaderboard.\n👉 {1}\n(or enter code {2} in the app)', [league.name, leagueLink(league.code), league.code],
   );
 }
 
@@ -102,9 +100,7 @@ export default function LeagueDetail({
     showAlert(
       tr(language, 'Quitter la ligue ?', 'Leave the league?'),
       tr(
-        language,
-        `Tu ne verras plus le classement de « ${league.name} ».`,
-        `You will no longer see “${league.name}”’s leaderboard.`,
+        language, 'Tu ne verras plus le classement de « {0} ».', 'You will no longer see “{0}”’s leaderboard.', [league.name],
       ),
       [
         { text: tr(language, 'Annuler', 'Cancel'), style: 'cancel' },
@@ -182,7 +178,7 @@ export default function LeagueDetail({
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 50 }} showsVerticalScrollIndicator={false}>
         {/* Today's 3 drawn modes */}
         <Text style={{ fontFamily: FONTS.mono, color: c.textMuted, fontSize: 11, marginBottom: 10 }}>
-          {tr(language, `Défis du jour · ${doneCount}/${modes.length} faits`, `Today's challenges · ${doneCount}/${modes.length} done`)}
+          {tr(language, 'Défis du jour · {0}/{1} faits', 'Today\'s challenges · {0}/{1} done', [doneCount, modes.length])}
         </Text>
         <View style={{ gap: 10 }}>
           {modes.map((mode) => {
@@ -321,7 +317,7 @@ export default function LeagueDetail({
           <View style={{ gap: 8 }}>
             {entries.map((item, index) => {
               const isMe = item.userId === currentUserId;
-              const rankLabel = tr(language, `Rang ${index + 1}`, `Rank ${index + 1}`);
+              const rankLabel = tr(language, 'Rang {0}', 'Rank {0}', [index + 1]);
               return (
                 <TouchableOpacity
                   key={item.userId}
@@ -364,7 +360,7 @@ export default function LeagueDetail({
                       {isMe ? tr(language, ' (toi)', ' (you)') : ''}
                     </Text>
                     <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 10 }}>
-                      {tr(language, `${item.played} défi(s) joué(s)`, `${item.played} challenge(s) played`)}
+                      {tr(language, '{0} défi(s) joué(s)', '{0} challenge(s) played', [item.played])}
                     </Text>
                   </View>
                   <ScoreText style={{ fontFamily: FONTS.headingBlack, fontSize: 16, color: c.accent }}>

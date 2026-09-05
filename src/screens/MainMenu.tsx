@@ -37,7 +37,7 @@ import { MenuGlobe } from '../components/MenuGlobe';
 import { useFeatureFlag } from '../lib/featureFlags';
 import type { ComponentType } from 'react';
 
-import type { GameMode, MatchMode } from '../types';
+import type { GameMode, MatchMode, Language } from '../types';
 import { commonStyles as styles } from '../theme/commonStyles';
 import { PALETTE, getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
@@ -196,7 +196,7 @@ function ModeCard({ icon: Icon, accent, tint, title, subtitle, isDarkMode, onPre
         <TouchableOpacity
           onPress={onHelp}
           style={actionBtnStyle}
-          {...a11yButton(tr(language, `Comment jouer à ${title}`, `How to play ${title}`), {
+          {...a11yButton(tr(language, 'Comment jouer à {0}', 'How to play {0}', [title]), {
             hint: tr(language, 'Voir les règles de ce mode', 'See this mode’s rules'),
           })}
         >
@@ -207,7 +207,7 @@ function ModeCard({ icon: Icon, accent, tint, title, subtitle, isDarkMode, onPre
         <TouchableOpacity
           onPress={onLeaderboard}
           style={actionBtnStyle}
-          {...a11yButton(tr(language, `Classement ${title}`, `${title} leaderboard`))}
+          {...a11yButton(tr(language, 'Classement {0}', '{0} leaderboard', [title]))}
         >
           <Trophy color={accent} size={20} />
         </TouchableOpacity>
@@ -225,7 +225,7 @@ function secondsToNextDaily(): number {
 
 /** Live HH:MM:SS countdown to the next daily — isolated so the 1s tick only
  *  re-renders this small block, never the whole menu. */
-function DailyCountdown({ color, labelColor, language }: { color: string; labelColor: string; language: 'fr' | 'en' }) {
+function DailyCountdown({ color, labelColor, language }: { color: string; labelColor: string; language: Language }) {
   const [left, setLeft] = useState(secondsToNextDaily);
   useEffect(() => {
     const id = setInterval(() => setLeft(secondsToNextDaily()), 1000);
@@ -236,7 +236,7 @@ function DailyCountdown({ color, labelColor, language }: { color: string; labelC
   return (
     <View
       style={{ alignItems: 'center' }}
-      {...a11yImage(tr(language, `Prochain défi dans ${text}`, `Next challenge in ${text}`))}
+      {...a11yImage(tr(language, 'Prochain défi dans {0}', 'Next challenge in {0}', [text]))}
     >
       <Text style={{ fontFamily: FONTS.monoBold, color, fontSize: 13, fontVariant: ['tabular-nums'] }}>{text}</Text>
       <Text style={{ fontFamily: FONTS.mono, color: labelColor, fontSize: 7, letterSpacing: 1 }}>
@@ -286,7 +286,7 @@ function ModeTile({ icon: Icon, accent, tint, title, subtitle, isDarkMode, onPre
       ]}
       {...a11yButton(
         worldOnly
-          ? tr(language, `${title}, joué en monde entier`, `${title}, played worldwide`)
+          ? tr(language, '{0}, joué en monde entier', '{0}, played worldwide', [title])
           : title,
         { hint: tr(language, 'Démarrer ce mode', 'Start this mode') },
       )}
@@ -308,7 +308,7 @@ function ModeTile({ icon: Icon, accent, tint, title, subtitle, isDarkMode, onPre
             alignItems: 'center',
             justifyContent: 'center',
           }}
-          {...a11yButton(tr(language, `Comment jouer à ${title}`, `How to play ${title}`), {
+          {...a11yButton(tr(language, 'Comment jouer à {0}', 'How to play {0}', [title]), {
             hint: tr(language, 'Voir les règles de ce mode', 'See this mode’s rules'),
           })}
         >
@@ -485,7 +485,7 @@ export function MainMenu({
   incomingInviteMode = null,
 }: MainMenuProps) {
   const { isDarkMode, toggleTheme } = useTheme();
-  const { language, toggleLanguage } = useLanguage();
+  const { language, openLanguagePicker } = useLanguage();
   const c = getColors(isDarkMode);
   const iconColor = c.text;
   const accent = c.accent;
@@ -663,7 +663,7 @@ export function MainMenu({
 
         <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
           <TouchableOpacity
-            onPress={toggleLanguage}
+            onPress={openLanguagePicker}
             style={[
               styles.refreshBtn,
               !isDarkMode && styles.refreshBtnLight,
@@ -696,9 +696,7 @@ export function MainMenu({
               {...a11yButton(
                 pendingFriendCount > 0
                   ? tr(
-                      language,
-                      `Amis, ${pendingFriendCount} demande${pendingFriendCount > 1 ? 's' : ''} en attente`,
-                      `Friends, ${pendingFriendCount} pending request${pendingFriendCount > 1 ? 's' : ''}`,
+                      language, 'Amis, {0} demande{1} en attente', 'Friends, {0} pending request{1}', [pendingFriendCount, pendingFriendCount > 1 ? 's' : ''],
                     )
                   : tr(language, 'Amis', 'Friends'),
               )}
@@ -896,7 +894,7 @@ export function MainMenu({
               {dailyStreak > 0 && <AtlasFlame color={DAILY_FLAME} size={11} />}
               <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 10 }}>
                 {dailyStreak > 0
-                  ? tr(language, `Série de ${dailyStreak} · 8 modes`, `${dailyStreak}-day streak · 8 modes`)
+                  ? tr(language, 'Série de {0} · 8 modes', '{0}-day streak · 8 modes', [dailyStreak])
                   : tr(language, 'Un puzzle par mode, chaque jour', 'One puzzle per mode, every day')}
               </Text>
             </View>
@@ -905,7 +903,7 @@ export function MainMenu({
           {dailyStreak > 0 ? (
             <View
               style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}
-              {...a11yImage(tr(language, `Série de ${dailyStreak} jours`, `${dailyStreak}-day streak`))}
+              {...a11yImage(tr(language, 'Série de {0} jours', '{0}-day streak', [dailyStreak]))}
             >
               <AtlasFlame color={DAILY_FLAME} size={18} />
               <ScoreText style={{ fontFamily: FONTS.headingBlack, color: DAILY_FLAME, fontSize: 20 }}>
@@ -954,11 +952,9 @@ export function MainMenu({
             <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 10 }}>
               {storyLevel > 0
                 ? tr(
-                    language,
-                    `Niveau ${Math.min(storyLevel + 1, STORY_LEVEL_COUNT)} / ${STORY_LEVEL_COUNT}`,
-                    `Level ${Math.min(storyLevel + 1, STORY_LEVEL_COUNT)} / ${STORY_LEVEL_COUNT}`,
+                    language, 'Niveau {0} / {1}', 'Level {0} / {1}', [Math.min(storyLevel + 1, STORY_LEVEL_COUNT), STORY_LEVEL_COUNT],
                   )
-                : tr(language, `${STORY_LEVEL_COUNT} niveaux, de plus en plus durs`, `${STORY_LEVEL_COUNT} levels, harder and harder`)}
+                : tr(language, '{0} niveaux, de plus en plus durs', '{0} levels, harder and harder', [STORY_LEVEL_COUNT])}
             </Text>
             {storyLevel > 0 && (
               <View
@@ -971,9 +967,7 @@ export function MainMenu({
                 }}
                 {...a11yImage(
                   tr(
-                    language,
-                    `Progression : niveau ${storyLevel} sur ${STORY_LEVEL_COUNT}`,
-                    `Progress: level ${storyLevel} of ${STORY_LEVEL_COUNT}`,
+                    language, 'Progression : niveau {0} sur {1}', 'Progress: level {0} of {1}', [storyLevel, STORY_LEVEL_COUNT],
                   ),
                 )}
               >
@@ -991,7 +985,7 @@ export function MainMenu({
           {storyLevel > 0 ? (
             <Text
               style={{ fontFamily: FONTS.monoBold, color: PALETTE.sand, fontSize: 12 }}
-              {...a11yImage(tr(language, `${storyStars} étoiles`, `${storyStars} stars`))}
+              {...a11yImage(tr(language, '{0} étoiles', '{0} stars', [storyStars]))}
             >
               ★ {storyStars}
             </Text>
@@ -1089,7 +1083,7 @@ export function MainMenu({
                 icon={Puzzle}
                 accent={PALETTE.forestGreen}
                 tint={isDarkMode ? 'rgba(42,110,63,0.15)' : 'rgba(42,110,63,0.10)'}
-                title="Silhouette"
+                title={tr(language, 'Silhouette', 'Silhouette')}
                 subtitle={tr(language, 'Devinez le pays à sa forme', 'Guess the country by its shape')}
                 isDarkMode={isDarkMode}
                 onPress={() => onPlay('silhouette')}
@@ -1471,7 +1465,7 @@ export function MainMenu({
                 icon={Puzzle}
                 accent={PALETTE.forestGreen}
                 tint={isDarkMode ? 'rgba(42,110,63,0.15)' : 'rgba(42,110,63,0.10)'}
-                title="Silhouette"
+                title={tr(language, 'Silhouette', 'Silhouette')}
                 subtitle={tr(language, 'Les mêmes formes pour les deux joueurs', 'Same shapes for both players')}
                 isDarkMode={isDarkMode}
                 onPress={() => onPlayOnline('silhouette')}

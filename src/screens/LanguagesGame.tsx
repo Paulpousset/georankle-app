@@ -108,7 +108,7 @@ export default function LanguagesGame({
   onDailyScoreChange,
 }: LanguagesGameProps) {
   const { isDarkMode, setIsDarkMode } = useTheme();
-  const { language, setLanguage } = useLanguage();
+  const { language, openLanguagePicker } = useLanguage();
   const toast = useToast();
   const c = getColors(isDarkMode);
 
@@ -207,8 +207,8 @@ export default function LanguagesGame({
     ).catch(() => {});
     announce(
       correct
-        ? tr(language, `Bonne réponse, +${points}`, `Correct, +${points}`)
-        : tr(language, `Mauvaise réponse. ${correctName}`, `Wrong. ${correctName}`),
+        ? tr(language, 'Bonne réponse, +{0}', 'Correct, +{0}', [points])
+        : tr(language, 'Mauvaise réponse. {0}', 'Wrong. {0}', [correctName]),
     );
     setFeedback({ correct, points, answer: correctName });
   };
@@ -232,7 +232,7 @@ export default function LanguagesGame({
       return;
     }
     setGameOver(true);
-    announce(tr(language, `Partie terminée. Score ${finalScore}.`, `Game over. Score ${finalScore}.`));
+    announce(tr(language, 'Partie terminée. Score {0}.', 'Game over. Score {0}.', [finalScore]));
     if (isDaily) {
       onDailyComplete?.(finalScore, finalGrid);
       return;
@@ -347,7 +347,7 @@ export default function LanguagesGame({
           </View>
 
           <TouchableOpacity
-            onPress={() => setLanguage(language === 'fr' ? 'en' : 'fr')}
+            onPress={openLanguagePicker}
             style={[styles.iconBtn, { backgroundColor: c.surface, borderColor: c.border, minWidth: 40, alignItems: 'center' }]}
             hitSlop={ICON_HIT_SLOP}
             {...a11yButton(tr(language, 'Changer de langue', 'Change language'))}
@@ -460,7 +460,7 @@ export default function LanguagesGame({
               hitSlop={ICON_HIT_SLOP}
               {...a11yButton(tr(language, 'Retour', 'Back'))}
             >
-              <Text style={{ color: '#4a9eff', fontWeight: 'bold' }}>← {language === 'fr' ? 'RETOUR' : 'BACK'}</Text>
+              <Text style={{ color: '#4a9eff', fontWeight: 'bold' }}>← {tr(language, 'RETOUR', 'BACK')}</Text>
             </TouchableOpacity>
             <TextInput
               style={[styles.cashInput, !isDarkMode && styles.cashInputLight]}
@@ -509,7 +509,7 @@ export default function LanguagesGame({
               <Text style={[styles.feedbackSub, { color: c.text }]}>
                 {feedback.correct
                   ? `+${feedback.points} ${tr(language, 'point(s)', 'point(s)')}`
-                  : tr(language, `La réponse était : ${feedback.answer}`, `The answer was: ${feedback.answer}`)}
+                  : tr(language, 'La réponse était : {0}', 'The answer was: {0}', [feedback.answer])}
               </Text>
               {answerDef && (
                 <Text style={[styles.endonym, { color: c.textMuted }]}>{answerDef.endonym}</Text>
@@ -553,7 +553,7 @@ export default function LanguagesGame({
             </Text>
             <ScoreText style={[styles.gameOverScore, { color: c.text }]}>{score}</ScoreText>
             <Text style={{ color: c.textMuted, fontFamily: FONTS.mono, fontSize: 14, marginBottom: 16, textAlign: 'center' }}>
-              {tr(language, `${correctCount} / ${run.length} bonnes réponses`, `${correctCount} / ${run.length} correct`)}
+              {tr(language, '{0} / {1} bonnes réponses', '{0} / {1} correct', [correctCount, run.length])}
             </Text>
 
             {/* Pièces + doubleur pub AVANT le récap : la récompense d'abord,
@@ -578,8 +578,8 @@ export default function LanguagesGame({
                     accessible
                     accessibilityLabel={
                       h?.correct
-                        ? tr(language, `${name}, bonne réponse, +${h.points} points`, `${name}, correct, +${h.points} points`)
-                        : tr(language, `${name}, mauvaise réponse`, `${name}, wrong`)
+                        ? tr(language, '{0}, bonne réponse, +{1} points', '{0}, correct, +{1} points', [name, h.points])
+                        : tr(language, '{0}, mauvaise réponse', '{0}, wrong', [name])
                     }
                   >
                     <View style={{ flex: 1 }}>

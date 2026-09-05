@@ -110,7 +110,7 @@ export default function PhrasePlayer({
       <Text style={[styles.hint, { color: plays === 0 ? textColor : mutedColor }]}>
         {plays === 0
           ? tr(language, 'Appuie pour écouter', 'Tap to listen')
-          : tr(language, `Réécouter (${plays})`, `Play again (${plays})`)}
+          : tr(language, 'Réécouter ({0})', 'Play again ({0})', [plays])}
       </Text>
     </View>
   );

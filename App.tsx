@@ -1,24 +1,27 @@
 import { useEffect, useRef, useState } from 'react';
 import { AppState, BackHandler, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { useFonts, PlayfairDisplay_700Bold, PlayfairDisplay_900Black } from '@expo-google-fonts/playfair-display';
-import { SpaceMono_400Regular, SpaceMono_700Bold } from '@expo-google-fonts/space-mono';
+import * as Font from 'expo-font';
 import { PostHogProvider } from 'posthog-react-native';
 
 import { ensureDailyReminder, ensureLeagueReminder } from './src/lib/notifications';
 import { touchLastSeen } from './src/lib/activity';
-import type { GameMode, MatchMode } from './src/types';
+import type { GameMode, MatchMode, Language } from './src/types';
 import { posthog, trackScreen } from './src/lib/analytics';
 import { modeLabel } from './src/lib/ranked';
 import { initSentry, Sentry } from './src/lib/sentry';
 import { showAlert } from './src/lib/alert';
 import { tr } from './src/i18n';
+import { fontMapFor } from './src/lib/appFonts';
+import { installScriptFonts } from './src/lib/webScriptFonts';
+import { readStoredLanguage } from './src/contexts/LanguageContext';
 import { ThemeProvider } from './src/contexts/ThemeContext';
 import { LanguageProvider, useLanguage } from './src/contexts/LanguageContext';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { NetworkProvider } from './src/contexts/NetworkContext';
 import { ToastProvider } from './src/components/ToastProvider';
 import { AlertHost } from './src/components/AlertHost';
+import { LanguagePickerModal } from './src/components/LanguagePickerModal';
 import { OfflineBanner } from './src/components/OfflineBanner';
 import { useMatchEngine } from './src/hooks/useMatchEngine';
 import { useNavigationStack } from './src/hooks/useNavigationStack';
@@ -45,7 +48,7 @@ initSentry();
  * sont pas (menu, quiz solo, constructeur de partie locale) sont nommés ici
  * avec les mêmes mots que leurs tuiles dans le menu.
  */
-function stageModeLabel(mode: GameMode, language: 'fr' | 'en'): string {
+function stageModeLabel(mode: GameMode, language: Language): string {
   switch (mode) {
     case 'menu':
       return '';
@@ -318,12 +321,25 @@ function AppContent() {
  * reads them via `useTheme()` / `useLanguage()` instead of prop-drilling.
  */
 function App() {
-  const [fontsLoaded, fontError] = useFonts({
-    PlayfairDisplay_700Bold,
-    PlayfairDisplay_900Black,
-    SpaceMono_400Regular,
-    SpaceMono_700Bold,
-  });
+  // Les polices dépendent de l'écriture de la langue mémorisée : Space Mono et
+  // Playfair ne savent pas écrire le russe, le grec ni le thaï, et ce qui n'est
+  // pas enregistré retombe sur la police système (voir lib/appFonts.ts). Il faut
+  // donc connaître la langue AVANT de charger — d'où ce chargement manuel à la
+  // place du `useFonts` d'origine.
+  const [fontsLoaded, setFontsLoaded] = useState(false);
+  useEffect(() => {
+    installScriptFonts();
+    let alive = true;
+    readStoredLanguage()
+      .then((language) => Font.loadAsync(fontMapFor(language)))
+      .catch(() => {})
+      .finally(() => {
+        if (alive) setFontsLoaded(true);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // Don't block the whole app on font loading. If fonts fail or hang, render
   // anyway with the system font rather than stay stuck on a blank screen.
@@ -332,7 +348,7 @@ function App() {
     const t = setTimeout(() => setFontTimedOut(true), 3000);
     return () => clearTimeout(t);
   }, []);
-  const fontsReady = fontsLoaded || !!fontError || fontTimedOut;
+  const fontsReady = fontsLoaded || fontTimedOut;
 
   if (!fontsReady) {
     return <View style={{ flex: 1, backgroundColor: '#f2e8d0' }} />;
@@ -357,6 +373,9 @@ function App() {
               <NetworkProvider>
                 <ToastProvider>
                   <AppContent />
+                  {/* Le sélecteur des seize langues, monté une fois : n'importe
+                      quel écran l'ouvre par `openLanguagePicker()`. */}
+                  <LanguagePickerModal />
                   {/* Les confirmations du web (showAlert) : la boîte du
                       navigateur remplacée par une modale au thème de l'app. */}
                   <AlertHost />

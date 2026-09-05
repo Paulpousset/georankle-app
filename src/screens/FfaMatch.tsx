@@ -608,7 +608,7 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
             <Text style={[styles.title, { color: colors.text }]}>
               {phase === 'over'
                 ? (iWon ? tr(language, 'Victoire !', 'You win!') : tr(language, 'Partie terminée', 'Match over'))
-                : tr(language, `Manche ${currentRound - 1} / ${bestOf}`, `Round ${currentRound - 1} / ${bestOf}`)}
+                : tr(language, 'Manche {0} / {1}', 'Round {0} / {1}', [currentRound - 1, bestOf])}
             </Text>
             <View style={styles.standings}>
               {ranked.map((p, i) => (

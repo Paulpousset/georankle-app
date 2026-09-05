@@ -99,7 +99,7 @@ export default function GlobeLab({ onBack }: GlobeLabProps) {
   const { isDarkMode } = useTheme();
   const { language } = useLanguage();
   const c = getColors(isDarkMode);
-  const t = (fr: string, en: string) => tr(language, fr, en);
+  const t = (fr: string, en: string, args?: readonly unknown[]) => tr(language, fr, en, args);
 
   const flag3d = useFeatureFlag('globe_3d');
 
@@ -218,9 +218,7 @@ export default function GlobeLab({ onBack }: GlobeLabProps) {
     [preview],
   );
   const previewName = previewPart
-    ? language === 'fr'
-      ? previewPart.nameFr
-      : previewPart.nameEn
+    ? tr(language, previewPart.nameFr, previewPart.nameEn)
     : t('Globe du thème (aucun cosmétique)', 'Theme globe (no cosmetic)');
 
   const apply = useCallback(async () => {
@@ -294,7 +292,7 @@ export default function GlobeLab({ onBack }: GlobeLabProps) {
           <View style={styles.previewTags}>
             {rarity ? (
               <Text style={[styles.tag, { color: rarity.color, borderColor: rarity.color }]}>
-                {language === 'fr' ? rarity.labelFr : rarity.labelEn}
+                {tr(language, rarity.labelFr, rarity.labelEn)}
               </Text>
             ) : null}
             <Text style={[styles.tag, { color: c.textMuted, borderColor: c.border }]}>
@@ -372,7 +370,7 @@ export default function GlobeLab({ onBack }: GlobeLabProps) {
 
         {/* All globes — every one testable, owned or not */}
         <Text style={[styles.sectionTitle, { color: c.textMuted }]}>
-          {t(`TOUS LES GLOBES (${GLOBE_PARTS.length})`, `ALL GLOBES (${GLOBE_PARTS.length})`)}
+          {t( 'TOUS LES GLOBES ({0})', 'ALL GLOBES ({0})', [GLOBE_PARTS.length])}
         </Text>
 
         <View style={styles.grid}>
@@ -403,13 +401,13 @@ export default function GlobeLab({ onBack }: GlobeLabProps) {
                   styles.tile,
                   { borderColor: selected ? c.accent : c.border, backgroundColor: c.card },
                 ]}
-                {...a11yButton(language === 'fr' ? part.nameFr : part.nameEn)}
+                {...a11yButton(tr(language, part.nameFr, part.nameEn))}
               >
                 <View style={styles.tileArt}>
                   <WorldAvatar config={tileConfig(part)} size={64} round />
                 </View>
                 <Text style={[styles.tileName, { color: c.text }]} numberOfLines={2}>
-                  {language === 'fr' ? part.nameFr : part.nameEn}
+                  {tr(language, part.nameFr, part.nameEn)}
                 </Text>
                 <View style={styles.tileBadges}>
                   {inGame ? (

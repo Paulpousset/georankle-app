@@ -25,6 +25,7 @@ import { useCachedData } from '../lib/cache';
 import { log } from '../lib/log';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import type { Language } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { getColors, PALETTE } from '../theme/colors';
 import { FONTS } from '../theme/typography';
@@ -46,12 +47,12 @@ interface ModeDef {
   icon: ComponentType<{ color: string; size: number }>;
   accent: (dark: boolean) => string;
   /** Suffix shown after the score ('%', 'pts', or a translated word). */
-  unit: (lang: string) => string;
+  unit: (lang: Language) => string;
 }
 
 const pts = () => 'pts';
 const pct = () => '%';
-const serie = (lang: string) => (lang === 'fr' ? 'série' : 'streak');
+const serie = (lang: Language) => tr(lang, 'série', 'streak');
 
 /** Solo modes ranked by personal best in the `scores` table. */
 const SOLO_MODES: ModeDef[] = [
@@ -198,7 +199,7 @@ const Leaderboard = ({ onOpenPlayer }: LeaderboardProps) => {
             username: profileMap[id]?.username ?? null,
             avatar: profileMap[id]?.avatar ?? null,
             value: Math.round((wins / s.total) * 100),
-            sub: language === 'fr' ? `${wins}V · ${losses}D` : `${wins}W · ${losses}L`,
+            sub: tr(language, '{0}V · {1}D', '{0}W · {1}L', [wins, losses]),
             wins,
           };
         })
@@ -226,8 +227,8 @@ const Leaderboard = ({ onOpenPlayer }: LeaderboardProps) => {
     [entries, user],
   );
 
-  const anonymous = language === 'fr' ? 'Joueur Anonyme' : 'Anonymous Player';
-  const youLabel = language === 'fr' ? 'TOI' : 'YOU';
+  const anonymous = tr(language, 'Joueur Anonyme', 'Anonymous Player');
+  const youLabel = tr(language, 'TOI', 'YOU');
 
   const formatScore = (value: number) => (unit === '%' ? `${value}%` : `${value}`);
 
@@ -246,7 +247,7 @@ const Leaderboard = ({ onOpenPlayer }: LeaderboardProps) => {
     if (!entry) return <View key={`empty-${place}`} style={styles.podiumCol} />;
     const isMe = user?.id === entry.user_id;
     const name = entry.username || anonymous;
-    const rankLabel = tr(language, `Rang ${place + 1}`, `Rank ${place + 1}`);
+    const rankLabel = tr(language, 'Rang {0}', 'Rank {0}', [place + 1]);
     const avatarSize = place === 0 ? 64 : 52;
 
     return (
@@ -319,7 +320,7 @@ const Leaderboard = ({ onOpenPlayer }: LeaderboardProps) => {
       const rank = index + 4;
       const isMe = user?.id === item.user_id;
       const name = item.username || anonymous;
-      const rankLabel = tr(language, `Rang ${rank}`, `Rank ${rank}`);
+      const rankLabel = tr(language, 'Rang {0}', 'Rank {0}', [rank]);
 
       return (
         <TouchableOpacity
@@ -368,7 +369,7 @@ const Leaderboard = ({ onOpenPlayer }: LeaderboardProps) => {
   return (
     <View style={[styles.container, { backgroundColor: c.background }]}>
       <Text style={[styles.title, { color: c.text }]}>
-        {language === 'fr' ? 'Classement Mondial' : 'Global Leaderboard'}
+        {tr(language, 'Classement Mondial', 'Global Leaderboard')}
       </Text>
 
       {/* Solo / Online scope switch */}
@@ -406,7 +407,7 @@ const Leaderboard = ({ onOpenPlayer }: LeaderboardProps) => {
           {modes.map((m) => {
             const active = m.key === mode.key;
             const chipAccent = m.accent(isDarkMode);
-            const label = language === 'fr' ? m.fr : m.en;
+            const label = tr(language, m.fr, m.en);
             const Icon = m.icon;
             return (
               <TouchableOpacity
@@ -435,9 +436,7 @@ const Leaderboard = ({ onOpenPlayer }: LeaderboardProps) => {
         onRetry={refetch}
         loadingContent={<SkeletonRows />}
         errorLabel={
-          language === 'fr'
-            ? 'Impossible de charger le classement.'
-            : 'Could not load the leaderboard.'
+          tr(language, 'Impossible de charger le classement.', 'Could not load the leaderboard.')
         }
       >
         <FlatList
@@ -452,9 +451,7 @@ const Leaderboard = ({ onOpenPlayer }: LeaderboardProps) => {
               <View style={styles.emptyBox}>
                 <Trophy size={36} color={c.textFaint} {...a11yImage(tr(language, 'Trophée', 'Trophy'))} />
                 <Text style={[styles.emptyText, { color: c.textMuted }]}>
-                  {language === 'fr'
-                    ? 'Aucun score pour ce mode.\nSois le premier au classement !'
-                    : 'No scores for this mode yet.\nBe the first on the board!'}
+                  {tr(language, 'Aucun score pour ce mode.\nSois le premier au classement !', 'No scores for this mode yet.\nBe the first on the board!')}
                 </Text>
               </View>
             ) : null

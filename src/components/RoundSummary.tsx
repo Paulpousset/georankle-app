@@ -13,6 +13,7 @@ import { a11yButton, announce } from '../lib/a11y';
 import { ScoreText } from './ScoreText';
 import { useStageWidth } from '../lib/stage';
 import { useEventCallback } from '../lib/useEventCallback';
+import { tr } from '../i18n';
 
 export interface RoundSummaryData {
   roundNumber: number;
@@ -79,17 +80,15 @@ export function RoundSummary({ data, gameMode, onContinue }: RoundSummaryProps) 
   const neededToWin = Math.ceil(data.bestOf / 2);
 
   const winnerLabel = () => {
-    if (roundWinner === 'draw') return language === 'fr' ? 'Égalité' : 'Draw';
-    if (roundWinner === 'me') return language === 'fr' ? 'Vous gagnez ce round !' : 'You win this round!';
-    return language === 'fr' ? "L'adversaire gagne ce round" : 'Opponent wins this round';
+    if (roundWinner === 'draw') return tr(language, 'Égalité', 'Draw');
+    if (roundWinner === 'me') return tr(language, 'Vous gagnez ce round !', 'You win this round!');
+    return tr(language, 'L\'adversaire gagne ce round', 'Opponent wins this round');
   };
 
   // Announce the round outcome and score for screen-reader users when the
   // summary data is set.
   useEffect(() => {
-    const score = language === 'fr'
-      ? `${scoreLabel(data.myScore)} contre ${scoreLabel(data.opponentScore)}`
-      : `${scoreLabel(data.myScore)} to ${scoreLabel(data.opponentScore)}`;
+    const score = tr(language, '{0} contre {1}', '{0} to {1}', [scoreLabel(data.myScore), scoreLabel(data.opponentScore)]);
     announce(`${winnerLabel()}, ${score}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, language]);
@@ -111,7 +110,7 @@ export function RoundSummary({ data, gameMode, onContinue }: RoundSummaryProps) 
         <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' }}>
           <View style={{ flex: 1, alignItems: 'center', gap: 4 }}>
             <Text style={{ color: c.textFaint, fontSize: 11, fontFamily: FONTS.monoBold }} numberOfLines={1}>
-              {language === 'fr' ? 'VOUS' : 'YOU'}
+              {tr(language, 'VOUS', 'YOU')}
             </Text>
             <ScoreText
               numberOfLines={1}
@@ -127,7 +126,7 @@ export function RoundSummary({ data, gameMode, onContinue }: RoundSummaryProps) 
 
           <View style={{ flex: 1, alignItems: 'center', gap: 4 }}>
             <Text style={{ color: c.textFaint, fontSize: 11, fontFamily: FONTS.monoBold }} numberOfLines={1}>
-              {language === 'fr' ? 'ADVERSAIRE' : 'OPPONENT'}
+              {tr(language, 'ADVERSAIRE', 'OPPONENT')}
             </Text>
             <ScoreText
               numberOfLines={1}
@@ -143,7 +142,7 @@ export function RoundSummary({ data, gameMode, onContinue }: RoundSummaryProps) 
 
       <View style={{ alignItems: 'center', marginBottom: 36 }}>
         <Text style={{ color: c.textFaint, fontSize: 12, fontFamily: FONTS.monoBold, letterSpacing: 1, marginBottom: 8 }}>
-          {language === 'fr' ? 'SÉRIE' : 'SERIES'}
+          {tr(language, 'SÉRIE', 'SERIES')}
         </Text>
         <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
           {Array.from({ length: neededToWin }).map((_, i) => (
@@ -176,7 +175,7 @@ export function RoundSummary({ data, gameMode, onContinue }: RoundSummaryProps) 
 
       <TouchableOpacity
         onPress={onContinue}
-        {...a11yButton(language === 'fr' ? 'Round suivant' : 'Next round')}
+        {...a11yButton(tr(language, 'Round suivant', 'Next round'))}
         style={{
           flexDirection: 'row', alignItems: 'center', gap: 10,
           backgroundColor: c.accentStrong,
@@ -185,7 +184,7 @@ export function RoundSummary({ data, gameMode, onContinue }: RoundSummaryProps) 
         }}
       >
         <Text style={{ color: '#fff', fontFamily: FONTS.monoBold, fontSize: 16 }}>
-          {language === 'fr' ? `Round suivant (${countdown}s)` : `Next round (${countdown}s)`}
+          {tr(language, 'Round suivant ({0}s)', 'Next round ({0}s)', [countdown])}
         </Text>
         <ChevronRight color="#fff" size={20} />
       </TouchableOpacity>

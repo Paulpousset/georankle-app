@@ -9,6 +9,14 @@
  * tirage pour qu'aucun des deux joueurs ne rejoue des questions qu'il connaît
  * déjà.
  *
+ * C'est un ACCORD MUTUEL, pas une invitation. La première version insérait un
+ * match en status 'waiting' : indiscernable d'une invitation classique, elle
+ * déclenchait chez l'adversaire le toast et la modale « Nouveau défi ! ».
+ * Désormais le premier clic ne fait que poser une intention sur la ligne du
+ * match joué (RPC `request_rematch`, voir rematch.sql) ; le second clic crée la
+ * partie, directement en status 'in_progress' — jamais 'waiting', donc jamais
+ * d'invitation. Les deux clients y sont envoyés du même coup.
+ *
  * `buildClassicSessions` vivait dans l'écran Matchmaking ; il est ici pour que
  * la création d'un match et sa revanche produisent EXACTEMENT le même
  * `game_data` — c'est ce que les deux clients lisent pour jouer la même partie.
@@ -85,46 +93,73 @@ export function buildRematchGameData(match: Match): MatchGameData {
   return next;
 }
 
-export interface RematchResult {
-  match: Match | null;
+/** Ce que renvoie `request_rematch` : on attend l'autre, ou la partie est là. */
+export interface RematchRequestResult {
+  state: 'waiting' | 'started';
+  /** L'id de la revanche, seulement quand `state === 'started'`. */
+  matchId: string | null;
   error: string | null;
 }
 
 /**
- * Crée la revanche et prévient l'adversaire. Le créateur devient joueur 1 quel
- * que soit son rôle précédent : c'est lui qui lance, donc lui qui attend.
+ * Signale qu'on veut la revanche.
  *
- * Jamais de revanche classée : un match classé se relance par la file classée,
- * qui seule apparie sur l'ELO — l'appelant ne doit pas proposer le bouton.
+ * Le tirage neuf part avec la demande, mais seul celui du PREMIER demandeur est
+ * retenu côté serveur : les deux joueurs doivent lire exactement le même
+ * `game_data`, et le calculer chacun de son côté donnerait deux seeds.
+ *
+ * Si l'adversaire avait déjà demandé, la RPC crée la partie et la renvoie —
+ * l'appel qui « accepte » est donc le même que celui qui « demande ».
  */
-export async function createRematch(
-  match: Match,
-  currentUserId: string,
-): Promise<RematchResult> {
-  const opponentId =
-    match.player1_id === currentUserId ? match.player2_id : match.player1_id;
-  if (!opponentId) return { match: null, error: 'no_opponent' };
+export async function requestRematch(match: Match): Promise<RematchRequestResult> {
+  const { data, error } = await supabase.rpc('request_rematch', {
+    p_match_id: match.id,
+    p_game_data: buildRematchGameData(match) as unknown as Json,
+  });
+  if (error) return { state: 'waiting', matchId: null, error: error.message };
+  const result = (data ?? {}) as { state?: string; match_id?: string };
+  return {
+    state: result.state === 'started' ? 'started' : 'waiting',
+    matchId: result.match_id ?? null,
+    error: null,
+  };
+}
 
-  const { data, error } = await supabase
+/**
+ * Retire sa demande. Quitter l'écran de fin ne doit pas laisser l'adversaire
+ * devant un « Accepter la revanche » qui n'attend plus personne. Sans effet si
+ * la partie est déjà lancée.
+ */
+export async function cancelRematch(matchId: string): Promise<void> {
+  await supabase.rpc('cancel_rematch', { p_match_id: matchId });
+}
+
+/** L'état de la revanche tel qu'il vit sur la ligne du match joué. */
+export interface RematchState {
+  requestedBy: string | null;
+  startedMatchId: string | null;
+}
+
+/**
+ * Relit l'état de la revanche. Le realtime porte les changements, mais il faut
+ * ce premier appel : l'adversaire a pu cliquer avant qu'on arrive sur l'écran
+ * de fin. Il sert aussi de filet quand la voie realtime tombe.
+ */
+export async function fetchRematchState(matchId: string): Promise<RematchState | null> {
+  const { data } = await supabase
     .from('matches')
-    .insert([
-      {
-        player1_id: currentUserId,
-        player2_id: opponentId,
-        game_mode: match.game_mode,
-        is_public: false,
-        status: 'waiting',
-        best_of: match.best_of,
-        game_data: buildRematchGameData(match) as unknown as Json,
-      },
-    ])
-    .select()
+    .select('rematch_requested_by, rematch_match_id')
+    .eq('id', matchId)
     .single();
+  if (!data) return null;
+  return {
+    requestedBy: data.rematch_requested_by ?? null,
+    startedMatchId: data.rematch_match_id ?? null,
+  };
+}
 
-  if (error || !data) return { match: null, error: error?.message ?? 'insert_failed' };
-
-  // Notification push (au cas où l'adversaire a déjà quitté l'app).
-  supabase.functions.invoke('notify-invite', { body: { match_id: data.id } }).catch(() => {});
-
-  return { match: data as Match, error: null };
+/** La ligne complète d'un match, pour démarrer la revanche des deux côtés. */
+export async function fetchMatch(matchId: string): Promise<Match | null> {
+  const { data } = await supabase.from('matches').select('*').eq('id', matchId).single();
+  return (data as Match) ?? null;
 }

@@ -18,7 +18,10 @@
     "build:site": "node site/build.mjs",
     "build:web:full": "npm run build:web && node site/build.mjs",
     "site:fonts": "node scripts/fetch_site_fonts.mjs",
-    "site:check": "node site/build.mjs --check"
+    "site:check": "node site/build.mjs --check",
+    "i18n:check": "node scripts/i18n_check.mjs",
+    "i18n:sync": "node scripts/i18n_sync.mjs",
+    "playtest:i18n": "node scripts/i18n_playtest.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/playfair-display": "^0.4.2",

@@ -1,5 +1,6 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { pushLang, pushText } from '../_shared/push_i18n.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -9,17 +10,22 @@ const cors = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const MODE_LABELS: Record<string, [string, string]> = {
-  classic: ['Classique', 'Classic'],
-  streak: ['Streak', 'Streak'],
-  versus: ['Versus', 'Versus'],
-  globe: ['Globe Géo', 'Geo Globe'],
-  guess: ['Devine le Pays', 'Guess the Country'],
-  regions: ['Défis Pays', 'Country Challenges'],
-  challenge: ['Quiz Pays', 'Country Quiz'],
-  higherlower: ['Plus ou Moins', 'Higher or Lower'],
-  silhouette: ['Silhouette', 'Silhouette'],
-  borders: ['Frontières', 'Borders'],
+/**
+ * La clé anglaise du libellé de chaque mode ; `pushText` la traduit dans la
+ * langue du destinataire (voir _shared/push_i18n.ts).
+ */
+const MODE_KEYS: Record<string, string> = {
+  classic: 'Rankle',
+  streak: 'Streak',
+  versus: 'Versus',
+  globe: 'Geo Globe',
+  guess: 'Guess the Country',
+  regions: 'Country Challenges',
+  challenge: 'Country Quiz',
+  higherlower: 'Higher or Lower',
+  silhouette: 'Silhouette',
+  borders: 'Borders',
+  languages: 'Languages',
 };
 
 Deno.serve(async (req) => {
@@ -77,19 +83,18 @@ Deno.serve(async (req) => {
       });
     }
 
-    const en = recipient.push_lang === 'en';
-    const fromName = sender?.username || (en ? 'A player' : 'Un joueur');
-    const [modeFr, modeEn] = MODE_LABELS[match.game_mode] ?? [match.game_mode, match.game_mode];
+    const lang = pushLang(recipient.push_lang);
+    const fromName = sender?.username || pushText(lang, 'A player');
+    const modeKey = MODE_KEYS[match.game_mode] ?? match.game_mode;
+    const mode = pushText(lang, modeKey);
 
     const res = await fetch('https://exp.host/--/api/v2/push/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         to: recipient.push_token,
-        title: en ? 'GeoG — Challenge received!' : 'GeoG — Défi reçu !',
-        body: en
-          ? `${fromName} challenges you in ${modeEn}.`
-          : `${fromName} te défie en ${modeFr}.`,
+        title: `GeoG — ${pushText(lang, 'New Challenge!')}`,
+        body: pushText(lang, '{0} challenges you in {2}!', [fromName, '', mode]),
         sound: 'default',
         data: { match_id, type: 'invite' },
       }),

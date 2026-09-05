@@ -37,7 +37,7 @@ const MEDAL_COLORS = ['#c4872a', '#7aa0c4', '#a08060'];
 function formatScore(mode: GameMode, score: number, language: Language): string {
   if (mode === 'classic') return `${score}%`;
   if (mode === 'streak') return `${score}`;
-  return `${score} ${language === 'fr' ? 'pts' : 'pts'}`;
+  return `${score} ${tr(language, 'pts', 'pts')}`;
 }
 
 /** Per-mode daily leaderboard: today's best score for the given mode. */
@@ -63,7 +63,7 @@ export function DailyLeaderboard({ mode, accent, currentUserId, onOpenPlayer }: 
 
     return (data ?? []).map((row: any) => ({
       user_id: row.user_id,
-      username: row.profiles?.username ?? (language === 'fr' ? 'Anonyme' : 'Anonymous'),
+      username: row.profiles?.username ?? (tr(language, 'Anonyme', 'Anonymous')),
       avatarConfig: (row.profiles?.avatar_config as AvatarConfig | null) ?? null,
       avatarUrl: row.profiles?.avatar_url ?? null,
       score: row.score,
@@ -83,8 +83,8 @@ export function DailyLeaderboard({ mode, accent, currentUserId, onOpenPlayer }: 
     ({ item, index }: { item: DailyEntry; index: number }) => {
       const isTop3 = index < 3;
       const isMe = !!currentUserId && item.user_id === currentUserId;
-      const rankLabel = tr(language, `Rang ${index + 1}`, `Rank ${index + 1}`);
-      const meSuffix = isMe ? (language === 'fr' ? ' (toi)' : ' (you)') : '';
+      const rankLabel = tr(language, 'Rang {0}', 'Rank {0}', [index + 1]);
+      const meSuffix = isMe ? (tr(language, ' (toi)', ' (you)')) : '';
       return (
         <TouchableOpacity
           activeOpacity={onOpenPlayer ? 0.6 : 1}
@@ -121,7 +121,7 @@ export function DailyLeaderboard({ mode, accent, currentUserId, onOpenPlayer }: 
           <View style={{ flex: 1, paddingLeft: 10 }}>
             <Text style={{ fontFamily: FONTS.heading, color: c.text }} numberOfLines={1}>
               {item.username}
-              {isMe ? (language === 'fr' ? ' (toi)' : ' (you)') : ''}
+              {isMe ? (tr(language, ' (toi)', ' (you)')) : ''}
             </Text>
           </View>
           <Text style={{ fontFamily: FONTS.headingBlack, fontSize: 16, color: accent }}>
@@ -151,9 +151,7 @@ export function DailyLeaderboard({ mode, accent, currentUserId, onOpenPlayer }: 
         contentContainerStyle={{ padding: 10, paddingBottom: 20 }}
         ListEmptyComponent={
           <Text style={{ textAlign: 'center', marginTop: 40, fontFamily: FONTS.mono, color: c.textMuted }}>
-            {language === 'fr'
-              ? "Personne n'a encore joué ce défi aujourd'hui.\nSois le premier !"
-              : 'Nobody has played this challenge today yet.\nBe the first!'}
+            {tr(language, 'Personne n\'a encore joué ce défi aujourd\'hui.\nSois le premier !', 'Nobody has played this challenge today yet.\nBe the first!')}
           </Text>
         }
       />

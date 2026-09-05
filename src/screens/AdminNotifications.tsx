@@ -73,7 +73,7 @@ export default function AdminNotifications({
   const { language } = useLanguage();
   const userId = user?.id ?? '';
   const c = getColors(isDarkMode);
-  const t = (fr: string, en: string) => tr(language, fr, en);
+  const t = (fr: string, en: string, args?: readonly unknown[]) => tr(language, fr, en, args);
 
   // ── Compose ────────────────────────────────────────────────────────────────
   const [title, setTitle] = useState('');
@@ -140,9 +140,9 @@ export default function AdminNotifications({
       case 'everyone':
         return t('Tout le monde', 'Everyone');
       case 'inactive':
-        return t(`Inactifs ${s.days}j+`, `Inactive ${s.days}d+`);
+        return t( 'Inactifs {0}j+', 'Inactive {0}d+', [s.days]);
       case 'users':
-        return t(`${s.ids.length} joueur(s)`, `${s.ids.length} player(s)`);
+        return t( '{0} joueur(s)', '{0} player(s)', [s.ids.length]);
       case 'activity':
         return s.filter === 'never_online'
           ? t('Jamais joué en ligne', 'Never played online')
@@ -206,9 +206,7 @@ export default function AdminNotifications({
       showAlert(t('Message vide', 'Empty message'), t('Renseigne un titre et un message.', 'Add a title and a message.'));
       return;
     }
-    const confirmMsg = t(
-      `Envoyer "${title.trim()}" à : ${segmentLabel(segment)} ?`,
-      `Send "${title.trim()}" to: ${segmentLabel(segment)}?`,
+    const confirmMsg = t( 'Envoyer "{0}" à : {1} ?', 'Send "{0}" to: {1}?', [title.trim(), segmentLabel(segment)],
     );
     const send = async () => {
       setSending(true);
@@ -218,7 +216,7 @@ export default function AdminNotifications({
         refreshLists();
         showAlert(
           t('Envoyé', 'Sent'),
-          t(`${res.sent}/${res.recipients} notifications envoyées.`, `${res.sent}/${res.recipients} notifications sent.`),
+          t( '{0}/{1} notifications envoyées.', '{0}/{1} notifications sent.', [res.sent, res.recipients]),
         );
       } catch (e) {
         showAlert(t('Erreur', 'Error'), e instanceof Error ? e.message : String(e));
@@ -286,10 +284,8 @@ export default function AdminNotifications({
   const weekdays = language === 'fr' ? WEEKDAYS_FR : WEEKDAYS_EN;
   const scheduleSummary = (cp: Campaign) =>
     cp.schedule === 'daily'
-      ? t(`Chaque jour à ${cp.hour}h UTC`, `Daily at ${cp.hour}:00 UTC`)
-      : t(
-          `${weekdays[cp.weekday ?? 0]} à ${cp.hour}h UTC`,
-          `${weekdays[cp.weekday ?? 0]} at ${cp.hour}:00 UTC`,
+      ? t( 'Chaque jour à {0}h UTC', 'Daily at {0}:00 UTC', [cp.hour])
+      : t( '{0} à {1}h UTC', '{0} at {1}:00 UTC', [weekdays[cp.weekday ?? 0], cp.hour],
         );
 
   const SEG_OPTIONS: Array<{ key: SegChoice; label: string }> = [
@@ -329,9 +325,7 @@ export default function AdminNotifications({
             </Text>
             <Text style={{ color: c.textMuted, fontFamily: FONTS.mono, fontSize: 12 }}>
               {cronHealth.lastOkAt
-                ? t(
-                    `Aucune exécution réussie depuis ${CRON_STALE_MINUTES} min (dernière : ${new Date(cronHealth.lastOkAt).toLocaleString()}). Les campagnes programmées ne partent peut-être plus.`,
-                    `No successful run in the last ${CRON_STALE_MINUTES} min (last: ${new Date(cronHealth.lastOkAt).toLocaleString()}). Scheduled campaigns may not be going out.`,
+                ? t( 'Aucune exécution réussie depuis {0} min (dernière : {1}). Les campagnes programmées ne partent peut-être plus.', 'No successful run in the last {0} min (last: {1}). Scheduled campaigns may not be going out.', [CRON_STALE_MINUTES, new Date(cronHealth.lastOkAt).toLocaleString()],
                   )
                 : t(
                     'Aucune exécution réussie enregistrée dans cron_run_log. Vérifie le job pg_cron et la fonction run-campaigns.',
@@ -451,7 +445,7 @@ export default function AdminNotifications({
                       key={u.id}
                       onPress={() => toggleUser(u)}
                       style={[styles.chip, { borderColor: c.accent, backgroundColor: c.accentStrong, flexDirection: 'row', gap: 4 }]}
-                      {...a11yButton(t(`Retirer ${u.username}`, `Remove ${u.username}`))}
+                      {...a11yButton(t( 'Retirer {0}', 'Remove {0}', [u.username]))}
                     >
                       <Text style={[styles.chipText, { color: '#fff' }]}>{u.username}</Text>
                       <X color="#fff" size={13} />
@@ -491,7 +485,7 @@ export default function AdminNotifications({
               <Text style={[styles.previewText, { color: c.textMuted }]}>
                 {preview == null
                   ? t('Aperçu du nombre de destinataires', 'Preview recipient count')
-                  : t(`${preview} destinataire(s)`, `${preview} recipient(s)`)}
+                  : t( '{0} destinataire(s)', '{0} recipient(s)', [preview])}
               </Text>
             )}
           </TouchableOpacity>
@@ -558,7 +552,7 @@ export default function AdminNotifications({
                 <TouchableOpacity
                   onPress={() => setWeekday((w) => (w + 1) % 7)}
                   style={[styles.stepperBtn, { borderColor: c.border, backgroundColor: c.background }]}
-                  {...a11yButton(t(`Jour : ${weekdays[weekday]}`, `Day: ${weekdays[weekday]}`), { hint: t('Appuyer pour changer de jour', 'Tap to change the day') })}
+                  {...a11yButton(t( 'Jour : {0}', 'Day: {0}', [weekdays[weekday]]), { hint: t('Appuyer pour changer de jour', 'Tap to change the day') })}
                 >
                   <Text style={{ fontFamily: FONTS.monoBold, color: c.text }}>{weekdays[weekday]}</Text>
                 </TouchableOpacity>
@@ -570,7 +564,7 @@ export default function AdminNotifications({
               <TouchableOpacity
                 onPress={() => setHour((h) => (h + 1) % 24)}
                 style={[styles.stepperBtn, { borderColor: c.border, backgroundColor: c.background }]}
-                {...a11yButton(t(`Heure : ${hour}h UTC`, `Hour: ${hour}:00 UTC`), { hint: t('Appuyer pour changer l\'heure', 'Tap to change the hour') })}
+                {...a11yButton(t( 'Heure : {0}h UTC', 'Hour: {0}:00 UTC', [hour]), { hint: t('Appuyer pour changer l\'heure', 'Tap to change the hour') })}
               >
                 <Text style={{ fontFamily: FONTS.monoBold, color: c.text }}>{`${hour}:00`}</Text>
               </TouchableOpacity>
@@ -612,14 +606,14 @@ export default function AdminNotifications({
                     onValueChange={(v) => setCampaignEnabled(cp.id, v).then(refreshLists).catch(() => {})}
                     trackColor={{ false: c.border, true: c.accent }}
                     thumbColor="#fff"
-                    accessibilityLabel={t(`Activer la campagne ${cp.title}`, `Enable campaign ${cp.title}`)}
+                    accessibilityLabel={t( 'Activer la campagne {0}', 'Enable campaign {0}', [cp.title])}
                     accessibilityState={{ selected: cp.enabled }}
                   />
                   <TouchableOpacity
                     onPress={() => confirmDeleteCampaign(cp)}
                     style={{ padding: 6 }}
                     hitSlop={ICON_HIT_SLOP}
-                    {...a11yButton(t(`Supprimer la campagne ${cp.title}`, `Delete campaign ${cp.title}`))}
+                    {...a11yButton(t( 'Supprimer la campagne {0}', 'Delete campaign {0}', [cp.title]))}
                   >
                     <Trash2 color="#8b1a1a" size={18} />
                   </TouchableOpacity>
@@ -640,7 +634,7 @@ export default function AdminNotifications({
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.campaignTitle, { color: c.text }]} numberOfLines={1}>{l.title}</Text>
                     <Text style={[styles.campaignSub, { color: c.textFaint }]} numberOfLines={1}>
-                      {segmentLabel(l.segment)} · {t(`${l.sent}/${l.recipients} envoyées`, `${l.sent}/${l.recipients} sent`)}
+                      {segmentLabel(l.segment)} · {t( '{0}/{1} envoyées', '{0}/{1} sent', [l.sent, l.recipients])}
                       {l.source === 'campaign' ? ' · auto' : ''}
                     </Text>
                   </View>

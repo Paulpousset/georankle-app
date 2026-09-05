@@ -7,7 +7,7 @@ Repères :
 - App AdMob Android : `ca-app-pub-2429865520138981~4674653851`
 - App AdMob iOS : `ca-app-pub-2429865520138981~8202835323`
 - Package / bundle : `com.paulpousset.geog` · Apple Team : `HAMS39CUCG`
-- Domaine web : `geogames-mu.vercel.app` (projet Vercel « geogames »)
+- Domaine web : `playgeog.com` (projet Vercel « geogames »)
 
 ---
 
@@ -60,57 +60,67 @@ L'interstitiel utilise le même SDK/données que le rewarded (déjà déclaré).
 
 ---
 
-## B. Universal Links — déployer .well-known + le bon SHA-256
+## B. Ouvrir l'app depuis un lien partagé (parrainage + ligue)
 
-But : qu'un lien `https://geogames-mu.vercel.app/invite.html?code=XXXX` **ouvre l'app** (au lieu du navigateur) quand elle est installée. Sans ça, le lien ouvre la landing (qui marche déjà, avec bouton « ouvrir l'app » via le scheme `geog://`) — mais l'ouverture directe est plus fluide.
+But : `https://playgeog.com/invite.html?code=XXXX` (parrainage) et
+`https://playgeog.com/play?league=XXXX` (ligue) doivent **ouvrir l'app** quand
+elle est installée. Sans ça le joueur reste sur le web : le code n'est jamais
+crédité, la ligue jamais rejointe.
 
-### B1. Déployer les fichiers (le plus simple est déjà fait côté build)
-- ✅ `public/.well-known/apple-app-site-association` et `assetlinks.json` existent, et **le build web les copie bien dans `dist/`** (vérifié).
-- ✅ [vercel.json](vercel.json) force maintenant le `Content-Type: application/json` sur l'AASA.
-- **Action** : redeploie le web → `npx vercel --prod` (ou push git si auto-deploy).
-- **Vérifie** ensuite (doit renvoyer du JSON, pas du HTML) :
-  ```sh
-  curl -sI https://geogames-mu.vercel.app/.well-known/apple-app-site-association | grep -i content-type
-  curl -s  https://geogames-mu.vercel.app/.well-known/assetlinks.json
-  ```
+Trois chemins, du plus fluide au plus manuel — les deux premiers sont câblés,
+le troisième marche **déjà en prod dès le prochain déploiement web** :
 
-### B2. iOS — rien à changer dans l'AASA
-`public/.well-known/apple-app-site-association` contient déjà le bon `appID` :
-`HAMS39CUCG.com.paulpousset.geog`. `app.json` a déjà `associatedDomains: applinks:geogames-mu.vercel.app`. Il suffit d'un **rebuild iOS + soumission** : Apple récupère l'AASA automatiquement.
+1. **Universal / App Links** (système, aucun clic) — demande un build store.
+2. **Redirection Android `intent://`** ([public/open-in-app.js](public/open-in-app.js)) —
+   pur web. Si l'app manque, Chrome repart sur `browser_fallback_url` = la même
+   page avec `web=1` : jamais de cul-de-sac, jamais de détour par le Play Store.
+3. **Barre « Ouvrir dans l'app »** sur les coquilles `/play` (16 langues) et les
+   boutons de `invite.html` — un geste utilisateur, seule façon fiable de lancer
+   `geog://` sur iOS, et la seule qui marche depuis les navigateurs intégrés
+   (Instagram, Facebook, Snapchat) qui ignorent les universal links.
 
-### B3. Android — remplacer le SHA-256 placeholder (le piège)
-`assetlinks.json` contient un placeholder. Le fingerprint doit être celui de la clé qui **signe réellement l'APK installé** :
+`web=1` coupe les trois : c'est le drapeau « ce joueur a choisi le navigateur »
+(bouton « jouer sans installer », ou retour d'un `intent://` sans app installée).
 
-- **Cas normal (distribution Google Play avec Play App Signing)** → utilise le **certificat de signature d'app Google** :
-  Play Console → ton app → **Test and release → App integrity → App signing** → copie le **SHA-256** du « App signing key certificate ».
-  Play te propose même directement un **snippet `assetlinks.json` prêt à copier** dans cette page (« Digital Asset Links JSON »).
-  ⚠️ Ce certificat n'existe **qu'après** la création de l'app dans Play Console + 1er bundle uploadé (cf. le blocage Play Console de la note Android).
+### B1. Ce qui est déjà fait dans le dépôt
+- `app.json` : `ios.associatedDomains = ["applinks:playgeog.com"]` (il manquait
+  complètement depuis le passage à playgeog.com → **aucun** universal link iOS
+  ne fonctionnait) et `android.intentFilters` couvre désormais `/invite.html`,
+  `/play`, `/daily` et les quinze `/xx/play`.
+- `public/.well-known/apple-app-site-association` : mêmes chemins, au format
+  `components`, avec une exclusion sur `?web=1`.
+- `public/open-in-app.js` + injection dans les seize coquilles d'app
+  (`site/build.mjs`, textes traduits dans `site/lib/strings.mjs` et
+  `site/content/i18n/*.json`). Le build échoue si une langue perd ses textes.
+- `assetlinks.json` : porte **les deux** empreintes — la clé de signature Play
+  `AD:C3:EE:…` (celle qui signe ce que les joueurs installent, sans elle la
+  vérification Android échoue) et le keystore d'importation EAS `F1:0E:D4:…`
+  (builds internes, APK sideload). La seconde était seule jusqu'ici : c'est
+  pour ça que les App Links n'étaient jamais vérifiés en production.
 
-- **Pour les builds EAS internes / APK sideload** → utilise le SHA-256 du keystore EAS :
-  ```sh
-  eas credentials      # → Android → production → Keystore → lit le "SHA256 Fingerprint"
-  ```
-
-**Recommandé : mets les DEUX empreintes** (clé de signature Play *et* keystore EAS/upload) dans le tableau `sha256_cert_fingerprints`, pour couvrir tous les canaux :
-```json
-[
-  {
-    "relation": ["delegate_permission/common.handle_all_urls"],
-    "target": {
-      "namespace": "android_app",
-      "package_name": "com.paulpousset.geog",
-      "sha256_cert_fingerprints": [
-        "AA:BB:… (Play App Signing)",
-        "CC:DD:… (keystore EAS)"
-      ]
-    }
-  }
-]
-```
-Puis **redeploie le web** (B1) et **rebuild Android**. `app.json` a déjà l'`intentFilter` `autoVerify` sur `/invite.html`.
-
-### B4. Vérifier
-- iOS : sur un iPhone avec l'app installée, colle le lien invite dans Notes/iMessage → il doit ouvrir l'app.
-- Android : `adb shell am start -a android.intent.action.VIEW -d "https://geogames-mu.vercel.app/invite.html?code=TEST" com.paulpousset.geog` → ouvre l'app. Ou le validateur : https://developers.google.com/digital-asset-links/tools/generator
-
-> Tant que B3 n'est pas fait, **la boucle fonctionne déjà** via la landing `invite.html` (bouton « ouvrir l'app » = scheme `geog://`, et boutons store). Les universal links ne font qu'améliorer la fluidité.
+### B2. Ce qui reste à faire (toi)
+1. **Déployer le web** (`git push master` = déploiement auto). Ça active les
+   chemins 2 et 3 immédiatement, sans build store.
+2. ~~Vérifier l'empreinte Android~~ — **fait** (Play Console → *Tester et
+   publier → Configuration → Intégrité de l'application*). Après déploiement,
+   contrôler que Google voit bien la nouvelle empreinte :
+   ```sh
+   curl -s -G https://digitalassetlinks.googleapis.com/v1/assetlinks:check \
+     --data-urlencode "source.web.site=https://playgeog.com" \
+     --data-urlencode "relation=delegate_permission/common.handle_all_urls" \
+     --data-urlencode "target.android_app.package_name=com.paulpousset.geog" \
+     --data-urlencode "target.android_app.certificate.sha256_fingerprint=AD:C3:EE:E2:BF:2C:39:E6:5D:5E:20:30:24:C9:9A:4B:2B:5D:16:12:E3:75:02:42:BD:83:9C:DD:5D:21:0F:7F"
+   # attendu : "linked": true
+   ```
+   Et côté console : *Accroître le nombre d'utilisateurs → Liens profonds*.
+3. **Rebuild + soumission iOS et Android**. Côté iOS, EAS ajoute tout seul la
+   capacité *Associated Domains* à l'App ID au moment du build (il peut demander
+   de resynchroniser les credentials).
+4. **Vérifier après coup** :
+   ```sh
+   curl -sI https://playgeog.com/.well-known/apple-app-site-association | grep -i content-type
+   adb shell am start -a android.intent.action.VIEW \
+     -d "https://playgeog.com/play?league=TEST" com.paulpousset.geog
+   ```
+   iOS : colle le lien dans Notes/iMessage (un lien tapé dans Safari ne
+   déclenche jamais un universal link, c'est normal).

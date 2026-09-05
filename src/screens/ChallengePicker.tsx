@@ -56,16 +56,16 @@ export default function ChallengePicker({ onPick, onBack, title }: ChallengePick
                 key={ch.id}
                 onPress={() => onPick(ch)}
                 style={[styles.row, { backgroundColor: c.card, borderColor: c.border }]}
-                {...a11yButton(language === 'fr' ? ch.titleFr : ch.titleEn, {
-                  hint: language === 'fr' ? ch.subtitleFr : ch.subtitleEn,
+                {...a11yButton(tr(language, ch.titleFr, ch.titleEn), {
+                  hint: tr(language, ch.subtitleFr, ch.subtitleEn),
                 })}
               >
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.rowTitle, { color: c.text }]} numberOfLines={1}>
-                    {language === 'fr' ? ch.titleFr : ch.titleEn}
+                    {tr(language, ch.titleFr, ch.titleEn)}
                   </Text>
                   <Text style={[styles.rowSub, { color: c.textFaint }]} numberOfLines={1}>
-                    {language === 'fr' ? ch.subtitleFr : ch.subtitleEn}
+                    {tr(language, ch.subtitleFr, ch.subtitleEn)}
                   </Text>
                 </View>
                 <ChevronRight color={c.textFaint} size={18} />

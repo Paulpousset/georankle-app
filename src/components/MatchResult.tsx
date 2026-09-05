@@ -126,10 +126,10 @@ export function MatchResult({
 
   const resultColor = isDraw ? '#c4872a' : iWon ? '#2a6e3f' : '#8b1a1a';
   const resultText = isDraw
-    ? language === 'fr' ? 'ÉGALITÉ' : 'DRAW'
+    ? tr(language, 'ÉGALITÉ', 'DRAW')
     : iWon
-      ? language === 'fr' ? 'VICTOIRE !' : 'VICTORY!'
-      : language === 'fr' ? 'DÉFAITE' : 'DEFEAT';
+      ? tr(language, 'VICTOIRE !', 'VICTORY!')
+      : tr(language, 'DÉFAITE', 'DEFEAT');
 
   // Each round formats with the mode it was actually played in (ranked mixes
   // modes across rounds); the `gameMode` prop is only a fallback.
@@ -146,13 +146,11 @@ export function MatchResult({
     ).catch(() => {});
     // Announce the match outcome and final score for screen-reader users.
     const outcome = isDraw
-      ? language === 'fr' ? 'Égalité' : 'Draw'
+      ? tr(language, 'Égalité', 'Draw')
       : iWon
-        ? language === 'fr' ? 'Victoire' : 'Victory'
-        : language === 'fr' ? 'Défaite' : 'Defeat';
-    const score = language === 'fr'
-      ? `${myRoundsWon} à ${opponentRoundsWon}`
-      : `${myRoundsWon} to ${opponentRoundsWon}`;
+        ? tr(language, 'Victoire', 'Victory')
+        : tr(language, 'Défaite', 'Defeat');
+    const score = tr(language, '{0} à {1}', '{0} to {1}', [myRoundsWon, opponentRoundsWon]);
     announce(`${outcome}, ${score}`);
   }, [isDraw, iWon, language, myRoundsWon, opponentRoundsWon]);
 
@@ -169,21 +167,21 @@ export function MatchResult({
               <PlayerGlobe
                 config={me?.avatar_config ?? null}
                 photoUrl={me?.avatar_url ?? null}
-                username={me?.username ?? (language === 'fr' ? 'Vous' : 'You')}
+                username={me?.username ?? (tr(language, 'Vous', 'You'))}
                 size={92}
-                label={language === 'fr' ? 'VOUS' : 'YOU'}
+                label={tr(language, 'VOUS', 'YOU')}
                 accent={resultColor}
                 animate
               />
               <Text style={{ color: c.textFaint, fontFamily: FONTS.mono, fontSize: 13 }}>
-                {language === 'fr' ? 'contre' : 'vs'}
+                {tr(language, 'contre', 'vs')}
               </Text>
               <PlayerGlobe
                 config={opponent?.avatar_config ?? null}
                 photoUrl={opponent?.avatar_url ?? null}
-                username={opponent?.username ?? (language === 'fr' ? 'Adversaire' : 'Opponent')}
+                username={opponent?.username ?? (tr(language, 'Adversaire', 'Opponent'))}
                 size={92}
-                label={language === 'fr' ? 'ADVERSAIRE' : 'OPPONENT'}
+                label={tr(language, 'ADVERSAIRE', 'OPPONENT')}
                 animate
               />
             </View>
@@ -204,16 +202,16 @@ export function MatchResult({
             {myRoundsWon} – {opponentRoundsWon}
           </ScoreText>
           <Text style={{ color: c.textMuted, fontSize: 14, fontFamily: FONTS.mono }}>
-            {`BO${bestOf} · ${language === 'fr' ? 'Série terminée' : 'Series over'}`}
+            {`BO${bestOf} · ${tr(language, 'Série terminée', 'Series over')}`}
           </Text>
           {myTotalScore !== undefined && opponentTotalScore !== undefined && (
             <Text style={{ color: c.textFaint, fontSize: 13, fontFamily: FONTS.mono }}>
-              {`${language === 'fr' ? 'Points' : 'Points'} ${myTotalScore} – ${opponentTotalScore}`}
+              {`${tr(language, 'Points', 'Points')} ${myTotalScore} – ${opponentTotalScore}`}
             </Text>
           )}
           {decidedOnPoints && (
             <Text style={{ color: resultColor, fontSize: 12, fontFamily: FONTS.monoBold, letterSpacing: 0.5 }}>
-              {language === 'fr' ? 'Départagé aux points' : 'Decided on points'}
+              {tr(language, 'Départagé aux points', 'Decided on points')}
             </Text>
           )}
         </View>
@@ -246,7 +244,7 @@ export function MatchResult({
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
                 <View style={{ alignItems: 'center', gap: 2 }}>
                   <Text style={{ color: c.textFaint, fontFamily: FONTS.mono, fontSize: 11 }}>
-                    {language === 'fr' ? 'AVANT' : 'BEFORE'}
+                    {tr(language, 'AVANT', 'BEFORE')}
                   </Text>
                   <Text style={{ color: c.textMuted, fontFamily: FONTS.headingBlack, fontSize: 20 }}>
                     {rankResult.oldElo}
@@ -257,7 +255,7 @@ export function MatchResult({
                 </ScoreText>
                 <View style={{ alignItems: 'center', gap: 2 }}>
                   <Text style={{ color: c.textFaint, fontFamily: FONTS.mono, fontSize: 11 }}>
-                    {language === 'fr' ? 'APRÈS' : 'AFTER'}
+                    {tr(language, 'APRÈS', 'AFTER')}
                   </Text>
                   <Text style={{ color: newRank.color, fontFamily: FONTS.headingBlack, fontSize: 20 }}>
                     {rankResult.newElo}
@@ -278,8 +276,8 @@ export function MatchResult({
                     letterSpacing: 0.5,
                   }}>
                     {promoted
-                      ? (language === 'fr' ? `Promotion en ${newRank.nameFr} !` : `Promoted to ${newRank.name}!`)
-                      : (language === 'fr' ? `Rétrogradé en ${newRank.nameFr}` : `Demoted to ${newRank.name}`)}
+                      ? (tr(language, 'Promotion en {0} !', 'Promoted to {1}!', [newRank.nameFr, newRank.name]))
+                      : (tr(language, 'Rétrogradé en {0}', 'Demoted to {1}', [newRank.nameFr, newRank.name]))}
                   </Text>
                 </View>
               )}
@@ -289,7 +287,7 @@ export function MatchResult({
 
         <View style={{ width: '100%', maxWidth: 400, gap: 10 }}>
           <Text style={{ color: c.textFaint, fontSize: 12, fontFamily: FONTS.monoBold, letterSpacing: 1, marginBottom: 4 }}>
-            {language === 'fr' ? 'DÉTAIL DES ROUNDS' : 'ROUND BREAKDOWN'}
+            {tr(language, 'DÉTAIL DES ROUNDS', 'ROUND BREAKDOWN')}
           </Text>
           {rounds.map((round, i) => {
             const roundWinner =
@@ -368,7 +366,7 @@ export function MatchResult({
 
           <TouchableOpacity
             onPress={onExit}
-            {...a11yButton(language === 'fr' ? 'Retour au menu' : 'Back to menu')}
+            {...a11yButton(tr(language, 'Retour au menu', 'Back to menu'))}
             style={{
               flexDirection: 'row', alignItems: 'center', gap: 10,
               backgroundColor: c.card,
@@ -379,7 +377,7 @@ export function MatchResult({
           >
             <Home size={20} color={c.text} {...a11yHidden} />
             <Text style={{ color: c.text, fontFamily: FONTS.monoBold, fontSize: 16 }}>
-              {language === 'fr' ? 'Retour au menu' : 'Back to menu'}
+              {tr(language, 'Retour au menu', 'Back to menu')}
             </Text>
           </TouchableOpacity>
         </View>

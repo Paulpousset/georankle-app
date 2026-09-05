@@ -39,7 +39,7 @@ import { WorldAvatar } from '../components/WorldAvatar';
 import { WorldAvatar3D } from '../components/WorldAvatar3D';
 import { AvatarPreview3D } from '../components/AvatarPreview3D';
 import { Avatar } from '../components/Avatar';
-import type { AvatarConfig } from '../types';
+import type { AvatarConfig, Language } from '../types';
 
 import { STORY_LEVEL_COUNT, buildStoryLevels, type StoryLevel } from '../data/story';
 import { biomeForTier, type Biome, type BiomeDecor } from '../data/biomes';
@@ -480,15 +480,13 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
       if (stars >= 1) {
         toast.success(
           tr(
-            language,
-            `Niveau ${lvl} réussi — ${'★'.repeat(stars)}${res.coins ? ` +${res.coins} pièces` : ''}`,
-            `Level ${lvl} cleared — ${'★'.repeat(stars)}${res.coins ? ` +${res.coins} coins` : ''}`,
+            language, 'Niveau {0} réussi — {1}{2}', 'Level {0} cleared — {1}{3}', [lvl, '★'.repeat(stars), res.coins ? ` +${res.coins} pièces` : '', res.coins ? ` +${res.coins} coins` : ''],
           ),
         );
         const part = res.unlockedItemId ? getPartById(res.unlockedItemId) : undefined;
         if (part) {
-          const name = language === 'fr' ? part.nameFr : part.nameEn;
-          toast.success(tr(language, `Nouveau cosmétique débloqué : ${name} !`, `New cosmetic unlocked: ${name}!`));
+          const name = tr(language, part.nameFr, part.nameEn);
+          toast.success(tr(language, 'Nouveau cosmétique débloqué : {0} !', 'New cosmetic unlocked: {0}!', [name]));
         }
       } else {
         toast.error(tr(language, 'Score trop bas — réessaie !', 'Score too low — try again!'));
@@ -720,7 +718,7 @@ interface LevelNodeProps {
   showBanner: boolean;
   myAvatar: AvatarConfig | null;
   friends: FriendPosition[];
-  language: 'fr' | 'en';
+  language: Language;
   isDarkMode: boolean;
   textColor: string;
   onTap: (level: number) => void;
@@ -743,7 +741,7 @@ const LevelNode = memo(function LevelNode({
         <View style={{ position: 'absolute', top: isCurrent ? -96 : -34, left: NODE / 2 - 74, width: 148, alignItems: 'center' }}>
           <View style={{ backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 3, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' }}>
             <Text style={{ fontFamily: FONTS.mono, fontSize: 10, color: '#fff', letterSpacing: 1 }}>
-              {tr(language, `PALIER ${meta.tier} · ${biome.nameFr.toUpperCase()}`, `TIER ${meta.tier} · ${biome.nameEn.toUpperCase()}`)}
+              {tr(language, 'PALIER {0} · {1}', 'TIER {0} · {2}', [meta.tier, biome.nameFr.toUpperCase(), biome.nameEn.toUpperCase()])}
             </Text>
           </View>
         </View>
@@ -777,8 +775,8 @@ const LevelNode = memo(function LevelNode({
           onPress={() => onTap(level)}
           {...a11yButton(
             locked
-              ? tr(language, `Niveau ${level} verrouillé`, `Level ${level} locked`)
-              : tr(language, `Niveau ${level}, ${biome.nameFr}`, `Level ${level}, ${biome.nameEn}`),
+              ? tr(language, 'Niveau {0} verrouillé', 'Level {0} locked', [level])
+              : tr(language, 'Niveau {0}, {1}', 'Level {0}, {2}', [level, biome.nameFr, biome.nameEn]),
           )}
           style={
             coinArt != null
@@ -917,7 +915,7 @@ function StoryTable({
   myAvatar: AvatarConfig | null;
   myName: string | null;
   user: User | null;
-  language: 'fr' | 'en';
+  language: Language;
   colors: ReturnType<typeof getColors>;
   onOpenPlayer?: (userId: string, username?: string | null) => void;
 }) {
@@ -996,7 +994,7 @@ function StoryTable({
             </Text>
             <View style={{ backgroundColor: c.surface, borderRadius: 999, paddingVertical: 3, paddingHorizontal: 10 }}>
               <Text style={{ fontFamily: FONTS.mono, fontSize: 12, color: c.text }}>
-                {r.maxLevel > 0 ? tr(language, `Niv ${r.maxLevel}`, `Lvl ${r.maxLevel}`) : tr(language, '—', '—')}
+                {r.maxLevel > 0 ? tr(language, 'Niv {0}', 'Lvl {0}', [r.maxLevel]) : tr(language, '—', '—')}
               </Text>
             </View>
           </TouchableOpacity>
@@ -1015,7 +1013,7 @@ function StoryTable({
           const part = getPartById(u.itemId);
           if (!part) return null;
           const owned = myMax >= u.level;
-          const name = language === 'fr' ? part.nameFr : part.nameEn;
+          const name = tr(language, part.nameFr, part.nameEn);
           return (
             <TouchableOpacity
               key={u.itemId}
@@ -1032,7 +1030,7 @@ function StoryTable({
                 opacity: owned ? 1 : 0.85,
               }}
               {...a11yButton(
-                `${name}, ${catLabel(part.category)}, ${tr(language, `niveau ${u.level}`, `level ${u.level}`)}`,
+                `${name}, ${catLabel(part.category)}, ${tr(language, 'niveau {0}', 'level {0}', [u.level])}`,
                 { hint: tr(language, 'Voir l’aperçu', 'See preview') },
               )}
             >
@@ -1040,7 +1038,7 @@ function StoryTable({
               <View style={{ flex: 1 }}>
                 <Text style={{ fontFamily: FONTS.heading, color: c.text, fontSize: 14 }} numberOfLines={1}>{name}</Text>
                 <Text style={{ fontFamily: FONTS.mono, color: c.textMuted, fontSize: 11 }}>
-                  {catLabel(part.category)} · {tr(language, `Niveau ${u.level}`, `Level ${u.level}`)}
+                  {catLabel(part.category)} · {tr(language, 'Niveau {0}', 'Level {0}', [u.level])}
                 </Text>
               </View>
               <View
@@ -1060,7 +1058,7 @@ function StoryTable({
                   <Lock color={c.textMuted} size={12} />
                 )}
                 <Text style={{ fontFamily: FONTS.mono, fontSize: 11, color: owned ? '#2a6e3f' : c.textMuted }}>
-                  {owned ? tr(language, 'Débloqué', 'Unlocked') : tr(language, `Niv ${u.level}`, `Lvl ${u.level}`)}
+                  {owned ? tr(language, 'Débloqué', 'Unlocked') : tr(language, 'Niv {0}', 'Lvl {0}', [u.level])}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -1113,10 +1111,10 @@ function StoryTable({
                 </Text>
               </View>
               <Text style={{ fontFamily: FONTS.heading, fontSize: 20, color: c.text, textAlign: 'center' }}>
-                {language === 'fr' ? previewPart.nameFr : previewPart.nameEn}
+                {tr(language, previewPart.nameFr, previewPart.nameEn)}
               </Text>
               <Text style={{ fontFamily: FONTS.mono, fontSize: 12, color: c.textMuted, marginTop: 3 }}>
-                {catLabel(previewPart.category)} · {tr(language, `Niveau ${preview.level}`, `Level ${preview.level}`)}
+                {catLabel(previewPart.category)} · {tr(language, 'Niveau {0}', 'Level {0}', [preview.level])}
               </Text>
 
               <View
@@ -1135,7 +1133,7 @@ function StoryTable({
                 <Text style={{ fontFamily: FONTS.mono, fontSize: 12, color: previewOwned ? '#2a6e3f' : c.textMuted }}>
                   {previewOwned
                     ? tr(language, 'Débloqué — équipe-le dans ton avatar', 'Unlocked — equip it on your avatar')
-                    : tr(language, `À gagner au niveau ${preview.level}`, `Earn it at level ${preview.level}`)}
+                    : tr(language, 'À gagner au niveau {0}', 'Earn it at level {0}', [preview.level])}
                 </Text>
               </View>
             </>
@@ -1155,7 +1153,7 @@ function RewardMarker({
   itemId: string;
   level: number;
   side: number;
-  language: 'fr' | 'en';
+  language: Language;
   dim: boolean;
   textColor: string;
   cardBg: string;
@@ -1165,7 +1163,7 @@ function RewardMarker({
   const avatar3d = useFeatureFlag('avatar_3d');
   const WorldRenderer = avatar3d ? WorldAvatar3D : WorldAvatar;
   if (!part) return null;
-  const name = language === 'fr' ? part.nameFr : part.nameEn;
+  const name = tr(language, part.nameFr, part.nameEn);
   // Card floats to the side of the river, clear of the medallion.
   const dx = side < 0 ? -(NODE / 2 + 118) : NODE + 10;
   return (
@@ -1191,7 +1189,7 @@ function RewardMarker({
       <WorldRenderer config={cfg} size={40} round />
       <View style={{ flex: 1 }}>
         <Text style={{ fontFamily: FONTS.mono, fontSize: 8.5, color: '#c98a1a', letterSpacing: 0.5 }}>
-          {tr(language, `NIV ${level} · À GAGNER`, `LVL ${level} · REWARD`)}
+          {tr(language, 'NIV {0} · À GAGNER', 'LVL {0} · REWARD', [level])}
         </Text>
         <Text style={{ fontFamily: FONTS.heading, fontSize: 11, color: textColor }} numberOfLines={2}>
           {name}

@@ -1,5 +1,6 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { pushLang, pushText } from '../_shared/push_i18n.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -66,18 +67,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    const en = recipient.push_lang === 'en';
-    const fromName = sender?.username || (en ? 'A player' : 'Un joueur');
+    const lang = pushLang(recipient.push_lang);
+    const fromName = sender?.username || pushText(lang, 'A player');
 
     const res = await fetch('https://exp.host/--/api/v2/push/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         to: recipient.push_token,
-        title: en ? 'GeoG — Friend request!' : "GeoG — Demande d'ami !",
-        body: en
-          ? `${fromName} wants to add you as a friend.`
-          : `${fromName} veut t'ajouter en ami.`,
+        title: 'GeoG',
+        body: pushText(lang, '{0} wants to be friends', [fromName]),
         sound: 'default',
         data: { type: 'friend_request', from: user.id },
       }),

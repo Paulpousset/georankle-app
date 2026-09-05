@@ -16,8 +16,9 @@ import { gameData } from '../data/gameData';
 import { continentLabel } from '../data/continents';
 import { getThemeShortDescription } from '../i18n/themeDescriptions';
 import { fmtArea, fmtCount } from './format';
-import { tr } from '../i18n';
+import { pickLabel, tr } from '../i18n';
 import type { CountryStat, Language } from '../types';
+import { capitalName, countryName } from './geoNames';
 
 /** Themes whose ranking would read as morbid trivia on a learning card. */
 const EXCLUDED_THEMES = new Set(['suicide_rate', 'homicide_rate']);
@@ -80,7 +81,7 @@ export interface CountryFacts {
 export function countryFactName(cca3: string, language: Language): string {
   const s = STATS_BY_ID.get(cca3);
   if (!s) return cca3;
-  return language === 'fr' ? s.name : s.name_en || s.name;
+  return countryName(s, language);
 }
 
 /** How many rankings are ever considered; the card picks one out of these. */
@@ -101,7 +102,7 @@ export function countryFacts(
   const s = STATS_BY_ID.get(cca3);
   if (!s) return null;
 
-  const capital = language === 'fr' ? s.capital_fr || s.capital : s.capital;
+  const capital = capitalName(s, language);
   const rows: { label: string; value: string }[] = [];
   if (capital && capital !== 'N/A') {
     rows.push({ label: tr(language, 'Capitale', 'Capital'), value: capital });
@@ -180,7 +181,7 @@ export function notableRanks(cca3: string, language: Language, max = 3): Country
 
   return scored.map(({ themeId, rank, total, fromEnd }) => ({
     themeId,
-    label: gameData.themes[themeId].label[language === 'fr' ? 'fr' : 'en'],
+    label: pickLabel(gameData.themes[themeId].label, language),
     rank,
     total,
     hint: getThemeShortDescription(themeId, language),

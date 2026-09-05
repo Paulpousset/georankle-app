@@ -42,6 +42,7 @@ import { PlayerGlobe } from '../components/PlayerGlobe';
 import { useMyGameGlobe } from '../lib/myGlobe';
 import { useSoloCoins } from '../lib/useSoloCoins';
 import { TopInsetBar } from '../components/TopInsetBar';
+import { countryName } from '../lib/geoNames';
 
 const DEFAULT_ROUNDS = 5;
 
@@ -427,24 +428,64 @@ function handleTap(tx,ty){
   postMsg({type:'REGION_SELECTED',id:hit});
 }
 
-window.resetRound=function(){sel=null;locked=false;hov=null;resultMode=false;resultCorrect=null;resultPicked=null;canvas.style.cursor='default';render();};
+// The reveal now leaves the map zoomed on the answer, so the next round has to
+// take it back to the whole country — that is the board.
+window.resetRound=function(){sel=null;locked=false;hov=null;resultMode=false;resultCorrect=null;resultPicked=null;canvas.style.cursor='default';
+  frameCountry();render();};
 window.showResult=function(correct,picked){
   locked=true;hov=null;canvas.style.cursor='default';
   resultMode=true;resultCorrect=correct;resultPicked=picked;
-  // Back to the whole country, like the WebGL map: a reveal left at the zoom the
-  // player was hunting at shows nothing but the answer's own interior.
-  frameCountry();
+  frameReveal(correct);
   render();
 };
 
 // Fit the country: an orthographic point at angle θ lands at R·sin(θ) from
 // centre; size R so the farthest region sits at ~84% of the disc radius.
+function fitZoom(angDeg,frac){
+  var ang=Math.max(0.004,Math.min(80,angDeg))*Math.PI/180;
+  return ((frac*Math.min(W,H)/2)/Math.sin(ang))/Rb;
+}
+function countryAng(){return Math.min(80,MAXANG*1.12+1.5);}
+function countryZoom(){return Math.max(0.5,fitZoom(countryAng(),0.84));}
 function frameCountry(){
   rotLon=CLON;rotLat=Math.max(-85,Math.min(85,CLAT));
-  var ang=Math.min(80,MAXANG*1.12+1.5)*Math.PI/180;
-  var rNeeded=(0.84*Math.min(W,H)/2)/Math.max(0.02,Math.sin(ang));
-  zoom=Math.max(0.5,rNeeded/Rb);
+  zoom=countryZoom();
   ZMAX=Math.max(16,zoom*6);ZMIN=Math.min(0.6,zoom*0.4);
+  R=Rb*zoom;
+}
+// Angular radius (degrees) of a region around its label point, measured on its
+// largest ring — the same rule the WebGL map uses.
+function shapeSpan(id,clat,clng){
+  var poly=null;
+  for(var i=0;i<POLYGONS.length;i++)if(POLYGONS[i].id===id){poly=POLYGONS[i];break;}
+  if(!poly)return null;
+  var main=poly.r[0];
+  for(var ri=1;ri<poly.r.length;ri++)if(poly.r[ri].length>main.length)main=poly.r[ri];
+  if(!main||!main.length)return null;
+  var max=0,step=Math.max(1,Math.floor(main.length/120));
+  for(var k=0;k<main.length;k+=step){
+    var d=angDist(clat,clng,main[k][1],main[k][0]);
+    if(d>max)max=d;}
+  return max;
+}
+// Reveal: close in on the answer, but only as far as SITUATING it needs (same
+// rule as the WebGL map). A French department at the country fit is a few pixels
+// of green on a phone, and the player had to zoom in by hand to see the region
+// they had just been asked for — but a region one cannot place among the others
+// teaches nothing. It is sized to ~15% of the half-screen, and the country stays
+// the frame of reference: the view never closes in past the point where the
+// country's own extent reaches 1.3 half-screens. Being a fit on the COUNTRY,
+// that ceiling sizes itself — about 1.5x the country view on Russia (where a
+// region must be read against all the others), 1.3x on Belgium.
+function frameReveal(correct){
+  var d=null;
+  for(var i=0;i<DOTS.length;i++)if(DOTS[i].id===correct){d=DOTS[i];break;}
+  var cLat=d?d.lat:CLAT,cLng=d?d.lng:CLON,zc=countryZoom();
+  var span=shapeSpan(correct,cLat,cLng);
+  var zmax=fitZoom(countryAng(),1.30);
+  zoom=span===null?zc:Math.max(zc,Math.min(zmax,fitZoom(span,0.15)));
+  ZMAX=Math.max(16,zc*6);ZMIN=Math.min(0.6,zc*0.4);
+  rotLon=cLng;rotLat=Math.max(-85,Math.min(85,cLat));
   R=Rb*zoom;
 }
 function setup(){
@@ -605,7 +646,7 @@ export default function FindRegionGame({
   const current = curTagged?.region;
   const isCorrect = current != null && selectedId === current.id;
   const regionName = (r: Region) => {
-    const base = language === 'fr' ? r.name : (r.name_en ?? r.name);
+    const base = tr(language, r.name, (r.name_en ?? r.name));
     // French departments: append the official code (01..95, 2A, 2B) from the id.
     const m = r.id.match(/^FR-D-(.+)$/);
     return m ? `${base} (${m[1]})` : base;
@@ -617,8 +658,8 @@ export default function FindRegionGame({
     const name = regionName(current);
     announce(
       isCorrect
-        ? tr(language, `Correct ! ${name}`, `Correct! ${name}`)
-        : tr(language, `Raté ! C'était ${name}`, `Wrong! It was ${name}`),
+        ? tr(language, 'Correct ! {0}', 'Correct! {0}', [name])
+        : tr(language, 'Raté ! C\'était {0}', 'Wrong! It was {0}', [name]),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
@@ -629,9 +670,7 @@ export default function FindRegionGame({
     const correctCount = score / 1000;
     announce(
       tr(
-        language,
-        `Partie terminée. Score : ${correctCount} sur ${totalRounds}.`,
-        `Game over. Score: ${correctCount} out of ${totalRounds}.`,
+        language, 'Partie terminée. Score : {0} sur {1}.', 'Game over. Score: {0} out of {1}.', [correctCount, totalRounds],
       ),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -740,7 +779,7 @@ export default function FindRegionGame({
   /** Nouveau tirage. */
   const handleReplay = () => restart(buildMixRounds(regionsByPick, totalRounds));
 
-  const countryLabel = language === 'fr' ? curPick.name : (curPick.name_en ?? curPick.name);
+  const countryLabel = countryName(curPick, language);
 
   // ── No data guard ────────────────────────────────────────────────────────
   if (!hasData) {

@@ -20,6 +20,7 @@ import { log } from './log';
 import { continentLabel } from '../data/continents';
 import type { ContinentId } from '../data/continents';
 import type { GameMode, Language } from '../types';
+import { tr } from '../i18n';
 
 export interface SoloRunContext {
   /** Continent the pool was narrowed to; null/undefined = worldwide. */
@@ -71,17 +72,11 @@ export async function saveSoloScore(
 export function offLeaderboardNotice(ctx: SoloRunContext, language: Language): string | null {
   if (countsForLeaderboard(ctx)) return null;
   if (ctx.training) {
-    return language === 'fr'
-      ? 'Entraînement — ni pièces ni classement'
-      : 'Training — no coins, no leaderboard';
+    return tr(language, 'Entraînement — ni pièces ni classement', 'Training — no coins, no leaderboard');
   }
   if (ctx.review) {
-    return language === 'fr'
-      ? 'Révision — hors classement'
-      : 'Review — off the leaderboard';
+    return tr(language, 'Révision — hors classement', 'Review — off the leaderboard');
   }
   const zone = continentLabel(ctx.scope ?? undefined, language);
-  return language === 'fr'
-    ? `Partie ${zone} — hors classement`
-    : `${zone} run — off the leaderboard`;
+  return tr(language, 'Partie {0} — hors classement', '{0} run — off the leaderboard', [zone]);
 }

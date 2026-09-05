@@ -1,6 +1,7 @@
-import type { MatchMode } from '../types';
+import type { MatchMode, Language } from '../types';
 import { createSeededRng, seededShuffle } from './rng';
 import { REGION_MANIFEST } from '../../assets/regions';
+import { tr } from '../i18n';
 
 export type RankTier = 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond' | 'master';
 
@@ -176,7 +177,7 @@ export function calculateEloChange(
   return Math.round(k * (score - expected));
 }
 
-export function modeLabel(mode: MatchMode, lang: 'fr' | 'en'): string {
+export function modeLabel(mode: MatchMode, lang: Language): string {
   const labels: Record<MatchMode, [string, string]> = {
     classic: ['Rankle', 'Rankle'],
     streak: ['Streak', 'Streak'],
@@ -190,5 +191,5 @@ export function modeLabel(mode: MatchMode, lang: 'fr' | 'en'): string {
     borders: ['Frontières', 'Borders'],
     languages: ['Langues', 'Languages'],
   };
-  return lang === 'fr' ? labels[mode][0] : labels[mode][1];
+  return tr(lang, labels[mode][0], labels[mode][1]);
 }

@@ -14,6 +14,7 @@
  */
 import rawCountriesStats from '../../assets/countries_stats.json';
 import type { CountryStat, Language, LocalizedLabel } from '../types';
+import { tr } from '../i18n';
 
 export type ContinentId = 'Africa' | 'Americas' | 'Asia' | 'Europe' | 'Oceania';
 
@@ -68,7 +69,7 @@ const IDS_BY_CONTINENT = (() => {
 export function continentLabel(region: string | undefined, language: Language): string {
   if (!region) return '?';
   const label = CONTINENT_LABEL[region];
-  return label ? (language === 'fr' ? label.fr : label.en) : region;
+  return label ? (tr(language, label.fr, label.en)) : region;
 }
 
 /** The continent a country belongs to, or null when it isn't in the pool. */

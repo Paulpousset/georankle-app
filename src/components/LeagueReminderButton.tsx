@@ -59,7 +59,7 @@ export function LeagueReminderButton() {
     setEnabled(true);
     track('league_reminder_set');
     toast.success(
-      tr(language, `Rappel activé — tous les jours à ${hour} !`, `Reminder on — every day at ${hour}!`),
+      tr(language, 'Rappel activé — tous les jours à {0} !', 'Reminder on — every day at {0}!', [hour]),
     );
   };
 
@@ -78,12 +78,12 @@ export function LeagueReminderButton() {
       }}
       {...a11yButton(
         enabled
-          ? tr(language, `Rappel quotidien activé à ${hour}`, `Daily reminder on at ${hour}`)
+          ? tr(language, 'Rappel quotidien activé à {0}', 'Daily reminder on at {0}', [hour])
           : tr(language, 'Activer les notifications', 'Enable notifications'),
         {
           hint: enabled
             ? tr(language, 'Désactiver le rappel', 'Turn the reminder off')
-            : tr(language, `Recevoir un rappel chaque jour à ${hour}`, `Get a reminder every day at ${hour}`),
+            : tr(language, 'Recevoir un rappel chaque jour à {0}', 'Get a reminder every day at {0}', [hour]),
         },
       )}
     >
@@ -97,7 +97,7 @@ export function LeagueReminderButton() {
           }}
         >
           {enabled
-            ? tr(language, `Rappel activé · ${hour}`, `Reminder on · ${hour}`)
+            ? tr(language, 'Rappel activé · {0}', 'Reminder on · {0}', [hour])
             : tr(language, 'Activer les notifs', 'Enable notifications')}
         </Text>
         <Text
@@ -109,7 +109,7 @@ export function LeagueReminderButton() {
         >
           {enabled
             ? tr(language, 'Touche pour désactiver', 'Tap to turn off')
-            : tr(language, `Chaque jour à ${hour} : joue les 3 défis de ta ligue`, `Every day at ${hour}: play your league's 3 challenges`)}
+            : tr(language, 'Chaque jour à {0} : joue les 3 défis de ta ligue', 'Every day at {0}: play your league\'s 3 challenges', [hour])}
         </Text>
       </View>
     </TouchableOpacity>

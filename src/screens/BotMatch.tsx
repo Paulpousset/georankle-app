@@ -50,6 +50,7 @@ import ChallengeQuiz from './ChallengeQuiz';
 import BordersGame from './BordersGame';
 import { ClassicGame } from './ClassicGame';
 import { useEventCallback } from '../lib/useEventCallback';
+import { tr } from '../i18n';
 
 interface BotMatchProps {
   user: User | null;
@@ -121,7 +122,7 @@ function OpponentReveal({
   const [countdown, setCountdown] = useState(3);
 
   useEffect(() => {
-    announce(language === 'fr' ? 'Adversaire trouvé' : 'Opponent found');
+    announce(tr(language, 'Adversaire trouvé', 'Opponent found'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -131,7 +132,7 @@ function OpponentReveal({
   useEffect(() => {
     if (countdown <= 0) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      announce(language === 'fr' ? "C'est parti !" : "Let's go!");
+      announce(tr(language, 'C\'est parti !', 'Let\'s go!'));
       readyStable();
       return;
     }
@@ -160,20 +161,20 @@ function OpponentReveal({
       </Text>
       {isCurrentUser && (
         <Text style={{ color: '#2a6e3f', fontSize: 12, fontFamily: FONTS.monoBold }}>
-          {language === 'fr' ? 'Vous' : 'You'}
+          {tr(language, 'Vous', 'You')}
         </Text>
       )}
     </View>
   );
 
-  const myName = player?.username ?? (language === 'fr' ? 'Joueur' : 'Player');
+  const myName = player?.username ?? (tr(language, 'Joueur', 'Player'));
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: col.background, alignItems: 'center', justifyContent: 'center' }}>
       <StatusBar style={isDarkMode ? 'light' : 'dark'} />
 
       <Text style={{ color: col.textFaint, fontSize: 14, fontFamily: FONTS.monoBold, letterSpacing: 2, marginBottom: 40 }}>
-        {(language === 'fr' ? 'Adversaire trouvé' : 'Opponent found').toUpperCase()}
+        {(tr(language, 'Adversaire trouvé', 'Opponent found')).toUpperCase()}
       </Text>
 
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 32 }}>
@@ -181,7 +182,7 @@ function OpponentReveal({
 
         <View style={{ alignItems: 'center', gap: 6 }}>
           <Text style={{ color: col.textMuted, fontSize: 13, fontFamily: FONTS.mono }}>
-            {language === 'fr' ? 'contre' : 'vs'}
+            {tr(language, 'contre', 'vs')}
           </Text>
           <View
             style={{
@@ -201,12 +202,8 @@ function OpponentReveal({
 
       <Text style={{ color: col.textMuted, fontFamily: FONTS.mono, fontSize: 14, marginTop: 48 }}>
         {countdown > 0
-          ? language === 'fr'
-            ? `La partie commence dans ${countdown}…`
-            : `Game starts in ${countdown}…`
-          : language === 'fr'
-            ? "C'est parti !"
-            : "Let's go!"}
+          ? tr(language, 'La partie commence dans {0}…', 'Game starts in {0}…', [countdown])
+          : tr(language, 'C\'est parti !', 'Let\'s go!')}
       </Text>
     </SafeAreaView>
   );

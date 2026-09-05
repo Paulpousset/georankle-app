@@ -24,6 +24,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { challengesForCountry, type Challenge } from '../data/challenges';
 import type { RegionLevelKey, RegionCountrySel } from './FindRegionGame';
+import { countryName } from '../lib/geoNames';
 
 export interface RegionPick extends RegionCountrySel {
   level: RegionLevelKey;
@@ -71,19 +72,28 @@ export default function RegionCountryPicker({
   const [selected, setSelected] = useState<RegionPick[]>([]);
 
   const countries = REGION_MANIFEST;
+  // La recherche accepte le nom du pays dans la langue de l'interface, pas
+  // seulement en français et en anglais : un joueur espagnol tape « Alemania ».
+  const searchable = useMemo(
+    () => countries.map((x) => ({ ...x, localized: countryName(x, language) })),
+    [countries, language],
+  );
   const fuse = useMemo(
-    () => new Fuse(countries, { keys: ['name', 'name_en'], threshold: 0.3 }),
-    [countries],
+    () => new Fuse(searchable, { keys: ['name', 'name_en', 'localized'], threshold: 0.3 }),
+    [searchable],
   );
 
   const list = useMemo(() => {
     if (search.trim().length > 1) return fuse.search(search).map((r) => r.item);
+    // `countryName` plutôt que le raccourci `localName` déclaré plus bas : une
+    // `const` lue avant sa déclaration jette une ReferenceError au premier
+    // rendu — c'est ce qui faisait planter l'écran des Défis Pays.
     return [...countries].sort((a, b) =>
-      (language === 'fr' ? a.name : a.name_en).localeCompare(language === 'fr' ? b.name : b.name_en, language),
+      countryName(a, language).localeCompare(countryName(b, language), language),
     );
   }, [search, fuse, countries, language]);
 
-  const countryName = (x: RegionCountry) => (language === 'fr' ? x.name : (x.name_en ?? x.name));
+  const localName = (x: RegionCountry) => countryName(x, language);
 
   const isPicked = (cca3: string, level: RegionLevelKey) =>
     selected.some((p) => p.cca3 === cca3 && p.level === level);
@@ -121,11 +131,11 @@ export default function RegionCountryPicker({
     const label =
       selected.length === 1
         ? tr(language, 'Commencer', 'Start')
-        : tr(language, `Commencer · ${selected.length} pays`, `Start · ${selected.length} countries`);
+        : tr(language, 'Commencer · {0} pays', 'Start · {0} countries', [selected.length]);
     return (
       <View style={[styles.confirmBar, { backgroundColor: c.card, borderTopColor: c.border }]}>
         <Text style={[styles.confirmCount, { color: c.textMuted }]} numberOfLines={1}>
-          {selected.map((p) => (language === 'fr' ? p.name : (p.name_en ?? p.name))).join(', ')}
+          {selected.map((p) => countryName(p, language)).join(', ')}
         </Text>
         <TouchableOpacity
           onPress={confirm}
@@ -154,7 +164,7 @@ export default function RegionCountryPicker({
             <ArrowLeft color={c.text} size={22} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: c.text }]} numberOfLines={1}>
-            {countryName(chosen)}
+            {localName(chosen)}
           </Text>
           <View style={{ width: 38 }} />
         </View>
@@ -205,14 +215,14 @@ export default function RegionCountryPicker({
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <Text style={{ fontFamily: FONTS.headingBlack, color: c.text, fontSize: 18 }}>
-                    {language === 'fr' ? ch.titleFr : ch.titleEn}
+                    {tr(language, ch.titleFr, ch.titleEn)}
                   </Text>
                   <View style={styles.newBadge}>
                     <Text style={styles.newBadgeText}>{tr(language, 'NOUVEAU', 'NEW')}</Text>
                   </View>
                 </View>
                 <Text style={{ fontFamily: FONTS.mono, color: c.textMuted, fontSize: 12 }}>
-                  {(language === 'fr' ? ch.subtitleFr : ch.subtitleEn)} · CARRÉ · DUO · CASH
+                  {(tr(language, ch.subtitleFr, ch.subtitleEn))} · CARRÉ · DUO · CASH
                 </Text>
               </View>
               <View style={{ gap: 6 }}>
@@ -220,7 +230,7 @@ export default function RegionCountryPicker({
                   <TouchableOpacity
                     onPress={() => onPickChallenge(ch)}
                     style={styles.quizActionBtn}
-                    {...a11yButton(tr(language, `Jouer ${language === 'fr' ? ch.titleFr : ch.titleEn} en solo`, `Play ${language === 'fr' ? ch.titleFr : ch.titleEn} solo`))}
+                    {...a11yButton(tr(language, 'Jouer {0} en solo', 'Play {0} solo', [tr(language, ch.titleFr, ch.titleEn)]))}
                   >
                     <Play color={PALETTE.sand} size={14} />
                     <Text style={styles.quizActionText}>{tr(language, 'Solo', 'Solo')}</Text>
@@ -230,7 +240,7 @@ export default function RegionCountryPicker({
                   <TouchableOpacity
                     onPress={() => onPickChallengeOnline(ch)}
                     style={[styles.quizActionBtn, { backgroundColor: PALETTE.forestGreen, borderColor: PALETTE.forestGreen }]}
-                    {...a11yButton(tr(language, `Jouer ${language === 'fr' ? ch.titleFr : ch.titleEn} en ligne`, `Play ${language === 'fr' ? ch.titleFr : ch.titleEn} online`))}
+                    {...a11yButton(tr(language, 'Jouer {0} en ligne', 'Play {0} online', [tr(language, ch.titleFr, ch.titleEn)]))}
                   >
                     <Wifi color="#fff" size={14} />
                     <Text style={[styles.quizActionText, { color: '#fff' }]}>{tr(language, 'En ligne', 'Online')}</Text>
@@ -300,7 +310,7 @@ export default function RegionCountryPicker({
               key={country.cca3}
               onPress={() => onCountryPress(country)}
               style={[styles.row, { backgroundColor: c.card, borderColor: picked ? PALETTE.oceanBlue : c.border }]}
-              {...a11yButton(`${countryName(country)}, ${detail}`, {
+              {...a11yButton(`${localName(country)}, ${detail}`, {
                 hint: country.levels.length > 1
                   ? tr(language, 'Choisir le niveau de découpage', 'Choose the division level')
                   : tr(language, 'Ajouter ou retirer ce pays', 'Add or remove this country'),
@@ -311,7 +321,7 @@ export default function RegionCountryPicker({
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <Text style={{ fontFamily: FONTS.heading, color: c.text, fontSize: 16 }}>
-                    {countryName(country)}
+                    {localName(country)}
                   </Text>
                   {countryChallenges(country.cca3).length > 0 && (
                     <View style={styles.newBadge}>

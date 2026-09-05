@@ -74,9 +74,7 @@ export function ReviewEntryCard({ onPlayReview, refreshKey = 0, maxWidth }: Revi
         style={[styles.card, { backgroundColor: c.card, borderColor: PALETTE.vermilion, maxWidth }]}
         {...a11yButton(
           tr(
-            language,
-            `Réviser mes erreurs, ${total} pays en attente`,
-            `Review my mistakes, ${total} countries pending`,
+            language, 'Réviser mes erreurs, {0} pays en attente', 'Review my mistakes, {0} countries pending', [total],
           ),
           { hint: tr(language, 'Choisir un mode à réviser', 'Pick a mode to revise') },
         )}
@@ -91,9 +89,7 @@ export function ReviewEntryCard({ onPlayReview, refreshKey = 0, maxWidth }: Revi
           </Text>
           <Text style={[styles.sub, { color: c.textFaint }]}>
             {tr(
-              language,
-              `${total} pays à revoir · ${modes.length} mode${modes.length > 1 ? 's' : ''}`,
-              `${total} countries to revisit · ${modes.length} mode${modes.length > 1 ? 's' : ''}`,
+              language, '{0} pays à revoir · {1} mode{2}', '{0} countries to revisit · {1} mode{2}', [total, modes.length, modes.length > 1 ? 's' : ''],
             )}
           </Text>
         </View>
@@ -134,15 +130,13 @@ export function ReviewEntryCard({ onPlayReview, refreshKey = 0, maxWidth }: Revi
                 style={[styles.row, { borderColor: c.border }]}
                 {...a11yButton(
                   tr(
-                    language,
-                    `${MODE_LABELS[mode]?.fr ?? mode}, ${counts[mode]} pays`,
-                    `${MODE_LABELS[mode]?.en ?? mode}, ${counts[mode]} countries`,
+                    language, '{0}, {1} pays', '{2}, {1} countries', [MODE_LABELS[mode]?.fr ?? mode, counts[mode], MODE_LABELS[mode]?.en ?? mode],
                   ),
                 )}
                 {...hoverLift}
               >
                 <Text style={[styles.rowLabel, { color: c.text }]}>
-                  {language === 'fr' ? MODE_LABELS[mode]?.fr ?? mode : MODE_LABELS[mode]?.en ?? mode}
+                  {tr(language, MODE_LABELS[mode]?.fr ?? mode, MODE_LABELS[mode]?.en ?? mode)}
                 </Text>
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>{counts[mode]}</Text>

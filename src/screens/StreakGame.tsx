@@ -37,7 +37,8 @@ import { getColors } from '../theme/colors';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { FONTS } from '../theme/typography';
-import { tr } from '../i18n';
+import { pickLabel, tr } from '../i18n';
+import { countryName } from '../lib/geoNames';
 import { a11yButton, announce, a11yHidden, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
 import { SoloCoinReward } from '../components/SoloCoinReward';
@@ -104,7 +105,7 @@ export default function StreakGame({
   training = false,
 }: StreakGameProps) {
   const { isDarkMode, setIsDarkMode } = useTheme();
-  const { language, setLanguage } = useLanguage();
+  const { language, openLanguagePicker } = useLanguage();
   const toast = useToast();
   const c = getColors(isDarkMode);
   const [currentCountry, setCurrentCountry] = useState<any>(null);
@@ -232,7 +233,7 @@ export default function StreakGame({
     // and the theme where it actually ranked best.
     const bestOption = options.find((o) => o.rank === minRank)!;
     const themeName = (o: typeof chosenOption) =>
-      (o.label?.[language] as string) ?? (o.label?.fr as string) ?? o.id;
+      o.label ? pickLabel({ fr: o.label.fr, en: o.label.en ?? o.label.fr }, language) : o.id;
     // Built eagerly: a wrong answer ends the run further down in this same
     // handler, before a setState updater would have flushed.
     const nextRecap: RecapEntry[] = [
@@ -254,7 +255,7 @@ export default function StreakGame({
 
     if (isCorrect) {
       setLastAnswerCorrect(true);
-      announce(tr(language, `Correct ! Streak ${score + 1}`, `Correct! Streak ${score + 1}`));
+      announce(tr(language, 'Correct ! Streak {0}', 'Correct! Streak {0}', [score + 1]));
       setScore((prev) => prev + 1);
       revealTimerRef.current = setTimeout(() => {
         initRound();
@@ -265,9 +266,7 @@ export default function StreakGame({
       setLastAnswerCorrect(false);
       announce(
         tr(
-          language,
-          `Faux. Le meilleur était ${themeName(bestOption)}. On continue.`,
-          `Wrong. The best was ${themeName(bestOption)}. Keep going.`,
+          language, 'Faux. Le meilleur était {0}. On continue.', 'Wrong. The best was {0}. Keep going.', [themeName(bestOption)],
         ),
       );
       revealTimerRef.current = setTimeout(() => {
@@ -277,9 +276,7 @@ export default function StreakGame({
       setLastAnswerCorrect(false);
       announce(
         tr(
-          language,
-          `Faux ! Perdu. Votre score : ${score}`,
-          `Wrong! Game over. Your score: ${score}`,
+          language, 'Faux ! Perdu. Votre score : {0}', 'Wrong! Game over. Your score: {0}', [score],
         ),
       );
       if (score > bestStreak) setBestStreak(score);
@@ -292,8 +289,8 @@ export default function StreakGame({
         if (user) {
           void saveSoloScore(user, 'streak', score, { scope, training }, () =>
             showAlert(
-              language === 'fr' ? 'Erreur' : 'Error',
-              language === 'fr' ? "Impossible d'enregistrer ton score." : 'Could not save your score.',
+              tr(language, 'Erreur', 'Error'),
+              tr(language, 'Impossible d\'enregistrer ton score.', 'Could not save your score.'),
             ),
           );
           // Solo coins (server-side daily cap; reward scales with performance).
@@ -424,7 +421,7 @@ export default function StreakGame({
               </View>
               <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
                 <TouchableOpacity
-                  onPress={() => setLanguage(language === 'fr' ? 'en' : 'fr')}
+                  onPress={openLanguagePicker}
                   style={[themeStyles.iconBtn, { minWidth: 40, alignItems: 'center' }]}
                   hitSlop={ICON_HIT_SLOP}
                   {...a11yButton(tr(language, 'Changer de langue', 'Change language'))}
@@ -486,7 +483,7 @@ export default function StreakGame({
                 </View>
 
                 <TouchableOpacity
-                  onPress={() => setLanguage(language === 'fr' ? 'en' : 'fr')}
+                  onPress={openLanguagePicker}
                   style={[themeStyles.iconBtn, { minWidth: 40, alignItems: 'center' }]}
                   hitSlop={ICON_HIT_SLOP}
                   {...a11yButton(tr(language, 'Changer de langue', 'Change language'))}
@@ -539,22 +536,16 @@ export default function StreakGame({
                     textAlign: 'center',
                   }}
                 >
-                  {language === 'fr'
-                    ? 'Trouvez le thème où ce pays est le mieux classé mondialement. Une seule erreur et le streak retombe à zéro !'
-                    : 'Find the theme where this country ranks best globally. One mistake and your streak resets to zero!'}
+                  {tr(language, 'Trouvez le thème où ce pays est le mieux classé mondialement. Une seule erreur et le streak retombe à zéro !', 'Find the theme where this country ranks best globally. One mistake and your streak resets to zero!')}
                 </Text>
               </View>
               <View style={themeStyles.card}>
                 <Image source={{ uri: getFlagUrl(currentCountry.cca3) }} style={styles.flag} />
                 <ScoreText style={[styles.countryName, !isDarkMode && { color: c.text }]}>
-                  {language === 'fr'
-                    ? currentCountry.name
-                    : currentCountry.name_en || currentCountry.name}
+                  {countryName(currentCountry, language)}
                 </ScoreText>
                 <Text style={[styles.instruction, { color: c.textMuted }]}>
-                  {language === 'fr'
-                    ? 'Quel est son meilleur classement ?'
-                    : 'What is its best ranking?'}
+                  {tr(language, 'Quel est son meilleur classement ?', 'What is its best ranking?')}
                 </Text>
               </View>
             </>
@@ -580,9 +571,7 @@ export default function StreakGame({
                     textAlign: 'center',
                   }}
                 >
-                  {language === 'fr'
-                    ? 'Trouvez le thème où ce pays est le mieux classé mondialement.'
-                    : 'Find the theme where this country ranks best globally.'}
+                  {tr(language, 'Trouvez le thème où ce pays est le mieux classé mondialement.', 'Find the theme where this country ranks best globally.')}
                 </Text>
               </View>
               <View style={[themeStyles.card, { padding: 15 }]}>
@@ -599,14 +588,10 @@ export default function StreakGame({
                         { fontSize: 24, textAlign: 'left' },
                       ]}
                     >
-                      {language === 'fr'
-                        ? currentCountry.name
-                        : currentCountry.name_en || currentCountry.name}
+                      {countryName(currentCountry, language)}
                     </Text>
                     <Text style={[styles.instruction, { marginTop: 2, fontSize: 12, color: c.textMuted }]}>
-                      {language === 'fr'
-                        ? 'Quel est son meilleur classement ?'
-                        : 'What is its best ranking?'}
+                      {tr(language, 'Quel est son meilleur classement ?', 'What is its best ranking?')}
                     </Text>
                   </View>
                 </View>
@@ -622,7 +607,7 @@ export default function StreakGame({
                 onPress={() => handleChoice(theme.id)}
                 disabled={revealedRanks[theme.id] !== undefined}
                 {...a11yButton(
-                  language === 'fr' ? theme.label.fr : theme.label.en || theme.label.fr,
+                  tr(language, theme.label.fr, theme.label.en || theme.label.fr),
                   {
                     disabled: revealedRanks[theme.id] !== undefined,
                     hint: tr(language, 'Choisir ce thème', 'Pick this theme'),
@@ -636,7 +621,7 @@ export default function StreakGame({
                   style={[styles.themeLabel, !isDarkMode && { color: c.text }]}
                   numberOfLines={2}
                 >
-                  {language === 'fr' ? theme.label.fr : theme.label.en || theme.label.fr}
+                  {tr(language, theme.label.fr, theme.label.en || theme.label.fr)}
                 </Text>
                 {revealedRanks[theme.id] !== undefined && (
                   <Text style={[styles.rankText, { color: c.accent }]}>#{revealedRanks[theme.id]}</Text>
@@ -660,9 +645,9 @@ export default function StreakGame({
                 showsVerticalScrollIndicator={false}
               >
               <PlayerGlobe config={myGlobe} size={96} accent="#8b1a1a" animate style={{ marginBottom: 12 }} />
-              <ScoreText style={styles.gameOverTitle}>{language === 'fr' ? 'PERDU !' : 'LOST!'}</ScoreText>
+              <ScoreText style={styles.gameOverTitle}>{tr(language, 'PERDU !', 'LOST!')}</ScoreText>
               <Text style={[styles.gameOverScore, { color: c.text }]}>
-                {language === 'fr' ? 'Votre score : ' : 'Your score: '}
+                {tr(language, 'Votre score : ', 'Your score: ')}
                 {score}
               </Text>
               {!isDaily && <OffLeaderboardNotice run={{ scope, training }} color={c.textMuted} />}

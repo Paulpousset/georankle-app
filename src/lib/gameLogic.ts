@@ -7,6 +7,8 @@ import type { Country, Language, SelectionMap, Theme } from '../types';
 import { haversine, calcBearing, bearingToArrow } from './geo';
 import { fmtCount, fmtArea, fmtMoney, fmtDist } from './format';
 import { continentLabel } from '../data/continents';
+import { tr } from '../i18n';
+import { countryName } from './geoNames';
 
 // ── Classic mode ──────────────────────────────────────────────────────────────
 
@@ -58,7 +60,7 @@ export function solveOptimal(
       const nextMapping: SelectionMap = {
         ...currentMapping,
         [themeIds[themeIdx]]: {
-          countryName: language === 'fr' ? country.name : country.name_en || country.name,
+          countryName: countryName(country, language),
           rank,
           cca3: country.cca3,
         },
@@ -106,8 +108,8 @@ export function compareNum(guess: number, target: number, value: string, lang: L
   const color = ratio >= 0.6 && ratio <= 1.67 ? '#F59E0B' : '#EF4444';
   const targetIsMore = guess < target;
   const hint = targetIsMore
-    ? (lang === 'fr' ? '▲ plus' : '▲ more')
-    : (lang === 'fr' ? '▼ moins' : '▼ less');
+    ? (tr(lang, '▲ plus', '▲ more'))
+    : (tr(lang, '▼ moins', '▼ less'));
   return { value, hint, color };
 }
 
@@ -124,7 +126,7 @@ export function buildComparison(
   const sameRegion = guessedS?.region === targetS?.region;
   r.continent = {
     value: continentLabel(guessedS?.region, lang),
-    hint: sameRegion ? '✓' : (lang === 'fr' ? '✗ autre' : '✗ other'),
+    hint: sameRegion ? '✓' : (tr(lang, '✗ autre', '✗ other')),
     color: sameRegion ? '#10B981' : '#EF4444',
   };
 
@@ -138,7 +140,7 @@ export function buildComparison(
       const b = calcBearing(guessedS.lat, guessedS.lng, targetS.lat, targetS.lng);
       r.direction = {
         value: bearingToArrow(b),
-        hint: lang === 'fr' ? 'vers la cible' : 'to target',
+        hint: tr(lang, 'vers la cible', 'to target'),
         color: dist < 2000 ? '#F59E0B' : '#EF4444',
       };
       r.distance = {
@@ -154,7 +156,7 @@ export function buildComparison(
   // Population
   const gPop = guessedS?.population, tPop = targetS?.population;
   r.population = gPop && tPop
-    ? compareNum(gPop, tPop, `${fmtCount(gPop, lang)}${lang === 'fr' ? ' hab.' : ''}`, lang)
+    ? compareNum(gPop, tPop, `${fmtCount(gPop, lang)}${tr(lang, ' hab.', '')}`, lang)
     : UNKNOWN;
 
   // Area
@@ -169,9 +171,9 @@ export function buildComparison(
   const sameCoast = guessedS?.coastline === targetS?.coastline;
   r.coastline = {
     value: guessedS?.coastline
-      ? (lang === 'fr' ? 'Côtier' : 'Coastal')
-      : (lang === 'fr' ? 'Enclavé' : 'Landlocked'),
-    hint: sameCoast ? '✓' : (lang === 'fr' ? '✗ autre' : '✗ other'),
+      ? (tr(lang, 'Côtier', 'Coastal'))
+      : (tr(lang, 'Enclavé', 'Landlocked')),
+    hint: sameCoast ? '✓' : (tr(lang, '✗ autre', '✗ other')),
     color: sameCoast ? '#10B981' : '#EF4444',
   };
 
@@ -179,13 +181,13 @@ export function buildComparison(
   const gLife = guessedC?.data?.life_expectancy?.value;
   const tLife = targetC?.data?.life_expectancy?.value;
   r.life_exp = gLife && tLife
-    ? compareNum(gLife, tLife, `${Math.round(gLife)}${lang === 'fr' ? ' ans' : ' yr'}`, lang)
+    ? compareNum(gLife, tLife, `${Math.round(gLife)}${tr(lang, ' ans', ' yr')}`, lang)
     : UNKNOWN;
 
   // Borders count
   const gB = guessedS?.borders_count, tB = targetS?.borders_count;
   if (gB != null && tB != null) {
-    const label = `${gB}${lang === 'fr' ? ' pays' : ''}`;
+    const label = `${gB}${tr(lang, ' pays', '')}`;
     r.borders = compareNum(gB, tB, label, lang);
   } else {
     r.borders = UNKNOWN;

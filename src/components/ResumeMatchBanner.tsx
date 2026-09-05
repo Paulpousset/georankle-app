@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RotateCcw, X } from 'lucide-react-native';
 import type { User } from '@supabase/supabase-js';
 
@@ -30,6 +31,7 @@ export function ResumeMatchBanner({
 }) {
   const { isDarkMode } = useTheme();
   const { language } = useLanguage();
+  const insets = useSafeAreaInsets();
   const c = getColors(isDarkMode);
   const [match, setMatch] = useState<Match | null>(null);
 
@@ -63,7 +65,15 @@ export function ResumeMatchBanner({
   };
 
   return (
-    <View style={[styles.banner, { backgroundColor: c.card, borderColor: PALETTE.forestGreen }]}>
+    // Anchored to the BOTTOM: the top of the screen is already taken by the
+    // status bar / notch (the banner used to sit at top:0, i.e. under the
+    // notch and unreachable on phones), plus the offline bar and the toasts.
+    <View
+      style={[
+        styles.banner,
+        { backgroundColor: c.card, borderColor: PALETTE.forestGreen, bottom: insets.bottom + 12 },
+      ]}
+    >
       <View style={{ flex: 1 }}>
         <Text style={[styles.title, { color: c.text }]}>
           {tr(language, 'Partie en cours', 'Match in progress')}
@@ -75,6 +85,7 @@ export function ResumeMatchBanner({
       <TouchableOpacity
         style={[styles.resumeBtn, { backgroundColor: PALETTE.forestGreen }]}
         onPress={() => { const m = match; setMatch(null); onResume(m); }}
+        hitSlop={ICON_HIT_SLOP}
         {...a11yButton(tr(language, 'Reprendre la partie', 'Resume match'))}
       >
         <RotateCcw color="#fff" size={16} />
@@ -98,15 +109,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     marginHorizontal: 16,
-    marginTop: 10,
     padding: 12,
     borderRadius: 14,
     borderWidth: 1.5,
     position: 'absolute',
-    top: 0,
     left: 0,
     right: 0,
     zIndex: 50,
+    // Lift it off the menu content it floats over.
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
   },
   title: { fontFamily: FONTS.headingBlack, fontSize: 14 },
   sub: { fontFamily: FONTS.mono, fontSize: 11, marginTop: 1 },
@@ -114,8 +129,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderRadius: 10,
   },
   resumeText: { color: '#fff', fontFamily: FONTS.monoBold, fontSize: 13 },

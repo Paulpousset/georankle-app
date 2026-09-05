@@ -57,11 +57,14 @@ export const MODE_COUNT = MODES.length;
 /** Langues réellement parlées par l'app — PAS les langues du site. */
 export const APP_LANGUAGES = fromSource(
   'src/types/index.ts',
-  /export type Language = ([^;]+);/,
+  // Le type s'écrit désormais sur seize lignes : la regex accepte l'espace, le
+  // retour à la ligne et la barre verticale de tête.
+  /export type Language =\s*([^;]+);/,
   'type Language',
 )
   .split('|')
-  .map((s) => s.trim().replace(/'/g, ''));
+  .map((s) => s.trim().replace(/'/g, ''))
+  .filter(Boolean);
 
 if (!Number.isInteger(COUNTRY_COUNT) || COUNTRY_COUNT < 100) {
   throw new Error(`COUNTRY_COUNT aberrant (${COUNTRY_COUNT})`);

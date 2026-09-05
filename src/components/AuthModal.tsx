@@ -5,6 +5,7 @@ import Auth from '../screens/Auth';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getColors } from '../theme/colors';
+import { tr } from '../i18n';
 
 interface AuthModalProps {
   visible: boolean;
@@ -42,7 +43,7 @@ export function AuthModal({ visible, onClose, initialMode = 'login' }: AuthModal
               style={{ alignSelf: 'flex-end', padding: 12 }}
               onPress={onClose}
               accessibilityRole="button"
-              accessibilityLabel={language === 'fr' ? 'Fermer' : 'Close'}
+              accessibilityLabel={tr(language, 'Fermer', 'Close')}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <X color={c.textMuted} size={20} />

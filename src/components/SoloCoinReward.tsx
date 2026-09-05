@@ -135,8 +135,8 @@ export function SoloCoinReward({
       if (result.granted) {
         const gained = result.coins ?? 0;
         setStage(claimStage);
-        toast.success(tr(language, `Pièces ×${nextMult} ! +${gained}`, `Coins ×${nextMult}! +${gained}`));
-        announce(tr(language, `Pièces multipliées par ${nextMult}`, `Coins multiplied by ${nextMult}`));
+        toast.success(tr(language, 'Pièces ×{0} ! +{1}', 'Coins ×{0}! +{1}', [nextMult, gained]));
+        announce(tr(language, 'Pièces multipliées par {0}', 'Coins multiplied by {0}', [nextMult]));
         track('coin_multiplier_earned', { stage: claimStage, coins: gained, mult: nextMult });
       } else if (result.reason === 'capped') {
         toast.info(tr(language, 'Plafond quotidien de pubs atteint — reviens demain !', 'Daily ad cap reached — come back tomorrow!'));
@@ -236,7 +236,7 @@ export function SoloCoinReward({
           disabled={busy}
           activeOpacity={0.85}
           {...a11yButton(
-            tr(language, `Regarder une pub pour multiplier tes pièces par ${nextMult}`, `Watch an ad to multiply your coins by ${nextMult}`),
+            tr(language, 'Regarder une pub pour multiplier tes pièces par {0}', 'Watch an ad to multiply your coins by {0}', [nextMult]),
             { disabled: busy },
           )}
           style={{
@@ -288,7 +288,7 @@ export function SoloCoinReward({
       {/* Max multiplier reached — small confirmation. */}
       {base > 0 && stage >= LADDER.length && (
         <Text style={{ marginTop: 8, textAlign: 'center', color: c.textMuted, fontSize: 12, fontFamily: FONTS.mono }}>
-          {tr(language, `Multiplicateur maximum ×${LADDER[LADDER.length - 1]} atteint 🎉`, `Max multiplier ×${LADDER[LADDER.length - 1]} reached 🎉`)}
+          {tr(language, 'Multiplicateur maximum ×{0} atteint 🎉', 'Max multiplier ×{0} reached 🎉', [LADDER[LADDER.length - 1]])}
         </Text>
       )}
 

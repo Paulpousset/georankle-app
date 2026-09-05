@@ -50,8 +50,8 @@ export function SoloStart({ mode, onStart, onExit, onChangeGlobe, badges = [] }:
   const intro = MODE_INTROS[mode];
   const accent = intro?.accent ?? c.accentStrong;
   const Icon = intro?.icon;
-  const title = intro ? (language === 'fr' ? intro.titleFr : intro.titleEn) : mode;
-  const body = intro ? (language === 'fr' ? intro.bodyFr : intro.bodyEn) : '';
+  const title = intro ? (tr(language, intro.titleFr, intro.titleEn)) : mode;
+  const body = intro ? (tr(language, intro.bodyFr, intro.bodyEn)) : '';
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.background }}>
@@ -86,8 +86,11 @@ export function SoloStart({ mode, onStart, onExit, onChangeGlobe, badges = [] }:
           >
             {title}
           </Text>
+          {/* Sans limite de lignes : la règle du mode se lit en entier dans les
+              seize langues. Le vietnamien et l'allemand débordaient des trois
+              lignes du français et perdaient leur fin de phrase — l'écran est
+              déjà dans une ScrollView, il n'y a rien à protéger. */}
           <Text
-            numberOfLines={3}
             style={{
               color: c.textMuted,
               fontFamily: FONTS.mono,
@@ -146,7 +149,11 @@ export function SoloStart({ mode, onStart, onExit, onChangeGlobe, badges = [] }:
             borderRadius: 16,
             paddingVertical: 18,
             paddingHorizontal: 40,
-            alignSelf: 'stretch',
+            // `stretch` + `maxWidth` = collé à gauche : dès que la contrainte de
+            // taille mord (stage web de 900 px), flexbox aligne la boîte au
+            // début de l'axe. Largeur explicite + `center` pour rester centré.
+            alignSelf: 'center',
+            width: '100%',
             maxWidth: 420,
             shadowColor: '#000',
             shadowOpacity: 0.18,

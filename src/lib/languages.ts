@@ -39,14 +39,39 @@ export const LANGUAGES_QUESTIONS_ONLINE = 5;
 export function matchesLanguageAnswer(input: string, code: string): boolean {
   const a = normalizeAnswer(input);
   if (!a) return false;
-  return languageAcceptedAnswers(code).some((accepted) => {
-    const b = normalizeAnswer(accepted);
-    if (!b) return false;
-    if (a === b) return true;
+  const accepted = languageAcceptedAnswers(code).map(normalizeAnswer).filter(Boolean);
+  if (accepted.includes(a)) return true;
+  // Une saisie qui nomme EXACTEMENT une autre langue n'est jamais une faute de
+  // frappe sur celle-ci : en vietnamien « Tiếng Ba Lan » (polonais) et « Tiếng
+  // Hà Lan » (néerlandais) ne sont qu'à une lettre l'une de l'autre, et la
+  // tolérance seule les confondrait.
+  if (namesAnotherLanguage(a, code)) return false;
+  return accepted.some((b) => {
     // Short names get no slack at all: "thai" vs "tha" must not pass.
     if (b.length <= 5) return false;
     return Math.abs(a.length - b.length) <= 1 && levenshtein(a, b) <= 1;
   });
+}
+
+/** Index normalisé « orthographe → langues qui l'acceptent », construit à la demande. */
+let SPELLING_INDEX: Map<string, Set<string>> | null = null;
+
+/** `true` si la saisie normalisée est l'orthographe exacte d'une AUTRE langue. */
+function namesAnotherLanguage(normalized: string, code: string): boolean {
+  if (!SPELLING_INDEX) {
+    SPELLING_INDEX = new Map();
+    for (const language of LANGUAGES) {
+      for (const spelling of languageAcceptedAnswers(language.code)) {
+        const key = normalizeAnswer(spelling);
+        if (!key) continue;
+        const owners = SPELLING_INDEX.get(key) ?? new Set<string>();
+        owners.add(language.code);
+        SPELLING_INDEX.set(key, owners);
+      }
+    }
+  }
+  const owners = SPELLING_INDEX.get(normalized);
+  return !!owners && !owners.has(code);
 }
 
 export interface LanguageQuestion {

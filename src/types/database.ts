@@ -422,6 +422,9 @@ export type Database = {
           player1_id: string | null
           player2_id: string | null
           rating_applied: boolean
+          rematch_game_data: Json | null
+          rematch_match_id: string | null
+          rematch_requested_by: string | null
           status: string | null
           updated_at: string
         }
@@ -446,6 +449,9 @@ export type Database = {
           player1_id?: string | null
           player2_id?: string | null
           rating_applied?: boolean
+          rematch_game_data?: Json | null
+          rematch_match_id?: string | null
+          rematch_requested_by?: string | null
           status?: string | null
           updated_at?: string
         }
@@ -470,6 +476,9 @@ export type Database = {
           player1_id?: string | null
           player2_id?: string | null
           rating_applied?: boolean
+          rematch_game_data?: Json | null
+          rematch_match_id?: string | null
+          rematch_requested_by?: string | null
           status?: string | null
           updated_at?: string
         }
@@ -945,6 +954,11 @@ export type Database = {
       todays_quest_ids: { Args: { p_day: string }; Returns: string[] }
       touch_last_seen: { Args: never; Returns: undefined }
       touch_match: { Args: { p_match_id: string }; Returns: undefined }
+      request_rematch: {
+        Args: { p_match_id: string; p_game_data?: Json }
+        Returns: Json
+      }
+      cancel_rematch: { Args: { p_match_id: string }; Returns: Json }
     }
     Enums: {
       [_ in never]: never

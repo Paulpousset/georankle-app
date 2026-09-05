@@ -38,7 +38,7 @@ function scoreText(result: DailyResult, language: Language): string {
     case 'classic':
       return `${result.score}%`;
     case 'streak':
-      return tr(language, `Série de ${result.score}`, `Streak of ${result.score}`);
+      return tr(language, 'Série de {0}', 'Streak of {0}', [result.score]);
     default:
       return `${result.score}`;
   }
@@ -136,7 +136,7 @@ export function DailyResultCard({
           <View style={{ flexDirection: 'row', gap: 24, marginTop: 18 }}>
             <View style={{ alignItems: 'center' }}>
               <View
-                accessibilityLabel={tr(language, `Série : ${streak}`, `Streak: ${streak}`)}
+                accessibilityLabel={tr(language, 'Série : {0}', 'Streak: {0}', [streak])}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
               >
                 <AtlasFlame color={PALETTE_FLAME} size={19} />
