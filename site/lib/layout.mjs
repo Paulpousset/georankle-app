@@ -111,13 +111,31 @@ function ogLocales(routeId, locale) {
 export function languageSwitch(routeId, locale, className) {
   const others = LOCALES.filter((l) => l !== locale && exists(routeId, l));
   if (!others.length) return '';
-  const links = others
-    .map(
-      (l) =>
-        `<a class="lang-link" href="${href(routeId, l)}" hreflang="${LOCALE_META[l].hreflang}" lang="${LOCALE_META[l].htmlLang}" rel="alternate">${LOCALE_META[l].label}</a>`,
+  const linkOf = (l) =>
+    `<a class="lang-link" href="${href(routeId, l)}" hreflang="${LOCALE_META[l].hreflang}" lang="${LOCALE_META[l].htmlLang}" rel="alternate">${LOCALE_META[l].label}</a>`;
+  const label = attr(strings(locale).languageLabel);
+
+  // Pied de page : la liste à plat, qui passe à la ligne.
+  if (className.includes('lang-switch-foot')) {
+    return `<span class="${className}" role="group" aria-label="${label}">${others.map(linkOf).join('')}</span>`;
+  }
+
+  // Barre de navigation : un menu déroulant. Seize langues à plat ne tiennent
+  // dans aucune barre — le 10/09/2026 elles poussaient le bouton « Jouer »
+  // hors de l'écran et le sélecteur était inutilisable. `<details>` s'ouvre
+  // sans JavaScript, les liens restent de vrais `<a>` explorables, et la
+  // langue courante figure dans la liste (marquée) pour se repérer.
+  const items = LOCALES.filter((l) => l === locale || exists(routeId, l))
+    .map((l) =>
+      l === locale
+        ? `<span class="lang-link lang-current" aria-current="true" lang="${LOCALE_META[l].htmlLang}">${LOCALE_META[l].label}</span>`
+        : linkOf(l),
     )
     .join('');
-  return `<span class="${className}" role="group" aria-label="${attr(strings(locale).languageLabel)}">${links}</span>`;
+  return `<details class="lang-menu">
+          <summary aria-label="${label}"><span>${LOCALE_META[locale].label}</span></summary>
+          <div class="lang-menu-list" role="group" aria-label="${label}">${items}</div>
+        </details>`;
 }
 
 /**
@@ -130,6 +148,10 @@ export function languageSwitch(routeId, locale, className) {
 function link(id, locale, label) {
   return exists(id, locale) ? `<a href="${href(id, locale)}">${label}</a>` : '';
 }
+
+/** Referme le menu des langues quand on clique ailleurs (confort ; le menu marche sans). */
+export const LANG_MENU_SCRIPT =
+  'document.addEventListener("click",function(e){document.querySelectorAll("details.lang-menu[open]").forEach(function(d){if(!d.contains(e.target))d.removeAttribute("open")})});';
 
 /** La barre de navigation commune aux pages de contenu. */
 function nav(routeId, locale) {
@@ -147,7 +169,8 @@ function nav(routeId, locale) {
         <a class="nav-cta" href="${href('play', locale)}">${s.play}</a>
       </div>
     </div>
-  </nav>`;
+  </nav>
+  <script>${LANG_MENU_SCRIPT}</script>`;
 }
 
 /** Le pied de page commun. */

@@ -72,7 +72,7 @@ nav {
   background: var(--vermilion); color: #fff !important;
   padding: 7px 15px; border-radius: 4px; font-weight: 700;
 }
-@media (max-width: 620px) { .nav-links a:not(.nav-cta) { display: none; } }
+@media (max-width: 620px) { .nav-links > a:not(.nav-cta) { display: none; } }
 
 /* ---------- mise en page article ---------- */
 
@@ -191,6 +191,40 @@ footer p { margin-bottom: 6px; }
 .lang-link:hover { color: var(--vermilion); }
 .f-lang { margin-bottom: 12px; }
 .lang-switch-foot { color: var(--brown); }
+
+/* Barre : un menu déroulant — seize langues à plat débordaient de la barre
+   et poussaient le bouton « Jouer » hors de l'écran (10/09/2026). */
+.lang-menu { position:relative; }
+.lang-menu > summary {
+  list-style:none; cursor:pointer; display:inline-flex; gap:8px; align-items:center;
+  font-size:.8rem; letter-spacing:.08em; text-transform:uppercase; color:var(--brown);
+  user-select:none; transition:color .2s;
+}
+.lang-menu > summary::-webkit-details-marker { display:none; }
+.lang-menu > summary::before {
+  content:""; width:14px; height:14px; flex:none; opacity:.6; background:currentColor;
+  -webkit-mask:var(--globe-mask) center/contain no-repeat;
+  mask:var(--globe-mask) center/contain no-repeat;
+}
+.lang-menu > summary::after { content:"▾"; font-size:.7rem; opacity:.7; }
+.lang-menu > summary:hover, .lang-menu[open] > summary { color:var(--vermilion); }
+.lang-menu-list {
+  position:absolute; right:0; top:calc(100% + 12px); z-index:40;
+  min-width:300px; max-height:min(70vh, 480px); overflow:auto;
+  display:grid; grid-template-columns:1fr 1fr; gap:2px 6px; padding:8px;
+  background:var(--surface); border:var(--frame); border-radius:8px;
+  box-shadow:0 10px 30px rgba(44,24,16,.18);
+}
+.lang-menu-list .lang-link {
+  display:block !important; padding:7px 10px; border-radius:5px; white-space:nowrap;
+  font-size:.85rem; letter-spacing:0; text-transform:none; color:var(--sepia);
+}
+.lang-menu-list .lang-link:hover { background:var(--parchment-dark); color:var(--vermilion); }
+.lang-menu-list .lang-current { font-weight:700; color:var(--vermilion); }
+.lang-switch-foot { flex-wrap:wrap; justify-content:center; row-gap:4px; }
+@media (max-width:620px){
+  .lang-menu-list { position:fixed; left:12px; right:12px; top:64px; min-width:0; }
+}
 
 /* ---------- lien d'évitement ---------- */
 
