@@ -1,0 +1,22 @@
+{
+  "name": "georankle-video-pipeline",
+  "private": true,
+  "type": "module",
+  "description": "Enregistre l'app mobile jouée comme un humain, et rend des vidéos App Store / Play / social.",
+  "scripts": {
+    "record": "node record.mjs",
+    "serve": "node lib/serve.mjs",
+    "build:app": "cd .. && npx expo export --platform web --output-dir video-pipeline/.dist",
+    "cut": "node cut.mjs",
+    "explore": "node explore.mjs",
+    "compose:sync": "mkdir -p compose/assets/clips && cp out/${DEVICE:-iphone69}/clips/*.mp4 compose/assets/clips/ && cp out/${DEVICE:-iphone69}/tour.json compose/assets/tour.json",
+    "compose:check": "cd compose && HYPERFRAMES_FFMPEG_PATH=$(node -p \"require('ffmpeg-static')\") HYPERFRAMES_FFPROBE_PATH=$(node -p \"require('ffprobe-static').path\") npx hyperframes@0.8.33 check",
+    "compose:render": "cd compose && HYPERFRAMES_FFMPEG_PATH=$(node -p \"require('ffmpeg-static')\") HYPERFRAMES_FFPROBE_PATH=$(node -p \"require('ffprobe-static').path\") npx hyperframes@0.8.33 render --quiet -o renders/app-preview.mp4",
+    "compose:social": "node -e \"const f=require('ffmpeg-static');require('child_process').execFileSync(f,['-hide_banner','-loglevel','error','-y','-i','compose/renders/app-preview.mp4','-vf','scale=1080:-2:flags=lanczos,crop=1080:1920:0:(ih-1920)/2','-c:v','libx264','-preset','slow','-crf','18','-pix_fmt','yuv420p','-movflags','+faststart','compose/renders/app-preview-1080x1920.mp4'],{stdio:'inherit'})\""
+  },
+  "dependencies": {
+    "ffmpeg-static": "^5.2.0",
+    "ffprobe-static": "^3.1.0",
+    "playwright": "^1.56.0"
+  }
+}

@@ -1,0 +1,9 @@
+node_modules/
+# Le build web servi pendant la prise, et les rushes : des artefacts, parfois
+# lourds de plusieurs centaines de mégaoctets. On versionne la recette, pas le plat.
+.dist/
+out/
+
+# Le gabarit d’environnement de prise est du code, pas un secret : la règle
+# « .env* » de la racine l’exclurait sans cette exception.
+!.env.record.example
