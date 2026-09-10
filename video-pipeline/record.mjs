@@ -15,7 +15,8 @@ import { serve } from './lib/serve.mjs';
 import { openApp } from './lib/browser.mjs';
 import { record } from './lib/recorder.mjs';
 import { Human } from './lib/human.mjs';
-import { SCENES, goHome } from './tour.mjs';
+import { SCENES, LOGGED_SCENES, goHome } from './tour.mjs';
+import { openSparring } from './lib/sparring.mjs';
 import {
   WEB_DIST, PORT, OUT, DEVICES, DEVICE, FPS, SCREENCAST_QUALITY,
   CRF, X264_PRESET, SEED, LOCALE, HEADED, TEMPO,
@@ -24,8 +25,18 @@ import {
 const device = DEVICES[DEVICE];
 if (!device) throw new Error(`appareil inconnu : ${DEVICE} (${Object.keys(DEVICES).join(', ')})`);
 
+// Les scènes connectées n'entrent dans la visite qu'avec un compte. Les
+// identifiants restent dans l'environnement : ils ne passent ni par le
+// manifeste, ni par le journal, ni par un fichier du dépôt.
+const account = process.env.RECORD_EMAIL && process.env.RECORD_PASSWORD
+  ? { email: process.env.RECORD_EMAIL, password: process.env.RECORD_PASSWORD }
+  : null;
+const sparringAccount = process.env.SPARRING_EMAIL && process.env.SPARRING_PASSWORD
+  ? { email: process.env.SPARRING_EMAIL, password: process.env.SPARRING_PASSWORD }
+  : null;
+
 const only = process.env.SCENES ? new Set(process.env.SCENES.split(',').map((s) => s.trim())) : null;
-const scenes = SCENES.filter((s) => !only || only.has(s.id));
+const scenes = [...SCENES, ...(account ? LOGGED_SCENES : [])].filter((s) => !only || only.has(s.id));
 if (!scenes.length) throw new Error(`aucune scène retenue (SCENES=${process.env.SCENES})`);
 
 const outDir = join(OUT, DEVICE);
@@ -36,7 +47,7 @@ const t = () => new Date().toISOString().slice(11, 19);
 const log = (...a) => console.log(`[${t()}]`, ...a);
 
 log(`appareil ${DEVICE} — ${device.out.width}×${device.out.height} @ ${FPS} i/s`);
-log(`${scenes.length} scène(s), graine ${SEED}, tempo ×${TEMPO}`);
+log(`${scenes.length} scène(s), graine ${SEED}, tempo ×${TEMPO}${account ? ', compte connecté' : ''}${sparringAccount ? ', partenaire' : ''}`);
 
 const { url, close: closeServer } = await serve(WEB_DIST, PORT);
 const { browser, page, cdp } = await openApp({ device, locale: LOCALE, headed: HEADED });
@@ -51,6 +62,24 @@ await page.getByRole('button', { name: 'Solo', exact: true }).first().waitFor({ 
 await page.waitForTimeout(2500); // les polices et le globe d'accueil se posent
 
 const human = new Human(page, cdp, { seed: SEED, tempo: TEMPO, log: (m) => log('  ·', m) });
+
+// Le partenaire d'entraînement se connecte AVANT que la caméra tourne : sa
+// propre connexion n'a rien à faire dans le film, et il doit être prêt quand le
+// héros entre en file classée.
+let sparring = null;
+if (account && sparringAccount && scenes.some((s) => s.id === 'classe')) {
+  try {
+    sparring = await openSparring(browser, { url, device, locale: LOCALE, ...sparringAccount, log });
+  } catch (e) {
+    log(`  ✗ partenaire indisponible : ${e.message.split('\n')[0]}`);
+  }
+}
+const ctx = {
+  email: account?.email,
+  password: account?.password,
+  sparring,
+  sparringName: process.env.SPARRING_NAME || null,
+};
 
 const rec = await record(page, cdp, {
   out: video,
@@ -80,7 +109,7 @@ for (const scene of scenes) {
   };
   let error = null;
   try {
-    await scene.run(human, page, note);
+    await scene.run(human, page, note, ctx);
   } catch (e) {
     error = e.message.split('\n')[0];
     log(`  ✗ ${scene.id} : ${error}`);
@@ -98,6 +127,7 @@ for (const scene of scenes) {
 await human.pause(1400); // et une sortie, pour la même raison
 
 const stats = await rec.stop();
+if (sparring) await sparring.close();
 await browser.close();
 await closeServer();
 
@@ -109,6 +139,7 @@ const manifest = {
   seed: SEED,
   tempo: TEMPO,
   locale: LOCALE,
+  loggedIn: !!account, // jamais l'adresse elle-même
   video: 'tour.mp4',
   duration: +stats.seconds.toFixed(3),
   capturedFrames: stats.received,

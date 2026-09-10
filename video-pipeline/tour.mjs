@@ -436,3 +436,162 @@ export const SCENES = [
 ];
 
 export { answerQuestion, buttonLabels, isChrome, firstOf, enterMode, outcome };
+
+// ── Les scènes connectées ───────────────────────────────────────────────────
+//
+// Elles n'existent que si `RECORD_EMAIL` et `RECORD_PASSWORD` sont dans
+// l'environnement : sans compte, la visite s'arrête aux modes solo. Les
+// identifiants ne sont jamais écrits — ni dans le manifeste, ni dans le journal,
+// ni à l'écran autrement que par les points du champ « Mot de passe ».
+//
+// Ces scènes ont été écrites d'après les libellés d'accessibilité du code
+// source, pas d'après une prise : le conteneur qui a servi à la prise solo ne
+// peut pas joindre Supabase. Chaque cible passe donc par `firstOf` avec des
+// variantes, et une scène qui ne trouve pas son écran se retire au lieu de
+// casser la visite. La première prise sur une machine connectée dira ce qui
+// reste à ajuster — c'est ce que `explore.mjs` sert à relever vite.
+
+export const LOGGED_SCENES = [
+  {
+    id: 'connexion',
+    title: 'La connexion — la frappe',
+    async run(h, page, note, ctx) {
+      const login = await firstOf(page, ['Connexion', 'Se connecter']);
+      if (!login) return;
+      await h.tap(login.locator, { label: login.name, after: 'study' });
+      // L'adresse d'abord, lentement : c'est une des rares scènes où l'on voit
+      // qu'une main tape. Le mot de passe s'affiche en points, on peut aller
+      // un peu plus vite sans que ça se voie.
+      await h.type(page.getByLabel('Email').first(), ctx.email, { cps: 3.4, after: 'glance' });
+      await h.type(page.getByLabel('Mot de passe').first(), ctx.password, { cps: 4.5, after: 'read' });
+      await h.tapButton('Se connecter', { after: 'glance' });
+      // La modale se ferme d'elle-même quand la session est ouverte ; le
+      // bouton d'en-tête passe de « Connexion » à « Profil ».
+      await page.getByRole('button', { name: 'Profil', exact: true }).first().waitFor({ timeout: 30000 });
+      note?.({ kind: 'login', ok: true });
+      await h.read('savour'); // l'accueil se repeuple : pièces, pseudo, notifications
+    },
+  },
+
+  {
+    id: 'profil',
+    title: 'Le profil',
+    async run(h, page) {
+      await h.tapButton('Profil', { after: 'study' });
+      await h.browse({ dwell: 'read', max: 4 });
+      const custom = await firstOf(page, ["Personnaliser l'avatar", 'Personnaliser']);
+      if (custom) {
+        await h.tap(custom.locator, { label: custom.name, after: 'study' });
+        await h.browse({ dwell: 'read', max: 3 });
+        const back = await firstOf(page, ['Retour', 'Fermer']);
+        if (back) await h.tap(back.locator, { label: back.name, after: 'glance' });
+      }
+    },
+  },
+
+  {
+    id: 'boutique',
+    title: 'La boutique',
+    async run(h, page) {
+      const shop = await firstOf(page, ['Boutique']);
+      if (!shop) return;
+      await h.tap(shop.locator, { label: 'Boutique', after: 'study' });
+      await h.browse({ dwell: 'study', max: 5 }); // les globes, les thèmes, les prix
+      const tryIt = await firstOf(page, ['Essayer les globes en jeu', 'Personnaliser mon monde']);
+      if (tryIt) await h.tap(tryIt.locator, { label: tryIt.name, after: 'study' });
+    },
+  },
+
+  {
+    id: 'amis',
+    title: 'Les amis',
+    async run(h, page, note, ctx) {
+      const friends = await firstOf(page, ['Amis']);
+      if (!friends) return;
+      await h.tap(friends.locator, { label: 'Amis', after: 'study' });
+      await h.browse({ dwell: 'read', max: 3 });
+      const field = page.getByPlaceholder(/Rechercher un pseudo/).first();
+      if (await field.count()) {
+        // On cherche le pseudo du partenaire quand on le connaît, sinon un
+        // préfixe : ce qui compte à l'image, c'est la liste qui se remplit.
+        await h.type(field, ctx.sparringName || 'test', { cps: 3.4, after: 'read' });
+        await h.tapButton('Rechercher', { after: 'study' });
+      }
+    },
+  },
+
+  {
+    id: 'classement',
+    title: 'Le classement mondial',
+    async run(h, page) {
+      await h.tapButton('Classement', { after: 'study' });
+      await h.browse({ dwell: 'read', max: 4 });
+    },
+  },
+
+  {
+    id: 'ligues',
+    title: 'Les ligues',
+    async run(h, page) {
+      await h.tapButton('En Ligne', { after: 'read' });
+      const league = await firstOf(page, ['Ligue', 'Ligues']);
+      if (!league) return;
+      await h.tap(league.locator, { label: league.name, after: 'study' });
+      await h.browse({ dwell: 'read', max: 3 });
+      const open = page.getByRole('button', { name: /^Ouvrir cette ligue/ }).first();
+      if (await open.count()) {
+        await h.tap(open, { label: 'une ligue', after: 'study' });
+        await h.browse({ dwell: 'read', max: 3 });
+      }
+    },
+  },
+
+  {
+    id: 'classe',
+    title: 'Le mode classé — un vrai duel',
+    async run(h, page, note, ctx) {
+      await h.tapButton('En Ligne', { after: 'read' });
+      await h.tapButton('Mode Classé', { after: 'study' }); // rang, saison, format
+      // Le partenaire entre dans la file un instant AVANT nous : c'est lui qui
+      // attend, pas le héros — une recherche qui dure à l'image est un plan
+      // qu'on coupe.
+      if (ctx.sparring) {
+        await ctx.sparring.queueRanked();
+        ctx.sparring.playAlong().catch(() => {}); // hors champ, jusqu'à la fin du match
+      }
+      await h.tapButton('Trouver une partie classée', { after: 'glance' });
+      note?.({ kind: 'queue' });
+      // « Annuler la recherche » disparaît quand l'adversaire est trouvé.
+      const searching = page.getByRole('button', { name: 'Annuler la recherche', exact: true }).first();
+      try {
+        await searching.waitFor({ state: 'hidden', timeout: 90000 });
+        note?.({ kind: 'matched' });
+      } catch {
+        note?.({ kind: 'no-match' });
+        await h.tap(searching, { label: 'Annuler la recherche', after: 'read' });
+        return;
+      }
+      await h.read('savour'); // l'écran de présentation des deux joueurs
+      for (let i = 0; i < 4; i++) {
+        const played = await answerQuestion(h, page, { difficulty: 'CARRÉ, 3 points', note });
+        if (!played) break;
+      }
+      await h.read('savour'); // le score final, le delta de points classés
+    },
+  },
+
+  {
+    id: 'deconnexion',
+    title: 'La déconnexion',
+    async run(h, page) {
+      // On rend le téléphone comme on l'a pris : la prochaine prise doit
+      // pouvoir commencer sur l'écran de connexion.
+      await h.tapButton('Profil', { after: 'read' });
+      const out = await firstOf(page, ['Déconnexion']);
+      if (!out) return;
+      await h.tap(out.locator, { label: 'Déconnexion', after: 'read' });
+      const confirm = await firstOf(page, ['Déconnexion', 'Confirmer', 'Oui']);
+      if (confirm) await h.tap(confirm.locator, { label: confirm.name, after: 'study' });
+    },
+  },
+];

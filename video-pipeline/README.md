@@ -130,14 +130,55 @@ requête ne part vers la production. Une vidéo de fiche store ne peut donc pas
 exposer un pseudo, un score ou un classement réel, et la prise n'envoie jamais
 d'identifiants.
 
-**Ce qui manque encore**, faute de compte connecté : boutique, amis, ligues,
-profil, matchmaking en ligne. Il faudra pour cela un projet Supabase de
-démonstration, peuplé de comptes fictifs — jamais la base de production.
+## Les écrans connectés
 
-## Et après
+Avec un compte, la visite continue : connexion (la scène de frappe), profil,
+boutique, amis, classement mondial, ligues, **un vrai duel classé**, puis
+déconnexion. Les identifiants viennent de l'environnement et n'en sortent
+jamais — ni manifeste, ni journal, ni fichier du dépôt :
 
-Le montage — titres, sous-titres, transitions, musique — n'est pas ici. Il est
-prévu avec [HyperFrames](https://github.com/heygen-com/hyperframes) (HTML → MP4
-déterministe, Apache 2.0), qui consommera `clips/` et `tour.json`. La prise et
-le montage restent séparés : refaire un titre ne doit pas obliger à rejouer une
-partie.
+```sh
+cp ../.env.local.mien ../.env.local     # le VRAI backend cette fois : les comptes y vivent
+npm run build:app
+RECORD_EMAIL=test1@test.com RECORD_PASSWORD=… \
+SPARRING_EMAIL=test2@test.com SPARRING_PASSWORD=… SPARRING_NAME=test2 \
+npm run record
+```
+
+`SPARRING_*` ouvre un **second téléphone hors champ** (`lib/sparring.mjs`), qui
+se connecte avec l'autre compte, entre dans la file classée juste avant le
+héros et répond aux questions sans pause : c'est lui qui rend le match
+possible. Sans lui, la scène `classe` cherche un adversaire pendant 90 s puis
+annule proprement.
+
+Deux réserves. Les comptes doivent être **des comptes de test** — tout ce que
+la prise joue (pièces, ELO, scores du jour) est réellement écrit dans la base.
+Et ces scènes ont été écrites d'après les libellés d'accessibilité du code
+source, pas d'après une prise : la machine qui a filmé la visite solo ne
+pouvait pas joindre Supabase. Chaque cible passe par des variantes et une scène
+qui ne trouve pas son écran se retire ; la première prise connectée dira ce
+qui reste à ajuster, et `explore.mjs` sert à relever vite le bon libellé.
+
+## Le montage — `compose/`
+
+La prise et le montage sont séparés : refaire un titre ne doit pas obliger à
+rejouer une partie. Le montage est un projet
+[HyperFrames](https://github.com/heygen-com/hyperframes) (HTML → MP4
+déterministe, Apache 2.0) dans `compose/` : la vidéo est une page HTML, chaque
+plan un `<video>` daté (`data-start`, `data-duration`, `data-media-start` pour
+le point d'entrée dans le rush), les titres des éléments animés par GSAP.
+
+```sh
+npm run cut                    # d'abord les plans, depuis la prise
+npm run compose:sync           # copie clips/ + tour.json dans compose/assets/
+cd compose && npm run check    # lint + validation en Chrome headless
+npm run render                 # → compose/renders/app-preview.mp4
+```
+
+Ce que le montage exige de la machine : un Chrome headless que HyperFrames
+télécharge lui-même (`npx hyperframes browser ensure`), et ffmpeg/ffprobe —
+fournis par `ffmpeg-static`/`ffprobe-static` et passés par
+`HYPERFRAMES_FFMPEG_PATH`/`HYPERFRAMES_FFPROBE_PATH` (voir `compose:render`).
+GSAP et les polices sont **vendus localement** (`compose/vendor/`,
+`compose/assets/fonts/`) : le Chrome du rendu n'a pas accès au réseau, et un
+CDN qui répond différemment un jour casserait le déterminisme de toute façon.
