@@ -13,6 +13,9 @@ export type AnalyticsEvent =
   | 'logged_in'
   | 'logged_out'
   | 'password_reset_requested'
+  // "Continuer avec Apple / Google" tapped (props: provider). Success shows up
+  // as the regular 'logged_in' fired by AuthContext on SIGNED_IN.
+  | 'oauth_login_started'
   // Games (solo + local)
   | 'game_started'
   | 'game_completed'
@@ -27,7 +30,11 @@ export type AnalyticsEvent =
   | 'daily_opened'
   | 'daily_completed'
   | 'daily_shared'
+  // Share sheet rejected/dismissed (props: reason). See src/lib/shareDaily.ts.
+  | 'daily_share_failed'
   | 'daily_reminder_set'
+  // Store rating sheet requested after a daily with a streak (src/lib/reviewPrompt.ts).
+  | 'review_prompted'
   // Leagues (friend groups over the daily challenge)
   | 'league_opened'
   | 'league_created'

@@ -473,6 +473,10 @@ Allow: /
 # sans intérêt pour l'indexation, et c'est le genre de page vide qui fait
 # échouer une revue AdSense si elle est explorée directement.
 Disallow: /app.html
+# Liens de bio traçables (public/go.js) : une redirection, pas une page.
+Disallow: /tiktok/
+Disallow: /instagram/
+Disallow: /youtube/
 ${LOCALES.filter((l) => l !== DEFAULT_LOCALE)
   .map((l) => `Disallow: /app-${l}.html`)
   .join('\n')}

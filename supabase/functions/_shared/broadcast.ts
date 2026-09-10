@@ -14,21 +14,44 @@ export type Segment =
   | { type: 'inactive'; days: number }
   | { type: 'users'; ids: string[] }
   | { type: 'activity'; filter: 'played_mode'; mode: string }
-  | { type: 'activity'; filter: 'never_online' };
+  | { type: 'activity'; filter: 'never_online' }
+  // Players who have NOT yet played today's daily challenge (UTC day). The
+  // evening reminder targets exactly them: nudging someone who already played
+  // is noise, and noise is how people turn notifications off.
+  | { type: 'daily_pending' };
 
-type Recipient = { id: string; push_token: string };
+/**
+ * Per-language copy. `{streak}` in any string is replaced by the recipient's
+ * current daily streak; `body_streak` (optional) is used instead of `body`
+ * when that streak is > 0, so the loss-aversion line only goes to people who
+ * actually have something to lose.
+ */
+export interface LocalizedCopy {
+  title?: string;
+  body?: string;
+  body_streak?: string;
+}
+export type CampaignI18n = Record<string, LocalizedCopy>;
 
+type Recipient = {
+  id: string;
+  push_token: string;
+  push_lang?: string | null;
+  daily_streak?: number | null;
+};
+
+const RECIPIENT_COLS = 'id, push_token, push_lang, daily_streak';
 const EXPO_URL = 'https://exp.host/--/api/v2/push/send';
 const DAY_MS = 86_400_000;
 
-/** Fetch (id, push_token) for a set of user ids, chunked to keep the `in()` small. */
+/** Fetch recipients for a set of user ids, chunked to keep the `in()` small. */
 async function tokensForIds(admin: Admin, ids: string[]): Promise<Recipient[]> {
   const out: Recipient[] = [];
   for (let i = 0; i < ids.length; i += 300) {
     const chunk = ids.slice(i, i + 300);
     const { data } = await admin
       .from('profiles')
-      .select('id, push_token')
+      .select(RECIPIENT_COLS)
       .in('id', chunk)
       .not('push_token', 'is', null);
     if (data) out.push(...data);
@@ -42,7 +65,7 @@ export async function resolveRecipients(admin: Admin, segment: Segment): Promise
     case 'everyone': {
       const { data } = await admin
         .from('profiles')
-        .select('id, push_token')
+        .select(RECIPIENT_COLS)
         .not('push_token', 'is', null);
       return data ?? [];
     }
@@ -53,9 +76,20 @@ export async function resolveRecipients(admin: Admin, segment: Segment): Promise
       // Never-seen users (last_seen NULL) count as inactive too.
       const { data } = await admin
         .from('profiles')
-        .select('id, push_token')
+        .select(RECIPIENT_COLS)
         .not('push_token', 'is', null)
         .or(`last_seen.lt.${cutoff},last_seen.is.null`);
+      return data ?? [];
+    }
+
+    case 'daily_pending': {
+      // Same day boundary as the daily puzzle itself (src/lib/daily.ts): UTC.
+      const today = new Date().toISOString().slice(0, 10);
+      const { data } = await admin
+        .from('profiles')
+        .select(RECIPIENT_COLS)
+        .not('push_token', 'is', null)
+        .or(`daily_last_date.lt.${today},daily_last_date.is.null`);
       return data ?? [];
     }
 
@@ -72,7 +106,7 @@ export async function resolveRecipients(admin: Admin, segment: Segment): Promise
         }
         const { data } = await admin
           .from('profiles')
-          .select('id, push_token')
+          .select(RECIPIENT_COLS)
           .not('push_token', 'is', null);
         return (data ?? []).filter((p: Recipient) => !played.has(p.id));
       }
@@ -97,6 +131,22 @@ export async function resolveRecipients(admin: Admin, segment: Segment): Promise
   return [];
 }
 
+/** Pick the copy for one recipient: their language, else en, else fr, else the plain title/body. */
+export function copyFor(
+  r: Pick<Recipient, 'push_lang' | 'daily_streak'>,
+  title: string,
+  body: string,
+  i18n?: CampaignI18n | null,
+): { title: string; body: string } {
+  const lang = (r.push_lang ?? '').toLowerCase().slice(0, 2);
+  const loc = i18n ? (i18n[lang] ?? i18n.en ?? i18n.fr) : undefined;
+  const streak = Math.max(0, Number(r.daily_streak ?? 0));
+  const t = loc?.title ?? title;
+  const b = (streak > 0 && loc?.body_streak) || loc?.body || body;
+  const fill = (s: string) => s.replaceAll('{streak}', String(streak));
+  return { title: fill(t), body: fill(b) };
+}
+
 type SendResult = { tokens: number; sent: number; invalid: string[] };
 
 /** Push to every recipient via the Expo Push API, in batches of 100. */
@@ -104,18 +154,24 @@ async function sendExpo(
   recipients: Recipient[],
   title: string,
   body: string,
+  i18n?: CampaignI18n | null,
   data?: Record<string, unknown>,
 ): Promise<SendResult> {
-  const tokens = [...new Set(recipients.map((r) => r.push_token).filter(Boolean))];
+  // One message per token; a token shared by two profiles gets the first one's copy.
+  const seen = new Set<string>();
+  const unique = recipients.filter((r) => {
+    if (!r.push_token || seen.has(r.push_token)) return false;
+    seen.add(r.push_token);
+    return true;
+  });
   let sent = 0;
   const invalid: string[] = [];
 
-  for (let i = 0; i < tokens.length; i += 100) {
-    const chunk = tokens.slice(i, i + 100);
-    const messages = chunk.map((to) => ({
-      to,
-      title,
-      body,
+  for (let i = 0; i < unique.length; i += 100) {
+    const chunk = unique.slice(i, i + 100);
+    const messages = chunk.map((r) => ({
+      to: r.push_token,
+      ...copyFor(r, title, body, i18n),
       sound: 'default',
       ...(data ? { data } : {}),
     }));
@@ -127,10 +183,11 @@ async function sendExpo(
         body: JSON.stringify(messages),
       });
       const json = await res.json().catch(() => null);
+      // deno-lint-ignore no-explicit-any
       const tickets: any[] = json?.data ?? [];
       tickets.forEach((t, idx) => {
         if (t?.status === 'ok') sent++;
-        else if (t?.details?.error === 'DeviceNotRegistered') invalid.push(chunk[idx]);
+        else if (t?.details?.error === 'DeviceNotRegistered') invalid.push(chunk[idx].push_token);
       });
     } catch (_e) {
       // A failed chunk is logged via the returned counts (sent stays lower); we
@@ -138,7 +195,7 @@ async function sendExpo(
     }
   }
 
-  return { tokens: tokens.length, sent, invalid };
+  return { tokens: unique.length, sent, invalid };
 }
 
 /** Null out tokens Expo reported as DeviceNotRegistered so we stop hitting them. */
@@ -155,6 +212,10 @@ export interface BroadcastOpts {
   campaignId?: string | null;
   sentBy?: string | null;
   dryRun?: boolean;
+  /** Optional per-language copy (see LocalizedCopy). Falls back to title/body. */
+  i18n?: CampaignI18n | null;
+  /** Extra payload for the app (e.g. { screen: 'daily' }). */
+  data?: Record<string, unknown>;
 }
 
 export interface BroadcastResult {
@@ -172,8 +233,9 @@ export async function runBroadcast(admin: Admin, opts: BroadcastOpts): Promise<B
     return { recipients: unique.size, sent: 0, dryRun: true };
   }
 
-  const { tokens, sent, invalid } = await sendExpo(recipients, opts.title, opts.body, {
+  const { tokens, sent, invalid } = await sendExpo(recipients, opts.title, opts.body, opts.i18n, {
     type: 'broadcast',
+    ...(opts.data ?? {}),
   });
   if (invalid.length) await clearInvalidTokens(admin, invalid);
 

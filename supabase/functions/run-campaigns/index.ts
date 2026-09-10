@@ -1,7 +1,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-import { runBroadcast, type Segment } from '../_shared/broadcast.ts';
+import { runBroadcast, type CampaignI18n, type Segment } from '../_shared/broadcast.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -18,6 +18,7 @@ interface Campaign {
   hour: number;
   weekday: number | null;
   last_run_at: string | null;
+  i18n: CampaignI18n | null;
 }
 
 /** Is this campaign due to fire on this hourly tick? */
@@ -56,31 +57,41 @@ Deno.serve(async (req) => {
     }
 
     const now = new Date();
+    // `?dry=1` (same secret): count recipients of EVERY enabled campaign,
+    // ignoring the schedule, without sending or touching last_run_at. Used to
+    // check a campaign's targeting right after creating it.
+    const dry = new URL(req.url).searchParams.get('dry') === '1';
 
     const { data: campaigns } = await admin
       .from('notification_campaigns')
-      .select('id, title, body, segment, schedule, hour, weekday, last_run_at')
+      .select('id, title, body, segment, schedule, hour, weekday, last_run_at, i18n')
       .eq('enabled', true);
 
-    const due = (campaigns ?? []).filter((c: Campaign) => isDue(c, now));
+    const due = (campaigns ?? []).filter((c: Campaign) => dry || isDue(c, now));
     const results: Array<{ id: string; recipients: number; sent: number }> = [];
 
     for (const c of due) {
       const r = await runBroadcast(admin, {
         title: c.title,
         body: c.body,
+        i18n: c.i18n,
         segment: c.segment,
         source: 'campaign',
         campaignId: c.id,
+        dryRun: dry,
+        // Tapping the reminder should land on the daily hub, not the menu.
+        data: c.segment?.type === 'daily_pending' ? { screen: 'daily' } : undefined,
       });
-      await admin
-        .from('notification_campaigns')
-        .update({ last_run_at: now.toISOString() })
-        .eq('id', c.id);
+      if (!dry) {
+        await admin
+          .from('notification_campaigns')
+          .update({ last_run_at: now.toISOString() })
+          .eq('id', c.id);
+      }
       results.push({ id: c.id, recipients: r.recipients, sent: r.sent });
     }
 
-    return new Response(JSON.stringify({ ran: results.length, results }), {
+    return new Response(JSON.stringify({ ran: results.length, dry, results }), {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (e) {

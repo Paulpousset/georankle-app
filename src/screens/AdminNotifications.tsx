@@ -147,6 +147,8 @@ export default function AdminNotifications({
         return s.filter === 'never_online'
           ? t('Jamais joué en ligne', 'Never played online')
           : `${modeLabel(s.mode as MatchMode, language)}`;
+      case 'daily_pending':
+        return t('Défi du jour pas encore joué', 'Daily not played yet');
     }
   };
 

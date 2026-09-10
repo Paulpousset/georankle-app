@@ -15,7 +15,9 @@ export type Segment =
   | { type: 'inactive'; days: number }
   | { type: 'users'; ids: string[] }
   | { type: 'activity'; filter: 'played_mode'; mode: string }
-  | { type: 'activity'; filter: 'never_online' };
+  | { type: 'activity'; filter: 'never_online' }
+  // Joueurs qui n'ont pas encore fait le défi du jour (jour UTC) — rappel du soir.
+  | { type: 'daily_pending' };
 
 export interface Campaign {
   id: string;

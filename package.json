@@ -45,6 +45,7 @@
     "expo-localization": "~17.0.9",
     "expo-notifications": "~0.32.17",
     "expo-status-bar": "~3.0.9",
+    "expo-store-review": "~9.0.9",
     "expo-tracking-transparency": "~6.0.8",
     "fuse.js": "^7.4.2",
     "lucide-react-native": "^1.21.0",

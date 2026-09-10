@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react';
-import { Share, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { View } from 'react-native';
 import { showAlert } from '../lib/alert';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { User } from '@supabase/supabase-js';
@@ -8,9 +8,9 @@ import type { GameMode } from '../types';
 import { completeDaily, seedFor, type DailyResult } from '../lib/daily';
 import { variantForSeed } from '../lib/languages';
 import { challengeForSeed } from '../data/challenges';
-import { buildShareMessage } from '../lib/share';
-import { getReferralInfo } from '../lib/referral';
+import { prefetchReferralCode, shareDailyResult } from '../lib/shareDaily';
 import { track } from '../lib/analytics';
+import { maybeAskForReview } from '../lib/reviewPrompt';
 import { tr } from '../i18n';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useToast } from '../components/ToastProvider';
@@ -88,6 +88,11 @@ export default function DailyGameHost({
         ),
       );
     }
+    // Store rating ask, only on a streak and only once the result is on screen
+    // (the OS sheet would otherwise land on top of the score reveal).
+    setTimeout(() => {
+      maybeAskForReview(state.streak).catch(() => {});
+    }, 2500);
   };
 
   // Continuous-score modes call this on every score change so a mid-game quit
@@ -124,13 +129,18 @@ export default function DailyGameHost({
     );
   };
 
-  const onShare = async () => {
+  // The referral code is fetched up front: the share sheet must open in the
+  // same tick as the tap (web user-activation rule), so no await at tap time.
+  useEffect(() => {
+    if (user) prefetchReferralCode().catch(() => {});
+  }, [user]);
+
+  const onShare = () => {
     const r = resultRef.current;
     if (!r) return;
-    track('daily_shared', { mode });
-    // Carry the player's referral code so a shared result doubles as an invite.
-    const info = await getReferralInfo();
-    Share.share({ message: buildShareMessage(r, streak, language, info?.code) }).catch(() => {});
+    shareDailyResult(r, streak, language, mode, () =>
+      toast.success(tr(language, 'Résultat copié !', 'Result copied!')),
+    ).catch(() => {});
   };
 
   // Exit helper for screens that navigate via setGameMode('menu').

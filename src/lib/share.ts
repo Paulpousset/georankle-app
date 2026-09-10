@@ -9,7 +9,7 @@
 import type { Language } from '../types';
 import type { DailyResult } from './daily';
 import { dailyModeLabel, getPuzzleNumber } from './daily';
-import { SITE_DOMAIN, playLink } from './links';
+import { playLink } from './links';
 import { tr } from '../i18n';
 
 /** One-line score summary used when a mode ships no emoji grid yet. */
@@ -60,7 +60,8 @@ export function buildShareMessage(
   // today's challenge in the browser (no install) — and carries the referral
   // code so playing then installing credits both players.
   lines.push(tr(language, 'À toi de faire mieux 👇', 'Beat my score 👇'));
-  lines.push(refCode ? playLink(refCode) : SITE_DOMAIN);
+  // No code (logged-out player): still a real URL, tagged so opens are measurable.
+  lines.push(refCode ? playLink(refCode) : `${playLink()}?s=daily`);
 
   return lines.join('\n');
 }

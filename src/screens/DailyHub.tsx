@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, Linking, Platform, ScrollView, Share, Text, TouchableOpacity, View } from 'react-native';
+import { AppState, Linking, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import {
@@ -42,8 +42,8 @@ import {
 } from '../lib/daily';
 import { variantForSeed } from '../lib/languages';
 import { challengeForSeed, challengeLabel } from '../data/challenges';
-import { buildShareMessage } from '../lib/share';
-import { getReferralInfo } from '../lib/referral';
+import { prefetchReferralCode, shareDailyResult } from '../lib/shareDaily';
+import { useToast } from '../components/ToastProvider';
 import { SITE_URL } from '../lib/links';
 import { track } from '../lib/analytics';
 import { commonStyles as styles } from '../theme/commonStyles';
@@ -102,6 +102,7 @@ function shortScore(result: DailyResult): string {
 export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: DailyHubProps) {
   const { isDarkMode } = useTheme();
   const { language } = useLanguage();
+  const toast = useToast();
   const c = getColors(isDarkMode);
   const [state, setState] = useState<DailyState | null>(null);
   const [countdown, setCountdown] = useState(() => msUntilNextPuzzle());
@@ -150,10 +151,16 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
   // during render, and this only feeds a label.
   const todayUTC = getTodayUTC();
 
-  const shareResult = async (result: DailyResult) => {
-    // Carry the player's referral code so a shared result doubles as an invite.
-    const info = await getReferralInfo();
-    Share.share({ message: buildShareMessage(result, streak, language, info?.code) }).catch(() => {});
+  // Referral code prefetched so the share sheet opens synchronously on tap
+  // (see src/lib/shareDaily.ts for why that matters on the web).
+  useEffect(() => {
+    if (user) prefetchReferralCode().catch(() => {});
+  }, [user]);
+
+  const shareResult = (result: DailyResult) => {
+    shareDailyResult(result, streak, language, result.mode, () =>
+      toast.success(tr(language, 'Résultat copié !', 'Result copied!')),
+    ).catch(() => {});
   };
 
   return (
