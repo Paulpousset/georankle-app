@@ -1,11 +1,25 @@
-import pw from '/Users/paulpousset/.npm/_npx/e41f203b7505f1fb/node_modules/playwright/index.js';
-const { chromium } = pw;
+// Playwright n'est pas une dépendance de l'app : il vit dans `video-pipeline/`,
+// qui sert déjà à filmer les mêmes écrans. On le résout depuis là, avec un
+// repli sur une installation globale — plutôt que sur le chemin absolu d'une
+// machine, qui condamnait ce script à ne tourner que sur un seul Mac.
+import { createRequire } from 'module';
 import { mkdirSync } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const require = createRequire(import.meta.url);
+let chromium;
+try {
+  ({ chromium } = require(join(ROOT, 'video-pipeline/node_modules/playwright/index.js')));
+} catch {
+  ({ chromium } = require('playwright'));
+}
 
 const URL = process.env.SHOT_URL || 'http://localhost:5577';
 // DEVICE=ipad -> iPad Pro 13" (2048x2732); DEVICE=iphone65 -> 6.5" (1284x2778);
 // default iPhone 6.7/6.9" (1290x2796)
-const BASE = '/Users/paulpousset/rankle/georankle-app/store-screenshots';
+const BASE = process.env.SHOT_OUT || join(ROOT, 'store-screenshots');
 const PRESETS = {
   ipad: { viewport: { width: 1024, height: 1366 }, dsf: 2, out: `${BASE}/ipad-13` },
   iphone65: { viewport: { width: 428, height: 926 }, dsf: 3, out: `${BASE}/iphone-65` },
@@ -15,7 +29,7 @@ const preset = PRESETS[process.env.DEVICE] ?? PRESETS.default;
 const OUT = preset.out;
 mkdirSync(OUT, { recursive: true });
 
-const browser = await chromium.launch({ channel: 'chrome' });
+const browser = await chromium.launch();
 const ctx = await browser.newContext({
   viewport: preset.viewport,
   deviceScaleFactor: preset.dsf,
