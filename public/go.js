@@ -47,14 +47,21 @@
   (function wait() {
     var ph = window.posthog;
     if (ph && typeof ph.capture === 'function' && ph.__loaded) {
-      ph.capture('campaign_link_opened', {
-        source: source,
-        target_os: os,
-        utm_source: source,
-        utm_medium: 'social',
-        utm_campaign: 'bio',
-        $set: { utm_source: source },
-      });
+      // posthog-js met les events en file et n'envoie qu'après ~3 s : ici on
+      // quitte la page tout de suite, donc envoi immédiat, par beacon (survit
+      // à la navigation). Vérifié en prod : sans ça, aucun event ne partait.
+      ph.capture(
+        'campaign_link_opened',
+        {
+          source: source,
+          target_os: os,
+          utm_source: source,
+          utm_medium: 'social',
+          utm_campaign: 'bio',
+          $set: { utm_source: source },
+        },
+        { send_instantly: true, transport: 'sendBeacon' },
+      );
       setTimeout(go, 350);
       return;
     }
