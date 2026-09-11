@@ -69,3 +69,7 @@ coverage/
 
 # Captures du playtest multilingue (node scripts/i18n_playtest.mjs)
 .playtest-i18n/
+
+# Marketing (vidéos pub, app previews, TTS) : vit dans ~/rankle/videos-pub, hors du dépôt
+store-preview/
+video-pipeline/

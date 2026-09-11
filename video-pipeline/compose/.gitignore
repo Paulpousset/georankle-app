@@ -1,6 +1,0 @@
-node_modules/
-# Les rushes copiés depuis ../out et les rendus : des artefacts, jamais du code.
-assets/clips/
-assets/tour.json
-renders/
-.hyperframes/

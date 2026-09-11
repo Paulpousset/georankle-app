@@ -1,7 +1,7 @@
-// Playwright n'est pas une dépendance de l'app : il vit dans `video-pipeline/`,
-// qui sert déjà à filmer les mêmes écrans. On le résout depuis là, avec un
-// repli sur une installation globale — plutôt que sur le chemin absolu d'une
-// machine, qui condamnait ce script à ne tourner que sur un seul Mac.
+// Playwright n'est pas une dépendance de l'app : il vit dans le pipeline vidéo
+// marketing, sorti du dépôt le 2026-09-11 (`../videos-pub/video-pipeline/`, à
+// côté du dépôt), qui sert déjà à filmer les mêmes écrans. On le résout depuis
+// là (ou depuis PLAYWRIGHT_DIR), avec un repli sur une installation globale.
 import { createRequire } from 'module';
 import { mkdirSync } from 'fs';
 import { dirname, join } from 'path';
@@ -11,7 +11,8 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(import.meta.url);
 let chromium;
 try {
-  ({ chromium } = require(join(ROOT, 'video-pipeline/node_modules/playwright/index.js')));
+  const dir = process.env.PLAYWRIGHT_DIR || join(ROOT, '..', 'videos-pub', 'video-pipeline', 'node_modules', 'playwright');
+  ({ chromium } = require(join(dir, 'index.js')));
 } catch {
   ({ chromium } = require('playwright'));
 }
