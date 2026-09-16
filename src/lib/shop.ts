@@ -10,6 +10,9 @@
  */
 import { supabase } from './supabase';
 import { cacheClear } from './cache';
+import { cacheEquippedGlobe } from './globeSkin';
+import type { AvatarConfig } from '../types';
+import type { Json } from '../types/database';
 
 export type PurchaseResult =
   | { ok: true; alreadyOwned: boolean; newBalance: number }
@@ -38,6 +41,25 @@ export async function purchaseCosmetic(itemId: string, userId: string): Promise<
     // Invalidate the Profile coin snapshot so it reflects the new balance.
     void cacheClear(`profile:${userId}`);
     return { ok: true, alreadyOwned: result.already_owned, newBalance: result.new_balance };
+  } catch (e: unknown) {
+    return { ok: false, message: errorMessage(e) };
+  }
+}
+
+export type EquipResult = { ok: true } | { ok: false; message: string };
+
+/**
+ * Persist an avatar config (server validates ownership) and invalidate every
+ * local mirror of it: the Profile snapshot (SWR cache, 5-min TTL — without
+ * this the profile kept showing the OLD world after "Enregistrer") and the
+ * gameplay globe cache.
+ */
+export async function equipCosmetics(config: AvatarConfig, userId: string): Promise<EquipResult> {
+  try {
+    const { error } = await supabase.rpc('equip_cosmetics', { p_config: config as unknown as Json });
+    if (error) throw error;
+    await Promise.all([cacheClear(`profile:${userId}`), cacheEquippedGlobe(config)]);
+    return { ok: true };
   } catch (e: unknown) {
     return { ok: false, message: errorMessage(e) };
   }

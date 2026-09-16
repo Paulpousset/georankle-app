@@ -38,7 +38,7 @@ import {
 } from './lib/routes.mjs';
 import { renderPage, attr, ADSENSE_HEAD } from './lib/layout.mjs';
 import { loadPage, interpolate, extractFaq } from './lib/content.mjs';
-import { playDoc, playBar, PLAY_DOC_CSS } from './lib/playDoc.mjs';
+import { playDoc, playBar, PLAY_DOC_CSS, PLAY_DOC_SCRIPT } from './lib/playDoc.mjs';
 import { article, faqPage, videoGame, render as renderJsonLd } from './lib/jsonld.mjs';
 import { buildSitemap } from './lib/sitemap.mjs';
 import { validate } from './lib/validate.mjs';
@@ -46,6 +46,7 @@ import { strings } from './lib/strings.mjs';
 import { COUNTRY_COUNT, MODE_COUNT } from './lib/constants.mjs';
 import { assertPartition } from './lib/continents.mjs';
 import { localeData } from './lib/siteLocales.mjs';
+import { INVITE_COPY, inviteFile, renderInvite } from './lib/invite.mjs';
 
 function fail(message) {
   console.error(`\n[site] ${message}\n`);
@@ -208,10 +209,14 @@ ${ADSENSE_HEAD}
          parte tout de suite ; inerte sans ces paramètres, et inerte aussi avec
          web=1 (le joueur a choisi le navigateur). Voir public/open-in-app.js. -->
     <script>window.GEOG_APP_LINK=${JSON.stringify({ have: s.haveApp, open: s.openInApp, close: s.dismiss })};</script>
-    <script src="/open-in-app.js"></script>
-${PLAY_DOC_CSS}`;
+    <script src="/open-in-app.js"></script>`;
 
   html = replaceOnce(html, '<title>GeoG</title>', head, 'balise title');
+
+  // Le style du site vient en FIN de <head>, APRÈS la feuille « expo-reset » :
+  // à spécificité égale c'est l'ordre qui tranche, et placé avant, notre
+  // verrou de page perdait contre le `body { overflow:hidden }` d'Expo.
+  html = replaceOnce(html, '</head>', `${PLAY_DOC_CSS}\n  </head>`, 'fin du head');
 
   // Sans JavaScript, on propose ce qui existe VRAIMENT dans cette langue : les
   // guides pour le français et l'anglais, les pages de mode pour les autres —
@@ -254,11 +259,12 @@ ${fallbackLinks}
   );
 
   // Le contenu éditorial vient APRÈS `#root` : le jeu garde un écran plein et
-  // le texte se lit en défilant. Voir site/lib/playDoc.mjs pour le pourquoi.
+  // le texte se lit en mode lecture (bascule par la barre). Voir
+  // site/lib/playDoc.mjs pour le pourquoi.
   html = replaceOnce(
     html,
     '<div id="root"></div>',
-    `${playBar(locale)}\n  <div id="root"></div>\n${playDoc(locale)}`,
+    `${playBar(locale)}\n  <div id="root"></div>\n${playDoc(locale)}\n${PLAY_DOC_SCRIPT}`,
     'racine React',
   );
   return html;
@@ -294,6 +300,21 @@ for (const locale of LOCALES) {
   if (!shells[locale].includes('/open-in-app.js')) {
     fail(`${locale} : coquille sans le pont web → app (public/open-in-app.js)`);
   }
+}
+
+/**
+ * La page d'invitation, une coquille par langue (`/invite-xx.html`) : les
+ * aperçus de lien lisent les balises Open Graph sans exécuter de script, le
+ * titre de la carte doit donc déjà être dans la langue du parrain. Servie sur
+ * `/invite.html?lang=xx` par les réécritures de vercel.json (voir
+ * checkVercelRoutes). Sans `?lang=`, la version française — les liens déjà
+ * partagés avant cette page — qui renvoie côté client sur la bonne langue.
+ */
+for (const locale of LOCALES) {
+  if (!INVITE_COPY[locale]) fail(`${locale} : page d'invitation sans texte (site/lib/invite.mjs)`);
+  const html = renderInvite(locale);
+  if (!html.includes('/open-in-app.js')) fail(`${locale} : page d'invitation sans le pont web → app`);
+  emit(inviteFile(locale), html);
 }
 
 // ── 2. Les pages de contenu ───────────────────────────────────────────────────
@@ -508,6 +529,24 @@ function checkVercelRoutes() {
         holes.push(`rewrites: ${source} → /app-${locale}.html`);
       }
     }
+  }
+  // La page d'invitation : `/invite.html?lang=xx` → `/invite-xx.html`, puis le
+  // repli sans langue vers le français. Vercel prend la première règle qui
+  // correspond, les règles à condition doivent donc précéder le repli.
+  const invites = (conf.rewrites || []).filter((r) => r.source === '/invite.html');
+  for (const locale of LOCALES) {
+    const hit = invites.find(
+      (r) =>
+        r.destination === inviteFile(locale) &&
+        (r.has || []).some((h) => h.type === 'query' && h.key === 'lang' && h.value === locale),
+    );
+    if (!hit) holes.push(`rewrites: /invite.html?lang=${locale} → ${inviteFile(locale)}`);
+  }
+  const fallback = invites.findIndex((r) => !r.has);
+  if (fallback === -1 || invites[fallback].destination !== inviteFile(DEFAULT_LOCALE)) {
+    holes.push(`rewrites: /invite.html (sans lang) → ${inviteFile(DEFAULT_LOCALE)}`);
+  } else if (fallback !== invites.length - 1) {
+    holes.push('rewrites: le repli /invite.html sans lang doit venir APRÈS les règles à lang');
   }
   if (holes.length) fail(`vercel.json, entrées manquantes :\n  - ${holes.join('\n  - ')}`);
 }

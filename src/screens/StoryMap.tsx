@@ -442,14 +442,19 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
     );
   }, [adAvailable, language, watchAdForLife]);
 
-  const onTapLevel = useCallback(
+  /** Chaque lancement remonte l'hôte à neuf (rejouer le même niveau compris). */
+  const [runId, setRunId] = useState(0);
+  const snapshotRef = useRef(snapshot);
+  useEffect(() => {
+    snapshotRef.current = snapshot;
+  }, [snapshot]);
+
+  /** Dépense une vie et ouvre le niveau — depuis la carte ou l'écran de fin. */
+  const launch = useCallback(
     async (level: number) => {
-      if (!snapshot) return;
-      if (level > currentLevel) {
-        toast.info(tr(language, 'Termine les niveaux précédents d’abord.', 'Finish the earlier levels first.'));
-        return;
-      }
-      if (snapshot.lives <= 0) {
+      const snap = snapshotRef.current;
+      if (!snap) return;
+      if (snap.lives <= 0) {
         offerAd();
         return;
       }
@@ -460,9 +465,23 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
       }
       setSnapshot((s) => (s ? { ...s, lives: spent.lives } : s));
       track('story_level_started', { level });
+      didAutoScroll.current = false;
+      setRunId((r) => r + 1);
       setActive(LEVELS[level - 1]);
     },
-    [snapshot, currentLevel, user, language, toast, offerAd],
+    [user, offerAd],
+  );
+
+  const onTapLevel = useCallback(
+    async (level: number) => {
+      if (!snapshot) return;
+      if (level > currentLevel) {
+        toast.info(tr(language, 'Termine les niveaux précédents d’abord.', 'Finish the earlier levels first.'));
+        return;
+      }
+      await launch(level);
+    },
+    [snapshot, currentLevel, language, toast, launch],
   );
 
   /** Leave the in-level screen; the map remounts and re-centres on the player. */
@@ -471,41 +490,51 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
     setActive(null);
   }, []);
 
+  /**
+   * Le niveau est fini : on l'enregistre SANS quitter l'écran — c'est le
+   * carnet de fin (StoryLevelEnd) qui montre score, étoiles, pièces et pièce
+   * débloquée. Renvoie la réponse pour qu'il l'affiche quand elle arrive.
+   */
   const onLevelComplete = useCallback(
     async ({ score, stars }: { score: number; stars: number }) => {
       const lvl = active?.level;
-      closeLevel();
-      if (lvl == null) return;
+      if (lvl == null) return { firstClear: false, coins: 0, synced: false };
       const res = await recordLevel(user, lvl, score, stars);
-      if (stars >= 1) {
-        toast.success(
-          tr(
-            language, 'Niveau {0} réussi — {1}{2}', 'Level {0} cleared — {1}{3}', [lvl, '★'.repeat(stars), res.coins ? ` +${res.coins} pièces` : '', res.coins ? ` +${res.coins} coins` : ''],
-          ),
-        );
-        const part = res.unlockedItemId ? getPartById(res.unlockedItemId) : undefined;
-        if (part) {
-          const name = tr(language, part.nameFr, part.nameEn);
-          toast.success(tr(language, 'Nouveau cosmétique débloqué : {0} !', 'New cosmetic unlocked: {0}!', [name]));
-        }
-      } else {
-        toast.error(tr(language, 'Score trop bas — réessaie !', 'Score too low — try again!'));
-      }
       await reload();
+      return res;
     },
-    [active, user, language, toast, reload, closeLevel],
+    [active, user, reload],
+  );
+
+  /** « Niveau suivant » / « Rejouer » depuis le carnet : on enchaîne sans repasser par la carte. */
+  const onPlayLevel = useCallback(
+    (level: number) => {
+      const snap = snapshotRef.current;
+      const reachable = Math.min((snap?.maxLevel ?? 0) + 1, STORY_LEVEL_COUNT);
+      if (level < 1 || level > STORY_LEVEL_COUNT || level > reachable) {
+        closeLevel();
+        return;
+      }
+      void launch(level);
+    },
+    [launch, closeLevel],
   );
 
   // ── Active level overlay ─────────────────────────────────────────────────────
   if (active) {
     return (
       <StoryGameHost
+        key={runId}
         level={active}
+        lives={snapshot?.lives ?? 0}
+        maxLevelBefore={snapshot?.maxLevel ?? 0}
+        signedIn={!!user}
         onExit={() => {
           closeLevel();
           void reload();
         }}
         onLevelComplete={onLevelComplete}
+        onPlayLevel={onPlayLevel}
       />
     );
   }

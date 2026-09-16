@@ -76,6 +76,23 @@
     { "source": "/ro/play", "destination": "/app-ro.html" },
     { "source": "/ro/play/", "destination": "/app-ro.html" },
     { "source": "/el/play", "destination": "/app-el.html" },
-    { "source": "/el/play/", "destination": "/app-el.html" }
+    { "source": "/el/play/", "destination": "/app-el.html" },
+    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "fr" }], "destination": "/invite-fr.html" },
+    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "en" }], "destination": "/invite-en.html" },
+    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "es" }], "destination": "/invite-es.html" },
+    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "pt" }], "destination": "/invite-pt.html" },
+    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "de" }], "destination": "/invite-de.html" },
+    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "it" }], "destination": "/invite-it.html" },
+    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "ru" }], "destination": "/invite-ru.html" },
+    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "tr" }], "destination": "/invite-tr.html" },
+    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "pl" }], "destination": "/invite-pl.html" },
+    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "nl" }], "destination": "/invite-nl.html" },
+    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "id" }], "destination": "/invite-id.html" },
+    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "vi" }], "destination": "/invite-vi.html" },
+    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "th" }], "destination": "/invite-th.html" },
+    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "uk" }], "destination": "/invite-uk.html" },
+    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "ro" }], "destination": "/invite-ro.html" },
+    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "el" }], "destination": "/invite-el.html" },
+    { "source": "/invite.html", "destination": "/invite-fr.html" }
   ]
 }

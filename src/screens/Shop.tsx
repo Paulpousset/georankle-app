@@ -9,7 +9,7 @@ import * as Haptics from 'expo-haptics';
 
 import { supabase } from '../lib/supabase';
 import { log } from '../lib/log';
-import { purchaseCosmetic, purchaseBundle, fetchFeaturedCosmetic, type FeaturedCosmetic } from '../lib/shop';
+import { purchaseCosmetic, purchaseBundle, equipCosmetics, fetchFeaturedCosmetic, type FeaturedCosmetic } from '../lib/shop';
 import { track } from '../lib/analytics';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
@@ -37,7 +37,6 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { a11yButton, announce, ICON_HIT_SLOP } from '../lib/a11y';
 import type { AvatarConfig, CosmeticBundle, CosmeticCategory, CosmeticPart } from '../types';
-import type { Json } from '../types/database';
 
 interface ShopProps {
   onBack: () => void;
@@ -213,16 +212,16 @@ export default function Shop({ onBack, onEditAvatar, onOpenGlobeLab }: ShopProps
         [part.category]: { id: part.id, tint: part.defaultTint ?? null },
       },
     });
-    const { error } = await supabase.rpc('equip_cosmetics', { p_config: next as unknown as Json });
-    if (error) {
-      showAlert(tr(language, 'Erreur', 'Error'), error.message);
+    // Persists AND invalidates the Profile snapshot + gameplay globe cache.
+    const res = await equipCosmetics(next, userId);
+    if (!res.ok) {
+      showAlert(tr(language, 'Erreur', 'Error'), res.message);
       return;
     }
     setAvatarConfig(next);
-    void cacheEquippedGlobe(next);
     track('avatar_equipped', { category: part.category, item_id: part.id });
     announce(tr(language, '{0} équipé', '{1} equipped', [part.nameFr, part.nameEn]));
-  }, [avatarConfig, language]);
+  }, [avatarConfig, language, userId]);
 
   const buy = async (part: CosmeticPart) => {
     const price = effectivePrice(part);

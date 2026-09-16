@@ -20,9 +20,11 @@
  *
  * Gameplay parity with the 2D builders is contractual:
  *  - find    : posts GLOBE_READY / COUNTRY_SELECTED{cca3} / GLOBE_ERROR, exposes
- *              window.resetRound() + window.showResult(correct,picked); same
- *              drag factor (0.35°/px ÷ zoom), zoom bounds 0.9–24, anchored zoom,
- *              dot-first pick then smallest-area hit-test then 26 px dot snap.
+ *              window.resetRound() + window.showResult(correct,picked); zoom
+ *              bounds 0.9–24, anchored zoom, 1:1 drag (the flat globes' 0.35°/px
+ *              ÷ zoom is orthographic and does not hold under a perspective
+ *              camera — see degPerPx), dot-first pick, then the tiny-country
+ *              footprints, then smallest-area hit-test, then a 26 px dot snap.
  *  - borders : read-only globe driven by window.setHighlights(list,refit) with
  *              kinds start/chain/last/target/ideal, floating flag tags and the
  *              same auto-framing math; non-highlighted countries stay hidden
@@ -268,6 +270,43 @@ function drawPoly(rings,fill,stroke,lw){
     overlayCtx.beginPath();traceRings(overlayCtx,rings,off);
     if(fill){overlayCtx.fillStyle=fill;overlayCtx.fill();}
     if(stroke){overlayCtx.strokeStyle=stroke;overlayCtx.lineWidth=lw||2;overlayCtx.stroke();}});}
+// Overlay strokes are drawn in TEXTURE space, so they scale WITH the zoom: the
+// 3 px outline of the cartoon coat is 0.53 degrees of the 2048-wide equirect —
+// about 55 km, wider than Brunei is. At world zoom that is the validated
+// sticker look; zoomed in it is a smear that swallows every small country
+// whole, exactly when the player is closing in to tap one. Worse, a stroke
+// straddles the ring: half of what LOOKS like Brunei is geometrically Malaysia,
+// so the tap lands on the neighbour and the country reads as unclickable.
+// So the coat thins as the player closes in, holding the same number of SCREEN
+// pixels it had at world zoom — and below a hairline a canvas stroke stops
+// being a line and turns into a wash (antialiasing takes the colour with it),
+// so past that floor it fades out instead. What it hands the border over to is
+// buildCrispLines: real 3D lines, sharp at any zoom, full strength by 6x.
+var KFLOOR=1/6;
+var coatK=1,coatA=1,coatStep=0,coatPending=false;
+function updateCoatWidth(){
+  if(D.regionCoat)return;               // boxed overlay: already fine-grained
+  // The width that keeps the stroke the same number of SCREEN pixels it had at
+  // world zoom. Not 1/zoom: a perspective camera magnifies the view centre by
+  // up to 12x more than the sphere's own radius grows (see degPerPx).
+  var k=Math.min(1,projRadius(0.0174533,1)/projRadius(0.0174533,zoom));
+  // Quantised to ~18% steps, or a pinch would repaint the 2048x1024 coat on
+  // every frame for a change nobody can see.
+  var step=Math.round(Math.log(Math.max(0.02,k))*6);
+  if(step===coatStep)return;
+  coatStep=step;k=Math.min(1,Math.exp(step/6));
+  coatK=Math.max(KFLOOR,k);
+  coatA=Math.min(1,k/KFLOOR);
+  // Repainting the 2048x1024 coat costs ~11 ms, and a wheel spin crosses
+  // several steps inside one frame: coalesce them into a single repaint.
+  if(coatPending)return;
+  coatPending=true;
+  requestAnimationFrame(function(){coatPending=false;paintOverlay();});}
+// The coat's OUTLINES run under coatA; its fills never do — the land itself
+// must not fade out from under the player.
+function strokeCoat(fn){
+  if(coatA>=1){fn();return;}
+  overlayCtx.save();overlayCtx.globalAlpha=coatA;fn();overlayCtx.restore();}
 // Cartoon coat palette — vivid, sticker-like (independent from the game PAL,
 // which keeps driving the hover/selected/correct/wrong state colours).
 var CART=D.isDark
@@ -292,8 +331,9 @@ function paintSkinGraticule(){
 // outline plus a land tint (its crust carries no landmasses at all).
 function paintSkinCoat(){
   if(SKIN.coat==='none')return;
-  POLYGONS.forEach(function(p){drawPoly(p.r,null,SKIN.halo,5);});
-  POLYGONS.forEach(function(p){drawPoly(p.r,SKIN.landCoat,SKIN.line,1.8);});
+  strokeCoat(function(){POLYGONS.forEach(function(p){drawPoly(p.r,null,SKIN.halo,5*coatK);});});
+  POLYGONS.forEach(function(p){drawPoly(p.r,SKIN.landCoat,null);});
+  strokeCoat(function(){POLYGONS.forEach(function(p){drawPoly(p.r,null,SKIN.line,1.8*coatK);});});
 }
 // Regions: the subdivisions are the board and exist on no texture, so they are
 // always drawn. Only their HALO is painted here — a soft, wide underlay. The
@@ -319,8 +359,9 @@ function paintOverlay(){
     for(var lo=-180;lo<180;lo+=30){overlayCtx.beginPath();
       overlayCtx.moveTo((lo+180)/360*OW,OH*0.03);overlayCtx.lineTo((lo+180)/360*OW,OH*0.97);overlayCtx.stroke();}
     if(D.drawBaseLand){
-      POLYGONS.forEach(function(p){drawPoly(p.r,null,CART.halo,10);});
-      POLYGONS.forEach(function(p){drawPoly(p.r,CART.land,CART.line,3);});
+      strokeCoat(function(){POLYGONS.forEach(function(p){drawPoly(p.r,null,CART.halo,10*coatK);});});
+      POLYGONS.forEach(function(p){drawPoly(p.r,CART.land,null);});
+      strokeCoat(function(){POLYGONS.forEach(function(p){drawPoly(p.r,null,CART.line,3*coatK);});});
       if(CART.city)D.cities.forEach(function(c){
         var x=(c[0]+180)/360*OW,y=(90-c[1])/180*OH;
         overlayCtx.save();overlayCtx.shadowColor=CART.city;overlayCtx.shadowBlur=14;
@@ -329,14 +370,18 @@ function paintOverlay(){
     }
   } else if(D.drawBaseLand){
     // Photo coat: subtle political borders so countries stay pickable.
-    POLYGONS.forEach(function(p){drawPoly(p.r,null,PAL.landS,1.8);});
+    strokeCoat(function(){POLYGONS.forEach(function(p){drawPoly(p.r,null,PAL.landS,1.8*coatK);});});
   }
   overlayStates.forEach(function(s){
     var idx=polyMap[s.id];if(idx===undefined)return;
     // Sticker pop: white under-stroke so states read on any land colour
     // (green-on-green correct-state was invisible on the cartoon coat).
-    drawPoly(POLYGONS[idx].r,null,'rgba(255,255,255,0.85)',(s.lw||2.6)+5);
-    drawPoly(POLYGONS[idx].r,s.fill,s.stroke,s.lw||2.6);});
+    // The state strokes ride on the same texture and swallow a small country
+    // just as fast, so they thin with it. They never fade, though: a pick the
+    // player cannot see is worse than a thick one.
+    var k=D.regionCoat?1:coatK;
+    drawPoly(POLYGONS[idx].r,null,'rgba(255,255,255,0.85)',((s.lw||2.6)+5)*k);
+    drawPoly(POLYGONS[idx].r,s.fill,s.stroke,(s.lw||2.6)*k);});
   if(overlayTex)overlayTex.needsUpdate=true;
   needsRender=true;}
 function setOverlayStates(list){overlayStates=list||[];paintOverlay();}
@@ -647,14 +692,18 @@ function ringSegments(rings,r,out){
 }
 var crispLines=null;
 function buildCrispLines(){
-  if(!D.regionCoat&&(!SKIN||!D.drawBaseLand))return;
+  // Every coat that draws land needs them, not just the skinned ones: the
+  // cartoon coat's own outline thins away as the zoom rises (see coatK), and
+  // these lines are what replaces it.
+  if(!D.regionCoat&&(!D.drawBaseLand||!D.interactive))return;
   var pos=[];
   for(var i=0;i<POLYGONS.length;i++)ringSegments(POLYGONS[i].r,LINER,pos);
   if(!pos.length)return;
   var g=new THREE.BufferGeometry();
   g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(pos),3));
   crispLines=new THREE.LineSegments(g,new THREE.LineBasicMaterial({
-    color:new THREE.Color(SKIN?SKIN.crispLine:PAL.landS),transparent:true,opacity:0,depthWrite:false}));
+    color:new THREE.Color(SKIN?SKIN.crispLine:(D.regionCoat?PAL.landS:CART.line)),
+    transparent:true,opacity:0,depthWrite:false}));
   crispLines.visible=false;
   globe.add(crispLines);
 }
@@ -750,14 +799,24 @@ function applyPhoto(){
   photoMode=true;paintOverlay();}
 
 // ── Input (same feel as the 2D globes) ───────────────────────────────────────
+// Degrees of rotation per screen pixel at the view centre, read off the REAL
+// projection. The flat globes could use 57.3/(baseR*zoom) — orthographic, so
+// the sphere's radius IS its scale. A perspective camera magnifies the centre
+// well beyond that: 1.2x at world zoom, 3x by 8x, and up to 11.6x once the
+// camera hits A_MAX and goes telephoto. Drag and anchored zoom were both built
+// on the flat formula, so past ~3x every pixel of input moved the globe two to
+// eleven times too far — the drag slid away under the finger and the anchored
+// zoom, being an iteration, DIVERGED and threw the planet across the world.
+function degPerPx(){return 1/Math.max(1e-6,projRadius(0.0174533,zoom));}
 var drag=null,pinchD=null,pinchZ=null;
 var onTapCb=null,onHoverCb=null;
 function onStart(x,y){drag={x:x,y:y,lon:rotLon,lat:rotLat,moved:false};}
 function onMoveDrag(x,y){if(!drag)return;
   var dx=x-drag.x,dy=y-drag.y;
   if(Math.abs(dx)>4||Math.abs(dy)>4)drag.moved=true;
-  rotLon=drag.lon-dx*(0.35/zoom);
-  rotLat=Math.max(-85,Math.min(85,drag.lat+dy*(0.35/zoom)));
+  var f=degPerPx();
+  rotLon=drag.lon-dx*f;
+  rotLat=Math.max(-85,Math.min(85,drag.lat+dy*f));
   applyRotation();}
 var lastTap=0,lastTapX=0,lastTapY=0;
 // A touch tap is followed by SYNTHESISED mouse events (touchend, then
@@ -779,28 +838,42 @@ function syncMatrices(){
   scene.updateMatrixWorld(true);camera.updateMatrixWorld(true);
   camera.matrixWorldInverse.copy(camera.matrixWorld).invert();}
 // Keep the geo point under the finger/cursor pinned while zooming (same
-// linearisation as the drag handler, iterated to convergence).
+// linearisation as the drag handler, iterated to convergence). The step is
+// damped a touch and hard-capped: near the limb the true scale is smaller than
+// at the centre, so a full step there would overshoot, and one bad step is all
+// it takes for the next probe to land off the sphere.
 function anchorAt(lat,lng,px,py){
-  for(var i=0;i<6;i++){
+  var last=Infinity;
+  for(var i=0;i<8;i++){
     syncMatrices();
     var p=projectLL(lat,lng);if(!p.vis)return;
     var ex=px-p.sx,ey=py-p.sy;
-    if(Math.abs(ex)<0.5&&Math.abs(ey)<0.5)return;
-    var f=57.2957795/(baseR*zoom);
-    rotLon-=ex*f/Math.max(0.2,Math.cos(lat*Math.PI/180));
-    rotLat=Math.max(-85,Math.min(85,rotLat+ey*f));
+    var err=Math.hypot(ex,ey);
+    if(err<0.5)return;
+    if(err>last)return;          // not closing in — stop rather than fling
+    last=err;
+    var f=degPerPx()*0.9;
+    var dLon=ex*f/Math.max(0.2,Math.cos(lat*Math.PI/180)),dLat=ey*f;
+    var MX=60;                   // degrees: no single step may spin the globe
+    rotLon-=Math.max(-MX,Math.min(MX,dLon));
+    rotLat=Math.max(-85,Math.min(85,rotLat+Math.max(-MX,Math.min(MX,dLat))));
     applyRotation();}}
 var onZoomCb=null;
 // geo === undefined → resolve the anchor from (px,py); null → plain centre zoom.
 function setZoom(z,px,py,geo){
-  var anchor=null;
+  var anchor=null,was=zoom;
   if(px!==undefined){syncMatrices();anchor=geo===undefined?unproject(px,py):geo;}
   zoom=Math.max(ZMIN,Math.min(ZMAX,z));
   updateCamera();
-  if(anchor)anchorAt(anchor.lat,anchor.lng,px,py);
+  // Already at the ceiling (or the floor): anchoring would pin the cursor point
+  // without any zoom to justify it — i.e. it would PAN. Keeping the wheel
+  // spinning past the last zoom step used to walk the globe out of the view.
+  // A pinch is the exception: its anchor is an explicit geo point, and pinning
+  // it to the live midpoint is what gives two-finger pan.
+  if(anchor&&(zoom!==was||geo!==undefined))anchorAt(anchor.lat,anchor.lng,px,py);
   var zr=document.getElementById('zr');
   if(zr&&!D.resetAlways)zr.style.display=zoom>1.05?'flex':'none';
-  updateCrispLines();updateSatVisibility();
+  updateCrispLines();updateSatVisibility();updateCoatWidth();
   if(onZoomCb)onZoomCb();}
 // The +/-/reset controls live inside the page, so their clicks bubble to the
 // document handlers below and used to register as a tap on the planet too —
@@ -954,10 +1027,39 @@ function centreDist(cca3,tx,ty){
   var c=centreMap[cca3];if(!c)return Infinity;
   var p=projectLL(c.lat,c.lng,DOTR);if(!p.vis)return Infinity;
   return Math.hypot(p.sx-tx,p.sy-ty);}
-// Dot countries win inside their own screen footprint, THEN polygons, then a
-// wider 26 px snap. Seven dots (Vatican/Saint-Marin in ITA, Monaco/Andorre in
-// FRA, Liechtenstein in CHE, Singapour in MYS, Palestine in ISR) sit inside
-// another country's ring, so a polygon-first test made them unselectable.
+// Countries that DO have a polygon but are only a few pixels of it on screen —
+// Brunei, Gambia, Qatar, Liban, Luxembourg… They are drawn under an outline
+// wider than they are, so the shape the player aims at is inflated past the
+// real ring and the tap lands on the big neighbour: unclickable in practice.
+// Below a finger's radius they get the same footprint rule as the dot
+// microstates, and give it back as soon as the zoom makes them tappable.
+// Gated on DOT_PICK_ZOOM like the dots: at world zoom the map is the board and
+// nothing may outrank the polygon the tap actually fell in.
+var TINY_MIN_PX=12;
+// On-screen radius of the country's REAL area (uncapped, unlike the dots': here
+// it is the whole point). A country with no area on file counts as big, so a
+// missing figure can never hand it a neighbour's tap.
+function polyRadiusPx(c){
+  return c.area?(baseR*zoom)*Math.sqrt(c.area/Math.PI)/6371:1e9;}
+function tinyPolyAt(tx,ty){
+  if(zoom<DOT_PICK_ZOOM)return null;
+  var best=null,bestRel=1;
+  for(var i=0;i<COUNTRIES.length;i++){
+    var c=COUNTRIES[i];
+    if(polyMap[c.cca3]===undefined)continue;      // dots have their own rule
+    var r=polyRadiusPx(c);
+    if(r>TINY_MIN_PX)continue;                    // big enough to just tap
+    var p=projectLL(c.lat,c.lng,DOTR);if(!p.vis)continue;
+    // Its own radius plus the slop of the outline it hides under, floored at a
+    // finger — so the pad shrinks to nothing as the zoom makes it tappable.
+    var rel=Math.hypot(p.sx-tx,p.sy-ty)/Math.max(TINY_MIN_PX,r+6);
+    if(rel<bestRel){bestRel=rel;best=c.cca3;}}
+  return best;}
+// Dot countries win inside their own screen footprint, THEN the tiny polygon
+// ones, THEN polygons, then a wider 26 px snap. Seven dots (Vatican/Saint-Marin
+// in ITA, Monaco/Andorre in FRA, Liechtenstein in CHE, Singapour in MYS,
+// Palestine in ISR) sit inside another country's ring, so a polygon-first test
+// made them unselectable.
 function pickAt(tx,ty){
   var coords=unproject(tx,ty);
   var poly=coords?hitTest(coords):null;
@@ -966,6 +1068,10 @@ function pickAt(tx,ty){
   // footprint covers it (coarse ISR ring vs the Palestine dot).
   if(near&&poly&&centreDist(poly,tx,ty)<near.d)return poly;
   if(near)return near.c.cca3;
+  // …then the same courtesy for the small polygon countries, but never against
+  // one smaller than itself (a tap inside Gambia stays Gambia, not Senegal).
+  var tiny=tinyPolyAt(tx,ty);
+  if(tiny&&tiny!==poly&&(!poly||polyArea[tiny]<polyArea[poly]))return tiny;
   if(poly)return poly;
   var far=nearestDot(tx,ty,26);
   return far?far.cca3:null;}
@@ -1129,6 +1235,10 @@ export function buildBordersEarthHtml(opts: {
   const gameJs = `
 var COORDS=${JSON.stringify(opts.coords)};
 D.drawBaseLand=false; // anti-cheat: only the countries in play are ever drawn
+// Nothing here is drawn from a texture — the countries in play are painted on
+// the overlay canvas — so past ~8x there is nothing left to resolve, only a
+// smear. Same ceiling as the flat globe this one stands in for.
+ZMAX=8;
 var GOLD='#c4872a',GOLDF='rgba(196,135,42,0.55)';
 var highlights=[],flagSprites=[];
 function styleFor(kind){
@@ -1163,9 +1273,15 @@ function frame(){
   v.forEach(function(u){
     var dot=Math.max(-1,Math.min(1,u[0]*vc[0]+u[1]*vc[1]+u[2]*vc[2]));
     var ang=Math.acos(dot);if(ang>maxAng)maxAng=ang;});
-  var th=Math.max(0.06,Math.min(1.48,maxAng));
-  zoom=Math.max(1,Math.min(6,0.8/Math.sin(th)));
-  applyRotation();updateCamera();}
+  // 0.8/sin(th) is the ORTHOGRAPHIC fit the flat globe uses, and it does not
+  // survive the move to a perspective camera: it left the far country 1.2 to
+  // 2.2 half-screens off the edge for any pair 5-20 degrees apart — i.e. every
+  // pair of near neighbours, which is most of them. fitZoom bisects on the real
+  // projection, so the whole chain lands inside the frame whatever the spread.
+  var th=Math.max(0.35,Math.min(80,maxAng*180/Math.PI));
+  // 0.78, not 0.85: the flag tags ride above the countries at a constant screen
+  // size, and they are part of what has to stay on screen.
+  applyRotation();setZoom(Math.max(1,Math.min(ZMAX,fitZoom(th,0.78))));}
 // Flag tags: canvas-drawn sprite (flag image + coloured frame), constant screen size.
 function makeFlagSprite(url,color){
   var cv=document.createElement('canvas');cv.width=76;cv.height=50;

@@ -25,7 +25,12 @@ export type FeatureFlag =
   // Disables only its audio variant, so bad TTS can be pulled without pulling
   // the whole mode. Deterministic draws (daily, league) are NEVER flag-gated:
   // a flag fails closed offline, which would desync them.
-  | 'languages_audio';
+  | 'languages_audio'
+  // "Continuer avec Apple / Google" buttons on the Auth screen (rows created
+  // by social_login.sql, OFF until the Apple/Google consoles + Supabase
+  // providers are configured — see guide-connexion-apple-google.md).
+  | 'social_login_apple'
+  | 'social_login_google';
 
 const TTL_MS = 5 * 60 * 1000;
 

@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Database } from '../types/database';
@@ -17,6 +18,9 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     storage: AsyncStorage,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    // Sur le web, la connexion Google/Apple revient par redirection avec les
+    // jetons dans l'URL : le client doit les lire (puis il nettoie l'URL).
+    // En natif, le flux OAuth passe par signInWithIdToken, pas par l'URL.
+    detectSessionInUrl: Platform.OS === 'web',
   },
 });

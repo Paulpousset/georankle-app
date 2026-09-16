@@ -1,4 +1,6 @@
-import { purchaseCosmetic, purchaseBundle, fetchFeaturedCosmetic } from '../shop';
+import { purchaseCosmetic, purchaseBundle, equipCosmetics, fetchFeaturedCosmetic } from '../shop';
+import { cacheEquippedGlobe } from '../globeSkin';
+import { DEFAULT_AVATAR_CONFIG } from '../../data/cosmetics';
 import { supabase } from '../supabase';
 import { cacheClear } from '../cache';
 import type { SupabaseMock } from '../../../test-utils/supabaseMock';
@@ -8,13 +10,17 @@ jest.mock('../supabase', () => {
   return { supabase: makeSupabaseMock() };
 });
 jest.mock('../cache', () => ({ cacheClear: jest.fn() }));
+// globeSkin pulls AsyncStorage (native module) — stub the one export we use.
+jest.mock('../globeSkin', () => ({ cacheEquippedGlobe: jest.fn() }));
 
 const sb = supabase as unknown as SupabaseMock;
 const cacheClearMock = cacheClear as jest.Mock;
+const cacheGlobeMock = cacheEquippedGlobe as jest.Mock;
 
 beforeEach(() => {
   sb.__reset();
   cacheClearMock.mockReset();
+  cacheGlobeMock.mockReset();
 });
 
 describe('purchaseCosmetic', () => {
@@ -92,5 +98,29 @@ describe('fetchFeaturedCosmetic', () => {
   it('returns null on error so the shop renders without the banner', async () => {
     sb.rpc.mockRejectedValue(new Error('offline'));
     await expect(fetchFeaturedCosmetic()).resolves.toBeNull();
+  });
+});
+
+describe('equipCosmetics', () => {
+  it('persists via the RPC, then drops the Profile snapshot and refreshes the globe cache', async () => {
+    sb.rpc.mockResolvedValue({ data: null, error: null });
+
+    const result = await equipCosmetics(DEFAULT_AVATAR_CONFIG, 'user-1');
+
+    expect(sb.rpc).toHaveBeenCalledWith('equip_cosmetics', { p_config: DEFAULT_AVATAR_CONFIG });
+    expect(result).toEqual({ ok: true });
+    // Without this the Profile kept serving its cached (old) world after "Save".
+    expect(cacheClearMock).toHaveBeenCalledWith('profile:user-1');
+    expect(cacheGlobeMock).toHaveBeenCalledWith(DEFAULT_AVATAR_CONFIG);
+  });
+
+  it('fails without touching any cache when the RPC rejects the config', async () => {
+    sb.rpc.mockResolvedValue({ data: null, error: { message: 'not_owned' } });
+
+    const result = await equipCosmetics(DEFAULT_AVATAR_CONFIG, 'user-1');
+
+    expect(result).toEqual({ ok: false, message: 'not_owned' });
+    expect(cacheClearMock).not.toHaveBeenCalled();
+    expect(cacheGlobeMock).not.toHaveBeenCalled();
   });
 });

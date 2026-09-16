@@ -89,6 +89,18 @@
     ]
   },
   {
+    "key": "#{0} of {1}",
+    "fr": "{0}e sur {1}",
+    "en": "#{0} of {1}",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/FfaMatch.tsx"
+    ]
+  },
+  {
     "key": "%",
     "fr": "%",
     "en": "%",
@@ -521,7 +533,7 @@
       "call"
     ],
     "files": [
-      "src/components/MatchResult.tsx"
+      "src/components/end/RankLadder.tsx"
     ]
   },
   {
@@ -1415,7 +1427,7 @@
       "call"
     ],
     "files": [
-      "src/components/MatchResult.tsx"
+      "src/components/end/RankLadder.tsx"
     ]
   },
   {
@@ -1530,6 +1542,18 @@
       "src/screens/Friends.tsx",
       "src/screens/LocalParcours.tsx",
       "src/screens/StreakGame.tsx"
+    ]
+  },
+  {
+    "key": "Back to the daily hub",
+    "fr": "Retour aux défis du jour",
+    "en": "Back to the daily hub",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/DailyEnd.tsx"
     ]
   },
   {
@@ -1910,6 +1934,18 @@
     ]
   },
   {
+    "key": "CLEARED · LVL {0}",
+    "fr": "RÉUSSI · NIV. {0}",
+    "en": "CLEARED · LVL {0}",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/StoryLevelEnd.tsx"
+    ]
+  },
+  {
     "key": "COUNTRY FACTS",
     "fr": "FICHE PAYS",
     "en": "COUNTRY FACTS",
@@ -2162,6 +2198,18 @@
     ]
   },
   {
+    "key": "Challenge done: {0}. {1} of {2} challenges today.",
+    "fr": "Défi terminé : {0}. {1} défis sur {2} aujourd’hui.",
+    "en": "Challenge done: {0}. {1} of {2} challenges today.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/DailyEnd.tsx"
+    ]
+  },
+  {
     "key": "Challenges",
     "fr": "Défis Pays",
     "en": "Challenges",
@@ -2228,6 +2276,18 @@
     ],
     "files": [
       "src/screens/Profile.tsx"
+    ]
+  },
+  {
+    "key": "Chapter {0}",
+    "fr": "Chapitre {0}",
+    "en": "Chapter {0}",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/StoryLevelEnd.tsx"
     ]
   },
   {
@@ -2861,6 +2921,30 @@
     ],
     "files": [
       "src/components/UsernameGate.tsx"
+    ]
+  },
+  {
+    "key": "Continue with Apple",
+    "fr": "Continuer avec Apple",
+    "en": "Continue with Apple",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/screens/Auth.tsx"
+    ]
+  },
+  {
+    "key": "Continue with Google",
+    "fr": "Continuer avec Google",
+    "en": "Continue with Google",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/screens/Auth.tsx"
     ]
   },
   {
@@ -3543,14 +3627,18 @@
   },
   {
     "key": "DAILY CHALLENGE",
-    "fr": "DÉFI QUOTIDIEN",
+    "fr": "DÉFI DU JOUR",
     "en": "DAILY CHALLENGE",
-    "count": 1,
+    "count": 2,
     "kinds": [
       "call"
     ],
     "files": [
+      "src/screens/DailyEnd.tsx",
       "src/screens/Profile.tsx"
+    ],
+    "frVariants": [
+      "DÉFI QUOTIDIEN"
     ]
   },
   {
@@ -3692,6 +3780,18 @@
     ],
     "files": [
       "src/components/SoloCoinReward.tsx"
+    ]
+  },
+  {
+    "key": "Daily not played yet",
+    "fr": "Défi du jour pas encore joué",
+    "en": "Daily not played yet",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/AdminNotifications.tsx"
     ]
   },
   {
@@ -3909,15 +4009,15 @@
     ]
   },
   {
-    "key": "Demoted to {1}",
+    "key": "Demoted to {0}",
     "fr": "Rétrogradé en {0}",
-    "en": "Demoted to {1}",
+    "en": "Demoted to {0}",
     "count": 1,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/components/MatchResult.tsx"
+      "src/components/end/RankLadder.tsx"
     ]
   },
   {
@@ -4250,6 +4350,30 @@
     ],
     "files": [
       "src/screens/StoryMap.tsx"
+    ]
+  },
+  {
+    "key": "EXPLORER'S COLLECTION",
+    "fr": "COLLECTION DE L'EXPLORATEUR",
+    "en": "EXPLORER'S COLLECTION",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/StoryLevelEnd.tsx"
+    ]
+  },
+  {
+    "key": "EXPLORER'S LOGBOOK · PAGE {0}",
+    "fr": "CARNET D'EXPLORATEUR · PAGE {0}",
+    "en": "EXPLORER'S LOGBOOK · PAGE {0}",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/StoryLevelEnd.tsx"
     ]
   },
   {
@@ -4765,6 +4889,18 @@
     ],
     "files": [
       "src/screens/StoryMap.tsx"
+    ]
+  },
+  {
+    "key": "FAILED · LVL {0}",
+    "fr": "RATÉ · NIV. {0}",
+    "en": "FAILED · LVL {0}",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/StoryLevelEnd.tsx"
     ]
   },
   {
@@ -5511,6 +5647,18 @@
     ],
     "files": [
       "src/screens/StoryMap.tsx"
+    ]
+  },
+  {
+    "key": "Full day: all {0} challenges done!",
+    "fr": "Journée complète : les {0} défis sont faits !",
+    "en": "Full day: all {0} challenges done!",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/DailyEnd.tsx"
     ]
   },
   {
@@ -7292,11 +7440,12 @@
     "key": "Level {0}",
     "fr": "Niveau {0}",
     "en": "Level {0}",
-    "count": 2,
+    "count": 3,
     "kinds": [
       "call"
     ],
     "files": [
+      "src/screens/StoryLevelEnd.tsx",
       "src/screens/StoryMap.tsx"
     ]
   },
@@ -7313,15 +7462,27 @@
     ]
   },
   {
-    "key": "Level {0} cleared — {1}{3}",
-    "fr": "Niveau {0} réussi — {1}{2}",
-    "en": "Level {0} cleared — {1}{3}",
+    "key": "Level {0} cleared, {1} points, {2} stars",
+    "fr": "Niveau {0} réussi, {1} points, {2} étoiles",
+    "en": "Level {0} cleared, {1} points, {2} stars",
     "count": 1,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/screens/StoryMap.tsx"
+      "src/screens/StoryLevelEnd.tsx"
+    ]
+  },
+  {
+    "key": "Level {0} failed, {1} points",
+    "fr": "Niveau {0} raté, {1} points",
+    "en": "Level {0} failed, {1} points",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/StoryLevelEnd.tsx"
     ]
   },
   {
@@ -7496,6 +7657,18 @@
     ],
     "files": [
       "src/screens/StoryMap.tsx"
+    ]
+  },
+  {
+    "key": "Lives come back over time — or from the map, with an ad.",
+    "fr": "Les vies reviennent avec le temps — ou depuis la carte, avec une pub.",
+    "en": "Lives come back over time — or from the map, with an ad.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/StoryLevelEnd.tsx"
     ]
   },
   {
@@ -7787,11 +7960,12 @@
     "key": "Map",
     "fr": "Carte",
     "en": "Map",
-    "count": 1,
+    "count": 2,
     "kinds": [
       "call"
     ],
     "files": [
+      "src/screens/StoryLevelEnd.tsx",
       "src/screens/StoryMap.tsx"
     ]
   },
@@ -7903,18 +8077,6 @@
     ],
     "files": [
       "src/components/ResumeMatchBanner.tsx"
-    ]
-  },
-  {
-    "key": "Match over",
-    "fr": "Partie terminée",
-    "en": "Match over",
-    "count": 1,
-    "kinds": [
-      "call"
-    ],
-    "files": [
-      "src/screens/FfaMatch.tsx"
     ]
   },
   {
@@ -8281,14 +8443,15 @@
     "key": "NEW",
     "fr": "NOUVEAU",
     "en": "NEW",
-    "count": 5,
+    "count": 6,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/MainMenu.tsx",
       "src/screens/RegionCountryPicker.tsx",
-      "src/screens/Shop.tsx"
+      "src/screens/Shop.tsx",
+      "src/screens/StoryLevelEnd.tsx"
     ]
   },
   {
@@ -8448,18 +8611,6 @@
     ]
   },
   {
-    "key": "New cosmetic unlocked: {0}!",
-    "fr": "Nouveau cosmétique débloqué : {0} !",
-    "en": "New cosmetic unlocked: {0}!",
-    "count": 1,
-    "kinds": [
-      "call"
-    ],
-    "files": [
-      "src/screens/StoryMap.tsx"
-    ]
-  },
-  {
     "key": "New game",
     "fr": "Nouvelle partie",
     "en": "New game",
@@ -8497,6 +8648,18 @@
     ]
   },
   {
+    "key": "New record",
+    "fr": "Nouveau record",
+    "en": "New record",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/end/RecordRibbon.tsx"
+    ]
+  },
+  {
     "key": "Next",
     "fr": "Suivant",
     "en": "Next",
@@ -8526,15 +8689,40 @@
     ]
   },
   {
-    "key": "Next puzzle in ",
-    "fr": "Prochain défi dans ",
-    "en": "Next puzzle in ",
+    "key": "Next challenge · {0}",
+    "fr": "Défi suivant · {0}",
+    "en": "Next challenge · {0}",
     "count": 1,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/components/DailyResultCard.tsx"
+      "src/screens/DailyEnd.tsx"
+    ]
+  },
+  {
+    "key": "Next piece · level {0} · {1}",
+    "fr": "Prochaine pièce · niveau {0} · {1}",
+    "en": "Next piece · level {0} · {1}",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/StoryLevelEnd.tsx"
+    ]
+  },
+  {
+    "key": "Next puzzle in ",
+    "fr": "Prochain défi dans ",
+    "en": "Next puzzle in ",
+    "count": 2,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/DailyResultCard.tsx",
+      "src/screens/DailyEnd.tsx"
     ]
   },
   {
@@ -8576,6 +8764,18 @@
     ],
     "files": [
       "src/screens/VersusCapitals.tsx"
+    ]
+  },
+  {
+    "key": "Next star",
+    "fr": "Prochaine étoile",
+    "en": "Next star",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/StoryLevelEnd.tsx"
     ]
   },
   {
@@ -9057,12 +9257,11 @@
     "key": "OPPONENT",
     "fr": "ADVERSAIRE",
     "en": "OPPONENT",
-    "count": 3,
+    "count": 2,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/components/MatchResult.tsx",
       "src/components/PreGameLobby.tsx",
       "src/components/RoundSummary.tsx"
     ]
@@ -9458,11 +9657,12 @@
     "key": "Out of lives",
     "fr": "Plus de vies",
     "en": "Out of lives",
-    "count": 1,
+    "count": 2,
     "kinds": [
       "call"
     ],
     "files": [
+      "src/screens/StoryLevelEnd.tsx",
       "src/screens/StoryMap.tsx"
     ]
   },
@@ -9524,6 +9724,18 @@
     ],
     "files": [
       "src/screens/LocalParcours.tsx"
+    ]
+  },
+  {
+    "key": "PROMOTED · {0}",
+    "fr": "PROMOTION · {0}",
+    "en": "PROMOTED · {0}",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/end/RankLadder.tsx"
     ]
   },
   {
@@ -10222,6 +10434,18 @@
     ]
   },
   {
+    "key": "Podium: {0}",
+    "fr": "Podium : {0}",
+    "en": "Podium: {0}",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/end/FfaPodium.tsx"
+    ]
+  },
+  {
     "key": "Points",
     "fr": "Points",
     "en": "Points",
@@ -10398,6 +10622,18 @@
     ]
   },
   {
+    "key": "Progress saved offline — will sync when you reconnect.",
+    "fr": "Progression enregistrée hors-ligne — synchronisation à la reconnexion.",
+    "en": "Progress saved offline — will sync when you reconnect.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/StoryLevelEnd.tsx"
+    ]
+  },
+  {
     "key": "Progress: level {0} of {1}",
     "fr": "Progression : niveau {0} sur {1}",
     "en": "Progress: level {0} of {1}",
@@ -10410,15 +10646,15 @@
     ]
   },
   {
-    "key": "Promoted to {1}!",
-    "fr": "Promotion en {0} !",
-    "en": "Promoted to {1}!",
+    "key": "Promoted to {0}",
+    "fr": "Promotion en {0}",
+    "en": "Promoted to {0}",
     "count": 1,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/components/MatchResult.tsx"
+      "src/components/end/RankLadder.tsx"
     ]
   },
   {
@@ -10677,6 +10913,18 @@
     ]
   },
   {
+    "key": "RELEGATED · {0}",
+    "fr": "RELÉGATION · {0}",
+    "en": "RELEGATED · {0}",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/end/RankLadder.tsx"
+    ]
+  },
+  {
     "key": "REPLAY SAME GAME",
     "fr": "REJOUER LE MÊME PARCOURS",
     "en": "REPLAY SAME GAME",
@@ -10878,6 +11126,18 @@
     ],
     "files": [
       "src/screens/LanguagesFlow.tsx"
+    ]
+  },
+  {
+    "key": "Recap & coins",
+    "fr": "Récap & pièces",
+    "en": "Recap & coins",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/DailyEnd.tsx"
     ]
   },
   {
@@ -11127,6 +11387,18 @@
     ]
   },
   {
+    "key": "Replay",
+    "fr": "Rejouer",
+    "en": "Replay",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/StoryLevelEnd.tsx"
+    ]
+  },
+  {
     "key": "Replay same game",
     "fr": "Rejouer le même parcours",
     "en": "Replay same game",
@@ -11209,6 +11481,19 @@
     ],
     "files": [
       "src/screens/Profile.tsx"
+    ]
+  },
+  {
+    "key": "Result copied!",
+    "fr": "Résultat copié !",
+    "en": "Result copied!",
+    "count": 2,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/DailyGameHost.tsx",
+      "src/screens/DailyHub.tsx"
     ]
   },
   {
@@ -11842,18 +12127,6 @@
     ]
   },
   {
-    "key": "Score too low — try again!",
-    "fr": "Score trop bas — réessaie !",
-    "en": "Score too low — try again!",
-    "count": 1,
-    "kinds": [
-      "call"
-    ],
-    "files": [
-      "src/screens/StoryMap.tsx"
-    ]
-  },
-  {
     "key": "Score:",
     "fr": "Score :",
     "en": "Score:",
@@ -12163,13 +12436,14 @@
     "key": "Share",
     "fr": "Partager",
     "en": "Share",
-    "count": 6,
+    "count": 7,
     "kinds": [
       "call"
     ],
     "files": [
       "src/components/DailyResultCard.tsx",
       "src/components/SoloEndActions.tsx",
+      "src/screens/DailyEnd.tsx",
       "src/screens/DailyHub.tsx",
       "src/screens/GuessCountryGame.tsx",
       "src/screens/VersusCapitals.tsx"
@@ -12274,6 +12548,18 @@
     ]
   },
   {
+    "key": "Short by",
+    "fr": "Il manque",
+    "en": "Short by",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/StoryLevelEnd.tsx"
+    ]
+  },
+  {
     "key": "Show my rank to other players",
     "fr": "Afficher mon rang aux autres joueurs",
     "en": "Show my rank to other players",
@@ -12331,6 +12617,18 @@
     ],
     "files": [
       "src/screens/Auth.tsx"
+    ]
+  },
+  {
+    "key": "Sign in to earn coins and save your progress.",
+    "fr": "Connecte-toi pour gagner des pièces et sauvegarder ta progression.",
+    "en": "Sign in to earn coins and save your progress.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/StoryLevelEnd.tsx"
     ]
   },
   {
@@ -12738,6 +13036,18 @@
     ]
   },
   {
+    "key": "Still {0}",
+    "fr": "Rang {0} conservé",
+    "en": "Still {0}",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/end/RankLadder.tsx"
+    ]
+  },
+  {
     "key": "Story",
     "fr": "Histoire",
     "en": "Story",
@@ -12818,13 +13128,14 @@
     "key": "Streak of {0}",
     "fr": "Série de {0}",
     "en": "Streak of {0}",
-    "count": 2,
+    "count": 3,
     "kinds": [
       "call"
     ],
     "files": [
       "src/components/DailyResultCard.tsx",
-      "src/lib/share.ts"
+      "src/lib/share.ts",
+      "src/screens/DailyEnd.tsx"
     ]
   },
   {
@@ -12837,6 +13148,18 @@
     ],
     "files": [
       "src/components/DailyResultCard.tsx"
+    ]
+  },
+  {
+    "key": "Streak: {0} days",
+    "fr": "Série : {0} jours",
+    "en": "Streak: {0} days",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/DailyEnd.tsx"
     ]
   },
   {
@@ -13066,12 +13389,13 @@
     "key": "TODAY",
     "fr": "AUJOURD'HUI",
     "en": "TODAY",
-    "count": 2,
+    "count": 3,
     "kinds": [
       "call"
     ],
     "files": [
       "src/components/DailyResultCard.tsx",
+      "src/screens/DailyEnd.tsx",
       "src/screens/DailyHub.tsx"
     ]
   },
@@ -13636,6 +13960,18 @@
     ]
   },
   {
+    "key": "The two globes collide: draw",
+    "fr": "Les deux globes se cognent : égalité",
+    "en": "The two globes collide: draw",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/end/DuelArena.tsx"
+    ]
+  },
+  {
     "key": "Theme (none)",
     "fr": "Thème (aucun)",
     "en": "Theme (none)",
@@ -13766,6 +14102,18 @@
     ],
     "files": [
       "src/components/OnboardingTutorial.tsx"
+    ]
+  },
+  {
+    "key": "Thresholds",
+    "fr": "Seuils",
+    "en": "Thresholds",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/StoryLevelEnd.tsx"
     ]
   },
   {
@@ -14019,6 +14367,18 @@
     ],
     "files": [
       "src/data/cosmetics.ts"
+    ]
+  },
+  {
+    "key": "Try again · {0} lives",
+    "fr": "Réessayer · {0} vies",
+    "en": "Try again · {0} lives",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/StoryLevelEnd.tsx"
     ]
   },
   {
@@ -15286,12 +15646,11 @@
     "key": "YOU",
     "fr": "VOUS",
     "en": "YOU",
-    "count": 4,
+    "count": 3,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/components/MatchResult.tsx",
       "src/components/PreGameLobby.tsx",
       "src/components/RoundSummary.tsx",
       "src/screens/Leaderboard.tsx"
@@ -15562,6 +15921,30 @@
     ]
   },
   {
+    "key": "Your globe and the {0} daily challenges in orbit, {1} lit",
+    "fr": "Ton globe et les {0} défis du jour en orbite, {1} allumés",
+    "en": "Your globe and the {0} daily challenges in orbit, {1} lit",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/DailyEnd.tsx"
+    ]
+  },
+  {
+    "key": "Your globe shatters",
+    "fr": "Ton globe vole en éclats",
+    "en": "Your globe shatters",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/end/DuelArena.tsx"
+    ]
+  },
+  {
     "key": "Your league is waiting 🏆",
     "fr": "Ta ligue t’attend 🏆",
     "en": "Your league is waiting 🏆",
@@ -15742,6 +16125,30 @@
     ]
   },
   {
+    "key": "all earned",
+    "fr": "toutes gagnées",
+    "en": "all earned",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/StoryLevelEnd.tsx"
+    ]
+  },
+  {
+    "key": "at {0}",
+    "fr": "à {0}",
+    "en": "at {0}",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/StoryLevelEnd.tsx"
+    ]
+  },
+  {
     "key": "children/woman",
     "fr": "enf./femme",
     "en": "children/woman",
@@ -15777,6 +16184,18 @@
     "files": [
       "assets/game_data.json",
       "src/screens/LocalParcours.tsx"
+    ]
+  },
+  {
+    "key": "day streak",
+    "fr": "jours de série",
+    "en": "day streak",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/DailyEnd.tsx"
     ]
   },
   {
@@ -15949,6 +16368,18 @@
     ]
   },
   {
+    "key": "or",
+    "fr": "ou",
+    "en": "or",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/screens/Auth.tsx"
+    ]
+  },
+  {
     "key": "owned",
     "fr": "possédé",
     "en": "owned",
@@ -16037,6 +16468,18 @@
     ]
   },
   {
+    "key": "points out of 1000",
+    "fr": "points sur 1000",
+    "en": "points out of 1000",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/StoryLevelEnd.tsx"
+    ]
+  },
+  {
     "key": "ppl/km²",
     "fr": "hab./km²",
     "en": "ppl/km²",
@@ -16046,6 +16489,18 @@
     ],
     "files": [
       "assets/game_data.json"
+    ]
+  },
+  {
+    "key": "previous: {0}",
+    "fr": "ancien : {0}",
+    "en": "previous: {0}",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/end/RecordRibbon.tsx"
     ]
   },
   {
@@ -16250,8 +16705,8 @@
       "call"
     ],
     "files": [
-      "src/components/MatchResult.tsx",
       "src/components/PreGameLobby.tsx",
+      "src/components/end/DuelArena.tsx",
       "src/screens/BotMatch.tsx"
     ]
   },
@@ -16584,6 +17039,18 @@
     ]
   },
   {
+    "key": "{0} of 3 stars",
+    "fr": "{0} étoiles sur 3",
+    "en": "{0} of 3 stars",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/StoryLevelEnd.tsx"
+    ]
+  },
+  {
     "key": "{0} of {1} steps",
     "fr": "{0} étapes sur {1}",
     "en": "{0} of {1} steps",
@@ -16620,6 +17087,18 @@
     ]
   },
   {
+    "key": "{0} points",
+    "fr": "{0} points",
+    "en": "{0} points",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/StoryLevelEnd.tsx"
+    ]
+  },
+  {
     "key": "{0} pts",
     "fr": "{0} pts",
     "en": "{0} pts",
@@ -16629,6 +17108,30 @@
     ],
     "files": [
       "src/lib/share.ts"
+    ]
+  },
+  {
+    "key": "{0} pts · {1} points behind {2}",
+    "fr": "{0} pts · à {1} points de {2}",
+    "en": "{0} pts · {1} points behind {2}",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/FfaMatch.tsx"
+    ]
+  },
+  {
+    "key": "{0} pts · {1} rounds won",
+    "fr": "{0} pts · {1} manches gagnées",
+    "en": "{0} pts · {1} rounds won",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/FfaMatch.tsx"
     ]
   },
   {
@@ -16789,6 +17292,18 @@
     ],
     "files": [
       "src/screens/Friends.tsx"
+    ]
+  },
+  {
+    "key": "{0}'s globe shatters",
+    "fr": "Le globe de {0} vole en éclats",
+    "en": "{0}'s globe shatters",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/end/DuelArena.tsx"
     ]
   },
   {

@@ -3,8 +3,12 @@ import {
   parseLeagueCode,
   parseReferralCode,
   referralLink,
+  installLink,
+  storeLinkForWeb,
   playLink,
   SITE_DOMAIN,
+  STORE_URL_ANDROID,
+  STORE_URL_IOS,
 } from '../links';
 
 describe('parseReferralCode', () => {
@@ -29,6 +33,29 @@ describe('referralLink', () => {
 
   it('round-trips: a built link parses back to the same code', () => {
     expect(parseReferralCode(referralLink('DEADBEEF'))).toBe('DEADBEEF');
+  });
+
+  it('carries the sharer language so the page and its preview are translated', () => {
+    expect(referralLink('A3F8C13E', 'en')).toBe(`https://${SITE_DOMAIN}/invite.html?code=A3F8C13E&lang=en`);
+    expect(parseReferralCode(referralLink('A3F8C13E', 'th'))).toBe('A3F8C13E');
+  });
+
+  it('French is the root language: no lang param', () => {
+    expect(referralLink('A3F8C13E', 'fr')).toBe(`https://${SITE_DOMAIN}/invite.html?code=A3F8C13E`);
+  });
+});
+
+describe('installLink / storeLinkForWeb', () => {
+  it('the install page has no code and follows the language', () => {
+    expect(installLink('de')).toBe(`https://${SITE_DOMAIN}/invite.html?lang=de`);
+    expect(installLink('fr')).toBe(`https://${SITE_DOMAIN}/invite.html`);
+    expect(parseReferralCode(installLink('de'))).toBeNull();
+  });
+
+  it('phones go straight to their store, computers to the install page', () => {
+    expect(storeLinkForWeb('Mozilla/5.0 (Linux; Android 14) Chrome/120', 'en')).toBe(STORE_URL_ANDROID);
+    expect(storeLinkForWeb('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)', 'en')).toBe(STORE_URL_IOS);
+    expect(storeLinkForWeb('Mozilla/5.0 (Macintosh; Intel Mac OS X)', 'en')).toBe(installLink('en'));
   });
 });
 

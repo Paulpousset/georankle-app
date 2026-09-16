@@ -12,6 +12,7 @@ import { supabase } from './supabase';
 import { track } from './analytics';
 import { log } from './log';
 import { referralLink } from './links';
+import type { Language } from '../types';
 
 const PENDING_KEY = 'pending_referral_code';
 
@@ -67,9 +68,9 @@ export async function getReferralInfo(): Promise<ReferralInfo | null> {
   return { code: r.code, count: r.count ?? 0, alreadyReferred: r.already_referred === true };
 }
 
-/** Full share URL for a given code. */
-export function myReferralLink(code: string): string {
-  return referralLink(code);
+/** Full share URL for a given code, in the sharer's language. */
+export function myReferralLink(code: string, language?: Language | null): string {
+  return referralLink(code, language);
 }
 
 /** Redeem a friend's code (once). Safe to call logged out — the RPC no-ops. */

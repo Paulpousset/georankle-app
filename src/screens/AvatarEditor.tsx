@@ -17,6 +17,7 @@ import { WorldAvatar3D, cosmeticTileSprite } from '../components/WorldAvatar3D';
 import { AvatarPreview3D } from '../components/AvatarPreview3D';
 import { useFeatureFlag } from '../lib/featureFlags';
 import { cacheEquippedGlobe } from '../lib/globeSkin';
+import { equipCosmetics } from '../lib/shop';
 import { GlyphThumb } from '../components/worldGlyphs';
 import {
   DEFAULT_AVATAR_CONFIG,
@@ -32,7 +33,6 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { a11yButton, announce } from '../lib/a11y';
 import type { AvatarConfig, CosmeticCategory, CosmeticPart } from '../types';
-import type { Json } from '../types/database';
 
 interface AvatarEditorProps {
   onBack: () => void;
@@ -169,15 +169,14 @@ export default function AvatarEditor({ onBack, onOpenShop, onOpenGlobeLab }: Ava
   const save = async () => {
     setSaving(true);
     const next = normalizeConfig(config);
-    const { error } = await supabase.rpc('equip_cosmetics', {
-      p_config: next as unknown as Json,
-    });
+    // Persists AND drops the cached Profile snapshot, so the profile behind us
+    // re-reads the new world instead of serving its 5-min-old copy.
+    const res = await equipCosmetics(next, userId);
     setSaving(false);
-    if (error) {
-      showAlert(tr(language, 'Erreur', 'Error'), error.message);
+    if (!res.ok) {
+      showAlert(tr(language, 'Erreur', 'Error'), res.message);
       return;
     }
-    void cacheEquippedGlobe(next);
     announce(tr(language, 'Monde enregistré', 'World saved'));
     onBack();
   };

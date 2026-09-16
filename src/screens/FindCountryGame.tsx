@@ -37,7 +37,9 @@ import { saveSoloScore } from '../lib/soloResult';
 import { useSoloCoins } from '../lib/useSoloCoins';
 import { SoloCoinReward } from '../components/SoloCoinReward';
 import { SoloEndActions } from '../components/SoloEndActions';
-import { PlayerGlobe } from '../components/PlayerGlobe';
+import { EndGlobe } from '../components/end/EndGlobe';
+import { Reveal } from '../components/end/Reveal';
+import { END_CHOREO } from '../lib/motion';
 import { useMyGameGlobe } from '../lib/myGlobe';
 import { OffLeaderboardNotice } from '../components/OffLeaderboardNotice';
 import { RunRecap, type RecapEntry } from '../components/RunRecap';
@@ -873,8 +875,23 @@ export default function FindCountryGame({
           contentContainerStyle={styles.finishedScroll}
           showsVerticalScrollIndicator={false}
         >
-          <PlayerGlobe config={myGlobe} size={116} accent={PALETTE.oceanBlue} animate />
+          <EndGlobe
+            config={myGlobe}
+            size={116}
+            accent={PALETTE.oceanBlue}
+            animate
+            record={
+              isDaily
+                ? undefined
+                : {
+                    mode: 'globe',
+                    score: normalizeRoundScore('globe', score, { numQuestions: totalRounds }),
+                    ctx: { scope, review: isReview, training },
+                  }
+            }
+          />
 
+          <Reveal at={END_CHOREO.verdict}>
           <Text style={[styles.finishedTitle, { color: colors.text }]}>
             {tr(language, 'Partie terminée !', 'Game over!')}
           </Text>
@@ -886,18 +903,24 @@ export default function FindCountryGame({
             {tr(language, '% de réussite', '% success rate')}
           </Text>
           <OffLeaderboardNotice run={{ scope, review: isReview, training }} color={colors.textMuted} />
+          </Reveal>
 
+          <Reveal at={END_CHOREO.detail}>
           <SoloCoinReward
             coinsEarned={coinsEarned}
             coinsCapped={coinsCapped}
             coinsSyncFailed={coinsSyncFailed}
             containerStyle={styles.finishedBlock}
           />
+          </Reveal>
 
+          <Reveal at={END_CHOREO.reward}>
           <View style={styles.finishedBlock}>
             <RunRecap entries={recap} />
           </View>
+          </Reveal>
 
+          <Reveal at={END_CHOREO.actions}>
           <View style={styles.finishedBlock}>
             <SoloEndActions
               onShare={isDaily ? onShare : undefined}
@@ -907,6 +930,7 @@ export default function FindCountryGame({
               accent={PALETTE.chartBlue}
             />
           </View>
+          </Reveal>
         </ScrollView>
       </SafeAreaView>
     );

@@ -44,7 +44,9 @@ import { a11yButton, announce, a11yHidden, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
 import { SoloCoinReward } from '../components/SoloCoinReward';
 import { SoloEndActions } from '../components/SoloEndActions';
-import { PlayerGlobe } from '../components/PlayerGlobe';
+import { EndGlobe } from '../components/end/EndGlobe';
+import { Reveal } from '../components/end/Reveal';
+import { END_CHOREO } from '../lib/motion';
 import { useMyGameGlobe } from '../lib/myGlobe';
 import { TopInsetBar } from '../components/TopInsetBar';
 
@@ -280,6 +282,15 @@ export default function HigherLowerGame({
   };
 
   const resetGame = () => {
+    // Le garde anti-multitouch est armé à chaque réponse et n'est désarmé qu'à
+    // l'ouverture de la question SUIVANTE — ce qui n'arrive jamais sur la
+    // réponse qui termine la partie. Laissé armé, il faisait sortir
+    // handleChoice immédiatement sur la partie rejouée : les cartes
+    // répondaient au toucher, et rien ne se passait.
+    answeredRef.current = false;
+    // Et le timer de fin de partie n'a pas à survivre au « Rejouer ».
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = null;
     setScore(0);
     setQuestionIndex(0);
     setRecap([]);
@@ -448,7 +459,15 @@ export default function HigherLowerGame({
               contentContainerStyle={styles.gameOverContent}
               showsVerticalScrollIndicator={false}
             >
-            <PlayerGlobe config={myGlobe} size={96} accent="#8b1a1a" animate style={{ marginBottom: 12 }} />
+            <EndGlobe
+              config={myGlobe}
+              size={96}
+              accent="#8b1a1a"
+              animate
+              style={{ marginBottom: 12 }}
+              record={isDaily ? undefined : { mode: 'higherlower', score, ctx: { scope, training } }}
+            />
+            <Reveal at={END_CHOREO.verdict}>
             <ScoreText style={styles.gameOverTitle}>
               {tr(language, 'PERDU !', 'LOST!')}
             </ScoreText>
@@ -457,19 +476,25 @@ export default function HigherLowerGame({
               {score}
             </Text>
             {!isDaily && <OffLeaderboardNotice run={{ scope, training }} color={c.textMuted} />}
+            </Reveal>
             {/* Pièces + doubleur pub AVANT le récap : la récompense d'abord,
                 la solution juste après. */}
+            <Reveal at={END_CHOREO.detail}>
             <SoloCoinReward
               coinsEarned={coinsEarned}
               coinsCapped={coinsCapped}
               coinsSyncFailed={coinsSyncFailed}
               containerStyle={{ alignSelf: 'stretch', maxWidth: 380, marginBottom: 14 }}
             />
+            </Reveal>
+            <Reveal at={END_CHOREO.reward}>
             <View style={{ alignSelf: 'stretch', maxWidth: 380, marginBottom: 18 }}>
               <RunRecap entries={recap} mistakesFirst={false} maxHeight={200} />
             </View>
+            </Reveal>
             {/* La chaîne casse à la première erreur : pas de « même partie »
                 à rejouer, seulement une nouvelle tentative. */}
+            <Reveal at={END_CHOREO.actions}>
             <View style={{ alignSelf: 'stretch', maxWidth: 380 }}>
               <SoloEndActions
                 onShare={isDaily ? onShare : undefined}
@@ -477,6 +502,7 @@ export default function HigherLowerGame({
                 onMenu={() => setGameMode('menu')}
               />
             </View>
+            </Reveal>
             </ScrollView>
           </View>
         )}

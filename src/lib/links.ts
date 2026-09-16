@@ -7,19 +7,46 @@
  * point back here. Today it's the live Vercel domain (already serving
  * privacy.html / reset-password.html), so referral links resolve immediately.
  */
+import type { Language } from '../types';
 
 /** The live web domain. Branded domain later = change this single line. */
 export const SITE_DOMAIN = 'playgeog.com';
 export const SITE_URL = `https://${SITE_DOMAIN}`;
 
+/** The two store listings — the invite page and the web "get the app" button share them. */
+export const STORE_URL_IOS = 'https://apps.apple.com/app/id6779650018';
+export const STORE_URL_ANDROID = 'https://play.google.com/store/apps/details?id=com.paulpousset.geog';
+
 /**
  * Referral invite link, e.g.
- *   https://playgeog.com/invite.html?code=A3F8C13E
+ *   https://playgeog.com/invite.html?code=A3F8C13E&lang=en
  * Opens the landing page (OG preview + store buttons); once universal links are
- * verified it deep-links straight into the app.
+ * verified it deep-links straight into the app. `lang` picks the language of
+ * the page AND of its link preview (the site serves one shell per language —
+ * see site/lib/invite.mjs); French, the site's root language, needs none.
  */
-export function referralLink(code: string): string {
-  return `${SITE_URL}/invite.html?code=${encodeURIComponent(code)}`;
+export function referralLink(code: string, language?: Language | null): string {
+  const lang = language && language !== 'fr' ? `&lang=${language}` : '';
+  return `${SITE_URL}/invite.html?code=${encodeURIComponent(code)}${lang}`;
+}
+
+/**
+ * The same landing page with no code — "Install GeoG" rather than "join me":
+ * what the web version's "get the app" button opens on a computer. On a phone
+ * the button goes straight to the store instead (see `storeLinkForWeb`).
+ */
+export function installLink(language?: Language | null): string {
+  return language && language !== 'fr' ? `${SITE_URL}/invite.html?lang=${language}` : `${SITE_URL}/invite.html`;
+}
+
+/**
+ * Where "get the app" should send a web player: the store itself on a phone
+ * (one tap, no landing page in between), the install page elsewhere.
+ */
+export function storeLinkForWeb(userAgent: string, language?: Language | null): string {
+  if (/android/i.test(userAgent)) return STORE_URL_ANDROID;
+  if (/iphone|ipad|ipod/i.test(userAgent)) return STORE_URL_IOS;
+  return installLink(language);
 }
 
 /**

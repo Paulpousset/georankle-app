@@ -31,7 +31,9 @@ import { FONTS } from '../theme/typography';
 import { a11yButton, a11yHidden } from '../lib/a11y';
 import { tr } from '../i18n';
 import { ScoreText } from '../components/ScoreText';
-import { PlayerGlobe } from '../components/PlayerGlobe';
+import { EndGlobe } from '../components/end/EndGlobe';
+import { Reveal } from '../components/end/Reveal';
+import { END_CHOREO } from '../lib/motion';
 import { useMyGameGlobe } from '../lib/myGlobe';
 
 import { ClassicGame } from './ClassicGame';
@@ -100,8 +102,10 @@ export default function MatchReplay({ match, onExit }: MatchReplayProps) {
       <SafeAreaView style={{ flex: 1, backgroundColor: c.background }}>
         <StatusBar style={isDarkMode ? 'light' : 'dark'} />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 14 }}>
-          <PlayerGlobe config={myGlobe} size={116} accent={c.accent} animate />
+          <EndGlobe config={myGlobe} size={116} accent={c.accent} animate />
+          <Reveal at={END_CHOREO.verdict} kind="pop">
           <Trophy color={c.accent} size={40} {...a11yHidden} />
+          </Reveal>
           <ScoreText style={{ color: c.text, fontFamily: FONTS.headingBlack, fontSize: 26, textAlign: 'center' }}>
             {tr(language, 'ENTRAÎNEMENT TERMINÉ', 'TRAINING DONE')}
           </ScoreText>

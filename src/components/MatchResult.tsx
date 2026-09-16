@@ -1,23 +1,24 @@
 import { useEffect, useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
 import { Home, RotateCcw, Trophy } from 'lucide-react-native';
-import { AtlasPromote, AtlasDemote } from './AtlasIcons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import type { RoundSummaryData } from './RoundSummary';
-import { getRankFromElo } from '../lib/ranked';
 import { computeMatchOutcome, formatMatchScore } from '../lib/match';
-import { RankGlobe } from './RankGlobe';
 import { a11yButton, a11yHidden, announce } from '../lib/a11y';
 import { ScoreText } from './ScoreText';
-import { PlayerGlobe } from './PlayerGlobe';
 import { RematchPanel } from './RematchPanel';
 import { SoloCoinReward } from './SoloCoinReward';
+import { DuelArena, DUEL_IMPACT_AT } from './end/DuelArena';
+import { EndStamp } from './end/EndStamp';
+import { RankLadder } from './end/RankLadder';
+import { Reveal } from './end/Reveal';
+import { useReducedMotion } from '../lib/motion';
 import { supabase } from '../lib/supabase';
 import { tr } from '../i18n';
 import type { AvatarConfig, Match } from '../types';
@@ -90,23 +91,36 @@ export function MatchResult({
         ? match.player2_id
         : match.player1_id
       : null;
+  // Le duel ne démarre qu'avec les deux vrais globes : lancer l'approche avec
+  // la Terre par défaut puis troquer le skin en plein vol ferait un « pop ».
+  // Réseau lent : on part quand même après 1,2 s.
+  const [profilesReady, setProfilesReady] = useState(!opponentId);
+  const { width: windowW } = useWindowDimensions();
+  const rm = useReducedMotion();
 
   useEffect(() => {
     const ids = [currentUserId, opponentId].filter(Boolean) as string[];
     if (ids.length === 0) return;
     let alive = true;
+    const fallback = setTimeout(() => {
+      if (alive) setProfilesReady(true);
+    }, 1200);
     void supabase
       .from('profiles')
       .select('id, username, avatar_url, avatar_config')
       .in('id', ids)
       .then(({ data }) => {
-        if (!alive || !data) return;
-        const rows = data as ({ id: string } & OpponentProfile)[];
-        setMe(rows.find((r) => r.id === currentUserId) ?? null);
-        setOpponent(rows.find((r) => r.id === opponentId) ?? null);
+        if (!alive) return;
+        if (data) {
+          const rows = data as ({ id: string } & OpponentProfile)[];
+          setMe(rows.find((r) => r.id === currentUserId) ?? null);
+          setOpponent(rows.find((r) => r.id === opponentId) ?? null);
+        }
+        setProfilesReady(true);
       });
     return () => {
       alive = false;
+      clearTimeout(fallback);
     };
   }, [currentUserId, opponentId]);
 
@@ -135,8 +149,9 @@ export function MatchResult({
   // modes across rounds); the `gameMode` prop is only a fallback.
   const scoreLabel = (mode: string, s: number) => formatMatchScore(mode, s);
 
-  // Tactile feedback matching the outcome when the result screen appears.
-  useEffect(() => {
+  // Le vibreur du verdict part avec le tampon (voir `onStamp`) ; ici, seule
+  // l'annonce pour les lecteurs d'écran.
+  const onStamp = () => {
     Haptics.notificationAsync(
       isDraw
         ? Haptics.NotificationFeedbackType.Warning
@@ -144,6 +159,8 @@ export function MatchResult({
           ? Haptics.NotificationFeedbackType.Success
           : Haptics.NotificationFeedbackType.Error,
     ).catch(() => {});
+  };
+  useEffect(() => {
     // Announce the match outcome and final score for screen-reader users.
     const outcome = isDraw
       ? tr(language, 'Égalité', 'Draw')
@@ -154,137 +171,112 @@ export function MatchResult({
     announce(`${outcome}, ${score}`);
   }, [isDraw, iWon, language, myRoundsWon, opponentRoundsWon]);
 
+  // La partition : avec le duel, le verdict claque après l'impact et les éclats ;
+  // sans globes (match contre un bot sans profil), tout vient plus vite.
+  const arena = !!opponentId;
+  const TITLE_AT = arena ? DUEL_IMPACT_AT + 850 : 400;
+  const SCORE_AT = TITLE_AT + 400;
+  const COINS_AT = SCORE_AT + 500;
+  const RANK_AT = COINS_AT + 500;
+  const REST_AT = (isRanked && rankResult ? RANK_AT : COINS_AT) + 500;
+  const outcome: 'win' | 'lose' | 'draw' = isDraw ? 'draw' : iWon ? 'win' : 'lose';
+
+  if (!profilesReady) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: c.background, alignItems: 'center', justifyContent: 'center' }}>
+        <StatusBar style={isDarkMode ? 'light' : 'dark'} />
+        <ActivityIndicator color={c.accent} />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.background }}>
       <StatusBar style={isDarkMode ? 'light' : 'dark'} />
 
       <ScrollView contentContainerStyle={{ alignItems: 'center', padding: 24, gap: 24 }}>
-        <View style={{ alignItems: 'center', gap: 12, marginTop: 16 }}>
-          {/* Les deux globes face à face : on voit enfin contre quel monde on
-              vient de jouer, et le sien porte la couleur du résultat. */}
-          {opponentId && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 4 }}>
-              <PlayerGlobe
-                config={me?.avatar_config ?? null}
-                photoUrl={me?.avatar_url ?? null}
-                username={me?.username ?? (tr(language, 'Vous', 'You'))}
-                size={92}
-                label={tr(language, 'VOUS', 'YOU')}
-                accent={resultColor}
-                animate
-              />
-              <Text style={{ color: c.textFaint, fontFamily: FONTS.mono, fontSize: 13 }}>
-                {tr(language, 'contre', 'vs')}
+        <View style={{ alignItems: 'center', gap: 12, marginTop: 8, width: '100%' }}>
+          {/* Le choc : les deux globes se foncent dessus, le perdant vole en
+              éclats, le gagnant grossit. On voit enfin contre quel monde on
+              vient de jouer — et ce qu'il en reste. */}
+          {arena ? (
+            <DuelArena
+              me={{
+                config: me?.avatar_config ?? null,
+                photoUrl: me?.avatar_url ?? null,
+                username: me?.username ?? tr(language, 'Vous', 'You'),
+              }}
+              opponent={{
+                config: opponent?.avatar_config ?? null,
+                photoUrl: opponent?.avatar_url ?? null,
+                username: opponent?.username ?? tr(language, 'Adversaire', 'Opponent'),
+              }}
+              outcome={outcome}
+              size={92}
+              width={Math.min(340, windowW - 48)}
+            />
+          ) : (
+            <Reveal at={0} kind="pop">
+              <Trophy size={56} color={resultColor} />
+            </Reveal>
+          )}
+          <View style={{ minHeight: 64, alignItems: 'center', justifyContent: 'center' }}>
+            <EndStamp at={rm ? 0 : TITLE_AT} text={resultText} color={resultColor} size={30} tilt={isDraw ? 0 : -5} onShown={onStamp} />
+          </View>
+          <Reveal at={SCORE_AT} kind="pop">
+            <ScoreText
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              style={{ color: c.text, fontSize: 48, fontFamily: FONTS.headingBlack }}
+            >
+              {myRoundsWon} – {opponentRoundsWon}
+            </ScoreText>
+          </Reveal>
+          <Reveal at={SCORE_AT + 150} kind="rise">
+            <Text style={{ color: c.textMuted, fontSize: 14, fontFamily: FONTS.mono }}>
+              {`BO${bestOf} · ${tr(language, 'Série terminée', 'Series over')}`}
+            </Text>
+            {myTotalScore !== undefined && opponentTotalScore !== undefined && (
+              <Text style={{ color: c.textFaint, fontSize: 13, fontFamily: FONTS.mono, marginTop: 4 }}>
+                {`${tr(language, 'Points', 'Points')} ${myTotalScore} – ${opponentTotalScore}`}
               </Text>
-              <PlayerGlobe
-                config={opponent?.avatar_config ?? null}
-                photoUrl={opponent?.avatar_url ?? null}
-                username={opponent?.username ?? (tr(language, 'Adversaire', 'Opponent'))}
-                size={92}
-                label={tr(language, 'ADVERSAIRE', 'OPPONENT')}
-                animate
-              />
-            </View>
-          )}
-          <Trophy size={56} color={resultColor} />
-          <ScoreText
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            style={{ color: resultColor, fontSize: 36, fontFamily: FONTS.headingBlack, letterSpacing: 1, textAlign: 'center' }}
-          >
-            {resultText}
-          </ScoreText>
-          <ScoreText
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            style={{ color: c.text, fontSize: 48, fontFamily: FONTS.headingBlack }}
-          >
-            {myRoundsWon} – {opponentRoundsWon}
-          </ScoreText>
-          <Text style={{ color: c.textMuted, fontSize: 14, fontFamily: FONTS.mono }}>
-            {`BO${bestOf} · ${tr(language, 'Série terminée', 'Series over')}`}
-          </Text>
-          {myTotalScore !== undefined && opponentTotalScore !== undefined && (
-            <Text style={{ color: c.textFaint, fontSize: 13, fontFamily: FONTS.mono }}>
-              {`${tr(language, 'Points', 'Points')} ${myTotalScore} – ${opponentTotalScore}`}
-            </Text>
-          )}
-          {decidedOnPoints && (
-            <Text style={{ color: resultColor, fontSize: 12, fontFamily: FONTS.monoBold, letterSpacing: 0.5 }}>
-              {tr(language, 'Départagé aux points', 'Decided on points')}
-            </Text>
-          )}
+            )}
+            {decidedOnPoints && (
+              <Text style={{ color: resultColor, fontSize: 12, fontFamily: FONTS.monoBold, letterSpacing: 0.5, marginTop: 4 }}>
+                {tr(language, 'Départagé aux points', 'Decided on points')}
+              </Text>
+            )}
+          </Reveal>
         </View>
 
         {/* Pièces animées + doubleur pub — la même carte qu'en solo. En ligne,
             l'écran se contentait d'une ligne « +6 pièces », sans aucun moyen de
             les doubler, alors que la RPC de multiplication ignore le mode. */}
         {coinsAwarded != null && (
-          <SoloCoinReward
-            coinsEarned={coinsAwarded}
-            containerStyle={{ width: '100%', maxWidth: 400 }}
-          />
+          <Reveal at={COINS_AT} kind="pop" style={{ width: '100%', maxWidth: 400 }}>
+            <SoloCoinReward
+              coinsEarned={coinsAwarded}
+              containerStyle={{ width: '100%' }}
+            />
+          </Reveal>
         )}
 
-        {/* Ranked ELO block */}
-        {isRanked && rankResult && (() => {
-          const newRank = getRankFromElo(rankResult.newElo);
-          const oldRank = getRankFromElo(rankResult.oldElo);
-          const promoted = newRank.tier !== oldRank.tier && rankResult.eloChange > 0;
-          const demoted = newRank.tier !== oldRank.tier && rankResult.eloChange < 0;
-          const deltaColor = rankResult.eloChange >= 0 ? '#2a6e3f' : '#8b1a1a';
-          const deltaSign = rankResult.eloChange >= 0 ? '+' : '';
-          return (
-            <View style={{
-              width: '100%', maxWidth: 400,
-              backgroundColor: c.card, borderRadius: 20, borderWidth: 1, borderColor: newRank.color,
-              padding: 20, alignItems: 'center', gap: 14,
-            }}>
-              <RankGlobe rank={newRank} size={72} showName language={language} spin />
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-                <View style={{ alignItems: 'center', gap: 2 }}>
-                  <Text style={{ color: c.textFaint, fontFamily: FONTS.mono, fontSize: 11 }}>
-                    {tr(language, 'AVANT', 'BEFORE')}
-                  </Text>
-                  <Text style={{ color: c.textMuted, fontFamily: FONTS.headingBlack, fontSize: 20 }}>
-                    {rankResult.oldElo}
-                  </Text>
-                </View>
-                <ScoreText style={{ color: deltaColor, fontFamily: FONTS.headingBlack, fontSize: 28 }}>
-                  {`${deltaSign}${rankResult.eloChange}`}
-                </ScoreText>
-                <View style={{ alignItems: 'center', gap: 2 }}>
-                  <Text style={{ color: c.textFaint, fontFamily: FONTS.mono, fontSize: 11 }}>
-                    {tr(language, 'APRÈS', 'AFTER')}
-                  </Text>
-                  <Text style={{ color: newRank.color, fontFamily: FONTS.headingBlack, fontSize: 20 }}>
-                    {rankResult.newElo}
-                  </Text>
-                </View>
-              </View>
-              {(promoted || demoted) && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                  {promoted ? (
-                    <AtlasPromote color="#2a6e3f" size={16} />
-                  ) : (
-                    <AtlasDemote color="#8b1a1a" size={16} />
-                  )}
-                  <Text style={{
-                    fontFamily: FONTS.monoBold,
-                    fontSize: 13,
-                    color: promoted ? '#2a6e3f' : '#8b1a1a',
-                    letterSpacing: 0.5,
-                  }}>
-                    {promoted
-                      ? (tr(language, 'Promotion en {0} !', 'Promoted to {1}!', [newRank.nameFr, newRank.name]))
-                      : (tr(language, 'Rétrogradé en {0}', 'Demoted to {1}', [newRank.nameFr, newRank.name]))}
-                  </Text>
-                </View>
-              )}
-            </View>
-          );
-        })()}
+        {/* Classé : l'ascension — l'échelle des rangs, le globe qui grimpe
+            (ou descend) d'un barreau, le tampon PROMOTION, l'ELO qui se compte. */}
+        {isRanked && rankResult && (
+          <Reveal at={RANK_AT} kind="rise" style={{ width: '100%', maxWidth: 400 }}>
+            <RankLadder
+              oldElo={rankResult.oldElo}
+              newElo={rankResult.newElo}
+              eloChange={rankResult.eloChange}
+              config={me?.avatar_config ?? null}
+              photoUrl={me?.avatar_url ?? null}
+              username={me?.username ?? null}
+            />
+          </Reveal>
+        )}
 
+        <Reveal at={REST_AT} kind="rise" style={{ width: '100%', maxWidth: 400 }}>
         <View style={{ width: '100%', maxWidth: 400, gap: 10 }}>
           <Text style={{ color: c.textFaint, fontSize: 12, fontFamily: FONTS.monoBold, letterSpacing: 1, marginBottom: 4 }}>
             {tr(language, 'DÉTAIL DES ROUNDS', 'ROUND BREAKDOWN')}
@@ -381,6 +373,7 @@ export function MatchResult({
             </Text>
           </TouchableOpacity>
         </View>
+        </Reveal>
       </ScrollView>
     </SafeAreaView>
   );

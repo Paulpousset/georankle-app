@@ -43,7 +43,9 @@ import { FONTS } from '../theme/typography';
 import { tr } from '../i18n';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { PlayerGlobe } from '../components/PlayerGlobe';
+import { EndGlobe } from '../components/end/EndGlobe';
+import { Reveal } from '../components/end/Reveal';
+import { END_CHOREO } from '../lib/motion';
 import { useMyGameGlobe } from '../lib/myGlobe';
 import { a11yButton, announce, a11yImage, a11yHidden, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
@@ -1011,8 +1013,10 @@ export default function LocalParcours({
         <View style={{ alignItems: 'center', marginBottom: 28, marginTop: 12 }}>
           {/* Le globe du possesseur du téléphone : en local les autres joueurs
               sont des invités sans compte, seul lui en a un. */}
-          <PlayerGlobe config={myGlobe} size={104} accent={PALETTE.sand} animate style={{ marginBottom: 12 }} />
+          <EndGlobe config={myGlobe} size={104} accent={PALETTE.sand} animate style={{ marginBottom: 12 }} />
+          <Reveal at={END_CHOREO.verdict} kind="pop">
           <Trophy color={PALETTE.sand} size={48} {...a11yHidden} />
+          </Reveal>
           <Text style={{ fontFamily: FONTS.headingBlack, color: c.text, fontSize: 26, marginTop: 10 }}>
             {tr(language, 'Partie terminée', 'Game over')}
           </Text>

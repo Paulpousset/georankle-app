@@ -45,7 +45,9 @@ import { filterByContinent, type ContinentId } from '../data/continents';
 import { saveSoloScore } from '../lib/soloResult';
 import { useSoloCoins } from '../lib/useSoloCoins';
 import { SoloCoinReward } from '../components/SoloCoinReward';
-import { PlayerGlobe } from '../components/PlayerGlobe';
+import { EndGlobe } from '../components/end/EndGlobe';
+import { Reveal } from '../components/end/Reveal';
+import { END_CHOREO } from '../lib/motion';
 import { useMyGameGlobe } from '../lib/myGlobe';
 import { OffLeaderboardNotice } from '../components/OffLeaderboardNotice';
 import { CountryFactCard } from '../components/CountryFactCard';
@@ -635,7 +637,13 @@ export default function GuessCountryGame({
           {won && (
             <View style={[styles.winCard, { backgroundColor: cardBg, borderColor: PALETTE.success }]}>
               {!isOnline && (
-                <PlayerGlobe config={myGlobe} size={92} accent={PALETTE.success} animate />
+                <EndGlobe
+                  config={myGlobe}
+                  size={92}
+                  accent={PALETTE.success}
+                  animate
+                  record={isDaily ? undefined : { mode: 'guess', score: myScore, ctx: { scope, review: isReview, training } }}
+                />
               )}
               <View style={styles.winEmoji} {...a11yImage(tr(language, 'Gagné', 'Won'))}>
                 <AtlasWin color={PALETTE.success} size={44} />
@@ -672,12 +680,14 @@ export default function GuessCountryGame({
               {/* Pièces + doubleur pub, juste sous le score : c'est la
                   récompense, elle ne doit pas être en bas de carte. */}
               {!isOnline && (
+                <Reveal at={END_CHOREO.detail}>
                 <SoloCoinReward
                   coinsEarned={coinsEarned}
                   coinsCapped={coinsCapped}
                   coinsSyncFailed={coinsSyncFailed}
                   containerStyle={{ alignSelf: 'stretch', marginTop: 12, marginBottom: 4 }}
                 />
+                </Reveal>
               )}
               {isOnline ? (
                 <Text style={[styles.winSub, { color: textSec }]}>

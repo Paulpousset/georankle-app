@@ -98,9 +98,19 @@ export function AvatarPreview3D({ config, size, style }: AvatarPreview3DProps) {
     webViewRef.current?.injectJavaScript(`try{${code}}catch(e){};true;`);
   }, []);
 
-  const sendAssets = useCallback(
+  // Monotonic ticket so an asset resolution that finishes AFTER a newer config
+  // was picked is dropped instead of restyling the scene with the older globe.
+  const assetSeqRef = useRef(0);
+  const sendState = useCallback(
     async (c: AvatarConfig) => {
-      inject(`window.setAssets(${JSON.stringify(await resolveAssets(c))});`);
+      const seq = ++assetSeqRef.current;
+      const assets = await resolveAssets(c);
+      if (seq !== assetSeqRef.current) return;
+      // Config and its assets land together: applying the config first would
+      // let the scene load the PREVIOUS globe's texture under the new style.
+      inject(
+        `window.setAvatarState(${JSON.stringify(c.layers)},${JSON.stringify(assets)});`,
+      );
     },
     [inject],
   );
@@ -126,9 +136,8 @@ export function AvatarPreview3D({ config, size, style }: AvatarPreview3DProps) {
   // Re-style on config change once the scene is live.
   useEffect(() => {
     if (!ready) return;
-    inject(`window.setAvatarConfig(${JSON.stringify(cfg.layers)});`);
-    sendAssets(cfg).catch(() => {});
-  }, [ready, cfg, inject, sendAssets]);
+    sendState(cfg).catch(() => {});
+  }, [ready, cfg, sendState]);
 
   return (
     <View style={[{ width: size, height: size, overflow: 'hidden' }, style]}>

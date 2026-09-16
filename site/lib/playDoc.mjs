@@ -10,20 +10,25 @@
  * qui ont suivi. Cette page est aussi celle que les joueurs partagent : leur
  * donner les règles, le barème et la liste des modes est utile en soi.
  *
- * CE QUE ÇA CHANGE POUR L'APP. Rien, sauf que la page défile désormais. `#root`
- * garde exactement une hauteur d'écran (`100dvh`) et le texte vient ensuite. Le
- * risque à surveiller était le geste de rotation du globe : il ne fait pas
- * défiler la page, parce que le globe vit dans son propre `<iframe>` dont le
- * canvas est en `touch-action:none` et dont le document annule `touchmove`
- * (src/lib/globe3d/buildEarthHtml.ts).
+ * CE QUE ÇA CHANGE POUR L'APP. Deux états, portés par la classe `pd-reading`
+ * sur `<html>` :
+ *   - MODE JEU (défaut) : la page est verrouillée (`body` en position:fixed),
+ *     le jeu occupe l'écran moins la barre de site, le texte est dans le flux
+ *     (donc lu par les robots) mais hors d'atteinte du défilement ;
+ *   - MODE LECTURE : le lien « Règles et FAQ » de la barre bascule la page en
+ *     document ordinaire qui défile ; le jeu est mis de côté sans être démonté
+ *     (visibility:hidden, dimensions gardées, partie conservée) et le même
+ *     lien, devenu « Retour au jeu », ramène en mode jeu.
  *
- * ⚠️ Ne PAS compter sur l'enchaînement du défilement pour atteindre le texte :
- * mesuré au navigateur, il ne se produit pas. Un doigt (ou une molette) posé
- * sur le jeu fait défiler les listes de l'app et s'arrête là — `window.scrollY`
- * reste à 0 quoi qu'on fasse. D'où la barre de site en haut de `/play` : son
- * lien « Règles et FAQ » descend au texte, et c'est le seul chemin fiable.
- * Elle sert aussi de preuve, pour un examinateur, que `/play` est la page d'un
- * site et pas une application nue.
+ * ⚠️ POURQUOI position:fixed ET PAS overflow:hidden. Du 05/09 au 16/09/2026 la
+ * page se contentait d'`overflow:hidden` sur `body` (celui de la coquille Expo,
+ * qui l'emportait d'ailleurs sur nos règles, chargées AVANT lui). Sur ordinateur
+ * cela figeait bien la page — d'où la note « le défilement ne s'enchaîne pas,
+ * scrollY reste à 0 » — mais iOS Safari ignore ce verrou au toucher : sur
+ * iPhone, toute la page (jeu + 5 000 px de texte) défilait sous le doigt, le
+ * jeu partait hors écran et devenait injouable. Le corps en position:fixed est
+ * le seul verrou que Safari respecte. Nos règles sont maintenant injectées en
+ * FIN de `<head>`, après la feuille Expo (site/build.mjs).
  *
  * D'OÙ VIENT LE TEXTE. Le français et l'anglais sont écrits à la main, ici, et
  * ne redisent pas la page d'accueil : ils parlent de la partie en cours (défi
@@ -63,23 +68,38 @@ function fill(text) {
  * suivent le thème du navigateur, comme l'app.
  */
 export const PLAY_DOC_CSS = `    <style id="play-doc-style">
-      /* La coquille Expo fige le corps de page (overflow:hidden, #root en
-         hauteur 100%). Le jeu garde un écran plein, le texte vient en dessous. */
-      html, body { height: auto; min-height: 100%; overflow: visible; }
-      body { overflow-x: hidden; background: #f2e8d0; }
+      /* ── Mode jeu (défaut) ─────────────────────────────────────────────
+         Le corps est verrouillé en position:fixed : c'est le seul verrou que
+         iOS Safari respecte au toucher (overflow:hidden ne suffit pas, voir
+         l'en-tête du module). Le texte reste dans le flux, clippé. */
+      html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+      body { position: fixed; inset: 0; width: 100%; background: #f2e8d0; }
       /* Le jeu occupe l'écran MOINS la barre. Mesuré : ni le menu, ni le défi
          du jour, ni le globe ne débordent — ils se dimensionnent à leur boîte,
-         pas a la hauteur de la fenetre. */
-      /* Le !important est assume : react-native-web pose sa propre classe sur
-         la racine au demarrage, et sa hauteur l'emporte sur ce selecteur. Sans
-         cela le jeu reprend tout l'ecran et recouvre la barre. Mesure au
-         navigateur, pas suppose. */
+         pas à la hauteur de la fenêtre. Le !important est assumé :
+         react-native-web pose sa propre classe sur la racine au démarrage, et
+         sa hauteur l'emporterait. */
       #root {
         height: calc(100vh - 46px) !important;
         height: calc(100dvh - 46px) !important;
         min-height: 0 !important;
         flex: none !important;
       }
+      /* ── Mode lecture (html.pd-reading) ────────────────────────────────
+         La page redevient un document qui défile ; le jeu est mis de côté
+         sans être démonté (dimensions gardées, partie conservée). */
+      html.pd-reading, html.pd-reading body {
+        position: static; height: auto; min-height: 100%; overflow: visible;
+      }
+      html.pd-reading body { overflow-x: hidden; }
+      html.pd-reading #root {
+        position: fixed; left: 0; top: 46px; width: 100%;
+        visibility: hidden; pointer-events: none;
+      }
+      html.pd-reading .pd-bar { position: sticky; top: 0; z-index: 10; }
+      .pd-jump-back { display: none; }
+      html.pd-reading .pd-jump-go { display: none; }
+      html.pd-reading .pd-jump-back { display: inline; }
       .pd-bar {
         height: 46px; box-sizing: border-box;
         display: flex; align-items: center; gap: 16px;
@@ -93,7 +113,7 @@ export const PLAY_DOC_CSS = `    <style id="play-doc-style">
       .pd-bar a { color: #7a5c38; text-decoration: none; white-space: nowrap; }
       .pd-bar a:hover { text-decoration: underline; }
       .pd-bar .pd-brand { font-weight: 700; color: #2c1810; font-size: 16px; }
-      .pd-bar .pd-jump { margin-left: auto; color: #c04a1a; }
+      .pd-bar .pd-jump { margin-left: auto; color: #c04a1a; font-weight: 700; }
       @media (prefers-color-scheme: dark) {
         .pd-bar {
           background: #132040; border-bottom-color: #2d4a70; color: #7aa0c4;
@@ -102,7 +122,7 @@ export const PLAY_DOC_CSS = `    <style id="play-doc-style">
         .pd-bar .pd-brand { color: #d8e8f4; }
         .pd-bar .pd-jump { color: #e8825a; }
       }
-      #regles { scroll-margin-top: 0; }
+      #regles { scroll-margin-top: 46px; }
       .play-doc {
         --pd-bg: #f2e8d0; --pd-surface: #f8f2e3; --pd-ink: #2c1810;
         --pd-muted: #7a5c38; --pd-rule: #c4a87a; --pd-link: #c04a1a;
@@ -132,6 +152,11 @@ export const PLAY_DOC_CSS = `    <style id="play-doc-style">
         font-size: 15px; color: var(--pd-muted);
       }
       .pd-nav a { margin-right: 14px; white-space: nowrap; }
+      .pd-back {
+        display: inline-block; margin: 34px 0 0; padding: 12px 18px;
+        border: 2px solid var(--pd-link); border-radius: 10px;
+        font-weight: 700; text-decoration: none;
+      }
       @media (prefers-color-scheme: dark) {
         body { background: #0a1628; }
         .play-doc {
@@ -173,16 +198,61 @@ function modeList(locale) {
 export function playBar(locale) {
   const s = strings(locale);
   const data = localeData(locale);
-  const jump = locale === 'fr' ? 'Règles et FAQ' : locale === 'en' ? 'Rules and FAQ' : (data?.chrome.faq ?? 'FAQ');
+  const labels = jumpLabels(locale);
   const links = [[href('home', locale), data ? data.chrome.home : s.home]];
   if (!data) links.push([href('guides', locale), s.guides]);
   links.push([href('about', locale), data ? data.chrome.about : s.about]);
   return `  <nav class="pd-bar">
     <a class="pd-brand" href="${href('home', locale)}">GeoG</a>
 ${links.map(([url, label]) => `    <a href="${url}">${esc(label)}</a>`).join('\n')}
-    <a class="pd-jump" href="#regles">↓ ${esc(jump)}</a>
+    <a class="pd-jump" href="#regles"><span class="pd-jump-go">↓ ${esc(labels.go)}</span><span class="pd-jump-back">↑ ${esc(labels.back)}</span></a>
   </nav>`;
 }
+
+/**
+ * Les deux libellés du lien de bascule. Les quatorze langues générées n'ont pas
+ * de phrase « retour au jeu » : elles reprennent leur « Jouer », qui dit la
+ * même chose à cet endroit.
+ */
+function jumpLabels(locale) {
+  const data = localeData(locale);
+  if (locale === 'fr') return { go: 'Règles et FAQ', back: 'Retour au jeu' };
+  if (locale === 'en') return { go: 'Rules and FAQ', back: 'Back to the game' };
+  return { go: data?.chrome.faq ?? 'FAQ', back: data?.chrome.play ?? 'Play' };
+}
+
+/**
+ * Le script de bascule jeu ⇄ lecture, injecté après le texte par build.mjs.
+ * Sans JavaScript le lien reste une ancre vers #regles : rien ne casse, mais
+ * la page ne défile pas — c'est l'état d'avant, et il ne concerne que les
+ * robots, qui lisent le DOM sans défiler.
+ */
+export const PLAY_DOC_SCRIPT = `  <script>
+    (function () {
+      var html = document.documentElement;
+      function set(on) {
+        html.classList.toggle('pd-reading', on);
+        window.scrollTo(0, 0);
+        if (!on && location.hash === '#regles') {
+          history.replaceState(null, '', location.pathname + location.search);
+        }
+      }
+      var jump = document.querySelector('.pd-jump');
+      if (jump) jump.addEventListener('click', function (e) {
+        e.preventDefault();
+        set(!html.classList.contains('pd-reading'));
+      });
+      var backs = document.querySelectorAll('[data-pd-back]');
+      for (var i = 0; i < backs.length; i++) backs[i].addEventListener('click', function (e) {
+        e.preventDefault();
+        set(false);
+      });
+      if (location.hash === '#regles') set(true);
+      window.addEventListener('hashchange', function () {
+        if (location.hash === '#regles') set(true);
+      });
+    })();
+  </script>`;
 
 /** Le pied de page du bloc : les liens que tout site éditorial doit exposer. */
 function docNav(locale) {
@@ -195,7 +265,8 @@ function docNav(locale) {
   links.push([href('about', locale), data ? data.chrome.about : s.about]);
   links.push([href('contact', locale), data ? data.chrome.contact : s.contact]);
   links.push([href('privacy', locale), data ? data.chrome.privacy : s.privacy]);
-  return `      <nav class="pd-nav">
+  return `      <a class="pd-back" href="#" data-pd-back>↑ ${esc(jumpLabels(locale).back)}</a>
+      <nav class="pd-nav">
 ${links.map(([url, label]) => `        <a href="${url}">${esc(label)}</a>`).join('\n')}
       </nav>`;
 }

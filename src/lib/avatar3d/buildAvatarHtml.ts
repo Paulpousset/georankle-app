@@ -10,6 +10,7 @@
  * Protocol (all JSON-safe):
  *   frame → RN : {type:'ready'}
  *   RN → frame : window.setAvatarConfig(layers)   — instant re-style, no reload
+ *   RN → frame : window.setAvatarState(layers, assets) — config + assets in one pass
  *                window.setTextures({day,night,clouds,bump})
  *                window.setSprites({emblem,satellite})  — data/bundle URIs
  *                window.setReduceMotion(bool)
@@ -441,7 +442,7 @@ function ensureLand(styleId,tex){
       globeGroup.add(landObj);
       var cur=cfg.globe&&cfg.globe.id?cfg.globe.id.replace('globe_',''):'classic';
       if(NO_RELIEF[cur])landObj.visible=false;
-      else setLandStyle(cur,packTexCache[cur]||tex);
+      else setLandStyle(cur,(assets.globeTex&&packTexCache[assets.globeTex])||tex);
       needsRender=true;});
   }
   if(propsObj&&propsStyle!==styleId){
@@ -459,12 +460,20 @@ function ensureLand(styleId,tex){
       needsRender=true;});
   }
 }
+// Textures du pack déjà décodées, indexées par URI (PAS par style : les assets
+// arrivent de RN de façon asynchrone, et indexer par style mettait en cache la
+// texture du globe PRÉCÉDENT sous le nom du nouveau — d'où un autre globe que
+// celui choisi, figé pour toute la session).
 var packTexCache={};
+var globeReq=0;
 function applyGlobeStyle(styleId){
   var st=D.styles[styleId]||D.styles.classic;
+  var req=++globeReq;
   // Texture équirect cartoon du PACK (parité exacte avec les couches rendues).
   if(assets.globeTex){
+    var texUri=assets.globeTex;
     var usePack=function(t){
+      if(req!==globeReq)return; // un style plus récent a été demandé entre-temps
       var m=GLOBE_DARK[styleId]
         ?new THREE.MeshBasicMaterial({map:t})
         :new THREE.MeshToonMaterial({map:t,gradientMap:GRAD});
@@ -472,11 +481,11 @@ function applyGlobeStyle(styleId){
       if(old&&old.dispose)old.dispose();
       ensureLand(styleId,t);
       needsRender=true;};
-    if(packTexCache[styleId])usePack(packTexCache[styleId]);
-    else loadUri(assets.globeTex,function(t){
+    if(packTexCache[texUri])usePack(packTexCache[texUri]);
+    else loadUri(texUri,function(t){
       t.wrapS=THREE.RepeatWrapping; // couture ±180° du relief (u>1)
       t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
-      packTexCache[styleId]=t;usePack(t);});
+      packTexCache[texUri]=t;usePack(t);});
     cloudMesh.visible=false;
     setAtmo(st.atmo||null,!!st.corona);
     return;
@@ -848,6 +857,8 @@ window.setTextures=function(uris){
 // Assets du pack (sprites + GLB + textures globe/cosmos) : ré-applique tout.
 window.setAssets=function(map){assets=map||{};sprites=assets;applyAll();};
 window.setSprites=window.setAssets;
+// Config + assets d'un coup : une seule passe applyAll, cohérente.
+window.setAvatarState=function(layers,map){cfg=layers||cfg;assets=map||{};sprites=assets;applyAll();};
 window.setReduceMotion=function(v){reduceMotion=!!v;needsRender=true;};
 
 // ── Interaction : trackball inertiel, pinch-zoom, double-tap recadrage ───────

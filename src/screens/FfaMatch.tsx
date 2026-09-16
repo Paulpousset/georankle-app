@@ -15,7 +15,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Home, ChevronRight, Users } from 'lucide-react-native';
@@ -33,10 +33,12 @@ import { supabase } from '../lib/supabase';
 import { a11yButton } from '../lib/a11y';
 import { showAlert } from '../lib/alert';
 import { ScoreText } from '../components/ScoreText';
-import { AtlasWin } from '../components/AtlasIcons';
 import { standings as ffaStandings } from '../lib/ffa';
 import { PlayerGlobe } from '../components/PlayerGlobe';
 import { SoloCoinReward } from '../components/SoloCoinReward';
+import { FfaPodium } from '../components/end/FfaPodium';
+import { Reveal } from '../components/end/Reveal';
+import { END_CHOREO } from '../lib/motion';
 import type { CustomRoundCfg } from '../lib/customMatch';
 import { setActiveMatch, clearActiveMatch } from '../lib/activeMatch';
 import { forfeitWindowElapsed, FORFEIT_WINDOW_SECONDS } from '../lib/match';
@@ -102,6 +104,7 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
   const { isDarkMode } = useTheme();
   const { language } = useLanguage();
   const colors = getColors(isDarkMode);
+  const { width: windowW } = useWindowDimensions();
 
   const gd = (match.game_data ?? {}) as {
     seed?: number;
@@ -513,11 +516,19 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
   );
   const nameOf = (id: string) => (id === user.id ? tr(language, 'Toi', 'You') : names[id] ?? '…');
   const iWon = ranked.length > 0 && ranked[0].id === user.id;
+  const myRank = ranked.findIndex((p) => p.id === user.id) + 1;
+  const myStanding = ranked.find((p) => p.id === user.id);
+  const leader = ranked[0];
+  // Le podium : les marches montent, les globes tombent (3e, 2e, 1er), la
+  // couronne et les confettis vont au vainqueur, les autres font la haie.
+  const PODIUM_TITLE_AT = 1300;
+  const PODIUM_COINS_AT = END_CHOREO.reward;
+  const PODIUM_ACTIONS_AT = 2700;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar style={isDarkMode ? 'light' : 'dark'} />
-      <View style={styles.centered}>
+      <ScrollView contentContainerStyle={styles.centered} showsVerticalScrollIndicator={false}>
         {phase === 'lobby' && (
           <>
             <Users color={PALETTE.forestGreen} size={40} />
@@ -590,26 +601,42 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
         {(phase === 'roundResult' || phase === 'over') && (
           <>
             {phase === 'over' && (
-              <>
-                <PlayerGlobe
-                  config={profiles[user.id]?.avatar_config ?? null}
-                  photoUrl={profiles[user.id]?.avatar_url ?? null}
-                  username={nameOf(user.id)}
-                  size={104}
-                  accent={iWon ? PALETTE.forestGreen : PALETTE.sand}
-                  animate
-                  style={{ marginBottom: 10 }}
-                />
-                <View style={{ marginBottom: 8 }}>
-                  <AtlasWin color={iWon ? PALETTE.forestGreen : PALETTE.sand} size={64} />
-                </View>
-              </>
+              <FfaPodium
+                ranked={ranked.map((p) => ({
+                  id: p.id,
+                  name: nameOf(p.id),
+                  config: profiles[p.id]?.avatar_config ?? null,
+                  photoUrl: profiles[p.id]?.avatar_url ?? null,
+                }))}
+                meId={user.id}
+                width={Math.min(340, windowW - 40)}
+              />
             )}
-            <Text style={[styles.title, { color: colors.text }]}>
-              {phase === 'over'
-                ? (iWon ? tr(language, 'Victoire !', 'You win!') : tr(language, 'Partie terminée', 'Match over'))
-                : tr(language, 'Manche {0} / {1}', 'Round {0} / {1}', [currentRound - 1, bestOf])}
-            </Text>
+            {phase === 'over' ? (
+              <Reveal at={PODIUM_TITLE_AT} kind="pop">
+                <Text style={[styles.title, { color: iWon ? PALETTE.forestGreen : colors.text }]}>
+                  {iWon
+                    ? tr(language, 'Victoire !', 'You win!')
+                    : tr(language, '{0}e sur {1}', '#{0} of {1}', [myRank, ranked.length])}
+                </Text>
+                {myStanding && leader && (
+                  <Text style={[styles.sub, { color: colors.textMuted, marginTop: 4 }]}>
+                    {iWon
+                      ? tr(language, '{0} pts · {1} manches gagnées', '{0} pts · {1} rounds won', [myStanding.totalScore, myStanding.roundsWon])
+                      : tr(language, '{0} pts · à {1} points de {2}', '{0} pts · {1} points behind {2}', [
+                          myStanding.totalScore,
+                          Math.max(0, leader.totalScore - myStanding.totalScore),
+                          nameOf(leader.id),
+                        ])}
+                  </Text>
+                )}
+              </Reveal>
+            ) : (
+              <Text style={[styles.title, { color: colors.text }]}>
+                {tr(language, 'Manche {0} / {1}', 'Round {0} / {1}', [currentRound - 1, bestOf])}
+              </Text>
+            )}
+            {phase === 'roundResult' && (
             <View style={styles.standings}>
               {ranked.map((p, i) => (
                 <View key={p.id} style={[styles.standingRow, { borderColor: colors.border }]}>
@@ -626,17 +653,20 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
                 </View>
               ))}
             </View>
+            )}
 
             {/* Pièces de placement + doubleur pub : la partie en ligne à
                 plusieurs ne montrait rien du tout. */}
             {phase === 'over' && coinsAwarded != null && (
-              <SoloCoinReward
-                coinsEarned={coinsAwarded}
-                containerStyle={{ width: '100%', maxWidth: 340, marginTop: 16 }}
-              />
+              <Reveal at={PODIUM_COINS_AT} kind="pop" style={{ width: '100%', maxWidth: 340, marginTop: 16 }}>
+                <SoloCoinReward
+                  coinsEarned={coinsAwarded}
+                  containerStyle={{ width: '100%' }}
+                />
+              </Reveal>
             )}
 
-            <View style={{ gap: 12, width: '100%', maxWidth: 320, marginTop: 20 }}>
+            <Reveal at={phase === 'over' ? PODIUM_ACTIONS_AT : 0} kind="rise" style={{ gap: 12, width: '100%', maxWidth: 320, marginTop: 20 }}>
               {phase === 'roundResult' ? (
                 <TouchableOpacity
                   style={[styles.btn, { backgroundColor: PALETTE.chartBlue }]}
@@ -656,7 +686,7 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
                   <Text style={[styles.btnText, { color: colors.text }]}>{tr(language, 'Retour', 'Back')}</Text>
                 </TouchableOpacity>
               )}
-            </View>
+            </Reveal>
           </>
         )}
 
@@ -671,14 +701,14 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
             <Text style={[styles.btnText, { color: colors.text }]}>{tr(language, 'Quitter', 'Leave')}</Text>
           </TouchableOpacity>
         )}
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 30, gap: 6 },
+  centered: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 30, gap: 6 },
   title: { fontSize: 26, fontFamily: FONTS.headingBlack, textAlign: 'center', marginTop: 8 },
   sub: { fontFamily: FONTS.mono, fontSize: 14, textAlign: 'center' },
   playerList: { marginTop: 16, gap: 4, alignItems: 'center' },

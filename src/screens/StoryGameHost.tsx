@@ -1,10 +1,11 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import type { GameMode, Match } from '../types';
 import type { StoryLevel } from '../data/story';
 import { starsForScore, languageTierForLevel } from '../data/story';
+import type { RecordLevelResult } from '../lib/story';
 import { variantForSeed } from '../lib/languages';
 import { pickBandCountries } from '../lib/matchCountries';
 import { track } from '../lib/analytics';
@@ -18,11 +19,20 @@ import BordersGame from './BordersGame';
 import GuessCountryGame from './GuessCountryGame';
 import FindCountryGame from './FindCountryGame';
 import VersusCapitals from './VersusCapitals';
+import StoryLevelEnd from './StoryLevelEnd';
 
 interface StoryGameHostProps {
   level: StoryLevel;
+  /** Vies restantes (déjà décomptée pour ce niveau) — pour « Rejouer ». */
+  lives: number;
+  /** Plus haut niveau réussi avant cette partie (progression de la collection). */
+  maxLevelBefore: number;
+  signedIn: boolean;
   onExit: () => void;
-  onLevelComplete: (result: { score: number; stars: number }) => void;
+  /** Enregistre le niveau ; la réponse (pièces, pièce débloquée) nourrit le carnet. */
+  onLevelComplete: (result: { score: number; stars: number }) => Promise<RecordLevelResult>;
+  /** « Niveau suivant » / « Rejouer » depuis le carnet de fin. */
+  onPlayLevel: (level: number) => void;
 }
 
 /**
@@ -32,19 +42,56 @@ interface StoryGameHostProps {
  * renders the mode's own screen. The screen reports one normalized 0..1000 score
  * via `onRoundComplete`, which we turn into stars.
  *
+ * Fini, le niveau laisse place au carnet d'explorateur (StoryLevelEnd) — le
+ * jeu se démonte, la carte NE revient pas tant que le joueur n'a pas choisi
+ * (niveau suivant, rejouer, carte). L'enregistrement part tout de suite ; sa
+ * réponse remplit les pièces quand elle arrive.
+ *
  * Quitting mid-level = a fail for that attempt (the life was already spent when
  * the level was launched from the map).
  */
-export default function StoryGameHost({ level, onExit, onLevelComplete }: StoryGameHostProps) {
+export default function StoryGameHost({
+  level,
+  lives,
+  maxLevelBefore,
+  signedIn,
+  onExit,
+  onLevelComplete,
+  onPlayLevel,
+}: StoryGameHostProps) {
   const done = useRef(false);
+  const [ended, setEnded] = useState<{ score: number; stars: number } | null>(null);
+  const [record, setRecord] = useState<RecordLevelResult | null>(null);
 
   const handleComplete = (score: number) => {
     if (done.current) return;
     done.current = true;
     const stars = starsForScore(score);
     track('story_level_completed', { level: level.level, mode: level.mode, score, stars });
-    onLevelComplete({ score, stars });
+    setEnded({ score, stars });
+    onLevelComplete({ score, stars })
+      .then(setRecord)
+      .catch(() => setRecord({ firstClear: false, coins: 0, synced: false }));
   };
+
+  if (ended) {
+    return (
+      <SafeAreaProvider>
+        <StoryLevelEnd
+          level={level}
+          score={ended.score}
+          stars={ended.stars}
+          record={record}
+          maxLevelBefore={maxLevelBefore}
+          lives={lives}
+          signedIn={signedIn}
+          onNext={() => onPlayLevel(level.level + 1)}
+          onReplay={() => onPlayLevel(level.level)}
+          onMap={onExit}
+        />
+      </SafeAreaProvider>
+    );
+  }
 
   const match = makeStoryMatch(level);
   const quit = () => onExit();

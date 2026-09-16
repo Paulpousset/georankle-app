@@ -42,7 +42,9 @@ import { a11yButton, announce, a11yHidden, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
 import { SoloCoinReward } from '../components/SoloCoinReward';
 import { SoloEndActions } from '../components/SoloEndActions';
-import { PlayerGlobe } from '../components/PlayerGlobe';
+import { EndGlobe } from '../components/end/EndGlobe';
+import { Reveal } from '../components/end/Reveal';
+import { END_CHOREO } from '../lib/motion';
 import { useMyGameGlobe } from '../lib/myGlobe';
 import { TopInsetBar } from '../components/TopInsetBar';
 
@@ -1015,12 +1017,17 @@ export function ClassicGame({
                     {/* Le globe équipé ouvre l'écran de fin : c'est la vitrine
                         de ce qu'on achète en boutique. */}
                     {!reviewData && (
-                      <PlayerGlobe
+                      <EndGlobe
                         config={myGlobe}
                         size={wide ? 128 : 104}
                         accent={c.accent}
                         animate
                         style={{ marginBottom: 10 }}
+                        record={
+                          isDaily || matchData
+                            ? undefined
+                            : { mode: 'classic', score: efficiency, ctx: { scope, training }, formatScore: (n) => `${n}%` }
+                        }
                       />
                     )}
                     <Trophy color={c.accent} size={wide ? 52 : 44} {...a11yHidden} />
@@ -1091,12 +1098,14 @@ export function ClassicGame({
                       <OffLeaderboardNotice run={{ scope, training }} color={c.textMuted} />
                     )}
                     {/* Animated coins + rewarded-ad doubler (solo only, server-credited). */}
+                    <Reveal at={END_CHOREO.detail}>
                     <SoloCoinReward
                       coinsEarned={coinsEarned}
                       coinsCapped={coinsCapped}
                       coinsSyncFailed={coinsSyncFailed}
                       containerStyle={{ alignSelf: 'stretch', marginTop: 12 }}
                     />
+                    </Reveal>
                   </View>
 
                   <Text

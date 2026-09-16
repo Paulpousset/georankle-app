@@ -72,7 +72,17 @@ nav {
   background: var(--vermilion); color: #fff !important;
   padding: 7px 15px; border-radius: 4px; font-weight: 700;
 }
-@media (max-width: 620px) { .nav-links > a:not(.nav-cta) { display: none; } }
+.nav-logo b { white-space: nowrap; }
+/* Téléphone (16/09/2026) : le sélecteur de langue se réduit à son globe, les
+   liens secondaires disparaissent — sinon la barre déborde à 390 px. */
+@media (max-width: 620px) {
+  .nav-in { gap: 12px; }
+  .nav-links { gap: 12px; }
+  .nav-links > a:not(.nav-cta) { display: none; }
+  .lang-menu > summary > span { display: none; }
+  .lang-menu > summary { padding: 10px; margin: -10px; }
+  .lang-menu > summary::before { width: 20px; height: 20px; }
+}
 
 /* ---------- mise en page article ---------- */
 

@@ -58,7 +58,9 @@ import { ScoreText } from '../components/ScoreText';
 import { AtlasTrophy, AtlasCross } from '../components/AtlasIcons';
 import { SoloCoinReward } from '../components/SoloCoinReward';
 import { SoloEndActions } from '../components/SoloEndActions';
-import { PlayerGlobe } from '../components/PlayerGlobe';
+import { EndGlobe } from '../components/end/EndGlobe';
+import { Reveal } from '../components/end/Reveal';
+import { END_CHOREO } from '../lib/motion';
 import { useMyGameGlobe } from '../lib/myGlobe';
 import { TopInsetBar } from '../components/TopInsetBar';
 
@@ -543,13 +545,15 @@ export default function SilhouetteGame({
             contentContainerStyle={styles.gameOverContent}
             showsVerticalScrollIndicator={false}
           >
-            <PlayerGlobe
+            <EndGlobe
               config={myGlobe}
               size={100}
               accent="#2a6e3f"
               animate
               style={{ marginBottom: 10 }}
+              record={isDaily || isOnline ? undefined : { mode: 'silhouette', score, ctx: { scope, review: isReview, training } }}
             />
+            <Reveal at={END_CHOREO.verdict}>
             <Text style={{ fontSize: 24, textAlign: 'center' }} {...a11yHidden}>
               {grid}
             </Text>
@@ -559,18 +563,22 @@ export default function SilhouetteGame({
             </Text>
 
             {!isDaily && !isOnline && <OffLeaderboardNotice run={{ scope, review: isReview, training }} color={c.textMuted} />}
+            </Reveal>
 
             {/* Pièces + doubleur pub AVANT le récap : c'est la récompense, elle
                 ne doit pas se mériter au scroll. */}
             {/* Animated coins + rewarded-ad doubler (solo only, server-credited). */}
+            <Reveal at={END_CHOREO.detail}>
             <SoloCoinReward
               coinsEarned={coinsEarned}
               coinsCapped={coinsCapped}
               coinsSyncFailed={coinsSyncFailed}
               containerStyle={{ alignSelf: 'stretch', marginBottom: 12 }}
             />
+            </Reveal>
 
             {/* Recap: every silhouette of the run with its answer and outcome. */}
+            <Reveal at={END_CHOREO.reward}>
             <View style={[styles.recapCard, { backgroundColor: c.card, borderColor: c.border }]}>
               {run.map((q, i) => {
                 const h = history[i];
@@ -611,9 +619,9 @@ export default function SilhouetteGame({
                 );
               })}
             </View>
+            </Reveal>
 
-
-
+            <Reveal at={END_CHOREO.actions}>
             {!user && !isDaily && (
               <Text style={{ color: c.textMuted, fontFamily: FONTS.mono, fontSize: 12, textAlign: 'center', marginBottom: 12 }}>
                 {tr(
@@ -630,6 +638,7 @@ export default function SilhouetteGame({
               onNewGame={isDaily ? undefined : resetGame}
               onMenu={() => setGameMode('menu')}
             />
+            </Reveal>
           </ScrollView>
         </View>
       )}

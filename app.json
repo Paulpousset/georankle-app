@@ -3,7 +3,7 @@
     "name": "GeoG",
     "slug": "geog",
     "scheme": "geog",
-    "version": "5.5.0",
+    "version": "5.6.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -79,7 +79,14 @@
         }
       ],
       "expo-tracking-transparency",
-      "expo-asset"
+      "expo-asset",
+      "expo-apple-authentication",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.REMPLACER-PAR-LE-CLIENT-ID-IOS"
+        }
+      ]
     ],
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -88,6 +95,7 @@
     },
     "ios": {
       "supportsTablet": true,
+      "usesAppleSignIn": true,
       "bundleIdentifier": "com.paulpousset.geog",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false

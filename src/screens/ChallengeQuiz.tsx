@@ -27,7 +27,9 @@ import { ScoreText } from '../components/ScoreText';
 import { RunRecap, type RecapEntry } from '../components/RunRecap';
 import { SoloCoinReward } from '../components/SoloCoinReward';
 import { SoloEndActions } from '../components/SoloEndActions';
-import { PlayerGlobe } from '../components/PlayerGlobe';
+import { EndGlobe } from '../components/end/EndGlobe';
+import { Reveal } from '../components/end/Reveal';
+import { END_CHOREO } from '../lib/motion';
 import { useMyGameGlobe } from '../lib/myGlobe';
 import { useSoloCoins } from '../lib/useSoloCoins';
 import { useAuth } from '../contexts/AuthContext';
@@ -267,8 +269,15 @@ export default function ChallengeQuiz({
       <SafeAreaView style={[styles.root, { backgroundColor: c.background }]}>
         <StatusBar style={isDarkMode ? 'light' : 'dark'} />
         <ScrollView contentContainerStyle={styles.resultScroll} showsVerticalScrollIndicator={false}>
-          <PlayerGlobe config={myGlobe} size={104} accent="#2a6e3f" animate />
+          <EndGlobe
+            config={myGlobe}
+            size={104}
+            accent="#2a6e3f"
+            animate
+            record={isDaily || isOnline ? undefined : { mode: `challenge:${challenge.id}`, score }}
+          />
 
+          <Reveal at={END_CHOREO.verdict}>
           <Text style={[styles.resultTitle, { color: c.text }]}>
             {tr(language, 'Partie terminée', 'Game over')}
           </Text>
@@ -278,18 +287,24 @@ export default function ChallengeQuiz({
           <Text style={[styles.resultSub, { color: c.textMuted, marginTop: 6 }]}>
             {tr(language, '{0} / {1} bonnes réponses', '{0} / {1} correct', [correctCount, questions.length])}
           </Text>
+          </Reveal>
 
+          <Reveal at={END_CHOREO.detail}>
           <SoloCoinReward
             coinsEarned={coinsEarned}
             coinsCapped={coinsCapped}
             coinsSyncFailed={coinsSyncFailed}
             containerStyle={styles.resultBlock}
           />
+          </Reveal>
 
+          <Reveal at={END_CHOREO.reward}>
           <View style={styles.resultBlock}>
             <RunRecap entries={recap} />
           </View>
+          </Reveal>
 
+          <Reveal at={END_CHOREO.actions}>
           <View style={styles.resultBlock}>
             <SoloEndActions
               onShare={isDaily ? onShare : undefined}
@@ -300,6 +315,7 @@ export default function ChallengeQuiz({
               accent="#2a6e3f"
             />
           </View>
+          </Reveal>
         </ScrollView>
       </SafeAreaView>
     );

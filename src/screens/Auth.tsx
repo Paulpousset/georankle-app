@@ -27,6 +27,14 @@ import { track } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
 import { a11yButton } from '../lib/a11y';
 import { log } from '../lib/log';
+import { useFeatureFlag } from '../lib/featureFlags';
+import {
+  isAppleSignInAvailable,
+  isGoogleSignInAvailable,
+  signInWithApple,
+  signInWithGoogle,
+} from '../lib/socialAuth';
+import { AppleLogo, GoogleLogo } from '../components/SocialLogos';
 import {
   confirmPasswordError,
   emailError,
@@ -63,6 +71,25 @@ const Auth = ({ onAuthSuccess, language, initialMode = 'login' }: AuthProps) => 
   const [loading, setLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [mode, setMode] = useState<Mode>(initialMode);
+
+  // Connexion sociale : chaque bouton exige son flag serveur (créés OFF par
+  // social_login.sql, allumés une fois les consoles configurées) ET la
+  // faisabilité locale (feuille Apple dispo sur cet appareil / client Google
+  // configuré). Sur Android le bouton Apple reste caché.
+  const appleFlag = useFeatureFlag('social_login_apple');
+  const googleFlag = useFeatureFlag('social_login_google');
+  const [appleDeviceOk, setAppleDeviceOk] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    isAppleSignInAvailable().then((ok) => {
+      if (alive) setAppleDeviceOk(ok);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const showApple = appleFlag && appleDeviceOk;
+  const showGoogle = googleFlag && isGoogleSignInAvailable();
 
   const passwordRef = useRef<TextInput>(null);
   const confirmRef = useRef<TextInput>(null);
@@ -158,6 +185,9 @@ const Auth = ({ onAuthSuccess, language, initialMode = 'login' }: AuthProps) => 
     benefit2: { fr: 'Jouer en ligne en 1v1 et multijoueur', en: 'Play online 1v1 and multiplayer' },
     benefit3: { fr: 'Gagner des pièces et débloquer la boutique', en: 'Earn coins and unlock the shop' },
     benefit4: { fr: 'Te faire des amis et grimper au classement', en: 'Add friends and climb the leaderboard' },
+    continueApple: { fr: 'Continuer avec Apple', en: 'Continue with Apple' },
+    continueGoogle: { fr: 'Continuer avec Google', en: 'Continue with Google' },
+    orDivider: { fr: 'ou', en: 'or' },
   };
   const t = useMemo(
     () => Object.fromEntries(Object.entries(LABELS).map(([key, label]) => [key, pickLabel(label, language)])) as Record<keyof typeof LABELS, string>,
@@ -230,6 +260,21 @@ const Auth = ({ onAuthSuccess, language, initialMode = 'login' }: AuthProps) => 
     // has an account (avoids leaking which emails are registered).
     track('password_reset_requested');
     setResetSent(true);
+  }
+
+  async function signInWithProvider(provider: 'apple' | 'google') {
+    setLoading(true);
+    track('oauth_login_started', { provider });
+    try {
+      const result = provider === 'apple' ? await signInWithApple() : await signInWithGoogle();
+      // 'redirect' = web : la page part vers le fournisseur, la session sera
+      // détectée au retour. 'cancelled' = feuille refermée, rien à dire.
+      if (result === 'success') onAuthSuccess();
+    } catch (e) {
+      log.error(`OAuth ${provider} sign-in error:`, e);
+      showAlert(t.error, e instanceof Error ? e.message : String(e));
+    }
+    setLoading(false);
   }
 
   async function signUpWithEmail() {
@@ -604,6 +649,42 @@ const Auth = ({ onAuthSuccess, language, initialMode = 'login' }: AuthProps) => 
               )}
             </TouchableOpacity>
 
+            {/* Connexion sociale — mêmes boutons à la connexion et à l'inscription
+                (Supabase crée le compte au premier passage). */}
+            {(showApple || showGoogle) && (
+              <>
+                <View style={styles.dividerRow}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>{t.orDivider}</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+
+                {showApple && (
+                  <TouchableOpacity
+                    style={[styles.socialButton, styles.appleButton, loading && styles.buttonDisabled]}
+                    onPress={() => signInWithProvider('apple')}
+                    disabled={loading}
+                    {...a11yButton(t.continueApple, { disabled: loading, busy: loading })}
+                  >
+                    <AppleLogo size={18} />
+                    <Text style={styles.appleButtonText}>{t.continueApple}</Text>
+                  </TouchableOpacity>
+                )}
+
+                {showGoogle && (
+                  <TouchableOpacity
+                    style={[styles.socialButton, styles.googleButton, loading && styles.buttonDisabled]}
+                    onPress={() => signInWithProvider('google')}
+                    disabled={loading}
+                    {...a11yButton(t.continueGoogle, { disabled: loading, busy: loading })}
+                  >
+                    <GoogleLogo size={18} />
+                    <Text style={styles.googleButtonText}>{t.continueGoogle}</Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            )}
+
             <TouchableOpacity
               onPress={() => setMode(mode === 'login' ? 'signup' : 'login')}
               {...a11yButton(mode === 'login' ? t.noAccount : t.haveAccount, {
@@ -687,6 +768,25 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: { opacity: 0.5 },
   buttonText: { color: 'white', fontSize: 16, fontFamily: FONTS.monoBold },
+  // Connexion sociale : séparateur « ou » + boutons aux couleurs des marques
+  // (pomme sur fond noir, « G » quadricolore sur fond blanc).
+  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 16 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: PALETTE.tan },
+  dividerText: { fontSize: 12, fontFamily: FONTS.mono, color: PALETTE.brown },
+  socialButton: {
+    height: 50,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+  },
+  appleButton: { backgroundColor: '#000', borderColor: '#000' },
+  appleButtonText: { color: 'white', fontSize: 15, fontFamily: FONTS.monoBold },
+  googleButton: { backgroundColor: 'white', borderColor: PALETTE.tan },
+  googleButtonText: { color: '#1f1f1f', fontSize: 15, fontFamily: FONTS.monoBold },
   switchText: { marginTop: 20, color: PALETTE.vermilion, textAlign: 'center', fontSize: 14, fontFamily: FONTS.mono },
   // Forgot-password link, right-aligned above the login button.
   forgotRow: { alignSelf: 'flex-end', marginTop: -4, marginBottom: 4, paddingVertical: 4 },

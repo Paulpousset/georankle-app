@@ -72,7 +72,18 @@ modified: 2026-09-10
       box-shadow:0 3px 0 #8f3512;
     }
     .nav-cta:hover { transform:translateY(-2px); box-shadow:0 5px 0 #8f3512; }
-    @media (max-width:640px){ .nav-links > a:not(.nav-cta) { display:none; } }
+    .nav-logo b { white-space:nowrap; }
+    /* Téléphone (16/09/2026) : « GeoG » + « Français ▾ » + « Jouer » ne
+       tenaient pas dans 390 px, le sélecteur recouvrait le logo. Le sélecteur
+       se réduit à son globe, les liens secondaires disparaissent. */
+    @media (max-width:640px){
+      .nav-in { padding:12px 16px; gap:14px; }
+      .nav-links { gap:14px; }
+      .nav-links > a:not(.nav-cta) { display:none; }
+      .lang-menu > summary > span { display:none; }
+      .lang-menu > summary { padding:10px; margin:-10px; }
+      .lang-menu > summary::before { width:20px; height:20px; }
+    }
 
     /* ── hero ──────────────────────────────────────────── */
     .hero {
@@ -339,21 +350,21 @@ modified: 2026-09-10
 
     /* ── FAQ ───────────────────────────────────────────── */
     .faq-list { max-width:720px; margin:0 auto; display:flex; flex-direction:column; gap:12px; }
-    details {
+    .faq-list details {
       background:var(--surface); border:var(--frame); border-radius:16px;
       transition:box-shadow .25s ease;
     }
-    details[open] { box-shadow:0 12px 26px rgba(44,24,16,.09); }
-    summary {
+    .faq-list details[open] { box-shadow:0 12px 26px rgba(44,24,16,.09); }
+    .faq-list summary {
       cursor:pointer; list-style:none; padding:19px 22px; font-weight:700; font-size:.95rem;
       display:flex; justify-content:space-between; align-items:center; gap:14px;
     }
-    summary::-webkit-details-marker { display:none; }
-    summary::after {
+    .faq-list summary::-webkit-details-marker { display:none; }
+    .faq-list summary::after {
       content:"+"; font-family:var(--serif); font-size:1.5rem; color:var(--vermilion);
       transition:transform .3s ease; flex:none; line-height:1;
     }
-    details[open] summary::after { transform:rotate(45deg); }
+    .faq-list details[open] summary::after { transform:rotate(45deg); }
     details .faq-body { padding:0 22px 20px; color:var(--brown); font-size:.88rem; }
     details .faq-body a { color:var(--vermilion); }
 

@@ -44,7 +44,7 @@ import { variantForSeed } from '../lib/languages';
 import { challengeForSeed, challengeLabel } from '../data/challenges';
 import { prefetchReferralCode, shareDailyResult } from '../lib/shareDaily';
 import { useToast } from '../components/ToastProvider';
-import { SITE_URL } from '../lib/links';
+import { storeLinkForWeb } from '../lib/links';
 import { track } from '../lib/analytics';
 import { commonStyles as styles } from '../theme/commonStyles';
 import { PALETTE, getColors } from '../theme/colors';
@@ -394,10 +394,16 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
       {/* "How to play" card opened from a mode's "?" button — plain close, so
           consulting the rules here never marks the mode as seen. */}
       <ModeIntroCard mode={helpMode} onDismiss={() => setHelpMode(null)} />
-      {/* Web players (Wordle-style entry): one-tap path to install the full app. */}
+      {/* Web players (Wordle-style entry): one-tap path to install the full app —
+          straight to the store on a phone, the install page (no referral code,
+          so it reads "install GeoG", not "join me") on a computer. */}
       {Platform.OS === 'web' ? (
         <TouchableOpacity
-          onPress={() => Linking.openURL(`${SITE_URL}/invite.html`)}
+          onPress={() =>
+            Linking.openURL(
+              storeLinkForWeb(typeof navigator !== 'undefined' ? navigator.userAgent : '', language),
+            )
+          }
           style={{
             marginHorizontal: 16,
             marginBottom: 10,

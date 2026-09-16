@@ -38,7 +38,9 @@ import { ScoreText } from '../components/ScoreText';
 import { RunRecap, type RecapEntry } from '../components/RunRecap';
 import { SoloCoinReward } from '../components/SoloCoinReward';
 import { SoloEndActions } from '../components/SoloEndActions';
-import { PlayerGlobe } from '../components/PlayerGlobe';
+import { EndGlobe } from '../components/end/EndGlobe';
+import { Reveal } from '../components/end/Reveal';
+import { END_CHOREO } from '../lib/motion';
 import { useMyGameGlobe } from '../lib/myGlobe';
 import { useSoloCoins } from '../lib/useSoloCoins';
 import { TopInsetBar } from '../components/TopInsetBar';
@@ -813,8 +815,19 @@ export default function FindRegionGame({
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <StatusBar style={isDarkMode ? 'light' : 'dark'} />
         <ScrollView contentContainerStyle={styles.finishedScroll} showsVerticalScrollIndicator={false}>
-          <PlayerGlobe config={myGlobe} size={116} accent={PALETTE.sand} animate />
+          <EndGlobe
+            config={myGlobe}
+            size={116}
+            accent={PALETTE.sand}
+            animate
+            record={
+              isDaily
+                ? undefined
+                : { mode: 'regions', score: normalizeRoundScore('regions', score, { numQuestions: totalRounds }) }
+            }
+          />
 
+          <Reveal at={END_CHOREO.verdict}>
           <Text style={[styles.finishedTitle, { color: colors.text }]}>
             {tr(language, 'Partie terminée !', 'Game over!')}
           </Text>
@@ -825,18 +838,24 @@ export default function FindRegionGame({
             {Math.round((correctCount / totalRounds) * 100)}
             {tr(language, '% de réussite', '% success rate')}
           </Text>
+          </Reveal>
 
+          <Reveal at={END_CHOREO.detail}>
           <SoloCoinReward
             coinsEarned={coinsEarned}
             coinsCapped={coinsCapped}
             coinsSyncFailed={coinsSyncFailed}
             containerStyle={styles.finishedBlock}
           />
+          </Reveal>
 
+          <Reveal at={END_CHOREO.reward}>
           <View style={styles.finishedBlock}>
             <RunRecap entries={recap} />
           </View>
+          </Reveal>
 
+          <Reveal at={END_CHOREO.actions}>
           <View style={styles.finishedBlock}>
             <SoloEndActions
               onShare={isDaily ? onShare : undefined}
@@ -851,6 +870,7 @@ export default function FindRegionGame({
               accent={PALETTE.chartBlue}
             />
           </View>
+          </Reveal>
         </ScrollView>
       </SafeAreaView>
     );

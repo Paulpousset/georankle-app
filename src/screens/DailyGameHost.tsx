@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { showAlert } from '../lib/alert';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { User } from '@supabase/supabase-js';
 
 import type { GameMode } from '../types';
-import { completeDaily, seedFor, type DailyResult } from '../lib/daily';
+import { completeDaily, getLocalState, seedFor, type DailyResult } from '../lib/daily';
 import { variantForSeed } from '../lib/languages';
 import { challengeForSeed } from '../data/challenges';
 import { prefetchReferralCode, shareDailyResult } from '../lib/shareDaily';
@@ -26,12 +26,15 @@ import FindCountryGame from './FindCountryGame';
 import RegionGameFlow from './RegionGameFlow';
 import ChallengeQuiz from './ChallengeQuiz';
 import VersusCapitals from './VersusCapitals';
+import DailyEnd from './DailyEnd';
 
 interface DailyGameHostProps {
   mode: GameMode;
   date: string;
   user: User | null;
   onExit: () => void;
+  /** « Défi suivant » : enchaîner sur un autre défi du jour sans repasser par le hub. */
+  onPlayDaily?: (mode: GameMode) => void;
 }
 
 /**
@@ -45,12 +48,17 @@ export default function DailyGameHost({
   date,
   user,
   onExit,
+  onPlayDaily,
 }: DailyGameHostProps) {
   const { language } = useLanguage();
   const toast = useToast();
   const seed = seedFor(date, mode);
   const resultRef = useRef<DailyResult | null>(null);
   const [streak, setStreak] = useState(0);
+  // La fin de défi (l'orbite) se pose PAR-DESSUS l'écran de fin du mode, qui
+  // garde le récap et les pièces ; « Récap & pièces » la retire.
+  const [ending, setEnding] = useState<{ result: DailyResult; streakIncreased: boolean } | null>(null);
+  const [showEnd, setShowEnd] = useState(false);
 
   // Latest in-progress score, reported live by the active game (continuous-score
   // modes only). Used to lock in the score if the player quits before the puzzle
@@ -66,8 +74,11 @@ export default function DailyGameHost({
     const result: DailyResult = { mode, date, score, grid };
     resultRef.current = result;
     track('daily_completed', { mode, score });
+    const before = await getLocalState().catch(() => null);
     const state = await completeDaily(user, result);
     setStreak(state.streak);
+    setEnding({ result, streakIncreased: before != null && state.streak > before.streak });
+    setShowEnd(true);
     // Streak milestone (7/30-day multiples) — the server just credited coins.
     if (state.streakBonus > 0) {
       toast.success(
@@ -271,5 +282,22 @@ export default function DailyGameHost({
     screen = <View />;
   }
 
-  return <SafeAreaProvider>{screen}</SafeAreaProvider>;
+  return (
+    <SafeAreaProvider>
+      {screen}
+      {ending && showEnd ? (
+        <View style={StyleSheet.absoluteFill}>
+          <DailyEnd
+            result={ending.result}
+            streak={streak}
+            streakIncreased={ending.streakIncreased}
+            onNext={(next) => (onPlayDaily ? onPlayDaily(next) : onExit())}
+            onShare={onShare}
+            onDetail={() => setShowEnd(false)}
+            onHub={onExit}
+          />
+        </View>
+      ) : null}
+    </SafeAreaProvider>
+  );
 }

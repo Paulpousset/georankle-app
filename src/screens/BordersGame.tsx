@@ -56,7 +56,9 @@ import { a11yButton, announce, a11yHidden, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
 import { SoloCoinReward } from '../components/SoloCoinReward';
 import { SoloEndActions } from '../components/SoloEndActions';
-import { PlayerGlobe } from '../components/PlayerGlobe';
+import { EndGlobe } from '../components/end/EndGlobe';
+import { Reveal } from '../components/end/Reveal';
+import { END_CHOREO } from '../lib/motion';
 import { useMyGameGlobe } from '../lib/myGlobe';
 import { TopInsetBar } from '../components/TopInsetBar';
 
@@ -932,13 +934,15 @@ export default function BordersGame({
         {outcome && (
           <View style={{ alignItems: 'center', gap: 14, marginTop: 18, width: '100%' }}>
             {!matchData && (
-              <PlayerGlobe
+              <EndGlobe
                 config={myGlobe}
                 size={100}
                 accent={outcome === 'won' ? '#2a6e3f' : '#8b1a1a'}
                 animate
+                record={isDaily ? undefined : { mode: 'borders', score: outcome === 'won' ? currentScore() : 0 }}
               />
             )}
+            <Reveal at={matchData ? 0 : END_CHOREO.verdict}>
             <ScoreText
               style={{
                 fontSize: 34,
@@ -950,6 +954,7 @@ export default function BordersGame({
                 ? tr(language, 'RELIÉ !', 'LINKED!')
                 : tr(language, 'PERDU !', 'LOST!')}
             </ScoreText>
+            </Reveal>
             <Text style={{ color: c.text, fontFamily: FONTS.mono, fontSize: 15 }}>
               {outcome === 'won'
                 ? tr(language, 'Score : {0} / 1000', 'Score: {0} / 1000', [currentScore()])
@@ -1004,20 +1009,24 @@ export default function BordersGame({
             )}
 
             {/* Animated coins + rewarded-ad doubler (solo only, server-credited). */}
+            <Reveal at={matchData ? 0 : END_CHOREO.reward}>
             <SoloCoinReward
               coinsEarned={coinsEarned}
               coinsCapped={coinsCapped}
               coinsSyncFailed={coinsSyncFailed}
               containerStyle={{ alignSelf: 'stretch' }}
             />
+            </Reveal>
 
             {!matchData && (
+              <Reveal at={END_CHOREO.actions}>
               <SoloEndActions
                 onShare={isDaily ? onShare : undefined}
                 onReplaySame={isDaily ? undefined : replaySameGame}
                 onNewGame={isDaily ? undefined : resetGame}
                 onMenu={() => setGameMode('menu')}
               />
+              </Reveal>
             )}
           </View>
         )}

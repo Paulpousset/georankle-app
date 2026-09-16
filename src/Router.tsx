@@ -224,9 +224,13 @@ export function Router({
   if (daily) {
     return (
       <DailyGameHost
+        // « Défi suivant » change le mode sans quitter : l'hôte doit repartir à
+        // neuf (seed, garde de complétion), d'où la clé.
+        key={`${daily.mode}-${daily.date}`}
         mode={daily.mode}
         date={daily.date}
         user={user}
+        onPlayDaily={(mode) => setDaily({ mode, date: getTodayUTC() })}
         onExit={() => {
           // Leaving a finished daily → a natural break: maybe show one
           // (flag-gated, frequency-capped) interstitial. Fire and forget so

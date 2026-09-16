@@ -49,6 +49,9 @@ import { OffLeaderboardNotice } from '../components/OffLeaderboardNotice';
 import { RunRecap, type RecapEntry } from '../components/RunRecap';
 import { SoloCoinReward } from '../components/SoloCoinReward';
 import { PlayerGlobe } from '../components/PlayerGlobe';
+import { EndGlobe } from '../components/end/EndGlobe';
+import { Reveal } from '../components/end/Reveal';
+import { END_CHOREO } from '../lib/motion';
 import { useMyGameGlobe } from '../lib/myGlobe';
 import { useSoloCoins } from '../lib/useSoloCoins';
 import { recordRun } from '../lib/reviewPool';
@@ -1493,7 +1496,21 @@ export default function VersusCapitals({
         {gameOver && !isOnline && (
           <View style={[styles.overlay, !isDarkMode && styles.overlayLight]}>
             {soloMode ? (
-              <PlayerGlobe config={myGlobe} size={104} accent="#2a6e3f" animate />
+              <EndGlobe
+                config={myGlobe}
+                size={104}
+                accent="#2a6e3f"
+                animate
+                record={
+                  isDaily || numPlayers !== 1
+                    ? undefined
+                    : {
+                        mode: soloAnalyticsMode,
+                        score: normalizeRoundScore('versus', scores[1], { numQuestions: totalRounds, maxPointsPerQuestion: 5 }),
+                        ctx: { scope, review: isReview, training },
+                      }
+                }
+              />
             ) : (
               <Trophy color={matchOver ? '#c4872a' : '#cbd5e1'} size={80} />
             )}
@@ -1524,18 +1541,22 @@ export default function VersusCapitals({
             {/* Pièces + doubleur pub avant le récap : la récompense d'abord,
                 la solution juste après. */}
             {soloMode && (
+              <Reveal at={END_CHOREO.detail}>
               <SoloCoinReward
                 coinsEarned={coinsEarned}
                 coinsCapped={coinsCapped}
                 coinsSyncFailed={coinsSyncFailed}
                 containerStyle={{ alignSelf: 'stretch', maxWidth: 380, width: '100%', marginBottom: 14 }}
               />
+              </Reveal>
             )}
 
             {soloMode && (
+              <Reveal at={END_CHOREO.reward}>
               <View style={{ alignSelf: 'stretch', maxWidth: 380, width: '100%' }}>
                 <RunRecap entries={recap} />
               </View>
+              </Reveal>
             )}
 
             {matchFormat > 1 && (

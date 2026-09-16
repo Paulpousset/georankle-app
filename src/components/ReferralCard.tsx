@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Share } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Share, Platform } from 'react-native';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { useTheme } from '../contexts/ThemeContext';
@@ -41,12 +41,26 @@ export function ReferralCard(): React.ReactElement | null {
   const onShare = useCallback(() => {
     if (!info) return;
     track('referral_shared', {});
-    const link = myReferralLink(info.code);
-    Share.share({
-      message: tr(
-        language, 'Rejoins-moi sur GeoG 🌍 — on gagne tous les deux 50 pièces : {0}', 'Join me on GeoG 🌍 — we both earn 50 coins: {0}', [link],
-      ),
-    }).catch(() => {});
+    const link = myReferralLink(info.code, language);
+    const message = tr(
+      language, 'Rejoins-moi sur GeoG 🌍 — on gagne tous les deux 50 pièces : {0}', 'Join me on GeoG 🌍 — we both earn 50 coins: {0}', [link],
+    );
+    // Same tick as the tap: the mobile web share sheet needs the user activation.
+    Share.share({ message }).catch(async () => {
+      // No share sheet (desktop browser, or activation lost): copy the link so
+      // the button always does something instead of silently failing.
+      if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
+        try {
+          await navigator.clipboard.writeText(message);
+          showAlert(
+            tr(language, 'Lien copié', 'Link copied'),
+            tr(language, 'Colle-le à un ami : vous gagnez chacun 50 pièces.', 'Paste it to a friend: you both earn 50 coins.'),
+          );
+        } catch {
+          /* nothing else to try */
+        }
+      }
+    });
   }, [info, language]);
 
   const onRedeem = useCallback(async () => {
