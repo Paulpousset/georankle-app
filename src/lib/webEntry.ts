@@ -41,7 +41,10 @@ export function getInitialWebIntent(): WebIntent {
   try {
     const path = window.location.pathname.replace(/\/+$/, '');
     const params = new URLSearchParams(window.location.search);
-    const onPlayPath = path === '/play' || path === '/daily' || path === '/en/play';
+    // `/play`, `/daily`, and every localised shell (`/en/play`, `/es/play`…):
+    // the fourteen generated languages point their mode pages at `/xx/play?mode=`
+    // too, and until 16/09/2026 those landed in the daily challenge instead.
+    const onPlayPath = path === '/daily' || /^(\/[a-z]{2})?\/play$/.test(path);
 
     const mode = params.get('mode');
     if (onPlayPath && mode && BOOTABLE.has(mode)) {

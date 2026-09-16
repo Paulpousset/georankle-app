@@ -195,6 +195,33 @@ const ATLAS_ROUTES = ATLAS_FAMILIES.flatMap((family) =>
   })),
 );
 
+/**
+ * La grappe « Rankle » (16/09/2026) : quatre pages satellites autour de la
+ * page de mode `/rankle/`, chacune avec une substance qui n'existe nulle part
+ * ailleurs sur le site — le nom historique du jeu (« GeoRankle »), les règles
+ * et le barème, la stratégie (grille réelle résolue depuis les données), la
+ * variante Streak (qui n'avait pas de page). Toutes mènent au jeu en un clic ;
+ * `parent` les range sous `/rankle/` dans le fil d'Ariane.
+ *
+ * Volontairement PAS plus : trois pages de plus (Rankle du jour, en ligne,
+ * application) ont été écrites puis retirées le jour même, parce qu'elles
+ * recopiaient les pages défi du jour / duels / classé / accueil — le profil
+ * « contenu à faible valeur » qui a déjà valu quatre refus AdSense. Ce que
+ * ces pages disaient tient en une section de `/rankle/`. Les alias courts
+ * (`/georanke`, `/rankle-game`, `/jeu-rankle`…) ne sont pas des pages non
+ * plus : ce sont des redirections vers le jeu, dans vercel.json — une page
+ * par intention, jamais une page par orthographe.
+ */
+const RANKLE = [
+  { id: 'rankle-georankle', paths: { fr: '/georankle/', en: '/en/georankle/' } },
+  { id: 'rankle-rules', paths: { fr: '/rankle/regles/', en: '/en/rankle/rules/' } },
+  { id: 'rankle-tips', paths: { fr: '/rankle/astuces/', en: '/en/rankle/tips/' } },
+  { id: 'rankle-streak', paths: { fr: '/rankle/streak/', en: '/en/rankle/streak/' } },
+].map((r) => ({ kind: 'guide', priority: 0.7, changefreq: 'monthly', parent: 'mode-rankle', ...r }));
+
+/** Les ids de la grappe, dans l'ordre d'affichage du bloc « Tout sur Rankle ». */
+export const RANKLE_IDS = RANKLE.map((r) => r.id);
+
 /** Toutes les routes du site, normalisées. */
 export const ROUTES = [
   ...CORE,
@@ -202,6 +229,7 @@ export const ROUTES = [
   ...MODE_ROUTES,
   ...ATLAS_ROUTES,
   ...THEMATIC.map((g) => ({ kind: 'guide', priority: 0.7, changefreq: 'monthly', ...g })),
+  ...RANKLE,
 ];
 
 const BY_ID = new Map(ROUTES.map((r) => [r.id, r]));

@@ -12,7 +12,7 @@
  */
 import { CONTINENTS, countriesOf } from './continents.mjs';
 import { MODES } from './modes.mjs';
-import { COUNTRIES, NEIGHBOURS, NOTORIETY, RANKS, THEMES, capitalName, countryName, flagUrl, num } from './data.mjs';
+import { COUNTRIES, GAME_COUNTRIES, NEIGHBOURS, NOTORIETY, RANKS, THEMES, capitalName, countryName, flagUrl, num } from './data.mjs';
 import { strings } from './strings.mjs';
 import { attr } from './layout.mjs';
 
@@ -191,6 +191,158 @@ export function themesTable(scope, locale) {
     ),
     items: entries.map((t) => t.label),
     name: locale === 'fr' ? 'Les critères de classement de Rankle' : 'Rankle ranking criteria',
+  };
+}
+
+
+/**
+ * Une grille de Rankle résolue, calculée depuis les données du jeu.
+ *
+ * Huit pays et huit critères fixés ici, les rangs lus dans `game_data.json`
+ * (les mêmes que ceux de l'app), et le placement optimal trouvé par le même
+ * algorithme que `solveOptimal` (src/lib/gameLogic.ts) : recherche exhaustive
+ * avec élagage, 8! = 40 320 affectations au plus. La page d'astuces s'en sert
+ * pour montrer le piège du mode — le meilleur critère d'un pays pris seul
+ * n'est pas toujours celui qu'il faut lui donner — sans rien inventer : si les
+ * données changent, la grille et son commentaire se recalculent au build.
+ */
+const RANKLE_EXAMPLE = {
+  countries: ['RUS', 'BRA', 'JPN', 'NOR', 'EGY', 'AUS', 'MCO', 'QAT'],
+  themes: ['area', 'population', 'coastline_length', 'gdp_per_capita', 'forest_area', 'tourist_arrivals', 'world_heritage', 'highest_point'],
+};
+
+/** Rang d'un pays sur un thème, 200 quand la donnée manque — comme l'app. */
+function rankOf(country, themeId) {
+  return country.ranks?.[themeId] || 200;
+}
+
+/** Le placement de somme minimale : `assignment[i]` = index de thème du pays i. */
+function solveRankle(matrix) {
+  const n = matrix.length;
+  let best = null;
+  let min = Infinity;
+  const current = [];
+  const go = (i, used, sum) => {
+    if (i === n) {
+      if (sum < min) {
+        min = sum;
+        best = [...current];
+      }
+      return;
+    }
+    for (let t = 0; t < n; t++) {
+      if (used & (1 << t)) continue;
+      const next = sum + matrix[i][t];
+      if (next >= min) continue;
+      current[i] = t;
+      go(i + 1, used | (1 << t), next);
+    }
+  };
+  go(0, 0, 0);
+  return { assignment: best, total: min };
+}
+
+/** Le placement « glouton » : chaque pays, dans l'ordre, prend son meilleur critère encore libre. */
+function greedyRankle(matrix) {
+  const n = matrix.length;
+  let used = 0;
+  let total = 0;
+  const assignment = [];
+  for (let i = 0; i < n; i++) {
+    let bestT = -1;
+    for (let t = 0; t < n; t++) {
+      if (used & (1 << t)) continue;
+      if (bestT === -1 || matrix[i][t] < matrix[i][bestT]) bestT = t;
+    }
+    assignment[i] = bestT;
+    used |= 1 << bestT;
+    total += matrix[i][bestT];
+  }
+  return { assignment, total };
+}
+
+/** Les éléments de la grille d'exemple, partagés par le tableau et son commentaire. */
+export function rankleExample(locale) {
+  const countries = RANKLE_EXAMPLE.countries.map((cca3) => {
+    const c = GAME_COUNTRIES.find((x) => x.cca3 === cca3);
+    if (!c?.ranks) throw new Error(`grille Rankle : pays inconnu ou sans rangs ${cca3}`);
+    return c;
+  });
+  const themes = RANKLE_EXAMPLE.themes.map((id) => {
+    const t = THEMES[id];
+    if (!t) throw new Error(`grille Rankle : thème inconnu ${id}`);
+    return { id, emoji: t.emoji || '✦', label: locale === 'fr' ? t.label.fr : t.label.en || t.label.fr };
+  });
+  const matrix = countries.map((c) => themes.map((t) => rankOf(c, t.id)));
+  const optimal = solveRankle(matrix);
+  const greedy = greedyRankle(matrix);
+  const greedyEfficiency = Math.round((optimal.total / Math.max(greedy.total, 1)) * 100);
+  // Le commentaire de rankle-tips raconte CETTE grille : la Russie, première en
+  // superficie, ne reçoit pas la superficie, et Monaco reçoit la richesse par
+  // habitant. Si une mise à jour des données défait l'histoire, on arrête le
+  // build plutôt que de publier un commentaire faux — il faudra réécrire le
+  // paragraphe (ou changer les pays de RANKLE_EXAMPLE).
+  const themeOf = (cca3) => themes[optimal.assignment[countries.findIndex((c) => c.cca3 === cca3)]].id;
+  if (themeOf('RUS') === 'area' || themeOf('MCO') !== 'gdp_per_capita' || greedyEfficiency >= 90) {
+    throw new Error('grille Rankle : les données ne montrent plus le piège décrit dans rankle-tips — reprendre le commentaire');
+  }
+  return { countries, themes, matrix, optimal, greedy, greedyEfficiency };
+}
+
+/** La grille d'exemple en tableau : rangs mondiaux, placement optimal en gras. */
+export function rankleExampleTable(scope, locale) {
+  void scope;
+  const ex = rankleExample(locale);
+  const s = strings(locale);
+  const rows = ex.countries.map((c, i) =>
+    cell(`<strong>${countryName(c, locale)}</strong>`) +
+    ex.themes
+      .map((t, j) => {
+        const rank = ex.matrix[i][j];
+        const text = rank >= 200 ? '—' : String(rank);
+        return cell(ex.optimal.assignment[i] === j ? `<strong>★ ${text}</strong>` : text);
+      })
+      .join(''),
+  );
+  return {
+    html: table([s.country, ...ex.themes.map((t) => `${t.emoji} ${t.label}`)], rows),
+    items: ex.countries.map((c) => countryName(c, locale)),
+    name: locale === 'fr' ? 'Une grille de Rankle résolue' : 'A solved Rankle grid',
+  };
+}
+
+
+/**
+ * Pour chaque critère, les trois pays en tête — le « qui est premier » que la
+ * page d'astuces recommande de connaître. Lu dans les rangs du jeu, jamais
+ * saisi ; les critères sans donnée pour un pays ignorent ce pays.
+ */
+export function rankleLeadersTable(scope, locale) {
+  void scope;
+  const entries = Object.entries(THEMES)
+    .map(([id, theme]) => {
+      const top = GAME_COUNTRIES.filter((c) => c.ranks?.[id])
+        .sort((a, b) => a.ranks[id] - b.ranks[id])
+        .slice(0, 3)
+        .map((c) => countryName(c, locale));
+      return {
+        id,
+        emoji: theme.emoji || '✦',
+        label: locale === 'fr' ? theme.label.fr : theme.label.en || theme.label.fr,
+        top,
+      };
+    })
+    .sort((a, b) => a.label.localeCompare(b.label, locale === 'fr' ? 'fr' : 'en'));
+  const rows = entries.map(
+    (t) => cell(`${t.emoji} <strong>${t.label}</strong>`) + t.top.map((name, i) => cell(i === 0 ? `<strong>${name}</strong>` : name)).join(''),
+  );
+  return {
+    html: table(
+      locale === 'fr' ? ['Critère', '1ᵉʳ', '2ᵉ', '3ᵉ'] : ['Criterion', '1st', '2nd', '3rd'],
+      rows,
+    ),
+    items: entries.map((t) => `${t.label} : ${t.top[0]}`),
+    name: locale === 'fr' ? 'Les pays en tête de chaque critère de Rankle' : 'Leading countries for each Rankle criterion',
   };
 }
 
@@ -463,6 +615,8 @@ export const TABLES = {
   borders: bordersTable,
   size: sizeTable,
   themes: themesTable,
+  'rankle-example': rankleExampleTable,
+  'rankle-leaders': rankleLeadersTable,
   continents: continentsTable,
   area: areaTable,
   subregions: subregionsTable,

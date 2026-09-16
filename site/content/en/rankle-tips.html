@@ -1,0 +1,81 @@
+title: Rankle strategy and tips for reaching 100 % efficiency
+description: How to win at Rankle: think about the whole grid rather than country by country, keep the rare slots, know which countries lead each criterion. With a real solved grid computed from the game data, and the podium of all 41 criteria.
+ogTitle: Rankle strategy — a real grid, solved
+breadcrumb: Tips
+linkTitle: Strategy and tips
+published: 2026-09-16
+modified: 2026-09-16
+---
+    <article>
+      <header>
+        <h1>Rankle strategy: aiming for 100 % efficiency</h1>
+        <p class="standfirst">The natural reflex — give each country its best criterion — is exactly what sinks a grid. Proof on a real grid, and five rules to stop falling for it.</p>
+        <p class="meta">Rankle · updated September 2026</p>
+      </header>
+
+      <div class="play-cta">
+        <h3>Try the strategy on a real grid</h3>
+        <p>Eight countries, eight criteria, in your browser.</p>
+        <a class="btn" href="{{play:mode-rankle}}">{{t:playNow}}</a>
+      </div>
+
+      <h2>The trap: the best criterion is not always the right slot</h2>
+
+      <p>Here is a Rankle grid, with the real world ranks of the eight countries on the eight criteria, exactly as the game uses them. The star marks the optimal placement, the one the game computes at the end of every game.</p>
+
+{{table:rankle-example:all}}
+
+      <p class="meta">Grid recomputed whenever the game data is updated. Rank 1 = first of {{countries}} countries; “—” = no data (counts 200).</p>
+
+      <p>Play it “on reflex”, in table order, giving each country its best criterion still free: you end on a total of <strong>{{rankle:greedy}}</strong>, against <strong>{{rankle:optimal}}</strong> for the optimum. That is <strong>{{rankle:greedy-efficiency}} % efficiency</strong> — with {{rankle:greedy-misplaced}} countries out of 8 in the wrong slot.</p>
+
+      <p>Look at the {{rankle:name:RUS}} row. It ranks {{rankle:rank:RUS:area}}st in the world by area, and yet the optimum gives it “{{rankle:theme-of:RUS}}”, where it is only {{rankle:rank:RUS:highest_point}}th. Why? Because {{rankle:name:AUS}} ({{rankle:rank:AUS:area}}th by area) has nothing better anywhere else, while {{rankle:name:RUS}} is good almost everywhere: the big power is the country you can afford to place badly. Conversely, {{rankle:name:MCO}} has a single good slot — “{{rankle:theme-of:MCO}}”, rank {{rankle:rank:MCO:gdp_per_capita}} — and losing it costs close to 200 points.</p>
+
+      <h2>Five rules that hold</h2>
+
+      <h3>1. Read all eight criteria before placing the first country</h3>
+      <p>The criteria are shown from the start; the countries arrive one by one. Before touching anything, spot the <strong>rare slots</strong> — those where only a handful of countries are good: highest point, UNESCO sites, tourist arrivals, Olympic medals — and the <strong>wide slots</strong>, where half the planet does fine: access to electricity, urban population, life expectancy.</p>
+
+      <h3>2. Keep the rare slots for those who have nothing else</h3>
+      <p>A country that is good on one criterion only must get it. A country good everywhere can settle for an average slot. When a big country arrives early, resist giving it the best slot: ask who else, among the {{countries}}, might need it.</p>
+
+      <h3>3. Be wary of microstates</h3>
+      <p>Monaco, Liechtenstein, Qatar, Singapore: often first on a wealth or density criterion, and with no data — hence 200 — on sport, forest or army criteria. A misplaced microstate costs more than any other country.</p>
+
+      <h3>4. Accept sacrificing a country</h3>
+      <p>With eight countries and eight slots, someone ends up in a bad slot. Choose who: the country that is <em>average everywhere</em> takes a rank of 60 without drama, where an extreme country would take 190.</p>
+
+      <h3>5. Know the podium of each criterion</h3>
+      <p>You do not need the values, only who is ahead. The table below, read from the game data, gives the top three of each of the {{themes}} criteria — on percentage criteria several countries tie at 100 % and the order between them is alphabetical.</p>
+
+{{table:rankle-leaders:all}}
+
+      <h2>And in Streak?</h2>
+
+      <p>The <a href="{{link:rankle-streak}}">Streak variant</a> flips the logic: a single country, four criteria, and you must find the true best — not the best given the others. There the reflex is the right answer; raw knowledge of the extremes is what makes a long run.</p>
+
+      <h2>Frequently asked</h2>
+
+      <div class="faq-list">
+        <details>
+          <summary>Do I need to know the exact figures?</summary>
+          <div class="faq-body">No. Rankle compares ranks, not values. Knowing that Brazil is in the top five by area is enough; knowing it covers 8.5 million km² adds nothing.</div>
+        </details>
+        <details>
+          <summary>How does the game find the optimal placement?</summary>
+          <div class="faq-body">By examining the 40,320 possible arrangements of eight countries over eight criteria (with pruning that abandons hopeless branches early) and keeping the one with the lowest sum of ranks. It is the same computation that produces the grid on this page.</div>
+        </details>
+        <details>
+          <summary>Why is my efficiency low when every country is on a good criterion?</summary>
+          <div class="faq-body">Because efficiency measures the whole grid. Eight “good” choices that steal the best slots from each other are worth less than an arrangement where two countries are sacrificed so the other six are perfect.</div>
+        </details>
+      </div>
+
+      <div class="play-cta">
+        <h3>Apply it right away</h3>
+        <p>A new grid every game.</p>
+        <a class="btn" href="{{play:mode-rankle}}">{{t:playNow}}</a>
+      </div>
+
+      {{ranklenav}}
+    </article>

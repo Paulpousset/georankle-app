@@ -8,6 +8,11 @@
  *   {{countries}}              → 195, lu dans les données du jeu
  *   {{link:guide-flags}}       → l'URL du guide dans la langue de la page
  *   {{play}} / {{play:globe}}  → le lien de jeu, avec le mode présélectionné
+ *   {{playmode:streak}}        → le lien de jeu vers un mode de l'app qui n'a
+ *                                pas de page de mode (liste blanche de webEntry)
+ *   {{ranklenav}}              → le bloc « Tout sur Rankle » (la grappe, sauf
+ *                                la page courante), titres lus dans les entêtes
+ *   {{rankle:greedy}}          → un chiffre de la grille d'exemple (voir tables)
  *   {{table:capitals:europe}}  → un tableau de référence généré
  *   {{count:europe}}           → le nombre de pays d'un continent
  *   {{t:readNext}}             → un texte d'habillage traduit
@@ -21,14 +26,16 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { CONTENT } from './paths.mjs';
 import { PLACEHOLDERS } from './constants.mjs';
-import { href } from './routes.mjs';
+import { href, RANKLE_IDS } from './routes.mjs';
 import { strings } from './strings.mjs';
-import { TABLES } from './tables.mjs';
+import { TABLES, rankleExample } from './tables.mjs';
 import { countriesOf } from './continents.mjs';
+import { countryName } from './data.mjs';
 import { modeById } from './modes.mjs';
 import { itemList } from './jsonld.mjs';
 import { languageSwitch } from './layout.mjs';
 import { generatedPage } from './generated.mjs';
+import { BOOTABLE_MODES } from './data.mjs';
 
 /** Sépare l'entête `clé: valeur` du corps HTML. */
 function splitFrontMatter(raw, file) {
@@ -71,6 +78,13 @@ export function interpolate(body, { locale, file, routeId }) {
         if (!mode) throw new Error(`${file} : mode inconnu dans ${match}`);
         return mode.appMode ? `${base}?mode=${mode.appMode}` : base;
       }
+      case 'playmode': {
+        // L'identifiant technique de l'app (`streak`, `classic`…), pas l'id de
+        // page. Vérifié contre la liste blanche de src/lib/webEntry.ts : hors
+        // liste, l'app ignorerait le paramètre et ouvrirait le défi du jour.
+        if (!BOOTABLE_MODES.has(args[0])) throw new Error(`${file} : mode non démarrable dans ${match}`);
+        return `${href('play', locale)}?mode=${args[0]}`;
+      }
       case 't': {
         if (!(args[0] in s)) throw new Error(`${file} : texte d'habillage inconnu dans ${match}`);
         return s[args[0]];
@@ -82,6 +96,49 @@ export function interpolate(body, { locale, file, routeId }) {
       }
       case 'count': {
         return String(countriesOf(args[0]).length);
+      }
+      case 'ranklenav': {
+        return rankleNav(routeId, locale);
+      }
+      case 'rankle': {
+        // Les chiffres de la grille d'exemple, pour que le commentaire de la
+        // page d'astuces reste vrai si les données du jeu changent.
+        const ex = rankleExample(locale);
+        const names = (assignment) =>
+          ex.countries
+            .map((c, i) => (assignment[i] === ex.optimal.assignment[i] ? null : countryName(c, locale)))
+            .filter(Boolean);
+        switch (args[0]) {
+          case 'optimal':
+            return String(ex.optimal.total);
+          case 'greedy':
+            return String(ex.greedy.total);
+          case 'greedy-efficiency':
+            return String(ex.greedyEfficiency);
+          case 'greedy-misplaced':
+            return String(names(ex.greedy.assignment).length);
+          case 'theme-of': {
+            // {{rankle:theme-of:RUS}} → le critère que l'optimum donne à ce pays.
+            const i = ex.countries.findIndex((c) => c.cca3 === args[1]);
+            if (i === -1) throw new Error(`${file} : pays hors grille dans ${match}`);
+            return ex.themes[ex.optimal.assignment[i]].label;
+          }
+          case 'rank': {
+            // {{rankle:rank:RUS:area}} → le rang mondial de ce pays sur ce critère.
+            const i = ex.countries.findIndex((c) => c.cca3 === args[1]);
+            const j = ex.themes.findIndex((t) => t.id === args[2]);
+            if (i === -1 || j === -1) throw new Error(`${file} : pays ou critère hors grille dans ${match}`);
+            return String(ex.matrix[i][j]);
+          }
+          case 'name': {
+            // {{rankle:name:RUS}} → le nom du pays dans la langue de la page.
+            const c = ex.countries.find((x) => x.cca3 === args[1]);
+            if (!c) throw new Error(`${file} : pays hors grille dans ${match}`);
+            return countryName(c, locale);
+          }
+          default:
+            throw new Error(`${file} : chiffre inconnu dans ${match}`);
+        }
       }
       case 'table': {
         const [family, scope = 'all'] = args;
@@ -100,6 +157,30 @@ export function interpolate(body, { locale, file, routeId }) {
     throw new Error(`${file} : accolades résiduelles — directive mal formée ?`);
   }
   return { html: out, lists };
+}
+
+/**
+ * Le bloc « Tout sur Rankle » : la page de mode puis la grappe, sans la page
+ * courante. Les libellés viennent de l'entête `linkTitle` (sinon `breadcrumb`)
+ * de chaque fragment, dans la langue de la page : une page renommée se renomme
+ * partout où elle est citée.
+ */
+function rankleNav(routeId, locale) {
+  const s = strings(locale);
+  const items = ['mode-rankle', ...RANKLE_IDS]
+    .filter((id) => id !== routeId)
+    .map((id) => {
+      const page = loadPage(locale, id);
+      if (!page) throw new Error(`{{ranklenav}} : fragment ${locale}/${id}.html introuvable`);
+      const label = page.meta.linkTitle || page.meta.breadcrumb || page.meta.title;
+      return `        <li><a href="${href(id, locale)}">${label}</a></li>`;
+    });
+  const heading = locale === 'fr' ? 'Tout sur Rankle' : 'Everything about Rankle';
+  void s;
+  return `<h2>${heading}</h2>
+      <ul class="rankle-nav">
+${items.join('\n')}
+      </ul>`;
 }
 
 /**

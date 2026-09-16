@@ -21,8 +21,18 @@ const read = (p) => readFileSync(join(ROOT, p), 'utf8');
 /** Les 195 pays, avec capitale, continent, population, superficie… */
 export const COUNTRIES = JSON.parse(read('assets/countries_stats.json'));
 
+const GAME_DATA = JSON.parse(read('assets/game_data.json'));
+
 /** Les thèmes de classement (Rankle, Streak, Plus ou Moins). */
-export const THEMES = JSON.parse(read('assets/game_data.json')).themes;
+export const THEMES = GAME_DATA.themes;
+
+/**
+ * Les pays tels que le jeu les charge, AVEC leurs rangs par thème
+ * (`ranks.population` = 36…). `countries_stats.json` n'a pas ces rangs : la
+ * grille d'exemple de Rankle lit donc ici, pour afficher exactement ce que
+ * l'app afficherait.
+ */
+export const GAME_COUNTRIES = GAME_DATA.countries;
 
 /** cca3 → cca2, pour construire les URL de drapeaux comme le fait l'app. */
 export const CCA2 = (() => {
@@ -119,4 +129,21 @@ export const RANKS = (() => {
   }));
   if (ranks.length < 4) throw new Error(`RANKS : ${ranks.length} rangs lus, trop peu`);
   return ranks;
+})();
+
+/**
+ * Les modes solo que `/play?mode=` sait démarrer, lus dans `src/lib/webEntry.ts`.
+ *
+ * C'est la liste blanche de l'app : un lien `{{playmode:xxx}}` vers un mode
+ * absent d'ici tomberait silencieusement sur le défi du jour, et la page
+ * perdrait tout le trafic qu'elle amène. Lue à la source pour ne jamais
+ * diverger ; la regex qui ne matche plus arrête le build.
+ */
+export const BOOTABLE_MODES = (() => {
+  const src = read('src/lib/webEntry.ts');
+  const block = src.match(/const BOOTABLE[^=]*=\s*new Set<GameMode>\(\[([\s\S]*?)\]\)/);
+  if (!block) throw new Error('BOOTABLE introuvable dans src/lib/webEntry.ts');
+  const modes = [...block[1].matchAll(/'([a-z-]+)'/g)].map(([, m]) => m);
+  if (modes.length < 5) throw new Error(`BOOTABLE : ${modes.length} modes lus, trop peu`);
+  return new Set(modes);
 })();

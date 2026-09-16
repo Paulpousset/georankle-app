@@ -1,0 +1,81 @@
+title: Rankle : stratégie et astuces pour viser 100 % d'efficacité
+description: Comment gagner à Rankle : penser la grille entière plutôt que pays par pays, garder les cases rares, connaître les pays en tête de chaque critère. Avec une grille réelle résolue, calculée depuis les données du jeu, et le podium des 41 critères.
+ogTitle: Stratégie Rankle — une grille réelle, résolue
+breadcrumb: Astuces
+linkTitle: Stratégie et astuces
+published: 2026-09-16
+modified: 2026-09-16
+---
+    <article>
+      <header>
+        <h1>Stratégie Rankle : viser 100 % d'efficacité</h1>
+        <p class="standfirst">Le réflexe naturel — donner à chaque pays son meilleur critère — est précisément ce qui coule une grille. La preuve par une grille réelle, et cinq règles pour ne plus tomber dedans.</p>
+        <p class="meta">Rankle · mis à jour en septembre 2026</p>
+      </header>
+
+      <div class="play-cta">
+        <h3>Testez la stratégie sur une vraie grille</h3>
+        <p>Huit pays, huit critères, dans le navigateur.</p>
+        <a class="btn" href="{{play:mode-rankle}}">{{t:playNow}}</a>
+      </div>
+
+      <h2>Le piège : le meilleur critère n'est pas toujours la bonne case</h2>
+
+      <p>Voici une grille de Rankle, avec les rangs mondiaux réels des huit pays sur les huit critères, tels que le jeu les utilise. L'étoile marque le placement optimal, celui que le jeu calcule à la fin de chaque partie.</p>
+
+{{table:rankle-example:all}}
+
+      <p class="meta">Grille recalculée à chaque mise à jour des données du jeu. Rang 1 = premier des {{countries}} pays ; « — » = pas de donnée (compte 200).</p>
+
+      <p>Jouez-la « au réflexe », dans l'ordre du tableau, en donnant à chaque pays son meilleur critère encore libre : vous terminez à un total de <strong>{{rankle:greedy}}</strong>, contre <strong>{{rankle:optimal}}</strong> pour l'optimum. Soit <strong>{{rankle:greedy-efficiency}} % d'efficacité</strong> — et {{rankle:greedy-misplaced}} pays sur 8 mal placés.</p>
+
+      <p>Regardez la ligne « {{rankle:name:RUS}} » : {{rankle:rank:RUS:area}}ʳᵉ mondiale en superficie, et pourtant l'optimum lui donne « {{rankle:theme-of:RUS}} », où ce pays n'est que {{rankle:rank:RUS:highest_point}}ᵉ. Pourquoi ? Parce que la ligne « {{rankle:name:AUS}} » ({{rankle:rank:AUS:area}}ᵉ en superficie) n'a rien de mieux ailleurs, alors que la première est bonne presque partout : la grande puissance est le pays qu'on peut se permettre de mal placer. À l'inverse, la ligne « {{rankle:name:MCO}} » n'a qu'une seule bonne case — « {{rankle:theme-of:MCO}} », rang {{rankle:rank:MCO:gdp_per_capita}} — et la perdre coûte près de 200 points.</p>
+
+      <h2>Cinq règles qui tiennent</h2>
+
+      <h3>1. Lire les huit critères avant de placer le premier pays</h3>
+      <p>Les critères sont affichés dès le début ; les pays arrivent un par un. Avant de toucher quoi que ce soit, repérez les <strong>cases rares</strong> — celles où seuls quelques pays au monde sont bons : point culminant, sites UNESCO, arrivées de touristes, médailles olympiques — et les <strong>cases larges</strong>, où la moitié de la planète est correcte : accès à l'électricité, population urbaine, espérance de vie.</p>
+
+      <h3>2. Garder les cases rares pour ceux qui n'ont qu'elles</h3>
+      <p>Un pays qui n'est bon que sur un critère doit l'avoir. Un pays bon partout peut se contenter d'une case moyenne. Quand un grand pays arrive tôt, résistez à l'envie de lui donner la meilleure case : demandez-vous qui d'autre, parmi les {{countries}}, pourrait en avoir besoin.</p>
+
+      <h3>3. Se méfier des micro-États</h3>
+      <p>Monaco, le Liechtenstein, le Qatar, Singapour : souvent premiers sur un critère de richesse ou de densité, et sans donnée — donc à 200 — sur les critères de sport, de forêt ou d'armée. Un micro-État mal placé coûte plus qu'aucun autre pays.</p>
+
+      <h3>4. Accepter de sacrifier un pays</h3>
+      <p>Avec huit pays et huit cases, quelqu'un finit sur une mauvaise case. Choisissez-le : le pays qui est <em>moyen partout</em> encaisse un rang 60 sans drame, là où un pays extrême encaisserait 190.</p>
+
+      <h3>5. Connaître le podium de chaque critère</h3>
+      <p>Il n'est pas nécessaire de connaître les valeurs, seulement qui est devant. Le tableau ci-dessous, lu dans les données du jeu, donne les trois premiers de chacun des {{themes}} critères — sur les critères en pourcentage, plusieurs pays sont ex æquo à 100 % et l'ordre entre eux est alphabétique.</p>
+
+{{table:rankle-leaders:all}}
+
+      <h2>Et dans Streak ?</h2>
+
+      <p>La <a href="{{link:rankle-streak}}">variante Streak</a> inverse la logique : un seul pays, quatre critères, et il faut trouver le vrai meilleur — pas le meilleur compte tenu des autres. Là, le réflexe est le bon ; c'est la connaissance brute des extrêmes qui fait la longueur de la série.</p>
+
+      <h2>Questions fréquentes</h2>
+
+      <div class="faq-list">
+        <details>
+          <summary>Faut-il connaître les chiffres exacts ?</summary>
+          <div class="faq-body">Non. Rankle compare des rangs, pas des valeurs. Savoir que le Brésil est dans les cinq premiers en superficie suffit ; savoir qu'il fait 8,5 millions de km² n'apporte rien de plus.</div>
+        </details>
+        <details>
+          <summary>Comment le jeu trouve-t-il le placement optimal ?</summary>
+          <div class="faq-body">En examinant les 40 320 répartitions possibles de huit pays sur huit critères (avec un élagage qui abandonne tôt les branches sans espoir) et en gardant celle dont la somme des rangs est la plus basse. C'est le même calcul qui produit la grille de cette page.</div>
+        </details>
+        <details>
+          <summary>Pourquoi mon efficacité est-elle basse alors que chaque pays est sur un bon critère ?</summary>
+          <div class="faq-body">Parce que l'efficacité mesure la grille entière. Huit « bons » choix qui se volent mutuellement les meilleures cases valent moins qu'une répartition où deux pays sont sacrifiés pour que les six autres soient parfaits.</div>
+        </details>
+      </div>
+
+      <div class="play-cta">
+        <h3>Appliquez-le tout de suite</h3>
+        <p>Une nouvelle grille à chaque partie.</p>
+        <a class="btn" href="{{play:mode-rankle}}">{{t:playNow}}</a>
+      </div>
+
+      {{ranklenav}}
+    </article>

@@ -24,6 +24,8 @@ import {
 } from './routes.mjs';
 import { strings } from './strings.mjs';
 import { render as renderJsonLd, breadcrumbList } from './jsonld.mjs';
+import { modeById } from './modes.mjs';
+import { localeData } from './siteLocales.mjs';
 
 /** Échappe le texte destiné à un attribut HTML. */
 export function attr(value) {
@@ -222,8 +224,23 @@ export function trailFor(routeId, locale, label) {
   const trail = [{ name: s.home, path: href('home', locale) }];
   const underGuides = href(routeId, locale).includes('/guides/') && routeId !== 'guides';
   if (underGuides) trail.push({ name: s.guides, path: href('guides', locale) });
+  // Une route peut déclarer un `parent` (la grappe Rankle sous `/rankle/`) :
+  // il s'intercale, nommé d'après son propre fil d'Ariane.
+  if (r.parent) trail.push({ name: parentLabel(r.parent, locale), path: href(r.parent, locale) });
   if (routeId !== 'home') trail.push({ name: label || r.id, path: null });
   return trail;
+}
+
+/**
+ * Le libellé d'une route parente. Seules les pages de mode servent de parent
+ * aujourd'hui : leur nom vient de la table des modes (fr/en) ou du catalogue
+ * de la langue générée — pas de `loadPage` ici, content.mjs importe déjà ce
+ * module et un import croisé serait fragile.
+ */
+function parentLabel(parentId, locale) {
+  const mode = modeById(parentId);
+  if (!mode) throw new Error(`route parente inconnue ou sans libellé : « ${parentId} »`);
+  return mode[locale]?.name ?? localeData(locale)?.modes[parentId]?.name ?? parentId;
 }
 
 /**

@@ -1,0 +1,93 @@
+title: Rankle rules: ranks, total and efficiency percentage
+description: The complete rules of Rankle, GeoG's ranking game: eight countries, eight criteria, one world rank per slot, a total to minimise and a score given as an efficiency percentage. With a worked example and the scale shared with duels.
+ogTitle: The rules of Rankle, explained with an example
+breadcrumb: Rules
+linkTitle: The rules and scoring
+published: 2026-09-16
+modified: 2026-09-16
+---
+    <article>
+      <header>
+        <h1>The rules of Rankle</h1>
+        <p class="standfirst">It all fits in one sentence — put each country on the criterion where it ranks best — but the scoring deserves a closer look, to know what you are really optimising.</p>
+        <p class="meta">Rankle · updated September 2026</p>
+      </header>
+
+      <div class="play-cta">
+        <h3>Rules are best learned by playing</h3>
+        <p>A grid takes two minutes.</p>
+        <a class="btn" href="{{play:mode-rankle}}">{{t:playNow}}</a>
+      </div>
+
+      <h2>How a game unfolds</h2>
+
+      <ol>
+        <li><strong>Eight criteria</strong> are drawn from the game's {{themes}} and shown from the start: population, area, GDP, forest cover, UNESCO sites, highest point…</li>
+        <li><strong>Eight countries</strong> appear <strong>one at a time</strong>, out of the {{countries}} UN member states.</li>
+        <li>For the country shown, you pick <strong>a criterion that is still free</strong>. The country goes there and the slot closes: each criterion is used only once.</li>
+        <li>By the eighth country, one slot is left. The game ends and the grid is revealed, with every country's real rank in every slot.</li>
+      </ol>
+
+      <p>There is no clock in a solo game: Rankle is a thinking game, not a reflex game.</p>
+
+      <h2>The world rank</h2>
+
+      <p>Each slot is worth the <strong>country's rank on that criterion</strong>, among the game's {{countries}} countries. Russia is 1st by area, France 1st by tourist arrivals, Monaco 1st by wealth per inhabitant. A rank of 1 is perfect; a rank of 150 is a wasted slot.</p>
+
+      <p>When a country has no data for a criterion — a microstate with no FIFA ranking, a country with no forest-cover measurement — the slot counts <strong>200</strong>, worse than the last of the {{countries}}. Putting a country on a criterion where it is not measured is the worst possible mistake, and the final grid flags it.</p>
+
+      <h2>Total and efficiency</h2>
+
+      <p>Your <strong>total</strong> is the sum of the eight ranks. Lower is better: eight first places would total 8.</p>
+
+      <p>That total is not shown on its own, because it depends on the draw: a grid of large countries on large criteria gives everyone a low total. So the game computes the <strong>optimal placement</strong> — among the 40,320 ways of spreading eight countries over eight criteria, the one with the lowest total — and compares you to it:</p>
+
+      <p><strong>Efficiency = optimal total ÷ your total × 100.</strong></p>
+
+      <p>Example: if the best possible placement totals 190 and yours totals 380, your efficiency is 50 %. At 100 %, your total equals the optimum — not necessarily with the same placement, since several arrangements can tie.</p>
+
+      <h2>What the score rewards</h2>
+
+      <ul>
+        <li><strong>Seeing the whole board</strong> rather than reacting. A country's best criterion taken on its own is not always the one to give it, if another country in the grid needs it more. The <a href="{{link:rankle-tips}}">strategy page</a> shows this on a real grid.</li>
+        <li><strong>Knowing the extremes</strong>: knowing who is first, second and third on a criterion is worth more than knowing the exact value.</li>
+        <li><strong>Caution with microstates</strong>, often first on one criterion and without data on many others.</li>
+      </ul>
+
+      <h2>Scoring in duels, ranked and leagues</h2>
+
+      <p>When Rankle is a round of an <a href="{{link:mode-online}}">online game</a>, efficiency is mapped onto the scale shared by every mode, 0 to 1000 points: <strong>1 % efficiency = 10 points</strong>. A grid at 87 % is worth 870 points, comparable to a round of flags or 3D globe. That is what lets Rankle chain with other modes in one game, and keeps a single leaderboard.</p>
+
+      <h2>Streak, the variant</h2>
+
+      <p><a href="{{link:rankle-streak}}">Streak</a> asks the same question — on which criterion does this country rank best? — but one country at a time, against four criteria, and a single mistake ends the run. No grid to fill, no efficiency: the length of the run is the score.</p>
+
+      <h2>Frequently asked</h2>
+
+      <div class="faq-list">
+        <details>
+          <summary>Can I score 100 % without matching the game's placement?</summary>
+          <div class="faq-body">Yes. Efficiency compares totals, not slots. Two different arrangements that add up to the same sum of ranks are both worth 100 %.</div>
+        </details>
+        <details>
+          <summary>What is a slot with no data worth?</summary>
+          <div class="faq-body">200, more than the last of the {{countries}} countries. It is the heaviest penalty in the game: a country with no measurement on a criterion should never be placed there.</div>
+        </details>
+        <details>
+          <summary>Are the eight criteria visible from the start?</summary>
+          <div class="faq-body">Yes. The eight criteria are shown before the first country; it is the countries that arrive one by one. So you can mentally reserve a slot for a country you hope to see.</div>
+        </details>
+        <details>
+          <summary>Where do the ranks come from?</summary>
+          <div class="faq-body">From the game data, itself drawn from public sources: the World Bank, the United Nations, UNESCO, sports federations. The list of {{themes}} criteria is on the mode page.</div>
+        </details>
+      </div>
+
+      <div class="play-cta">
+        <h3>Your turn</h3>
+        <p>Free, no account, in your browser.</p>
+        <a class="btn" href="{{play:mode-rankle}}">{{t:playNow}}</a>
+      </div>
+
+      {{ranklenav}}
+    </article>

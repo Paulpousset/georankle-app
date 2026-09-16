@@ -6,93 +6,544 @@
   "headers": [
     {
       "source": "/.well-known/apple-app-site-association",
-      "headers": [{ "key": "Content-Type", "value": "application/json" }]
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/json"
+        }
+      ]
     },
     {
       "source": "/fonts/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
       ]
     }
   ],
   "redirects": [
-    { "source": "/landing.html", "destination": "/", "permanent": true },
-    { "source": "/guides", "destination": "/guides/", "permanent": true },
-    { "source": "/a-propos", "destination": "/a-propos/", "permanent": true },
-    { "source": "/contact", "destination": "/contact/", "permanent": true },
-    { "source": "/tiktok", "destination": "/tiktok/", "permanent": false },
-    { "source": "/instagram", "destination": "/instagram/", "permanent": false },
-    { "source": "/youtube", "destination": "/youtube/", "permanent": false },
-    { "source": "/en", "destination": "/en/", "permanent": true },
-    { "source": "/en/guides", "destination": "/en/guides/", "permanent": true },
-    { "source": "/es", "destination": "/es/", "permanent": true },
-    { "source": "/pt", "destination": "/pt/", "permanent": true },
-    { "source": "/de", "destination": "/de/", "permanent": true },
-    { "source": "/it", "destination": "/it/", "permanent": true },
-    { "source": "/ru", "destination": "/ru/", "permanent": true },
-    { "source": "/tr", "destination": "/tr/", "permanent": true },
-    { "source": "/pl", "destination": "/pl/", "permanent": true },
-    { "source": "/nl", "destination": "/nl/", "permanent": true },
-    { "source": "/id", "destination": "/id/", "permanent": true },
-    { "source": "/vi", "destination": "/vi/", "permanent": true },
-    { "source": "/th", "destination": "/th/", "permanent": true },
-    { "source": "/uk", "destination": "/uk/", "permanent": true },
-    { "source": "/ro", "destination": "/ro/", "permanent": true },
-    { "source": "/el", "destination": "/el/", "permanent": true }
+    {
+      "source": "/landing.html",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/guides",
+      "destination": "/guides/",
+      "permanent": true
+    },
+    {
+      "source": "/a-propos",
+      "destination": "/a-propos/",
+      "permanent": true
+    },
+    {
+      "source": "/contact",
+      "destination": "/contact/",
+      "permanent": true
+    },
+    {
+      "source": "/tiktok",
+      "destination": "/tiktok/",
+      "permanent": false
+    },
+    {
+      "source": "/instagram",
+      "destination": "/instagram/",
+      "permanent": false
+    },
+    {
+      "source": "/youtube",
+      "destination": "/youtube/",
+      "permanent": false
+    },
+    {
+      "source": "/en",
+      "destination": "/en/",
+      "permanent": true
+    },
+    {
+      "source": "/en/guides",
+      "destination": "/en/guides/",
+      "permanent": true
+    },
+    {
+      "source": "/es",
+      "destination": "/es/",
+      "permanent": true
+    },
+    {
+      "source": "/pt",
+      "destination": "/pt/",
+      "permanent": true
+    },
+    {
+      "source": "/de",
+      "destination": "/de/",
+      "permanent": true
+    },
+    {
+      "source": "/it",
+      "destination": "/it/",
+      "permanent": true
+    },
+    {
+      "source": "/ru",
+      "destination": "/ru/",
+      "permanent": true
+    },
+    {
+      "source": "/tr",
+      "destination": "/tr/",
+      "permanent": true
+    },
+    {
+      "source": "/pl",
+      "destination": "/pl/",
+      "permanent": true
+    },
+    {
+      "source": "/nl",
+      "destination": "/nl/",
+      "permanent": true
+    },
+    {
+      "source": "/id",
+      "destination": "/id/",
+      "permanent": true
+    },
+    {
+      "source": "/vi",
+      "destination": "/vi/",
+      "permanent": true
+    },
+    {
+      "source": "/th",
+      "destination": "/th/",
+      "permanent": true
+    },
+    {
+      "source": "/uk",
+      "destination": "/uk/",
+      "permanent": true
+    },
+    {
+      "source": "/ro",
+      "destination": "/ro/",
+      "permanent": true
+    },
+    {
+      "source": "/el",
+      "destination": "/el/",
+      "permanent": true
+    },
+    {
+      "source": "/:alias(georanke|geo-rankle|georankl|geo-rankl|georankle-game|jeu-georankle|rankl|rankle-game|ranklegame|rankle-jeu|jeu-rankle|jouer-rankle|play-rankle|rankle-geo|rankle-quiz|rankle-gratuit|rankle-online|rankle-en-ligne|geog-rankle|rankle-geog|classic|rankle-classic)",
+      "destination": "/play?mode=classic",
+      "permanent": true
+    },
+    {
+      "source": "/:alias(rankle|georankle).html",
+      "destination": "/play?mode=classic",
+      "permanent": true
+    },
+    {
+      "source": "/:alias(rankle|georankle)/:go(jouer|play|go)",
+      "destination": "/play?mode=classic",
+      "permanent": true
+    },
+    {
+      "source": "/en/:alias(rankle-game|ranklegame|georankle-game|geo-rankle|georanke|play-rankle|rankle-free|rankle-online|classic)",
+      "destination": "/en/play?mode=classic",
+      "permanent": true
+    },
+    {
+      "source": "/en/:alias(rankle|georankle)/:go(play|go)",
+      "destination": "/en/play?mode=classic",
+      "permanent": true
+    },
+    {
+      "source": "/:alias(streak|rankle-streak|mode-streak)",
+      "destination": "/play?mode=streak",
+      "permanent": true
+    },
+    {
+      "source": "/en/:alias(streak|rankle-streak|streak-mode)",
+      "destination": "/en/play?mode=streak",
+      "permanent": true
+    },
+    {
+      "source": "/:alias(rankle-regles|regles-rankle)",
+      "destination": "/rankle/regles/",
+      "permanent": true
+    },
+    {
+      "source": "/en/:alias(rankle-rules)",
+      "destination": "/en/rankle/rules/",
+      "permanent": true
+    },
+    {
+      "source": "/:alias(rankle-astuces|astuces-rankle|rankle-strategie)",
+      "destination": "/rankle/astuces/",
+      "permanent": true
+    },
+    {
+      "source": "/en/:alias(rankle-tips|rankle-strategy)",
+      "destination": "/en/rankle/tips/",
+      "permanent": true
+    },
+    {
+      "source": "/:alias(rankle-du-jour|daily-rankle|rankle-daily)",
+      "destination": "/play",
+      "permanent": true
+    },
+    {
+      "source": "/en/:alias(daily-rankle|rankle-daily)",
+      "destination": "/en/play",
+      "permanent": true
+    },
+    {
+      "source": "/:alias(rankle-app|georankle-app|telecharger-rankle)",
+      "destination": "/rankle/",
+      "permanent": true
+    },
+    {
+      "source": "/en/:alias(rankle-app|georankle-app|download-rankle)",
+      "destination": "/en/rankle/",
+      "permanent": true
+    },
+    {
+      "source": "/en/georankle",
+      "destination": "/en/georankle/",
+      "permanent": true
+    }
   ],
   "rewrites": [
-    { "source": "/ph/static/(.*)", "destination": "https://eu-assets.i.posthog.com/static/$1" },
-    { "source": "/ph/(.*)", "destination": "https://eu.i.posthog.com/$1" },
-    { "source": "/play", "destination": "/app.html" },
-    { "source": "/play/", "destination": "/app.html" },
-    { "source": "/daily", "destination": "/app.html" },
-    { "source": "/daily/", "destination": "/app.html" },
-    { "source": "/en/play", "destination": "/app-en.html" },
-    { "source": "/en/play/", "destination": "/app-en.html" },
-    { "source": "/es/play", "destination": "/app-es.html" },
-    { "source": "/es/play/", "destination": "/app-es.html" },
-    { "source": "/pt/play", "destination": "/app-pt.html" },
-    { "source": "/pt/play/", "destination": "/app-pt.html" },
-    { "source": "/de/play", "destination": "/app-de.html" },
-    { "source": "/de/play/", "destination": "/app-de.html" },
-    { "source": "/it/play", "destination": "/app-it.html" },
-    { "source": "/it/play/", "destination": "/app-it.html" },
-    { "source": "/ru/play", "destination": "/app-ru.html" },
-    { "source": "/ru/play/", "destination": "/app-ru.html" },
-    { "source": "/tr/play", "destination": "/app-tr.html" },
-    { "source": "/tr/play/", "destination": "/app-tr.html" },
-    { "source": "/pl/play", "destination": "/app-pl.html" },
-    { "source": "/pl/play/", "destination": "/app-pl.html" },
-    { "source": "/nl/play", "destination": "/app-nl.html" },
-    { "source": "/nl/play/", "destination": "/app-nl.html" },
-    { "source": "/id/play", "destination": "/app-id.html" },
-    { "source": "/id/play/", "destination": "/app-id.html" },
-    { "source": "/vi/play", "destination": "/app-vi.html" },
-    { "source": "/vi/play/", "destination": "/app-vi.html" },
-    { "source": "/th/play", "destination": "/app-th.html" },
-    { "source": "/th/play/", "destination": "/app-th.html" },
-    { "source": "/uk/play", "destination": "/app-uk.html" },
-    { "source": "/uk/play/", "destination": "/app-uk.html" },
-    { "source": "/ro/play", "destination": "/app-ro.html" },
-    { "source": "/ro/play/", "destination": "/app-ro.html" },
-    { "source": "/el/play", "destination": "/app-el.html" },
-    { "source": "/el/play/", "destination": "/app-el.html" },
-    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "fr" }], "destination": "/invite-fr.html" },
-    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "en" }], "destination": "/invite-en.html" },
-    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "es" }], "destination": "/invite-es.html" },
-    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "pt" }], "destination": "/invite-pt.html" },
-    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "de" }], "destination": "/invite-de.html" },
-    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "it" }], "destination": "/invite-it.html" },
-    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "ru" }], "destination": "/invite-ru.html" },
-    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "tr" }], "destination": "/invite-tr.html" },
-    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "pl" }], "destination": "/invite-pl.html" },
-    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "nl" }], "destination": "/invite-nl.html" },
-    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "id" }], "destination": "/invite-id.html" },
-    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "vi" }], "destination": "/invite-vi.html" },
-    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "th" }], "destination": "/invite-th.html" },
-    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "uk" }], "destination": "/invite-uk.html" },
-    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "ro" }], "destination": "/invite-ro.html" },
-    { "source": "/invite.html", "has": [{ "type": "query", "key": "lang", "value": "el" }], "destination": "/invite-el.html" },
-    { "source": "/invite.html", "destination": "/invite-fr.html" }
+    {
+      "source": "/ph/static/(.*)",
+      "destination": "https://eu-assets.i.posthog.com/static/$1"
+    },
+    {
+      "source": "/ph/(.*)",
+      "destination": "https://eu.i.posthog.com/$1"
+    },
+    {
+      "source": "/play",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/play/",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/daily",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/daily/",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/en/play",
+      "destination": "/app-en.html"
+    },
+    {
+      "source": "/en/play/",
+      "destination": "/app-en.html"
+    },
+    {
+      "source": "/es/play",
+      "destination": "/app-es.html"
+    },
+    {
+      "source": "/es/play/",
+      "destination": "/app-es.html"
+    },
+    {
+      "source": "/pt/play",
+      "destination": "/app-pt.html"
+    },
+    {
+      "source": "/pt/play/",
+      "destination": "/app-pt.html"
+    },
+    {
+      "source": "/de/play",
+      "destination": "/app-de.html"
+    },
+    {
+      "source": "/de/play/",
+      "destination": "/app-de.html"
+    },
+    {
+      "source": "/it/play",
+      "destination": "/app-it.html"
+    },
+    {
+      "source": "/it/play/",
+      "destination": "/app-it.html"
+    },
+    {
+      "source": "/ru/play",
+      "destination": "/app-ru.html"
+    },
+    {
+      "source": "/ru/play/",
+      "destination": "/app-ru.html"
+    },
+    {
+      "source": "/tr/play",
+      "destination": "/app-tr.html"
+    },
+    {
+      "source": "/tr/play/",
+      "destination": "/app-tr.html"
+    },
+    {
+      "source": "/pl/play",
+      "destination": "/app-pl.html"
+    },
+    {
+      "source": "/pl/play/",
+      "destination": "/app-pl.html"
+    },
+    {
+      "source": "/nl/play",
+      "destination": "/app-nl.html"
+    },
+    {
+      "source": "/nl/play/",
+      "destination": "/app-nl.html"
+    },
+    {
+      "source": "/id/play",
+      "destination": "/app-id.html"
+    },
+    {
+      "source": "/id/play/",
+      "destination": "/app-id.html"
+    },
+    {
+      "source": "/vi/play",
+      "destination": "/app-vi.html"
+    },
+    {
+      "source": "/vi/play/",
+      "destination": "/app-vi.html"
+    },
+    {
+      "source": "/th/play",
+      "destination": "/app-th.html"
+    },
+    {
+      "source": "/th/play/",
+      "destination": "/app-th.html"
+    },
+    {
+      "source": "/uk/play",
+      "destination": "/app-uk.html"
+    },
+    {
+      "source": "/uk/play/",
+      "destination": "/app-uk.html"
+    },
+    {
+      "source": "/ro/play",
+      "destination": "/app-ro.html"
+    },
+    {
+      "source": "/ro/play/",
+      "destination": "/app-ro.html"
+    },
+    {
+      "source": "/el/play",
+      "destination": "/app-el.html"
+    },
+    {
+      "source": "/el/play/",
+      "destination": "/app-el.html"
+    },
+    {
+      "source": "/invite.html",
+      "has": [
+        {
+          "type": "query",
+          "key": "lang",
+          "value": "fr"
+        }
+      ],
+      "destination": "/invite-fr.html"
+    },
+    {
+      "source": "/invite.html",
+      "has": [
+        {
+          "type": "query",
+          "key": "lang",
+          "value": "en"
+        }
+      ],
+      "destination": "/invite-en.html"
+    },
+    {
+      "source": "/invite.html",
+      "has": [
+        {
+          "type": "query",
+          "key": "lang",
+          "value": "es"
+        }
+      ],
+      "destination": "/invite-es.html"
+    },
+    {
+      "source": "/invite.html",
+      "has": [
+        {
+          "type": "query",
+          "key": "lang",
+          "value": "pt"
+        }
+      ],
+      "destination": "/invite-pt.html"
+    },
+    {
+      "source": "/invite.html",
+      "has": [
+        {
+          "type": "query",
+          "key": "lang",
+          "value": "de"
+        }
+      ],
+      "destination": "/invite-de.html"
+    },
+    {
+      "source": "/invite.html",
+      "has": [
+        {
+          "type": "query",
+          "key": "lang",
+          "value": "it"
+        }
+      ],
+      "destination": "/invite-it.html"
+    },
+    {
+      "source": "/invite.html",
+      "has": [
+        {
+          "type": "query",
+          "key": "lang",
+          "value": "ru"
+        }
+      ],
+      "destination": "/invite-ru.html"
+    },
+    {
+      "source": "/invite.html",
+      "has": [
+        {
+          "type": "query",
+          "key": "lang",
+          "value": "tr"
+        }
+      ],
+      "destination": "/invite-tr.html"
+    },
+    {
+      "source": "/invite.html",
+      "has": [
+        {
+          "type": "query",
+          "key": "lang",
+          "value": "pl"
+        }
+      ],
+      "destination": "/invite-pl.html"
+    },
+    {
+      "source": "/invite.html",
+      "has": [
+        {
+          "type": "query",
+          "key": "lang",
+          "value": "nl"
+        }
+      ],
+      "destination": "/invite-nl.html"
+    },
+    {
+      "source": "/invite.html",
+      "has": [
+        {
+          "type": "query",
+          "key": "lang",
+          "value": "id"
+        }
+      ],
+      "destination": "/invite-id.html"
+    },
+    {
+      "source": "/invite.html",
+      "has": [
+        {
+          "type": "query",
+          "key": "lang",
+          "value": "vi"
+        }
+      ],
+      "destination": "/invite-vi.html"
+    },
+    {
+      "source": "/invite.html",
+      "has": [
+        {
+          "type": "query",
+          "key": "lang",
+          "value": "th"
+        }
+      ],
+      "destination": "/invite-th.html"
+    },
+    {
+      "source": "/invite.html",
+      "has": [
+        {
+          "type": "query",
+          "key": "lang",
+          "value": "uk"
+        }
+      ],
+      "destination": "/invite-uk.html"
+    },
+    {
+      "source": "/invite.html",
+      "has": [
+        {
+          "type": "query",
+          "key": "lang",
+          "value": "ro"
+        }
+      ],
+      "destination": "/invite-ro.html"
+    },
+    {
+      "source": "/invite.html",
+      "has": [
+        {
+          "type": "query",
+          "key": "lang",
+          "value": "el"
+        }
+      ],
+      "destination": "/invite-el.html"
+    },
+    {
+      "source": "/invite.html",
+      "destination": "/invite-fr.html"
+    }
   ]
 }

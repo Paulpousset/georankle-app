@@ -44,6 +44,13 @@ describe('getInitialWebIntent', () => {
     expect(getInitialWebIntent()).toEqual({ screen: 'daily' });
   });
 
+  it('honours ?mode= on every localised play path, not just /play and /en/play', () => {
+    atUrl('/es/play', '?mode=quiz-flag');
+    expect(getInitialWebIntent()).toEqual({ screen: 'mode', mode: 'quiz-flag' });
+    atUrl('/de/play/');
+    expect(getInitialWebIntent()).toEqual({ screen: 'daily' });
+  });
+
   it('boots a solo mode from ?mode=', () => {
     atUrl('/play', '?mode=quiz-flag');
     expect(getInitialWebIntent()).toEqual({ screen: 'mode', mode: 'quiz-flag' });

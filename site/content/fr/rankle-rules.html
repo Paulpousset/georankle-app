@@ -1,0 +1,93 @@
+title: Les règles de Rankle : rangs, total et pourcentage d'efficacité
+description: Les règles complètes de Rankle, le jeu de classement de GeoG : huit pays, huit critères, un rang mondial par case, un total à minimiser et un score exprimé en pourcentage d'efficacité. Avec un exemple chiffré et le barème commun aux duels.
+ogTitle: Les règles de Rankle, expliquées avec un exemple
+breadcrumb: Règles
+linkTitle: Les règles et le barème
+published: 2026-09-16
+modified: 2026-09-16
+---
+    <article>
+      <header>
+        <h1>Les règles de Rankle</h1>
+        <p class="standfirst">Tout tient en une phrase — placer chaque pays sur le critère où il se classe le mieux — mais le barème mérite d'être compris pour savoir ce qu'on optimise vraiment.</p>
+        <p class="meta">Rankle · mis à jour en septembre 2026</p>
+      </header>
+
+      <div class="play-cta">
+        <h3>Les règles s'apprennent en jouant</h3>
+        <p>Une grille prend deux minutes.</p>
+        <a class="btn" href="{{play:mode-rankle}}">{{t:playNow}}</a>
+      </div>
+
+      <h2>Le déroulé d'une partie</h2>
+
+      <ol>
+        <li><strong>Huit critères</strong> sont tirés parmi les {{themes}} du jeu et affichés dès le départ : population, superficie, PIB, couverture forestière, sites UNESCO, point culminant…</li>
+        <li><strong>Huit pays</strong> apparaissent <strong>un par un</strong>, parmi les {{countries}} États membres de l'ONU.</li>
+        <li>Pour le pays affiché, vous choisissez <strong>un critère encore libre</strong>. Le pays y est placé, et la case se ferme : chaque critère ne sert qu'une fois.</li>
+        <li>Au huitième pays, il ne reste qu'une case. La partie s'arrête, la grille se dévoile avec le rang réel de chaque pays dans chaque case.</li>
+      </ol>
+
+      <p>Il n'y a pas de chronomètre dans une partie solo : Rankle est un jeu de réflexion, pas de réflexe.</p>
+
+      <h2>Le rang mondial</h2>
+
+      <p>Chaque case vaut le <strong>rang du pays sur ce critère</strong>, parmi les {{countries}} pays du jeu. La Russie est 1ʳᵉ en superficie, la France 1ʳᵉ en arrivées de touristes, Monaco 1ᵉʳ en richesse par habitant. Un rang de 1 est parfait ; un rang de 150 est une case gâchée.</p>
+
+      <p>Quand un pays n'a pas de donnée pour un critère — un micro-État sans classement FIFA, un pays sans mesure de couverture forestière — la case compte <strong>200</strong>, c'est-à-dire pire que le dernier des {{countries}}. Placer un pays sur un critère où il n'est pas mesuré est la pire erreur possible, et le jeu le signale dans la grille finale.</p>
+
+      <h2>Le total et l'efficacité</h2>
+
+      <p>Votre <strong>total</strong> est la somme des huit rangs. Plus il est bas, mieux c'est : huit premières places feraient un total de 8.</p>
+
+      <p>Ce total n'est pas affiché seul, parce qu'il dépend du tirage : une grille de grands pays sur de grands critères donne des totaux bas à tout le monde. Le jeu calcule donc le <strong>placement optimal</strong> — parmi les 40 320 façons de répartir huit pays sur huit critères, celle dont le total est le plus bas — et vous compare à lui :</p>
+
+      <p><strong>Efficacité = total optimal ÷ votre total × 100.</strong></p>
+
+      <p>Exemple : si le meilleur placement possible totalise 190 et que le vôtre totalise 380, votre efficacité est de 50 %. À 100 %, votre total égale celui de l'optimum — pas forcément avec le même placement, plusieurs répartitions peuvent se valoir.</p>
+
+      <h2>Ce que le score récompense</h2>
+
+      <ul>
+        <li><strong>La vision d'ensemble</strong> plutôt que le réflexe. Le meilleur critère d'un pays pris isolément n'est pas toujours celui qu'il faut lui donner, si un autre pays de la grille en a plus besoin. La <a href="{{link:rankle-tips}}">page de stratégie</a> le montre sur une grille réelle.</li>
+        <li><strong>La connaissance des extrêmes</strong> : savoir qui est premier, deuxième, troisième d'un critère vaut plus que connaître la valeur exacte.</li>
+        <li><strong>La prudence avec les micro-États</strong>, souvent premiers sur un critère et sans donnée sur beaucoup d'autres.</li>
+      </ul>
+
+      <h2>Le barème en duel, en classé et en ligue</h2>
+
+      <p>Quand Rankle est une manche d'une <a href="{{link:mode-online}}">partie en ligne</a>, l'efficacité est ramenée sur l'échelle commune à tous les modes, de 0 à 1000 points : <strong>1 % d'efficacité = 10 points</strong>. Une grille à 87 % vaut 870 points, comparables à une manche de drapeaux ou de globe 3D. C'est ce qui permet d'enchaîner Rankle et d'autres modes dans une même partie, et de tenir un classement unique.</p>
+
+      <h2>Streak, la variante</h2>
+
+      <p><a href="{{link:rankle-streak}}">Streak</a> reprend la même question — sur quel critère ce pays se classe-t-il le mieux ? — mais un pays à la fois, face à quatre critères, et une seule erreur arrête la série. Pas de grille à répartir, pas d'efficacité : c'est la longueur de la série qui compte.</p>
+
+      <h2>Questions fréquentes</h2>
+
+      <div class="faq-list">
+        <details>
+          <summary>Peut-on obtenir 100 % sans reproduire le placement du jeu ?</summary>
+          <div class="faq-body">Oui. L'efficacité compare les totaux, pas les cases. Deux répartitions différentes qui totalisent le même nombre de rangs valent toutes les deux 100 %.</div>
+        </details>
+        <details>
+          <summary>Que vaut une case sans donnée ?</summary>
+          <div class="faq-body">200, soit plus que le dernier des {{countries}} pays. C'est la pénalité la plus lourde du jeu : un pays non mesuré sur un critère ne doit jamais y être placé.</div>
+        </details>
+        <details>
+          <summary>Les huit critères sont-ils visibles dès le début ?</summary>
+          <div class="faq-body">Oui. Les huit critères sont affichés avant le premier pays ; ce sont les pays qui arrivent un par un. On peut donc réserver mentalement une case pour un pays qu'on espère voir venir.</div>
+        </details>
+        <details>
+          <summary>D'où viennent les rangs ?</summary>
+          <div class="faq-body">Des données du jeu, elles-mêmes tirées de sources publiques : Banque mondiale, Nations unies, UNESCO, fédérations sportives. La liste des {{themes}} critères est sur la page du mode.</div>
+        </details>
+      </div>
+
+      <div class="play-cta">
+        <h3>À vous</h3>
+        <p>Gratuit, sans compte, dans le navigateur.</p>
+        <a class="btn" href="{{play:mode-rankle}}">{{t:playNow}}</a>
+      </div>
+
+      {{ranklenav}}
+    </article>
