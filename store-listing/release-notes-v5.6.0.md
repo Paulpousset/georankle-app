@@ -7,7 +7,7 @@ Où coller, dans App Store Connect → la version 5.6.0 → chaque localisation 
 Les mêmes textes tiennent en < 500 caractères → ils servent aussi de
 **notes de version Play** pour la vc21.
 
-Build iOS : 46 · Android : version code 21 · commit 47d4ca4 (16/09/2026).
+Build iOS : 47 (le 46 a échoué au signing) · Android : version code 21 · commit 47d4ca4 (16/09/2026).
 
 ---
 
@@ -38,7 +38,8 @@ Ton meilleur score s'affiche et se met à jour à la fin de chaque défi.
 🔗 Invitations
 Le lien envoyé à un ami s'ouvre dans sa langue (16 langues) et mène directement au store.
 
-📱 Version web sur mobile plus stable, et corrections sur la boutique d'avatars.
+🛠️ Corrections
+La boutique d'avatars affiche bien ta tenue et ton globe dès l'enregistrement, et le partage de résultats fonctionne à nouveau.
 ```
 
 **🇬🇧 English:**
@@ -52,5 +53,20 @@ Your top score is shown and updated at the end of every challenge.
 🔗 Invites
 The link you send a friend opens in their language (16 languages) and goes straight to the store.
 
-📱 Steadier web version on mobile, plus fixes in the avatar shop.
+🛠️ Fixes
+The avatar shop now shows your outfit and globe right after saving, and sharing your results works again.
 ```
+
+---
+
+## 3. Blocs pour `scripts/play_promote.mjs --notes` (Play, < 500 car.)
+
+<fr-FR>🎉 Nouvelles fins de partie : étoiles en mode Histoire, série et record perso sur le défi du jour, podium en mêlée générale.
+🏆 Record personnel affiché à la fin de chaque défi.
+🔗 Les invitations s'ouvrent dans la langue de l'ami (16 langues) et mènent au store.
+📱 Version web mobile plus stable, corrections sur la boutique d'avatars.</fr-FR>
+
+<en-US>🎉 New end-of-game screens: stars in Story mode, streak and personal best on the daily challenge, a podium for free-for-all.
+🏆 Personal best shown at the end of every challenge.
+🔗 Invites open in your friend's language (16 languages) and go straight to the store.
+📱 Steadier mobile web version, fixes in the avatar shop.</en-US>
