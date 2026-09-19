@@ -16,7 +16,12 @@ const result = await build({
   stdin: {
     contents:
       "export * from 'three';\n" +
-      "export { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';",
+      "export { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';\n" +
+      // Bloom de la charte Cartoon HD (scènes live) : ≈ 30 Ko minifiés.
+      "export { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';\n" +
+      "export { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';\n" +
+      "export { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';\n" +
+      "export { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';",
     resolveDir: here,
   },
   bundle: true,

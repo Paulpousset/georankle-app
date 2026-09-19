@@ -4,6 +4,9 @@
  * Rig parity: camera/lights/ring/orbit constants come from asset-pipeline/rig.json,
  * the SAME source render_layers.py applies to the Blender scene, so this live
  * preview stays superposable with the pre-rendered <WorldAvatar3D> layers.
+ * Shading: the « Cartoon HD » ToonHD shader (lib/globe3d/toonHdSource — same
+ * 3-band ramp, specular dot, rim and 5 studio lights as the rig, plus the
+ * bloom the rig cannot bake into its transparent layers). No outlines.
  * Style parity: globe/cosmos/orbit colours come from the SAME tables as the SVG
  * renderer (GLOBE_STYLES / catalog swatches) — one source of truth.
  *
@@ -16,6 +19,7 @@
  *                window.setReduceMotion(bool)
  */
 import RIG from '../../../asset-pipeline/rig.json';
+import { TOON_HD_JS } from '../globe3d/toonHdSource';
 import { CITY_LIGHTS, GLOBE_STYLES, POLITICAL_PALETTE } from '../../components/WorldAvatar';
 import { EMBLEM_COORD } from '../../components/worldGlyphs';
 import { getCategoryParts } from '../../data/cosmetics';
@@ -81,6 +85,7 @@ export function buildAvatarHtml(opts: BuildAvatarHtmlOptions): string {
 <style>html,body{margin:0;padding:0;background:transparent;overflow:hidden;width:100%;height:100%;touch-action:none}canvas{display:block;touch-action:none}</style>
 </head><body>
 <script>${opts.threeSrc}</script>
+<script>${TOON_HD_JS}</script>
 <script>
 "use strict";
 var D = ${JSON.stringify(payload)};
@@ -104,39 +109,21 @@ camera.position.set(0,0,RIG.camera.distance);
 camera.lookAt(0,0,0);
 function dirFrom(cfg){var az=cfg.azimuthDeg*Math.PI/180,el=cfg.elevationDeg*Math.PI/180;
   return new THREE.Vector3(Math.sin(az)*Math.cos(el),Math.sin(el),Math.cos(az)*Math.cos(el));}
-var LIGHT_SCALE={key:0.55,fill:0.5,rim:0.45};
-['key','fill','rim'].forEach(function(k){var cfg=RIG.lights[k];
-  var l=new THREE.DirectionalLight(new THREE.Color(cfg.color),cfg.intensity*LIGHT_SCALE[k]);
-  l.position.copy(dirFrom(cfg).multiplyScalar(10));scene.add(l);});
-scene.add(new THREE.AmbientLight(0x8a94b0,0.8));
+// Cartoon HD : les 5 lumières studio de rig.json telles quelles (plus de
+// facteur d'atténuation — la scène live était volontairement plus terne que le
+// pack, la « perte d'éclat » signalée par Paul), la clé porte l'ombre portée,
+// bloom HDR sur les émissifs (> 1) — la seule chose que le rig ne cuit pas.
+ToonHD.configure(RIG.toon);
+ToonHD.enableShadows(renderer);
+ToonHD.lights(scene,RIG.lights,{shadow:true,shadowSize:1024,extent:2.4});
+var post=ToonHD.bloom(renderer,scene,camera,W,H);
 
-// ── Toon partagé (parité bandes du pack) + chargeur GLB ──────────────────────
-function makeGrad(vals){var n=vals.length,d=new Uint8Array(n*4);
-  for(var i=0;i<n;i++){d[i*4]=d[i*4+1]=d[i*4+2]=vals[i];d[i*4+3]=255;}
-  var t=new THREE.DataTexture(d,n,1);t.minFilter=THREE.NearestFilter;
-  t.magFilter=THREE.NearestFilter;t.needsUpdate=true;return t;}
-var GRAD=makeGrad([132,210,255]);
+// ── Chargeur GLB + matériaux du rig ──────────────────────────────────────────
 var gltfLoader=(typeof THREE.GLTFLoader==='function')?new THREE.GLTFLoader():null;
-// Matériaux des GLB du rig : extras Blender (ggKind/ggHex/ggAlpha) -> three.
-// landtex/landink (relief continents) reçoivent des placeholders : la texture
-// du style et l'encre par style sont posées ensuite par setLandStyle().
-function remapMaterials(root){root.traverse(function(n){
-  if(!n.isMesh||!n.material)return;
-  var ud=n.material.userData||{};
-  var kind=ud.ggKind||'toon',hex=ud.ggHex||'#c8d0d8';
-  var alpha=(ud.ggAlpha!=null)?ud.ggAlpha:1;
-  n.userData.ggKind=kind;
-  if(n.material.dispose)n.material.dispose();
-  if(kind==='outline'||kind==='landink'){
-    n.material=new THREE.MeshBasicMaterial({color:new THREE.Color(kind==='landink'?'#1c2438':hex),side:THREE.BackSide});
-  }else if(kind==='flat'){
-    n.material=new THREE.MeshBasicMaterial({color:new THREE.Color(hex),
-      transparent:alpha<1,opacity:alpha,depthWrite:alpha>=1});
-  }else if(kind==='landtex'){
-    n.material=new THREE.MeshToonMaterial({color:0xffffff,gradientMap:GRAD});
-  }else{
-    n.material=new THREE.MeshToonMaterial({color:new THREE.Color(hex),gradientMap:GRAD});
-  }});}
+// Extras Blender (ggKind/ggHex/ggEmis/ggAlpha) -> ToonHD ; landtex (relief des
+// continents) reçoit un placeholder, la texture du style est posée par
+// setLandStyle(). Les coques de contour d'anciens GLB sont masquées.
+function remapMaterials(root){ToonHD.remapMaterials(root);}
 function disposeTree(root){root.traverse(function(n){
   if(n.geometry)n.geometry.dispose();
   if(n.material&&n.material.dispose)n.material.dispose();});}
@@ -400,16 +387,21 @@ globeGroup.add(globeMesh);
 var cloudMesh=new THREE.Mesh(new THREE.SphereGeometry(RIG.globe.radius*1.015,48,48),
   new THREE.MeshLambertMaterial({transparent:true,opacity:0.5,depthWrite:false}));
 cloudMesh.visible=false;globeGroup.add(cloudMesh);
+globeMesh.receiveShadow=true;globeMesh.castShadow=true;
+// Nuages en volumes du pack (mêmes tirages que le rig) : parqués dans le repère
+// caméra à l'orientation « maison » (parité avec la couche pré-rendue), puis
+// solidaires de la planète quand on la fait tourner.
+var cloudRoot=new THREE.Group();globeGroup.add(cloudRoot);
+var toonClouds=null;
+function setToonClouds(on){
+  if(on&&!toonClouds){toonClouds=ToonHD.clouds();cloudRoot.add(toonClouds);}
+  if(toonClouds)toonClouds.visible=on;
+  needsRender=true;}
 var texLoader=new THREE.TextureLoader();
 function loadUri(uri,cb){texLoader.load(uri,function(t){t.colorSpace=THREE.SRGBColorSpace;cb(t);});}
 // Styles sombres du pack : texture auto-éclairée (unlit) + rim seul.
 var GLOBE_DARK={night:1,lava:1,eclipse:1,biolum:1,hologram:1,cyber:1,st_galaxy:1,st_fractured:1};
-// Relief 3D des continents (GLB partagé) : encre du contour par style
-// (= outline_of(land) du pipeline) ; mars/st_galaxy n'ont pas de continents.
-var LAND_INK={classic:'#202f2d',satellite:'#19292a',gaia:'#1b312c',pastel:'#33303f',
-  political:'#253037',vintage:'#2c2b2f',gold:'#302d28',night:'#11192d',ice:'#333846',
-  lava:'#12131f',blueprint:'#111c35',cyber:'#0e1323',hologram:'#0e1727',biolum:'#0e1823',
-  eclipse:'#0e1221',relief:'#2b2a2e',st_fractured:'#11182b',st_crowned:'#302d28'};
+// Relief 3D des continents (GLB partagé) ; mars/st_galaxy n'ont pas de continents.
 var NO_RELIEF={mars:1,st_galaxy:1};
 var landObj=null,propsObj=null,propsStyle=null;
 function setLandStyle(styleId,tex){
@@ -418,12 +410,10 @@ function setLandStyle(styleId,tex){
   landObj.traverse(function(n){
     if(!n.isMesh)return;
     if(n.userData.ggKind==='landtex'){
-      var m=dark?new THREE.MeshBasicMaterial({map:tex})
-        :new THREE.MeshToonMaterial({map:tex,gradientMap:GRAD});
+      var m=ToonHD.material({map:tex,rough:0.5,specK:0.25,rimK:0.5,sat:1.25,val:1.02,
+        emissive:dark?RIG.toon.darkEmissive:0});
       if(n.material&&n.material.dispose)n.material.dispose();
-      n.material=m;
-    }else if(n.userData.ggKind==='landink'){
-      n.material.color=new THREE.Color(LAND_INK[styleId]||'#1c2438');
+      n.material=m;n.castShadow=true;n.receiveShadow=true;
     }});
   needsRender=true;
 }
@@ -474,9 +464,8 @@ function applyGlobeStyle(styleId){
     var texUri=assets.globeTex;
     var usePack=function(t){
       if(req!==globeReq)return; // un style plus récent a été demandé entre-temps
-      var m=GLOBE_DARK[styleId]
-        ?new THREE.MeshBasicMaterial({map:t})
-        :new THREE.MeshToonMaterial({map:t,gradientMap:GRAD});
+      var m=ToonHD.material({map:t,rough:0.25,specK:0.55,rimK:0.6,sat:1.2,val:1.05,
+        emissive:GLOBE_DARK[styleId]?RIG.toon.darkEmissive:0});
       var old=globeMesh.material;globeMesh.material=m;
       if(old&&old.dispose)old.dispose();
       ensureLand(styleId,t);
@@ -487,6 +476,7 @@ function applyGlobeStyle(styleId){
       t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
       packTexCache[texUri]=t;usePack(t);});
     cloudMesh.visible=false;
+    setToonClouds(RIG.toon.clouds.styles.indexOf(styleId)>=0&&!GLOBE_DARK[styleId]);
     setAtmo(st.atmo||null,!!st.corona);
     return;
   }
@@ -512,6 +502,7 @@ function applyGlobeStyle(styleId){
   mat.needsUpdate=true;
   if(mat.map)mat.map.wrapS=THREE.RepeatWrapping;
   ensureLand(styleId,mat.map||null);
+  setToonClouds(false);
   cloudMesh.visible=!!(st.clouds&&loadedTex.clouds);
   if(cloudMesh.visible){cloudMesh.material.map=loadedTex.clouds;cloudMesh.material.alphaMap=loadedTex.clouds;cloudMesh.material.needsUpdate=true;}
   setAtmo(st.atmo||null,!!st.corona);
@@ -521,8 +512,9 @@ function applyGlobeStyle(styleId){
 var atmoMesh=null;
 function setAtmo(colorHex,corona){
   if(atmoMesh){scene.remove(atmoMesh);atmoMesh.geometry.dispose();atmoMesh.material.dispose();atmoMesh=null;}
-  if(!colorHex&&!corona)return;
-  var col=new THREE.Color(colorHex||'#ffe9c0');
+  // Toujours une atmosphère (le pack la cuit sur chaque globe) : cyan de la
+  // charte par défaut, couleur du style quand il en a une, couronne (éclipse).
+  var col=new THREE.Color(colorHex||RIG.toon.atmosphere.color);
   atmoMesh=new THREE.Mesh(new THREE.SphereGeometry(RIG.globe.radius*(corona?1.25:1.09),48,48),
     new THREE.ShaderMaterial({
       uniforms:{c:{value:col},p:{value:corona?2.2:3.4},s:{value:corona?1.6:0.9}},
@@ -877,6 +869,7 @@ function applyRot(){
   globeGroup.rotation.x=rotLat*Math.PI/180;
   needsRender=true;}
 applyRot();
+cloudRoot.quaternion.setFromEuler(new THREE.Euler(homeLat*Math.PI/180,(-90-homeLon)*Math.PI/180,0)).invert();
 var ptrs={},lastSingle=null,pinchD=0,tapT=0,tapX=-99,tapY=-99;
 function ptrList(){return Object.keys(ptrs).map(function(k){return ptrs[k];});}
 document.addEventListener('pointerdown',function(e){
@@ -982,13 +975,14 @@ function frame(){
     pulseMats.forEach(function(m){m.opacity=pulse;m.transparent=true;});
     needsRender=true;
   }
-  if(needsRender){renderer.render(scene,camera);needsRender=!!(!reduceMotion);}
+  if(needsRender){if(post)post.render();else renderer.render(scene,camera);needsRender=!!(!reduceMotion);}
 }
 applyAll();
 frame();
 window.addEventListener('resize',function(){
   W=window.innerWidth;H=window.innerHeight;
-  camera.aspect=W/H;camera.updateProjectionMatrix();renderer.setSize(W,H);needsRender=true;});
+  camera.aspect=W/H;camera.updateProjectionMatrix();renderer.setSize(W,H);
+  if(post)post.setSize(W,H);needsRender=true;});
 postMsg({type:'ready'});
 </script>
 </body></html>`;

@@ -2,10 +2,13 @@
  * Shared three.js Earth for the gameplay globes (and the decorative menu globe),
  * injected into <GlobeWebView> exactly like the legacy Canvas-2D builders.
  *
- * Art direction (Paul, 2026-07-24): PRO CARTOON, not photoreal. Cel-shaded toon
- * sphere (3-step gradient), vivid ocean, fresh-green continents with a white
- * coastal halo + bold dark outlines, puffy procedural clouds (light theme),
- * golden city lights (dark theme), saturated fresnel atmosphere, starfield.
+ * Art direction (Paul, 2026-09-19): CARTOON HD (Fortnite / Pixar register), not
+ * photoreal. The rig's ToonHD shader (lib/globe3d/toonHdSource: soft 3-band
+ * ramp with real cast shadows, crisp specular dot, cyan rim, the 5 studio
+ * lights of rig.json, bloom on emissives) on a vivid ocean, a LIT sticker coat
+ * of fresh-green continents (white coastal halo, no outlines between them
+ * beyond the thin cartography line), volumetric cloud clusters (menu, light
+ * theme), golden city lights (dark theme), fresnel atmosphere, starfield.
  * Country geometry is draped as an equirect overlay canvas on a second sphere
  * so hover/selected/correct/wrong highlights keep the game palette colours.
  *
@@ -31,7 +34,9 @@
  *              (the puzzle must not be readable off the map).
  *  - menu    : decorative — slow spin, clouds, no input, no polygons.
  */
+import RIG from '../../../asset-pipeline/rig.json';
 import { CITY_LIGHTS } from '../../components/WorldAvatar';
+import { TOON_HD_JS } from './toonHdSource';
 import type { MapPalette } from '../../theme/mapPalette';
 import type { GameGlobeSkin } from '../globeSkin';
 
@@ -82,6 +87,13 @@ interface CoreOptions {
    * reason: their textures carry every border.
    */
   borderless?: boolean;
+  /**
+   * HDR bloom (EffectComposer + UnrealBloomPass, rig.json toon.bloom). Only
+   * worth its full-screen passes where something glows: the menu globe and the
+   * skinned planets (lava mouths, comets, neon) — the bare stock globe has no
+   * emissive at all.
+   */
+  bloom?: boolean;
 }
 
 /** Lat/lng window an overlay is confined to (see CoreOptions.overlayBox). */
@@ -111,6 +123,9 @@ function core(opts: CoreOptions, gameJs: string): string {
     obox: opts.overlayBox ?? null,
     regionCoat: !!opts.regionCoat,
     borderless: !!opts.borderless,
+    bloom: !!opts.bloom,
+    toon: RIG.toon,
+    lights: RIG.lights,
   };
   return `<!DOCTYPE html>
 <html>
@@ -142,6 +157,7 @@ ${
 </div>`
 }
 <script>${opts.threeSrc}</script>
+<script>${TOON_HD_JS}</script>
 <script>
 "use strict";
 var D=${JSON.stringify(payload)};
@@ -159,7 +175,7 @@ window.onerror=function(m){postMsg({type:'GLOBE_ERROR',msg:String(m)});};
 
 var renderer,scene,camera,pivot,globe,globeMesh,overlayMesh,cloudMesh,atmoMesh;
 var loadedTex={},photoMode=false;
-var GRAD=null;
+var post=null; // bloom composer (D.bloom)
 // Resolved in setup(), once the mode's gameJs has declared drawBaseLand:
 //  RIG  — render the Blender rig look (pack lighting + no tone mapping)
 //  SURF — radius of the state-highlight overlay: it MUST clear the continent
@@ -168,22 +184,6 @@ var GRAD=null;
 //  DOTR — the microstate markers, just above that
 //  LINER — the crisp border lines, topmost so they never sink into the relief
 var RIG=false,SURF=1.002,DOTR=1.004,LINER=1.006;
-
-// Puffy sticker clouds: clusters of overlapping circles on a transparent
-// equirect canvas, deterministic so every load looks the same.
-function cartoonClouds(){
-  var s=1024,cv=document.createElement('canvas');cv.width=s;cv.height=s/2;
-  var c2=cv.getContext('2d'),seed=1337;
-  function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;}
-  c2.fillStyle='rgba(255,255,255,0.95)';
-  for(var i=0;i<12;i++){
-    var x=rnd()*s,y=s*0.06+rnd()*s*0.36,w=22+rnd()*42;
-    for(var j=0;j<6;j++){
-      c2.beginPath();
-      c2.arc(x+(j-2.5)*w*0.30,y+((j%2)?-1:1)*w*0.10,w*(0.28+rnd()*0.22),0,Math.PI*2);
-      c2.fill();}
-  }
-  var t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;return t;}
 
 // (lat,lng) ↔ unit vector, matching three.js SphereGeometry equirect UVs.
 function llToVec(lat,lng,r){
@@ -409,33 +409,23 @@ function initScene(){
   renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,D.maxDpr));
   renderer.setSize(W,H);
-  // The rig renders with NO tone mapping so the pack's cartoon colours come out
-  // exactly as authored (webp parity); ACES stays for the stock look.
-  renderer.toneMapping=RIG?THREE.NoToneMapping:THREE.ACESFilmicToneMapping;
+  // Cartoon HD = the rig's own Standard view: NO tone mapping (the pack's
+  // colours come out exactly as authored), the 5 studio lights of rig.json, the
+  // key light carrying the cast shadows, HDR bloom where asked.
+  renderer.toneMapping=THREE.NoToneMapping;
   document.body.appendChild(renderer.domElement);
   scene=new THREE.Scene();
   camera=new THREE.PerspectiveCamera(40,W/H,0.01,60);
-  if(RIG){
-    // rig.json key/fill/rim, the exact lighting the pack was baked under.
-    [[-35,30,3.0,0xfff4e0],[60,-10,0.6,0xbcd4ff],[160,25,1.8,0x9fc0ff]].forEach(function(L){
-      var az=L[0]*Math.PI/180,el=L[1]*Math.PI/180;
-      var d=new THREE.DirectionalLight(L[3],L[2]);
-      d.position.set(Math.sin(az)*Math.cos(el),Math.sin(el),Math.cos(az)*Math.cos(el));
-      scene.add(d);});
-    scene.add(new THREE.AmbientLight(0x8a94b0,0.8));
-  } else {
-    var sun=new THREE.DirectionalLight(0xfff2dd,D.isDark?1.35:2.2);
-    sun.position.set(-1.6,1.0,3.0);scene.add(sun);
-    scene.add(new THREE.AmbientLight(D.isDark?0x2a3350:0x9fb3cd,D.isDark?1.05:1.15));
-    var rim=new THREE.DirectionalLight(D.isDark?0x7a92ff:0xcfe0ff,0.7);
-    rim.position.set(2.4,0.6,-2.0);scene.add(rim);
-  }
+  ToonHD.configure(D.toon);
+  ToonHD.enableShadows(renderer);
+  ToonHD.lights(scene,D.lights,{shadow:true,shadowSize:1024,extent:1.6});
+  if(D.bloom)post=ToonHD.bloom(renderer,scene,camera,W,H);
 
   pivot=new THREE.Group();scene.add(pivot);
   globe=new THREE.Group();pivot.add(globe);
-  makeGradientMap();
   globeMesh=new THREE.Mesh(new THREE.SphereGeometry(1,96,96),
-    new THREE.MeshToonMaterial({color:new THREE.Color(SKIN?SKIN.ocean:(D.isDark?'#153564':'#2f8ad8')),gradientMap:GRAD}));
+    ToonHD.material({color:SKIN?SKIN.ocean:(D.isDark?'#153564':'#2f8ad8'),rough:0.25,specK:0.55,rimK:0.6}));
+  globeMesh.receiveShadow=true;
   globe.add(globeMesh);
   // Skin texture + Blender rig: only where the base map is allowed to be visible.
   // Borders mode keeps its bare tinted sphere — its whole puzzle is that the
@@ -453,18 +443,25 @@ function initScene(){
       (BOX.lng0+180)*Math.PI/180,(BOX.lng1-BOX.lng0)*Math.PI/180,
       (90-BOX.lat1)*Math.PI/180,(BOX.lat1-BOX.lat0)*Math.PI/180)
     :new THREE.SphereGeometry(SURF,96,96);
-  overlayMesh=new THREE.Mesh(oGeo,
-    new THREE.MeshBasicMaterial({map:overlayTex,transparent:true,depthWrite:false}));
+  // The stock cartoon coat is LIT like the sphere it wraps (half-strength ramp,
+  // so the hover/selected/correct/wrong states stay vivid on the night side);
+  // skins, Régions and Frontières keep an unlit coat — legibility first.
+  var litCoat=!!(D.drawBaseLand&&!SKIN&&!D.regionCoat);
+  overlayMesh=new THREE.Mesh(oGeo,litCoat
+    ?ToonHD.material({map:overlayTex,transparent:true,alphaTest:true,litMix:0.55,depthWrite:false,specK:0.2,rimK:0.25})
+    :new THREE.MeshBasicMaterial({map:overlayTex,transparent:true,depthWrite:false}));
+  overlayMesh.receiveShadow=litCoat;
   globe.add(overlayMesh);
-  cloudMesh=new THREE.Mesh(new THREE.SphereGeometry(1.016,64,64),
-    new THREE.MeshBasicMaterial({transparent:true,opacity:0.9,depthWrite:false}));
-  cloudMesh.visible=false;globe.add(cloudMesh);
   // Clouds are decorative-only (menu): on the gameplay globes they would hide
-  // the very country the player must find. A skin decides for itself whether its
-  // planet has weather (Mars, Hologram and friends do not).
-  if(D.look==='cartoon'&&D.spin&&(SKIN?SKIN.clouds:!D.isDark)){
-    cloudMesh.material.map=cartoonClouds();cloudMesh.material.needsUpdate=true;
-    cloudMesh.material.opacity=0.8;cloudMesh.visible=true;}
+  // the very country the player must find. The rig's volumetric clusters ride
+  // the planet, parked in the camera frame at the initial view so they match
+  // the pack layer; a skin decides for itself whether its planet has weather
+  // (rig.json toon.clouds.styles — Mars, Hologram and friends do not).
+  var cloudy=SKIN?(D.toon.clouds.styles.indexOf(SKIN.key)>=0&&!SKIN.unlit):!D.isDark;
+  if(D.look==='cartoon'&&D.spin&&cloudy){
+    var cloudRoot=new THREE.Group();globe.add(cloudRoot);
+    cloudRoot.quaternion.setFromEuler(new THREE.Euler(D.initial.rotLat*Math.PI/180,(-90-D.initial.rotLon)*Math.PI/180,0)).invert();
+    cloudMesh=ToonHD.clouds();cloudRoot.add(cloudMesh);}
   var atmoOn=SKIN?!!SKIN.atmo:true;
   atmoMesh=new THREE.Mesh(new THREE.SphereGeometry(1.10,64,64),
     new THREE.ShaderMaterial({
@@ -558,47 +555,18 @@ function shapeSpan(id,clat,clng){
 // Ported from lib/avatar3d/buildAvatarHtml so the planet the player bought is
 // the same object in the shop and in a round.
 
-// Rig toon ramp (parity with the pre-rendered layers).
-function makeGradientMap(){
-  if(RIG){
-    var vals=[132,210,255],d=new Uint8Array(vals.length*4);
-    for(var i=0;i<vals.length;i++){d[i*4]=d[i*4+1]=d[i*4+2]=vals[i];d[i*4+3]=255;}
-    GRAD=new THREE.DataTexture(d,vals.length,1);
-  } else {
-    var gcv=document.createElement('canvas');gcv.width=3;gcv.height=1;
-    var gcx=gcv.getContext('2d');
-    ['#7a7a7a','#c4c4c4','#ffffff'].forEach(function(g,i){gcx.fillStyle=g;gcx.fillRect(i,0,1,1);});
-    GRAD=new THREE.CanvasTexture(gcv);
-  }
-  GRAD.minFilter=THREE.NearestFilter;GRAD.magFilter=THREE.NearestFilter;GRAD.needsUpdate=true;
-}
-// Blender extras (ggKind/ggHex/ggAlpha) → three materials, verbatim from the rig.
-function remapMaterials(root){root.traverse(function(n){
-  if(!n.isMesh||!n.material)return;
-  var ud=n.material.userData||{};
-  var kind=ud.ggKind||'toon',hex=ud.ggHex||'#c8d0d8';
-  var alpha=(ud.ggAlpha!=null)?ud.ggAlpha:1;
-  n.userData.ggKind=kind;
-  if(n.material.dispose)n.material.dispose();
-  if(kind==='outline'||kind==='landink'){
-    n.material=new THREE.MeshBasicMaterial({color:new THREE.Color(kind==='landink'?SKIN.landInk:hex),side:THREE.BackSide});
-  }else if(kind==='flat'){
-    n.material=new THREE.MeshBasicMaterial({color:new THREE.Color(hex),
-      transparent:alpha<1,opacity:alpha,depthWrite:alpha>=1});
-  }else if(kind==='landtex'){
-    n.material=new THREE.MeshToonMaterial({color:0xffffff,gradientMap:GRAD});
-  }else{
-    n.material=new THREE.MeshToonMaterial({color:new THREE.Color(hex),gradientMap:GRAD});
-  }});}
-// Dark styles are self-lit in the rig: unlit material, no toon banding.
-function skinMaterial(tex){
-  return SKIN.unlit?new THREE.MeshBasicMaterial({map:tex})
-    :new THREE.MeshToonMaterial({map:tex,gradientMap:GRAD});}
+// Blender extras (ggKind/ggHex/ggEmis/ggAlpha) → ToonHD, verbatim from the rig.
+function remapMaterials(root){ToonHD.remapMaterials(root);}
+// Dark styles are self-lit in the rig: emissive texture, same soft ramp.
+function skinMaterial(tex,land){
+  return land
+    ?ToonHD.material({map:tex,rough:0.5,specK:0.25,rimK:0.5,sat:1.25,val:1.02,emissive:SKIN.unlit?D.toon.darkEmissive:0})
+    :ToonHD.material({map:tex,rough:0.25,specK:0.55,rimK:0.6,sat:1.2,val:1.05,emissive:SKIN.unlit?D.toon.darkEmissive:0});}
 function dressLand(root,tex){
   root.traverse(function(n){
     if(n.isMesh&&n.userData.ggKind==='landtex'){
       if(n.material&&n.material.dispose)n.material.dispose();
-      n.material=skinMaterial(tex);}});}
+      n.material=skinMaterial(tex,true);n.castShadow=true;n.receiveShadow=true;}});}
 // Props animations (pulsing lava, breathing ice crystals, crown gems).
 var propAnims=[];
 function nodesOf(root,re){var out=[];root.traverse(function(n){
@@ -812,7 +780,7 @@ function applyPhoto(){
   } else return;
   if(loadedTex.bump){m.bumpMap=loadedTex.bump;m.bumpScale=0.03;}
   m.needsUpdate=true;
-  if(!D.isDark&&loadedTex.clouds){
+  if(!D.isDark&&loadedTex.clouds&&cloudMesh&&cloudMesh.material.isMeshBasicMaterial){
     cloudMesh.material.map=loadedTex.clouds;cloudMesh.material.alphaMap=loadedTex.clouds;
     cloudMesh.material.needsUpdate=true;cloudMesh.visible=true;}
   photoMode=true;paintOverlay();}
@@ -943,14 +911,13 @@ var frameCbs=[],animClock=0;
 function loop(){
   requestAnimationFrame(loop);
   if(D.spin){rotLon+=0.05;applyRotation();}
-  if(cloudMesh&&cloudMesh.visible){cloudMesh.rotation.y+=0.00035;needsRender=true;}
   if(propAnims.length||satObj){
     animClock+=1/60;
     for(var a=0;a<propAnims.length;a++)propAnims[a](animClock);
     if(satObj&&satObj.visible)moveSatellite(animClock);
     needsRender=true;}
   for(var i=0;i<frameCbs.length;i++)frameCbs[i]();
-  if(needsRender){renderer.render(scene,camera);needsRender=false;}}
+  if(needsRender){if(post)post.render();else renderer.render(scene,camera);needsRender=false;}}
 
 function setup(){
   W=window.innerWidth;H=window.innerHeight;
@@ -972,7 +939,7 @@ function setup(){
 window.addEventListener('resize',function(){
   if(!renderer)return;
   W=window.innerWidth;H=window.innerHeight;baseR=Math.min(W,H)/2*D.initial.fit;
-  camera.aspect=W/H;renderer.setSize(W,H);updateCamera();});
+  camera.aspect=W/H;renderer.setSize(W,H);if(post)post.setSize(W,H);updateCamera();});
 ${gameJs}
 requestAnimationFrame(setup);
 </script>
@@ -1234,6 +1201,7 @@ window.showResult=function(correct,picked){
       maxDpr: opts.maxDpr,
       interactive: true,
       skin: opts.skin,
+      bloom: !!opts.skin,
     },
     gameJs,
   );
@@ -1353,6 +1321,7 @@ function gameInit(){rotLat=20;applyRotation();}`;
       resetAlways: true,
       initial: { rotLat: 20, fit: 0.9 },
       skin: opts.skin,
+      bloom: !!opts.skin,
     },
     gameJs,
   );
@@ -1529,6 +1498,7 @@ window.showResult=function(correct,picked){
       overlayBox: regionOverlayBox(opts.view, opts.polygons),
       regionCoat: true,
       skin: opts.skin,
+      bloom: !!opts.skin,
     },
     gameJs,
   );
@@ -1594,6 +1564,7 @@ export function buildMenuEarthHtml(opts: {
       transparentBg: true,
       initial: { rotLat: 18, rotLon: 10, zoom: 1, fit: 0.98 },
       skin: opts.skin,
+      bloom: true,
     },
     'D.drawBaseLand=true;function gameInit(){}',
   );
