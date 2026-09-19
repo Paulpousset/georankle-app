@@ -152,9 +152,11 @@ interface WorldAvatarProps {
   /** Reserved — kept for API parity with the old <Avatar3D>. */
   interactive?: boolean;
   spin?: boolean;
+  /** Skip the cosmos backdrop (and its stars/meteors): the world floats over the parent. */
+  transparent?: boolean;
 }
 
-function WorldAvatarBase({ config, size, style, animate = false, round = false }: WorldAvatarProps) {
+function WorldAvatarBase({ config, size, style, animate = false, round = false, transparent = false }: WorldAvatarProps) {
   const layers = config?.layers;
 
   // Animation clock (seconds) — only ticks when `animate` is on.
@@ -799,7 +801,9 @@ function WorldAvatarBase({ config, size, style, animate = false, round = false }
         </Defs>
 
         <G clipPath={round ? `url(#round_${uid})` : undefined}>
-        {/* ── Cosmos backdrop ── */}
+        {/* ── Cosmos backdrop (skipped when transparent) ── */}
+        {!transparent && (
+        <>
         <Rect x={0} y={0} width={size} height={size} fill={`url(#cos_${uid})`} />
 
         {cosmosStyle === 'nebula' && (
@@ -924,6 +928,8 @@ function WorldAvatarBase({ config, size, style, animate = false, round = false }
             <Circle cx={m.x + m.len} cy={m.y + m.len * 0.55} r={1.9} fill="#ffffff" />
           </G>
         ))}
+        </>
+        )}
 
         {/* ── Orbit rings, back pass (saturn / double pass behind the globe) ── */}
         {renderOrbitBack()}

@@ -69,4 +69,17 @@ describe('WorldAvatar3D smoke render', () => {
       render(<WorldAvatar3D config={DEFAULT_AVATAR_CONFIG} size={168} animate />),
     ).not.toThrow();
   });
+
+  it('transparent: no cosmos backdrop, whichever renderer path is taken', () => {
+    // The story map floats the world over its own art: neither the cosmos image
+    // (3D pack) nor the procedural gradient/star field (SVG) may be drawn.
+    const starry = ALL_PARTS.find((p) => p.id === 'cosmos_starfield')!;
+    for (const cfg of [DEFAULT_AVATAR_CONFIG, configWith(starry)]) {
+      const { toJSON } = render(<WorldAvatar3D config={cfg} size={88} animate transparent />);
+      const json = JSON.stringify(toJSON());
+      // Cosmos gradient ids of both renderers; the pack's cosmos WebP would be a
+      // full-frame <Image> with resizeMode "cover" (only the cosmos uses it).
+      expect(json).not.toMatch(/wa3dCosmos|#cos_|"resizeMode":"cover"/);
+    }
+  });
 });

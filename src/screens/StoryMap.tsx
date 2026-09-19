@@ -18,7 +18,7 @@ import { StatusBar } from 'expo-status-bar';
 import Svg, { Circle, Defs, Ellipse, G, LinearGradient, Path, Polygon, Rect, Stop } from 'react-native-svg';
 import {
   ArrowLeft, Flag, Gift, Globe, Heart, Info, LayoutGrid, List, Lock, Map as MapIcon,
-  Plus, Puzzle, Route, Star, TrendingUp, X, Zap, type LucideIcon,
+  Plus, MapPin, Puzzle, Route, Star, TrendingUp, X, Zap, type LucideIcon,
 } from 'lucide-react-native';
 import type { User } from '@supabase/supabase-js';
 
@@ -63,8 +63,18 @@ import { useStageWidth } from '../lib/stage';
 const ROW_H = 118; // vertical spacing per level node
 const NODE = 62; // medallion diameter
 // Assez de marge pour le globe du joueur qui rebondit AU-DESSUS du médaillon
-// du niveau 1 (44px + rebond 13px) sans être clippé par le bord de la carte.
-const TOP_PAD = 76;
+// du niveau 1 (cadre PLAYER_GLOBE_FRAME + rebond 13px, bannière de palier
+// au-dessus) sans être clippé par le bord de la carte.
+const TOP_PAD = 124;
+/**
+ * Cadre du globe du joueur sur la carte. Le monde est rendu SANS cosmos ni
+ * cadre : il flotte dans le décor. Le globe lui-même occupe ~62 % du cadre
+ * (GLOBE_FRAME_RATIO du pack 3D), les anneaux d'orbite le reste.
+ */
+const PLAYER_GLOBE_FRAME = 88;
+const PLAYER_GLOBE_R = Math.round(PLAYER_GLOBE_FRAME * 0.31);
+/** Bord bas du globe posé ~8 px au-dessus du médaillon. */
+const PLAYER_GLOBE_TOP = -(8 + PLAYER_GLOBE_R + PLAYER_GLOBE_FRAME / 2);
 const PER_TIER = 10;
 const RIVER_W = 52;
 /**
@@ -103,6 +113,7 @@ const MODE_ICON: Record<string, LucideIcon> = {
   guess: Info,
   globe: Globe,
   silhouette: Puzzle,
+  pinpoint: MapPin,
   borders: Route,
   higherlower: TrendingUp,
   streak: Zap,
@@ -285,6 +296,23 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
               backgroundColor: b.bank[0],
             }}
           >
+            {tier === 1 ? (
+              // The bands tile vertically, so a second copy ABOVE the first one
+              // extends the scenery (and the river) over the TOP_PAD strip that
+              // makes room for the player's globe — no bare bank colour up there.
+              <Image
+                source={STORY_BAND_ART[b.key]}
+                resizeMode="stretch"
+                fadeDuration={0}
+                style={{
+                  position: 'absolute',
+                  top: imageTop - bandTop(tier) - BAND_ART_H,
+                  left: (width - bandW) / 2,
+                  width: bandW,
+                  height: BAND_ART_H,
+                }}
+              />
+            ) : null}
             <Image
               source={STORY_BAND_ART[b.key]}
               resizeMode="stretch"
@@ -767,7 +795,7 @@ const LevelNode = memo(function LevelNode({
       {/* Tier banner every 10 levels */}
       {showBanner ? (
         // décalée plus haut quand le globe du joueur rebondit au-dessus du médaillon
-        <View style={{ position: 'absolute', top: isCurrent ? -96 : -34, left: NODE / 2 - 74, width: 148, alignItems: 'center' }}>
+        <View style={{ position: 'absolute', top: isCurrent ? PLAYER_GLOBE_TOP - 40 : -34, left: NODE / 2 - 100, width: 200, alignItems: 'center' }}>
           <View style={{ backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 3, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' }}>
             <Text style={{ fontFamily: FONTS.mono, fontSize: 10, color: '#fff', letterSpacing: 1 }}>
               {tr(language, 'PALIER {0} · {1}', 'TIER {0} · {2}', [meta.tier, biome.nameFr.toUpperCase(), biome.nameEn.toUpperCase()])}
@@ -902,9 +930,9 @@ const LevelNode = memo(function LevelNode({
         </View>
       ) : null}
 
-      {/* Player globe bouncing ABOVE the current medallion */}
+      {/* Player globe bouncing ABOVE the current medallion, right in the scenery */}
       {isCurrent ? (
-        <View style={{ position: 'absolute', top: -62, left: NODE / 2 - 22 }} pointerEvents="none">
+        <View style={{ position: 'absolute', top: PLAYER_GLOBE_TOP, left: NODE / 2 - PLAYER_GLOBE_FRAME / 2 }} pointerEvents="none">
           <BouncingGlobe config={myAvatar ?? DEFAULT_AVATAR_CONFIG} />
         </View>
       ) : null}
@@ -1250,7 +1278,10 @@ function useLoop(duration: number, delay = 0, enabled = true): Animated.Value {
 
 /**
  * The player's globe, riding ABOVE the current medallion with a happy bounce —
- * squash-and-stretch shadow included. Static when reduce-motion is on.
+ * squash-and-stretch ground shadow included. Static when reduce-motion is on.
+ * Rendered WITHOUT its cosmos backdrop or any frame: the planet, its orbit,
+ * emblem and satellite float directly over the map art, and the shadow sits
+ * on the ground under the globe (not under the frame).
  */
 function BouncingGlobe({ config }: { config: AvatarConfig }) {
   const rm = useReducedMotion();
@@ -1271,22 +1302,26 @@ function BouncingGlobe({ config }: { config: AvatarConfig }) {
   const ty = v.interpolate({ inputRange: [0, 1], outputRange: [0, -13] });
   const shScale = v.interpolate({ inputRange: [0, 1], outputRange: [1, 0.55] });
   const shOp = v.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.12] });
+  const F = PLAYER_GLOBE_FRAME;
   return (
-    <View style={{ alignItems: 'center' }} pointerEvents="none">
-      <Animated.View style={{ transform: [{ translateY: ty }] }}>
-        <WorldRenderer config={config} size={44} animate round />
-      </Animated.View>
+    <View style={{ width: F, height: F }} pointerEvents="none">
+      {/* Ground shadow first, under the globe's lowest point. */}
       <Animated.View
         style={{
-          marginTop: -4,
-          width: 26,
-          height: 7,
-          borderRadius: 4,
+          position: 'absolute',
+          top: F / 2 + PLAYER_GLOBE_R - 3,
+          left: F / 2 - 20,
+          width: 40,
+          height: 10,
+          borderRadius: 5,
           backgroundColor: '#000',
           opacity: shOp,
           transform: [{ scaleX: shScale }],
         }}
       />
+      <Animated.View style={{ transform: [{ translateY: ty }] }}>
+        <WorldRenderer config={config} size={F} animate transparent />
+      </Animated.View>
     </View>
   );
 }

@@ -77,9 +77,11 @@ interface WorldAvatar3DProps {
   style?: StyleProp<ViewStyle>;
   animate?: boolean;
   round?: boolean;
+  /** No cosmos backdrop: the world floats over whatever is behind (story map). */
+  transparent?: boolean;
 }
 
-function WorldAvatar3DBase({ config, size, style, animate = false, round = false }: WorldAvatar3DProps) {
+function WorldAvatar3DBase({ config, size, style, animate = false, round = false, transparent = false }: WorldAvatar3DProps) {
   const cfg = config ?? DEFAULT_AVATAR_CONFIG;
   const ready = useMemo(() => worldAvatar3dReady(cfg), [cfg]);
 
@@ -99,7 +101,7 @@ function WorldAvatar3DBase({ config, size, style, animate = false, round = false
   }, [animate, ready]);
 
   if (!ready) {
-    return <WorldAvatar config={config} size={size} style={style} animate={animate} round={round} />;
+    return <WorldAvatar config={config} size={size} style={style} animate={animate} round={round} transparent={transparent} />;
   }
 
   const layers = cfg.layers;
@@ -147,7 +149,7 @@ function WorldAvatar3DBase({ config, size, style, animate = false, round = false
         style,
       ]}
     >
-      {cosmosSrc?.main ? (
+      {transparent ? null : cosmosSrc?.main ? (
         <Image source={cosmosSrc.main} style={fill} resizeMode="cover" />
       ) : (
         <Svg width={size} height={size} style={fill}>
