@@ -162,3 +162,30 @@ describe('Boutique 2.0 wave', () => {
     }
   });
 });
+
+describe('getEquippedParts', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { getEquippedParts } = require('../cosmetics');
+
+  it('lists the worn parts in layer order and skips the "_none" placeholders', () => {
+    const cfg = normalizeConfig({
+      ...DEFAULT_AVATAR_CONFIG,
+      layers: {
+        cosmos: { id: 'cosmos_milkyway' },
+        globe: { id: 'globe_gold' },
+        orbit: { id: 'orbit_none' },
+        emblem: { id: 'emblem_liberty' },
+        satellite: { id: 'sat_none' },
+      },
+    } as any);
+    expect(getEquippedParts(cfg).map((p: { id: string }) => p.id)).toEqual([
+      'cosmos_milkyway', 'globe_gold', 'emblem_liberty',
+    ]);
+  });
+
+  it('falls back to the default look for a missing config and ignores unknown ids', () => {
+    expect(getEquippedParts(null).length).toBeGreaterThan(0);
+    const cfg = { ...DEFAULT_AVATAR_CONFIG, layers: { ...DEFAULT_AVATAR_CONFIG.layers, globe: { id: 'globe_does_not_exist' } } };
+    expect(getEquippedParts(cfg as any).some((p: { id: string }) => p.id.startsWith('globe_'))).toBe(false);
+  });
+});

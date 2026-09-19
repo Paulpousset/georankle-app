@@ -85,6 +85,7 @@ export type AnalyticsEvent =
   | 'friend_removed'
   | 'user_searched'
   | 'player_profile_viewed'
+  | 'player_challenge_started'
   // Referral (viral loop)
   | 'referral_link_opened'
   | 'referral_shared'

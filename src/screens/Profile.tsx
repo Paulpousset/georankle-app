@@ -27,10 +27,8 @@ import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { getRankFromElo, modeLabel } from '../lib/ranked';
 import { RankGlobe } from '../components/RankGlobe';
-import { Avatar } from '../components/Avatar';
-import { AvatarPreview3D } from '../components/AvatarPreview3D';
-import { WorldAvatar } from '../components/WorldAvatar';
-import { useFeatureFlag } from '../lib/featureFlags';
+import { ProfileHero, heroIconBtnStyle } from '../components/ProfileHero';
+import { EquippedChips } from '../components/EquippedChips';
 import { deriveDefaultConfigFromSeed, normalizeConfig } from '../data/cosmetics';
 import { tr } from '../i18n';
 import { resetTutorial } from '../lib/tutorial';
@@ -52,7 +50,7 @@ interface ProfileProps {
   onOpenAdmin?: () => void;
 }
 
-const MODES: MatchMode[] = ['classic', 'streak', 'versus', 'globe', 'guess', 'higherlower', 'silhouette', 'borders', 'languages'];
+const MODES: MatchMode[] = ['classic', 'streak', 'versus', 'globe', 'guess', 'higherlower', 'silhouette', 'pinpoint', 'borders', 'languages'];
 
 type ModeStat = { wins: number; total: number };
 
@@ -404,7 +402,6 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
 
   const winRate = wins + losses > 0 ? Math.round((wins / (wins + losses)) * 100) : 0;
 
-  const avatar3d = useFeatureFlag('avatar_3d');
   // Show the 3D character unless the user opted for a photo (useCustom === false).
   // Null config (legacy users) → a deterministic default derived from the name.
   const avatar3DConfig =
@@ -418,26 +415,36 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
     <SafeAreaView style={[styles.container, { backgroundColor: c.background }]}>
       <StatusBar style={isDarkMode ? 'light' : 'dark'} />
 
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: c.border }]}>
-        <TouchableOpacity
-          onPress={onBack}
-          style={[styles.iconBtn, { backgroundColor: c.card, borderColor: c.border }]}
-          {...a11yButton(tr(language, 'Retour', 'Back'))}
-        >
-          <ArrowLeft color={c.text} size={20} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: c.text }]}>
-          {tr(language, 'Mon Profil', 'My Profile')}
-        </Text>
-        <TouchableOpacity
-          onPress={logout}
-          style={[styles.iconBtn, { backgroundColor: c.card, borderColor: c.border }]}
-          {...a11yButton(tr(language, 'Déconnexion', 'Logout'))}
-        >
-          <LogOut color="#8b1a1a" size={20} />
-        </TouchableOpacity>
-      </View>
+      {/* Showcase: the live 3D world, identity on top, back/logout floating. */}
+      <ProfileHero
+        loading={loading}
+        worldConfig={avatar3DConfig}
+        avatarConfig={avatarConfig}
+        photoUrl={avatarUrl}
+        username={savedUsername || tr(language, 'Mon Profil', 'My Profile')}
+        rank={rank}
+        elo={elo}
+        leftButton={
+          <TouchableOpacity
+            onPress={onBack}
+            style={heroIconBtnStyle}
+            hitSlop={ICON_HIT_SLOP}
+            {...a11yButton(tr(language, 'Retour', 'Back'))}
+          >
+            <ArrowLeft color="#fff" size={20} />
+          </TouchableOpacity>
+        }
+        rightButton={
+          <TouchableOpacity
+            onPress={logout}
+            style={heroIconBtnStyle}
+            hitSlop={ICON_HIT_SLOP}
+            {...a11yButton(tr(language, 'Déconnexion', 'Logout'))}
+          >
+            <LogOut color="#ff8a8a" size={20} />
+          </TouchableOpacity>
+        }
+      />
 
       {loading ? (
         <View style={styles.loadingWrap}>
@@ -453,29 +460,15 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Avatar + identity */}
-          <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border, alignItems: 'center' }]}>
-            <View style={styles.avatarWrap}>
-              {avatar3DConfig ? (
-                <View style={{ width: 168, height: 168, borderRadius: 18, overflow: 'hidden', borderWidth: 2, borderColor: rank.color }}>
-                  {avatar3d ? (
-                    <AvatarPreview3D config={avatar3DConfig} size={164} />
-                  ) : (
-                    <WorldAvatar config={avatar3DConfig} size={168} animate />
-                  )}
-                </View>
-              ) : (
-                <Avatar
-                  config={avatarConfig}
-                  photoUrl={avatarUrl}
-                  username={savedUsername}
-                  size={104}
-                  ringColor={rank.color}
-                  ringWidth={3}
-                />
-              )}
+          {/* What I wear — each chip opens the avatar editor. */}
+          {avatar3DConfig ? (
+            <View style={styles.chipsWrap}>
+              <EquippedChips config={avatar3DConfig} action="edit" onPressPart={onEditAvatar} />
             </View>
+          ) : null}
 
+          {/* Identity card: actions, e-mail, username */}
+          <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border, alignItems: 'center' }]}>
             {/* Avatar actions */}
             <View style={styles.avatarActions}>
               <TouchableOpacity
@@ -781,9 +774,7 @@ const styles = StyleSheet.create({
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   content: { padding: 16, paddingBottom: 48, gap: 16 },
   card: { borderRadius: 18, borderWidth: 1, padding: 18 },
-  avatarWrap: { marginBottom: 12 },
-  avatar: { width: 104, height: 104, borderRadius: 52, borderWidth: 3 },
-  avatarPlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  chipsWrap: { marginHorizontal: -16 },
   avatarActions: { flexDirection: 'row', gap: 8, marginBottom: 14 },
   avatarActionBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,

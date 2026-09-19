@@ -19,15 +19,16 @@ import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { getRankFromElo } from '../lib/ranked';
 import { RankGlobe } from '../components/RankGlobe';
-import { Avatar } from '../components/Avatar';
-import { WorldAvatar } from '../components/WorldAvatar';
+import { ProfileHero, heroIconBtnStyle } from '../components/ProfileHero';
+import { EquippedChips } from '../components/EquippedChips';
+import { ChallengeModeSheet } from '../components/ChallengeModeSheet';
 import { deriveDefaultConfigFromSeed, normalizeConfig } from '../data/cosmetics';
 import { tr } from '../i18n';
 import { a11yButton, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import type { AvatarConfig } from '../types';
+import type { AvatarConfig, MatchMode } from '../types';
 
 interface PlayerProfileProps {
   userId: string;
@@ -35,6 +36,10 @@ interface PlayerProfileProps {
   initialUsername?: string | null;
   currentUserId: string;
   onBack: () => void;
+  /** A tapped equipped-cosmetic chip opens that item in the shop. */
+  onOpenShopItem?: (itemId: string) => void;
+  /** "Défier": a private online match in `mode` against this player. */
+  onChallenge?: (mode: MatchMode) => void;
 }
 
 /** A public snapshot of another player — never includes private data (coins, email). */
@@ -61,6 +66,8 @@ export default function PlayerProfile({
   initialUsername,
   currentUserId,
   onBack,
+  onOpenShopItem,
+  onChallenge,
 }: PlayerProfileProps) {
   const { isDarkMode } = useTheme();
   const { language } = useLanguage();
@@ -137,7 +144,6 @@ export default function PlayerProfile({
   const showRank = snapshot?.showRank ?? true;
   const rank = getRankFromElo(elo);
   const winRate = wins + losses > 0 ? Math.round((wins / (wins + losses)) * 100) : 0;
-  const ringColor = showRank ? rank.color : c.border;
 
   // Same avatar resolution as the own-profile screen.
   const cfg = snapshot?.avatarConfig ?? null;
@@ -146,6 +152,13 @@ export default function PlayerProfile({
     : cfg == null
       ? deriveDefaultConfigFromSeed(username || userId)
       : null;
+
+  const [challengeOpen, setChallengeOpen] = useState(false);
+  const pickChallengeMode = (mode: MatchMode) => {
+    setChallengeOpen(false);
+    track('player_challenge_started', { mode, user_id: userId });
+    onChallenge?.(mode);
+  };
 
   // ── Friend relationship ─────────────────────────────────────────────────────
   const [friend, setFriend] = useState<FriendState>('loading');
@@ -310,21 +323,26 @@ export default function PlayerProfile({
     <SafeAreaView style={[styles.container, { backgroundColor: c.background }]}>
       <StatusBar style={isDarkMode ? 'light' : 'dark'} />
 
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: c.border }]}>
-        <TouchableOpacity
-          onPress={onBack}
-          style={[styles.iconBtn, { backgroundColor: c.card, borderColor: c.border }]}
-          hitSlop={ICON_HIT_SLOP}
-          {...a11yButton(tr(language, 'Retour', 'Back'))}
-        >
-          <ArrowLeft color={c.text} size={20} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: c.text }]} numberOfLines={1}>
-          {tr(language, 'Profil', 'Profile')}
-        </Text>
-        <View style={{ width: 44 }} />
-      </View>
+      {/* Showcase: the live 3D world, identity on top, back button floating. */}
+      <ProfileHero
+        loading={loading && !snapshot}
+        worldConfig={avatar3DConfig}
+        avatarConfig={cfg}
+        photoUrl={snapshot?.avatarUrl ?? null}
+        username={username}
+        rank={showRank ? rank : null}
+        elo={elo}
+        leftButton={
+          <TouchableOpacity
+            onPress={onBack}
+            style={heroIconBtnStyle}
+            hitSlop={ICON_HIT_SLOP}
+            {...a11yButton(tr(language, 'Retour', 'Back'))}
+          >
+            <ArrowLeft color="#fff" size={20} />
+          </TouchableOpacity>
+        }
+      />
 
       {loading && !snapshot ? (
         <View style={styles.loadingWrap}>
@@ -332,28 +350,33 @@ export default function PlayerProfile({
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Avatar + identity */}
-          <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border, alignItems: 'center' }]}>
-            <View style={styles.avatarWrap}>
-              {avatar3DConfig ? (
-                <View style={{ width: 168, height: 168, borderRadius: 18, overflow: 'hidden', borderWidth: 2, borderColor: ringColor }}>
-                  <WorldAvatar config={avatar3DConfig} size={168} animate />
-                </View>
-              ) : (
-                <Avatar
-                  config={cfg}
-                  photoUrl={snapshot?.avatarUrl ?? null}
-                  username={username}
-                  size={104}
-                  ringColor={ringColor}
-                  ringWidth={3}
-                />
-              )}
+          {/* What they wear — each chip opens the item in the shop. */}
+          {avatar3DConfig ? (
+            <View style={styles.chipsWrap}>
+              <EquippedChips
+                config={avatar3DConfig}
+                action="shop"
+                onPressPart={onOpenShopItem ? (part) => onOpenShopItem(part.id) : undefined}
+                // Free defaults and story-exclusive rewards are not sold: the shop
+                // grid never lists them, so their chips stay informational.
+                canPress={(part) => !part.isDefault && !part.exclusive}
+              />
             </View>
+          ) : null}
 
-            <Text style={[styles.username, { color: c.text }]} numberOfLines={1}>{username}</Text>
-
+          {/* Friend + challenge */}
+          <View style={styles.ctaRow}>
             {renderFriendButton()}
+            {onChallenge ? (
+              <TouchableOpacity
+                onPress={() => setChallengeOpen(true)}
+                style={[styles.friendBtn, { backgroundColor: c.card, borderColor: c.border }]}
+                {...a11yButton(tr(language, 'Défier {0}', 'Challenge {0}', [username]))}
+              >
+                <Swords color={c.text} size={18} />
+                <Text style={[styles.friendBtnText, { color: c.text }]}>{tr(language, 'Défier', 'Challenge')}</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
 
           {/* Ranked rank (respecting the player's show_rank preference) */}
@@ -439,6 +462,12 @@ export default function PlayerProfile({
           </View>
         </ScrollView>
       )}
+      <ChallengeModeSheet
+        visible={challengeOpen}
+        username={username}
+        onClose={() => setChallengeOpen(false)}
+        onPick={pickChallengeMode}
+      />
     </SafeAreaView>
   );
 }
@@ -459,10 +488,11 @@ const styles = StyleSheet.create({
   content: { padding: 16, paddingBottom: 48, gap: 16 },
   card: { borderRadius: 18, borderWidth: 1, padding: 18 },
   avatarWrap: { marginBottom: 12 },
-  username: { fontSize: 22, fontFamily: FONTS.headingBlack, marginBottom: 14 },
+  chipsWrap: { marginHorizontal: -16 },
+  ctaRow: { flexDirection: 'row', gap: 10 },
   friendBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    height: 44, minWidth: 160, paddingHorizontal: 20, borderRadius: 12, borderWidth: 1,
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    height: 44, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1,
   },
   friendBtnText: { fontSize: 14, fontFamily: FONTS.monoBold },
   sectionTitle: { fontSize: 11, fontFamily: FONTS.monoBold, letterSpacing: 1 },

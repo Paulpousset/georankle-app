@@ -55,11 +55,20 @@ async function resolveAssets(c: AvatarConfig): Promise<AvatarLiveAssets> {
 
 interface AvatarPreview3DProps {
   config?: AvatarConfig | null;
+  /** Square frame side. `width`/`height` override it for a non-square frame. */
   size: number;
+  width?: number;
+  height?: number;
   style?: StyleProp<ViewStyle>;
 }
 
-export function AvatarPreview3D({ config, size, style }: AvatarPreview3DProps) {
+export function AvatarPreview3D({ config, size, width, height, style }: AvatarPreview3DProps) {
+  const frameW = width ?? size;
+  const frameH = height ?? size;
+  // The three.js camera keeps its VERTICAL fov, so the globe scales with the
+  // frame height: a square placeholder of that side, centred horizontally,
+  // lines up with the live scene whatever the aspect ratio.
+  const placeholderSize = frameH;
   const cfg = useMemo(() => normalizeConfig(config ?? ({} as AvatarConfig)), [config]);
   const [html, setHtml] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
@@ -140,8 +149,13 @@ export function AvatarPreview3D({ config, size, style }: AvatarPreview3DProps) {
   }, [ready, cfg, sendState]);
 
   return (
-    <View style={[{ width: size, height: size, overflow: 'hidden' }, style]}>
-      <WorldAvatar3D config={cfg} size={size} animate style={StyleSheet.absoluteFill} />
+    <View style={[{ width: frameW, height: frameH, overflow: 'hidden' }, style]}>
+      <WorldAvatar3D
+        config={cfg}
+        size={placeholderSize}
+        animate
+        style={{ position: 'absolute', top: 0, left: (frameW - placeholderSize) / 2 }}
+      />
       {html ? (
         <Animated.View style={[StyleSheet.absoluteFill, { opacity: fade }]}>
           <GlobeWebView

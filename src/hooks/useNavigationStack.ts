@@ -13,12 +13,12 @@ export type Page =
   | { name: 'player-profile'; userId: string; username?: string | null }
   | { name: 'ranked' }
   | { name: 'avatar' }
-  | { name: 'shop' }
+  | { name: 'shop'; itemId?: string }
   | { name: 'globe-lab' }
   | { name: 'daily' }
   | { name: 'story' }
   | { name: 'admin-notifications' }
-  | { name: 'matchmaking'; mode: MatchMode }
+  | { name: 'matchmaking'; mode: MatchMode; inviteFriendId?: string; inviteUsername?: string | null }
   | { name: 'custom-matchmaking' }
   | { name: 'challenge-matchmaking'; challengeId: string };
 

@@ -253,6 +253,23 @@ export const STORY_COSMETIC_UNLOCKS: { level: number; itemId: string }[] = [
 // ── Boutique 2.0 : badge NEW, vitrine du jour, packs ──────────────────────────
 
 /** Days an item keeps its "NEW" badge after being added to the catalog. */
+/**
+ * The catalog parts a config actually wears, in layer order — the "_none"
+ * placeholders and unknown ids are skipped. Drives the equipped-cosmetics
+ * chips under the profile globe.
+ */
+export function getEquippedParts(config: AvatarConfig | null | undefined): CosmeticPart[] {
+  const layers = (config ?? DEFAULT_AVATAR_CONFIG).layers;
+  const out: CosmeticPart[] = [];
+  for (const cat of LAYER_ORDER) {
+    const id = layers?.[cat]?.id;
+    if (!id || id.endsWith('_none')) continue;
+    const part = getPart(cat, id);
+    if (part) out.push(part);
+  }
+  return out;
+}
+
 export const NEW_BADGE_DAYS = 14;
 
 export function isNewPart(part: CosmeticPart, now: Date = new Date()): boolean {

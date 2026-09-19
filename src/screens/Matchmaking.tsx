@@ -62,6 +62,9 @@ interface PlayerStats {
 
 interface MatchmakingProps {
   gameMode: MatchMode;
+  /** "Défier" from a player's profile: open straight on a private match against them. */
+  inviteFriendId?: string;
+  inviteUsername?: string | null;
   onBack: () => void;
   onStartMatch: (match: Match) => void;
 }
@@ -192,6 +195,8 @@ const FriendRow = React.memo(function FriendRow({
 
 export default function Matchmaking({
   gameMode,
+  inviteFriendId,
+  inviteUsername,
   onBack,
   onStartMatch,
 }: MatchmakingProps) {
@@ -200,7 +205,7 @@ export default function Matchmaking({
   const { language } = useLanguage();
   const userId = user?.id ?? '';
 
-  const [view, setView] = useState<MatchmakingView>('lobby');
+  const [view, setView] = useState<MatchmakingView>(inviteFriendId ? 'create' : 'lobby');
   const [playerStats, setPlayerStats] = useState<PlayerStats>({ username: null, avatar_url: null, avatar_config: null, wins: 0, total: 0 });
   const [publicMatches, setPublicMatches] = useState<PublicMatchItem[]>([]);
   const [loadingMatches, setLoadingMatches] = useState(false);
@@ -215,7 +220,7 @@ export default function Matchmaking({
   const [bestOf, setBestOf] = useState(1);
   const [questionType, setQuestionType] = useState('CAPITAL');
   const [roundsPerSet, setRoundsPerSet] = useState(5);
-  const [isPublic, setIsPublic] = useState(true);
+  const [isPublic, setIsPublic] = useState(!inviteFriendId);
   const [creating, setCreating] = useState(false);
   /** Id de la partie qu'on est en train de rejoindre (grise la ligne). */
   const [joining, setJoining] = useState<string | null>(null);
@@ -776,6 +781,15 @@ export default function Matchmaking({
         </>
       )}
 
+      {inviteFriendId ? (
+        <View style={[styles.inviteBanner, { backgroundColor: cardBg, borderColor: accent }]}>
+          <Users size={18} color={accent} />
+          <Text style={[styles.inviteBannerText, { color: textPrimary }]} numberOfLines={2}>
+            {tr(language, 'Partie privée contre {0}', 'Private match against {0}', [inviteUsername || tr(language, 'ce joueur', 'this player')])}
+          </Text>
+        </View>
+      ) : (
+      <>
       <Text style={[styles.formTitle, { color: textPrimary }]}>
         {tr(language, 'Visibilité', 'Visibility')}
       </Text>
@@ -824,10 +838,12 @@ export default function Matchmaking({
           </Text>
         </TouchableOpacity>
       </View>
+      </>
+      )}
 
       <TouchableOpacity
         style={[styles.createBtn, (creating || (gameMode === 'regions' && regionPicks.length === 0)) && { opacity: 0.6 }]}
-        onPress={() => createMatch()}
+        onPress={() => createMatch(inviteFriendId)}
         disabled={creating || (gameMode === 'regions' && regionPicks.length === 0)}
         {...a11yButton(tr(language, 'Créer la partie', 'Create match'), { disabled: creating || (gameMode === 'regions' && regionPicks.length === 0), busy: creating })}
       >
@@ -837,7 +853,9 @@ export default function Matchmaking({
           <>
             <Plus size={20} color="#fff" />
             <Text style={styles.createBtnText}>
-              {tr(language, 'Créer la partie', 'Create match')}
+              {inviteFriendId
+                ? tr(language, 'Envoyer le défi', 'Send the challenge')
+                : tr(language, 'Créer la partie', 'Create match')}
             </Text>
           </>
         )}
@@ -893,10 +911,13 @@ export default function Matchmaking({
     // From the waiting view, the header back must cancel the pending match
     // (same confirm as the Cancel button) rather than silently orphaning it.
     else if (view === 'waiting' && matchState) cancelMatch();
+    // A profile-launched challenge has no lobby to go back to.
+    else if (view === 'create' && inviteFriendId) onBack();
     else setView('lobby');
   };
 
   const headerTitle = () => {
+    if (view === 'create' && inviteFriendId) return tr(language, 'Défier', 'Challenge');
     if (view === 'create') return tr(language, 'Créer une partie', 'Create a match');
     if (view === 'friends') return tr(language, 'Choisir un ami', 'Choose a friend');
     if (view === 'waiting') return tr(language, 'En attente...', 'Waiting...');
@@ -1036,6 +1057,11 @@ const styles = StyleSheet.create({
   },
   emptyText: { fontSize: 14, textAlign: 'center', fontFamily: FONTS.mono },
 
+  inviteBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 16,
+  },
+  inviteBannerText: { fontSize: 13, fontFamily: FONTS.monoBold, flex: 1 },
   createBtn: {
     backgroundColor: PALETTE.vermilion,
     flexDirection: 'row',

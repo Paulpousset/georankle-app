@@ -24,6 +24,7 @@ import {
   getPart,
   isNewPart,
   normalizeConfig,
+  getPartById,
 } from '../data/cosmetics';
 import { WorldAvatar } from '../components/WorldAvatar';
 import { WorldAvatar3D, cosmeticTileSprite } from '../components/WorldAvatar3D';
@@ -43,6 +44,8 @@ interface ShopProps {
   onEditAvatar: () => void;
   /** Opens "Globes en jeu": try any globe skin on the real gameplay globe. */
   onOpenGlobeLab: () => void;
+  /** Open with this item's preview already up (a chip tapped on another player's profile). */
+  initialItemId?: string;
 }
 
 const CATEGORY_LABELS: Record<CosmeticCategory, [string, string]> = {
@@ -107,7 +110,7 @@ function findPart(id: string): CosmeticPart | undefined {
   return undefined;
 }
 
-export default function Shop({ onBack, onEditAvatar, onOpenGlobeLab }: ShopProps) {
+export default function Shop({ onBack, onEditAvatar, onOpenGlobeLab, initialItemId }: ShopProps) {
   const { user } = useAuth();
   const { isDarkMode } = useTheme();
   const { language } = useLanguage();
@@ -128,7 +131,11 @@ export default function Shop({ onBack, onEditAvatar, onOpenGlobeLab }: ShopProps
   const [loadError, setLoadError] = useState(false);
   const [buying, setBuying] = useState<string | null>(null);
   const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(DEFAULT_AVATAR_CONFIG);
-  const [previewPart, setPreviewPart] = useState<CosmeticPart | null>(null);
+  const [previewPart, setPreviewPart] = useState<CosmeticPart | null>(() => {
+    // Only what the grid itself sells — never a free default or a story reward.
+    const part = initialItemId ? getPartById(initialItemId) : undefined;
+    return part && !part.isDefault && !part.exclusive ? part : null;
+  });
 
   // Funnel step between shop_opened and cosmetic_purchased: an item preview
   // was opened (from the grid or the featured banner).

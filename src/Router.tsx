@@ -315,6 +315,15 @@ export function Router({
           initialUsername={currentPage.username}
           currentUserId={user.id}
           onBack={popPage}
+          onOpenShopItem={(itemId) => pushPage({ name: 'shop', itemId })}
+          onChallenge={(mode) =>
+            pushPage({
+              name: 'matchmaking',
+              mode,
+              inviteFriendId: currentPage.userId,
+              inviteUsername: currentPage.username,
+            })
+          }
         />
       </SafeAreaProvider>
     );
@@ -375,6 +384,7 @@ export function Router({
           onBack={popPage}
           onEditAvatar={() => pushPage({ name: 'avatar' })}
           onOpenGlobeLab={() => pushPage({ name: 'globe-lab' })}
+          initialItemId={currentPage.itemId}
         />
       </SafeAreaProvider>
     );
@@ -393,6 +403,8 @@ export function Router({
       <SafeAreaProvider>
         <Matchmaking
           gameMode={currentPage.mode}
+          inviteFriendId={currentPage.inviteFriendId}
+          inviteUsername={currentPage.inviteUsername}
           onBack={popPage}
           onStartMatch={(match: Match) => startMatch(match)}
         />
