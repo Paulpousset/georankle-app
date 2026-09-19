@@ -6,6 +6,16 @@ source de vérité du chantier : lis-le en entier avant de toucher au code.
 
 ## 0. Où on en est
 
+> **Avancement (19/09/2026, session suivante) :** Phases 0 à 3 FAITES —
+> 4 commits d'assainissement, rig migré (ToonHD + 5 lumières + EEVEE, pack de
+> 112 couches et 53 GLB régénérés), 5 articles remodelés (+ astéroïdes ronds,
+> volcans/calottes grossis), scène live (`toonHdSource.ts` partagé par
+> `buildAvatarHtml.ts` ET `buildEarthHtml.ts` : profil, boutique, Globe Géo,
+> Point sur le Globe, Frontières, Régions, menu) avec bloom vendorisé.
+> Périmètre élargi par Paul : le globe de jeu 3D est INCLUS (charte appliquée
+> à l'océan, à la couche de continents éclairée à 55 %, aux skins et aux props).
+> Reste : validation de Paul sur la page avant/après, sons, ship.
+
 ### Décision artistique (validée)
 
 La DA « pro cartoon » du 24/07 (cel-shading en émission pure, bandes dures,
