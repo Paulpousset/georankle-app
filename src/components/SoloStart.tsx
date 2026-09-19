@@ -16,7 +16,7 @@ import { useState } from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { ArrowLeft, HelpCircle, Play } from 'lucide-react-native';
+import { ArrowLeft, Globe, HelpCircle, Palette, Play } from 'lucide-react-native';
 
 import type { GameMode } from '../types';
 import { MODE_INTROS } from '../data/modeIntros';
@@ -27,6 +27,7 @@ import { FONTS } from '../theme/typography';
 import { a11yButton, a11yHidden } from '../lib/a11y';
 import { tr } from '../i18n';
 import { useMyGameGlobe } from '../lib/myGlobe';
+import { EquippedChips } from './EquippedChips';
 import { ModeIntroCard } from './ModeIntroModal';
 import { PlayerGlobe } from './PlayerGlobe';
 
@@ -36,11 +37,13 @@ interface SoloStartProps {
   onExit: () => void;
   /** « Globes en jeu ». Absent (déconnecté) = le raccourci disparaît. */
   onChangeGlobe?: () => void;
+  /** Éditeur « Mon Monde » (orbite, emblème, satellite, cosmos). */
+  onCustomize?: () => void;
   /** Badges d'état de la partie : continent choisi, entraînement, révision. */
   badges?: string[];
 }
 
-export function SoloStart({ mode, onStart, onExit, onChangeGlobe, badges = [] }: SoloStartProps) {
+export function SoloStart({ mode, onStart, onExit, onChangeGlobe, onCustomize, badges = [] }: SoloStartProps) {
   const { isDarkMode } = useTheme();
   const { language } = useLanguage();
   const c = getColors(isDarkMode);
@@ -124,17 +127,70 @@ export function SoloStart({ mode, onStart, onExit, onChangeGlobe, badges = [] }:
           </View>
         )}
 
-        {/* La vedette : le globe avec lequel on va jouer. */}
+        {/* La vedette : le monde avec lequel on va jouer — le globe, puis chaque
+            cosmétique porté en puce, et deux vrais boutons pour en changer
+            (Paul, 19/09/2026 : « mets plus en avant le changement de globe et
+            tous les cosmétiques dans les modes de jeu »). */}
         <PlayerGlobe
           config={config}
-          size={168}
-          label={tr(language, 'TON GLOBE', 'YOUR GLOBE')}
+          size={188}
+          label={tr(language, 'TON MONDE', 'YOUR WORLD')}
           accent={accent}
           animate
           onPress={onChangeGlobe}
-          actionLabel={onChangeGlobe ? tr(language, 'Changer de globe', 'Change globe') : undefined}
           showGlobeName
         />
+        <EquippedChips config={config} onPressPart={onCustomize} action="edit" />
+        {onChangeGlobe || onCustomize ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10 }}>
+            {onChangeGlobe ? (
+              <TouchableOpacity
+                onPress={onChangeGlobe}
+                activeOpacity={0.85}
+                {...a11yButton(tr(language, 'Changer de globe', 'Change globe'))}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                  borderWidth: 1.5,
+                  borderColor: accent,
+                  backgroundColor: c.card,
+                  borderRadius: 14,
+                  paddingVertical: 10,
+                  paddingHorizontal: 16,
+                }}
+              >
+                <Globe color={accent} size={18} {...a11yHidden} />
+                <Text style={{ color: accent, fontFamily: FONTS.monoBold, fontSize: 13 }}>
+                  {tr(language, 'Changer de globe', 'Change globe')}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+            {onCustomize ? (
+              <TouchableOpacity
+                onPress={onCustomize}
+                activeOpacity={0.85}
+                {...a11yButton(tr(language, 'Personnaliser mon monde', 'Customize my world'))}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                  borderWidth: 1.5,
+                  borderColor: c.border,
+                  backgroundColor: c.card,
+                  borderRadius: 14,
+                  paddingVertical: 10,
+                  paddingHorizontal: 16,
+                }}
+              >
+                <Palette color={c.text} size={18} {...a11yHidden} />
+                <Text style={{ color: c.text, fontFamily: FONTS.monoBold, fontSize: 13 }}>
+                  {tr(language, 'Personnaliser mon monde', 'Customize my world')}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        ) : null}
 
         <TouchableOpacity
           onPress={onStart}

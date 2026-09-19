@@ -2316,7 +2316,7 @@
     "key": "Change globe",
     "fr": "Changer de globe",
     "en": "Change globe",
-    "count": 7,
+    "count": 8,
     "kinds": [
       "call"
     ],
@@ -2600,39 +2600,17 @@
     ]
   },
   {
-    "key": "Classic",
-    "fr": "Classique",
-    "en": "Classic",
-    "count": 1,
-    "kinds": [
-      "call"
-    ],
-    "files": [
-      "src/components/GlobePickerModal.tsx"
-    ]
-  },
-  {
     "key": "Classic Earth",
     "fr": "Terre classique",
     "en": "Classic Earth",
-    "count": 1,
+    "count": 2,
     "kinds": [
-      "label"
-    ],
-    "files": [
-      "src/data/cosmetics.ts"
-    ]
-  },
-  {
-    "key": "Classic globe",
-    "fr": "Globe classique",
-    "en": "Classic globe",
-    "count": 1,
-    "kinds": [
+      "label",
       "call"
     ],
     "files": [
-      "src/components/GlobePickerModal.tsx"
+      "src/data/cosmetics.ts",
+      "src/screens/GlobeLab.tsx"
     ]
   },
   {
@@ -3692,11 +3670,12 @@
     "key": "Customize my world",
     "fr": "Personnaliser mon monde",
     "en": "Customize my world",
-    "count": 2,
+    "count": 4,
     "kinds": [
       "call"
     ],
     "files": [
+      "src/components/SoloStart.tsx",
       "src/screens/Shop.tsx"
     ]
   },
@@ -5222,18 +5201,6 @@
     ]
   },
   {
-    "key": "Find the country and Borders wear your equipped globe, 3D relief included — like on your profile.",
-    "fr": "Trouve le pays et Frontières portent le globe équipé, avec son relief 3D — comme sur ton profil.",
-    "en": "Find the country and Borders wear your equipped globe, 3D relief included — like on your profile.",
-    "count": 1,
-    "kinds": [
-      "call"
-    ],
-    "files": [
-      "src/screens/GlobeLab.tsx"
-    ]
-  },
-  {
     "key": "Find the number from the name",
     "fr": "Trouve le numéro à partir du nom",
     "en": "Find the number from the name",
@@ -5923,6 +5890,18 @@
     "files": [
       "src/components/PreGameLobby.tsx",
       "src/screens/BotMatch.tsx"
+    ]
+  },
+  {
+    "key": "Games then wear the globe equipped in the shop, like on your profile.",
+    "fr": "Les parties portent alors le globe équipé dans la boutique, comme sur ton profil.",
+    "en": "Games then wear the globe equipped in the shop, like on your profile.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/GlobeLab.tsx"
     ]
   },
   {
@@ -8569,18 +8548,6 @@
     ],
     "files": [
       "src/Router.tsx"
-    ]
-  },
-  {
-    "key": "My shop globe in games",
-    "fr": "Mon globe de la boutique en jeu",
-    "en": "My shop globe in games",
-    "count": 1,
-    "kinds": [
-      "call"
-    ],
-    "files": [
-      "src/screens/GlobeLab.tsx"
     ]
   },
   {
@@ -14243,42 +14210,6 @@
     ]
   },
   {
-    "key": "Theme (none)",
-    "fr": "Thème (aucun)",
-    "en": "Theme (none)",
-    "count": 1,
-    "kinds": [
-      "call"
-    ],
-    "files": [
-      "src/screens/GlobeLab.tsx"
-    ]
-  },
-  {
-    "key": "Theme globe (no cosmetic)",
-    "fr": "Globe du thème (aucun cosmétique)",
-    "en": "Theme globe (no cosmetic)",
-    "count": 1,
-    "kinds": [
-      "call"
-    ],
-    "files": [
-      "src/screens/GlobeLab.tsx"
-    ]
-  },
-  {
-    "key": "Theme globe, no cosmetic",
-    "fr": "Globe du thème, aucun cosmétique",
-    "en": "Theme globe, no cosmetic",
-    "count": 1,
-    "kinds": [
-      "call"
-    ],
-    "files": [
-      "src/screens/GlobeLab.tsx"
-    ]
-  },
-  {
     "key": "This flag",
     "fr": "Ce drapeau",
     "en": "This flag",
@@ -14925,18 +14856,6 @@
     "key": "Use in games",
     "fr": "Utiliser dans les parties",
     "en": "Use in games",
-    "count": 1,
-    "kinds": [
-      "call"
-    ],
-    "files": [
-      "src/screens/GlobeLab.tsx"
-    ]
-  },
-  {
-    "key": "Use my globe in games",
-    "fr": "Utiliser mon globe en jeu",
-    "en": "Use my globe in games",
     "count": 1,
     "kinds": [
       "call"
@@ -15962,13 +15881,24 @@
     "key": "YOUR GLOBE",
     "fr": "TON GLOBE",
     "en": "YOUR GLOBE",
-    "count": 2,
+    "count": 1,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/components/SoloStart.tsx",
       "src/screens/VersusCapitals.tsx"
+    ]
+  },
+  {
+    "key": "YOUR WORLD",
+    "fr": "TON MONDE",
+    "en": "YOUR WORLD",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/SoloStart.tsx"
     ]
   },
   {

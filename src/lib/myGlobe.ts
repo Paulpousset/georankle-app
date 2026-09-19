@@ -45,7 +45,7 @@ export function useMyGameGlobe(): MyGameGlobe {
       .then((pref) => {
         if (!alive) return;
         setState({
-          config: withGameGlobe(pref.config, pref.enabled ? pref.override : null),
+          config: withGameGlobe(pref.config, pref.override),
           ready: true,
         });
       })

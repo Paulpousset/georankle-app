@@ -530,6 +530,7 @@ export function Router({
           onStart={() => setStartedMode(gameMode)}
           onExit={() => leaveGame('menu')}
           onChangeGlobe={user ? () => pushPage({ name: 'globe-lab' }) : undefined}
+          onCustomize={user ? () => pushPage({ name: 'avatar' }) : undefined}
         />
       </SafeAreaProvider>
     );

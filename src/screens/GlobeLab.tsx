@@ -17,7 +17,6 @@ import {
   ActivityIndicator,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TouchableOpacity,
   View,
@@ -38,7 +37,6 @@ import {
   loadSkinForKey,
   partStyleKey,
   resolveSkinKey,
-  setGameGlobeEnabled,
   setGameGlobeOverride,
   skinMapPalette,
   type GameGlobePref,
@@ -76,7 +74,7 @@ interface WorldPolygon {
   r: number[][][];
 }
 
-/** `null` = the stock theme globe, i.e. no cosmetic at all (the comparison base). */
+/** A globe style key; `null` only while the prefs are still loading. */
 type PreviewKey = string | null;
 
 /** Tile preview config: the previewed globe on the free default backdrop. */
@@ -146,9 +144,8 @@ export default function GlobeLab({ onBack }: GlobeLabProps) {
   }, [user]);
 
   // The renderer the games will use, by the same rule as useGameGlobeSkin — so
-  // the preview can't lie: a worn globe brings WebGL with it, the bare theme
-  // globe is left to the flag.
-  const use3d = preview !== null || flag3d;
+  // the preview can't lie: the `globe_3d` flag is the only kill switch.
+  const use3d = flag3d;
 
   useEffect(() => {
     if (!use3d || threeSrc) return;
@@ -219,32 +216,22 @@ export default function GlobeLab({ onBack }: GlobeLabProps) {
   );
   const previewName = previewPart
     ? tr(language, previewPart.nameFr, previewPart.nameEn)
-    : t('Globe du thème (aucun cosmétique)', 'Theme globe (no cosmetic)');
+    : t('Terre classique', 'Classic Earth');
 
   const apply = useCallback(async () => {
-    if (!pref) return;
-    if (preview === null) {
-      // "No skin" is the only state that turns the whole option off — otherwise a
-      // cleared override would just fall back to the equipped globe.
-      await setGameGlobeEnabled(false);
-      await setGameGlobeOverride(null);
-      setPref({ ...pref, enabled: false, override: null });
-    } else {
-      await setGameGlobeEnabled(true);
-      // Pinning the equipped globe as an override would freeze it: leave the
-      // override empty so a later equip in the shop follows through on its own.
-      const asOverride = preview === pref.equipped ? null : preview;
-      await setGameGlobeOverride(asOverride);
-      setPref({ ...pref, enabled: true, override: asOverride });
-    }
+    if (!pref || preview === null) return;
+    // Pinning the equipped globe as an override would freeze it: leave the
+    // override empty so a later equip in the shop follows through on its own.
+    const asOverride = preview === pref.equipped ? null : preview;
+    await setGameGlobeOverride(asOverride);
+    setPref({ ...pref, override: asOverride });
     announce(tr(language, 'Globe appliqué aux parties', 'Globe applied to games'));
   }, [pref, preview, language]);
 
   const followEquipped = useCallback(async () => {
     if (!pref) return;
-    await setGameGlobeEnabled(true);
     await setGameGlobeOverride(null);
-    setPref({ ...pref, enabled: true, override: null });
+    setPref({ ...pref, override: null });
     setPreview(pref.equipped);
   }, [pref]);
 
@@ -272,7 +259,7 @@ export default function GlobeLab({ onBack }: GlobeLabProps) {
           {globeHtml ? (
             <GlobeWebView
               // A new page per skin/renderer — the builders bake the look in.
-              key={`${preview ?? 'none'}:${use3d ? '3d' : '2d'}:${isDarkMode ? 'd' : 'l'}`}
+              key={`${preview ?? 'classic'}:${use3d ? '3d' : '2d'}:${isDarkMode ? 'd' : 'l'}`}
               source={{ html: globeHtml }}
               originWhitelist={['*']}
               javaScriptEnabled
@@ -323,50 +310,31 @@ export default function GlobeLab({ onBack }: GlobeLabProps) {
           </Text>
         </TouchableOpacity>
 
-        {/* Options */}
-        <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border }]}>
-          <View style={styles.optRow}>
-            <View style={styles.optLabel}>
-              <Text style={[styles.optTitle, { color: c.text }]}>
-                {t('Mon globe de la boutique en jeu', 'My shop globe in games')}
-              </Text>
-              <Text style={[styles.optSub, { color: c.textFaint }]}>
-                {t(
-                  'Trouve le pays et Frontières portent le globe équipé, avec son relief 3D — comme sur ton profil.',
-                  'Find the country and Borders wear your equipped globe, 3D relief included — like on your profile.',
-                )}
-              </Text>
-            </View>
-            <Switch
-              value={!!pref?.enabled}
-              onValueChange={(v) => {
-                if (v) void followEquipped();
-                else {
-                  setPreview(null);
-                  void setGameGlobeEnabled(false);
-                  void setGameGlobeOverride(null);
-                  setPref((p) => (p ? { ...p, enabled: false, override: null } : p));
-                }
-              }}
-              trackColor={{ false: c.border, true: c.accent }}
-              thumbColor="#fff"
-              accessibilityLabel={t('Utiliser mon globe en jeu', 'Use my globe in games')}
-            />
-          </View>
-
-          {pref?.override ? (
+        {/* Le globe équipé dans la boutique est celui des parties (Terre
+            classique par défaut) ; un choix fait ici le remplace, sur cet
+            appareil seulement. */}
+        {pref?.override ? (
+          <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border }]}>
             <TouchableOpacity
               onPress={followEquipped}
-              style={[styles.optRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }]}
+              style={styles.optRow}
               {...a11yButton(t('Revenir au globe équipé', 'Back to the equipped globe'))}
             >
               <RotateCcw color={c.accent} size={16} />
-              <Text style={[styles.optTitle, { color: c.accent, flex: 1 }]}>
-                {t('Revenir au globe équipé', 'Back to the equipped globe')}
-              </Text>
+              <View style={styles.optLabel}>
+                <Text style={[styles.optTitle, { color: c.accent }]}>
+                  {t('Revenir au globe équipé', 'Back to the equipped globe')}
+                </Text>
+                <Text style={[styles.optSub, { color: c.textFaint }]}>
+                  {t(
+                    'Les parties portent alors le globe équipé dans la boutique, comme sur ton profil.',
+                    'Games then wear the globe equipped in the shop, like on your profile.',
+                  )}
+                </Text>
+              </View>
             </TouchableOpacity>
-          ) : null}
-        </View>
+          </View>
+        ) : null}
 
         {/* All globes — every one testable, owned or not */}
         <Text style={[styles.sectionTitle, { color: c.textMuted }]}>
@@ -374,20 +342,6 @@ export default function GlobeLab({ onBack }: GlobeLabProps) {
         </Text>
 
         <View style={styles.grid}>
-          <TouchableOpacity
-            onPress={() => setPreview(null)}
-            style={[
-              styles.tile,
-              { borderColor: preview === null ? c.accent : c.border, backgroundColor: c.card },
-            ]}
-            {...a11yButton(t('Globe du thème, aucun cosmétique', 'Theme globe, no cosmetic'))}
-          >
-            <View style={[styles.tileArt, { backgroundColor: getMapPalette(isDarkMode).bg, borderColor: c.border }]} />
-            <Text style={[styles.tileName, { color: c.text }]} numberOfLines={2}>
-              {t('Thème (aucun)', 'Theme (none)')}
-            </Text>
-          </TouchableOpacity>
-
           {GLOBE_PARTS.map((part) => {
             const key = partStyleKey(part);
             const isOwned = part.isDefault || owned.has(part.id);

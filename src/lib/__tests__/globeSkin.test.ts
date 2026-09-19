@@ -76,20 +76,16 @@ describe('catalog coverage', () => {
 describe('resolveSkinKey', () => {
   const base = DEFAULT_GAME_GLOBE_PREF;
 
-  it('wears the equipped globe when the option is on', () => {
-    expect(resolveSkinKey({ ...base, enabled: true, equipped: 'gaia' })).toBe('gaia');
+  it('wears the equipped globe', () => {
+    expect(resolveSkinKey({ ...base, equipped: 'gaia' })).toBe('gaia');
   });
 
   it('lets the local test override win over the equipped globe', () => {
-    expect(resolveSkinKey({ ...base, enabled: true, equipped: 'gaia', override: 'mars' })).toBe('mars');
+    expect(resolveSkinKey({ ...base, equipped: 'gaia', override: 'mars' })).toBe('mars');
   });
 
-  it('returns null (stock look) when the option is off', () => {
-    expect(resolveSkinKey({ ...base, enabled: false, equipped: 'gaia' })).toBeNull();
-  });
-
-  it('still honours an override with the option off (that is the test knob)', () => {
-    expect(resolveSkinKey({ ...base, enabled: false, override: 'lava' })).toBe('lava');
+  it('never returns null: the free classic Earth is the floor', () => {
+    expect(resolveSkinKey(base)).toBe('classic');
   });
 });
 

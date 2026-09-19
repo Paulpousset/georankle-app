@@ -2,8 +2,8 @@
  * In-game globe picker for the Globe mode: swap the planet you play on without
  * leaving the round.
  *
- * Lists the classic globe — the app's own theme planet, no cosmetic — plus every
- * globe the player actually owns. Unlike the "Globes en jeu" lab, this one does
+ * Lists every globe the player actually owns (the free classic Earth at the
+ * very least). Unlike the "Globes en jeu" lab, this one does
  * NOT offer what you haven't bought: it is a play surface, not a showroom, and a
  * locked planet dangled mid-round would just be noise.
  *
@@ -30,10 +30,10 @@ import type { AvatarConfig, CosmeticPart } from '../types';
 interface GlobePickerModalProps {
   visible: boolean;
   onClose: () => void;
-  /** Style key currently worn, or null for the classic theme globe. */
+  /** Style key currently worn (null only while the skin is still resolving). */
   current: string | null;
-  /** Same contract as useGameGlobeSkin().choose — null picks the classic globe. */
-  onPick: (key: string | null) => void;
+  /** Same contract as useGameGlobeSkin().choose. */
+  onPick: (key: string) => void;
   /**
    * Opens the shop. Only passed where leaving is harmless (free solo play): it
    * navigates away, which ends the round in progress, so the caller confirms
@@ -88,7 +88,7 @@ export function GlobePickerModal({ visible, onClose, current, onPick, onOpenShop
 
   const mine = GLOBE_PARTS.filter((p) => p.isDefault || owned?.has(p.id));
 
-  const pick = (key: string | null) => {
+  const pick = (key: string) => {
     onPick(key);
     onClose();
   };
@@ -110,21 +110,6 @@ export function GlobePickerModal({ visible, onClose, current, onPick, onOpenShop
           </View>
 
           <ScrollView contentContainerStyle={styles.grid}>
-            <TouchableOpacity
-              onPress={() => pick(null)}
-              style={[
-                styles.tile,
-                { borderColor: current === null ? c.accent : c.border, backgroundColor: c.card },
-              ]}
-              {...a11yButton(t('Globe classique', 'Classic globe'), { selected: current === null })}
-            >
-              <View style={[styles.art, { backgroundColor: c.surface, borderColor: c.border, borderWidth: 1 }]} />
-              <Text style={[styles.name, { color: c.text }]} numberOfLines={2}>
-                {t('Classique', 'Classic')}
-              </Text>
-              {current === null ? <Check color={c.accent} size={14} /> : null}
-            </TouchableOpacity>
-
             {mine.map((part) => {
               const key = partStyleKey(part);
               const on = current === key;

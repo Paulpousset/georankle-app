@@ -751,7 +751,10 @@ function loadRig(tex){
       landObj=land;updateCrispLines();
     },undefined,function(){});
   }
-  if(SKIN.propsModel){
+  // Props (volcanoes, ice blocks, crown…) never reach a gameplay board: they
+  // stood in front of the countries to see and tap. The skin loader leaves
+  // them out for the games (loadSkinForKey withProps) — this is belt and braces.
+  if(SKIN.propsModel&&!D.interactive){
     loader.load(SKIN.propsModel,function(g){
       var props=g.scene;remapMaterials(props);
       props.rotation.y=Math.PI/2;globe.add(props);

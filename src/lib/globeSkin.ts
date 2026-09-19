@@ -248,13 +248,16 @@ export function skinMapPalette(pal: MapPalette, key: string | null): MapPalette 
 
 // ── Device-local preferences ─────────────────────────────────────────────────
 
-const K_ENABLED = 'gameGlobe:enabled';
 const K_OVERRIDE = 'gameGlobe:override';
 const K_CONFIG = 'gameGlobe:config';
 
+/**
+ * Paul, 19/09/2026: the games ALWAYS wear a shop globe — the free classic Earth
+ * at the very least. The old "theme globe, no cosmetic" opt-out is gone (its
+ * `gameGlobe:enabled` key is simply ignored now): a globe you bought is meant
+ * to be seen where you play, and the classic one is the default for everyone.
+ */
 export interface GameGlobePref {
-  /** Wear the equipped shop world in game. On by default. */
-  enabled: boolean;
   /** In-game / "Globes en jeu" pick — wins over the equipped globe. */
   override: string | null;
   /**
@@ -268,7 +271,6 @@ export interface GameGlobePref {
 }
 
 export const DEFAULT_GAME_GLOBE_PREF: GameGlobePref = {
-  enabled: true,
   override: null,
   config: null,
   equipped: 'classic',
@@ -276,7 +278,7 @@ export const DEFAULT_GAME_GLOBE_PREF: GameGlobePref = {
 
 export async function loadGameGlobePref(): Promise<GameGlobePref> {
   try {
-    const rows = await AsyncStorage.multiGet([K_ENABLED, K_OVERRIDE, K_CONFIG]);
+    const rows = await AsyncStorage.multiGet([K_OVERRIDE, K_CONFIG]);
     const map = Object.fromEntries(rows) as Record<string, string | null>;
     const override = map[K_OVERRIDE];
     let config: AvatarConfig | null = null;
@@ -288,7 +290,6 @@ export async function loadGameGlobePref(): Promise<GameGlobePref> {
       }
     }
     return {
-      enabled: map[K_ENABLED] !== '0',
       override: override && isSkinnable(override) ? override : null,
       config,
       equipped: globeStyleKey(config),
@@ -298,10 +299,6 @@ export async function loadGameGlobePref(): Promise<GameGlobePref> {
   }
 }
 
-export async function setGameGlobeEnabled(on: boolean): Promise<void> {
-  await AsyncStorage.setItem(K_ENABLED, on ? '1' : '0').catch(() => {});
-}
-
 /** Pick a style to wear in game regardless of ownership (null = back to equipped). */
 export async function setGameGlobeOverride(key: string | null): Promise<void> {
   if (key && isSkinnable(key)) await AsyncStorage.setItem(K_OVERRIDE, key).catch(() => {});
@@ -309,19 +306,12 @@ export async function setGameGlobeOverride(key: string | null): Promise<void> {
 }
 
 /**
- * Apply an in-game globe pick. `null` means the classic globe — the app's own
- * theme planet, no cosmetic at all — so it turns the whole option off; picking
- * the globe already equipped clears the override instead of pinning it, so a
- * later equip in the shop still follows through.
+ * Apply an in-game globe pick. `null` clears the pick (back to the equipped
+ * globe); picking the globe already equipped clears the override instead of
+ * pinning it, so a later equip in the shop still follows through.
  */
 export async function chooseGameGlobe(key: string | null, pref: GameGlobePref): Promise<void> {
-  if (key === null) {
-    await setGameGlobeEnabled(false);
-    await setGameGlobeOverride(null);
-    return;
-  }
-  await setGameGlobeEnabled(true);
-  await setGameGlobeOverride(key === pref.equipped ? null : key);
+  await setGameGlobeOverride(key === null || key === pref.equipped ? null : key);
 }
 
 /** Warm the equipped-world cache from a freshly loaded/saved avatar config. */
@@ -330,10 +320,10 @@ export async function cacheEquippedGlobe(config: AvatarConfig | null | undefined
   await AsyncStorage.setItem(K_CONFIG, JSON.stringify(normalizeConfig(config))).catch(() => {});
 }
 
-/** Which style the games should wear: in-game pick, else the equipped one. */
-export function resolveSkinKey(pref: GameGlobePref): string | null {
-  if (pref.override) return pref.override;
-  return pref.enabled ? pref.equipped : null;
+/** Which style the games wear: the in-game pick, else the equipped globe
+ *  (the free classic Earth when nothing is known). Never null. */
+export function resolveSkinKey(pref: GameGlobePref): string {
+  return pref.override ?? pref.equipped;
 }
 
 /** Once per session: the shop/editor write the cache directly whenever it changes. */
@@ -428,11 +418,10 @@ export function useGameGlobeSkin(
           settle({ status: 'ready', key, skin: null, threeSrc: null });
           return;
         }
-        // The flag only decides for the BARE globe: a worn one always needs
-        // WebGL, and asking the network first would expire onto the wrong
-        // planet on a slow connection.
-        if (key === null && !(await isFeatureEnabled('globe_3d'))) {
-          settle(bare);
+        // `globe_3d` stays the kill switch: off, every game falls back to the
+        // flat renderer (skin colours only, see skinMapPalette).
+        if (!(await isFeatureEnabled('globe_3d'))) {
+          settle({ status: 'ready', key, skin: null, threeSrc: null });
           return;
         }
         const [skin, three] = await Promise.all([
@@ -474,16 +463,19 @@ export function useGameGlobeSkin(
 
 /**
  * Resolve the whole worn world into WebView-loadable URIs: the globe's rig
- * (equirect texture + shared continent relief + the style's props) plus the
- * cosmos backdrop and the orbiting satellite taken from `config`.
+ * (equirect texture + shared continent relief) plus the cosmos backdrop and the
+ * orbiting satellite taken from `config`.
  *
  * `withRig: false` keeps just the texture and sky: Borders may not draw the
  * continents at all (anti-cheat), and the ~1.2 MB relief GLB would be pure
- * payload there.
+ * payload there. `withProps` adds the style's props GLB (volcanoes, ice
+ * blocks, crown…) — decorative surfaces only (menu): on a board they stand in
+ * front of the countries the player has to see and tap (Paul, 19/09/2026).
  */
 export async function loadSkinForKey(
   key: string | null,
-  { withRig = true, config = null }: { withRig?: boolean; config?: AvatarConfig | null } = {},
+  { withRig = true, withProps = false, config = null }:
+    { withRig?: boolean; withProps?: boolean; config?: AvatarConfig | null } = {},
 ): Promise<GameGlobeSkin | null> {
   if (!key) return null;
   const texMod = GLOBE_TEXTURES[key];
@@ -498,7 +490,7 @@ export async function loadSkinForKey(
     const [texture, landModel, propsModel, cosmos, satModel] = await Promise.all([
       moduleToWebViewUri(texMod),
       uri(withRig ? COSMETIC_MODELS.globe_land : undefined),
-      uri(withRig ? COSMETIC_MODELS[`globe_${key}_props`] : undefined),
+      uri(withRig && withProps ? COSMETIC_MODELS[`globe_${key}_props`] : undefined),
       uri(cosmosId ? COSMETIC_LAYERS[cosmosId]?.main : undefined),
       uri(satId ? COSMETIC_MODELS[satId] : undefined),
     ]);
