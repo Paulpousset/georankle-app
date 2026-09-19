@@ -1,8 +1,12 @@
-# Globes — v2 « relief 3D » (DA des emblèmes) : sphère océan texturée (toon
-# bandes + rim + glint, comme v1) + CONTINENTS EXTRUDÉS (plateaux 3D depuis
-# assets/world_polygons.json, coque contour encre inverted-hull) + props 3D par
-# style (volcans lava, cristaux/calottes ice, cratères mars, montagnes relief,
-# failles st_fractured, couronne st_crowned).
+# Globes — v3 « Cartoon HD » (19/09/2026) : sphère océan + CONTINENTS EXTRUDÉS
+# (plateaux 3D depuis assets/world_polygons.json, SANS coque d'encre) portant
+# la texture du style projetée (UV équirect / arctan2 en espace objet) sous le
+# matériau ToonHD de common.py (3 bandes douces, vraies ombres portées,
+# spéculaire, contre-jour), + NUAGES en volumes (grappes de sphères, styles
+# « vivants » de rig.json toon.clouds) + coquille d'ATMOSPHÈRE cyan + props 3D
+# par style (volcans lava, cristaux/calottes ice, cratères mars, montagnes
+# relief, failles st_fractured, couronne st_crowned). Les styles sombres sont
+# auto-éclairés (texture émissive) pour rester lisibles.
 #
 # Repères : le land et les props sont construits en REPÈRE GÉO PUR (lng 0 face
 # caméra) puis parentés à un Empty GeoRoot_<cid> tourné de rig.globe.defaultFace
@@ -12,6 +16,7 @@
 import json
 import math
 import os
+import random
 
 import bpy
 import bmesh
@@ -20,29 +25,19 @@ from mathutils.geometry import tessellate_polygon
 
 import common
 from common import (add_outline, cone, cyl, flat_material, get_collection,
-                    hexc, lathe, outline_material, outline_of, sphere,
-                    toon_material, torus)
+                    hexc, lathe, sphere, toon_hd, toon_material, torus)
 
 TEXDIR = os.path.join(common.PIPE, "textures_globe")
 POLYS_PATH = os.path.normpath(
     os.path.join(common.PIPE, "..", "assets", "world_polygons.json"))
 
-# Réglages toon par style : (facteurs de bandes, couleur+force du rim, glint)
-DEFAULT = dict(bands=(0.62, 1.0, 1.16), rim=("#bcd8ff", 0.16), glint=0.30)
-OVERRIDES = {
-    "night": dict(bands=(0.88, 1.0, 1.06), rim=("#7fa0c4", 0.22), glint=0.0),
-    "eclipse": dict(bands=(0.92, 1.0, 1.04), rim=("#ff9a3a", 0.55), glint=0.0),
-    "hologram": dict(bands=(1.0, 1.0, 1.0), rim=("#5ff0ff", 0.5), glint=0.0),
-    "cyber": dict(bands=(1.0, 1.0, 1.0), rim=("#c04df0", 0.45), glint=0.0),
-    "biolum": dict(bands=(0.95, 1.0, 1.02), rim=("#2ff0c0", 0.4), glint=0.0),
-    "gold": dict(bands=(0.60, 1.0, 1.20), rim=("#fff2b0", 0.2), glint=0.55),
-    "ice": dict(bands=(0.66, 1.0, 1.10), rim=("#ffffff", 0.25), glint=0.20),
-    "st_galaxy": dict(bands=(0.95, 1.0, 1.05), rim=("#b48aff", 0.5), glint=0.0),
-    "blueprint": dict(bands=(0.90, 1.0, 1.05), rim=("#dce9fa", 0.30), glint=0.0),
-    "st_fractured": dict(bands=(0.72, 1.0, 1.1), rim=("#ff7a2e", 0.4), glint=0.0),
-    "lava": dict(bands=(0.90, 1.0, 1.04), rim=("#ff7a2e", 0.45), glint=0.0),
-    "mars": dict(bands=(0.62, 1.0, 1.14), rim=("#ffc49a", 0.18), glint=0.12),
-}
+# Réglages ToonHD par style (océan / continents) ; les styles sombres sont
+# auto-éclairés (rig.json toon.darkStyles → texture émissive).
+TOON = common.TOON
+DARK_STYLES = set(TOON["darkStyles"])
+CLOUD_STYLES = set(TOON["clouds"]["styles"])
+OCEAN = dict(rough=0.25, spec_k=0.55, rim_k=0.6, sat=1.2, val=1.05)
+LAND = dict(rough=0.5, spec_k=0.25, rim_k=0.5, sat=1.25, val=1.02)
 
 # Couleur « land » par style (source : gen_globe_textures.mjs) — sert à teinter
 # l'encre du contour de relief. None = land non peint (styles techniques).
@@ -73,7 +68,48 @@ def build(cid):
     props = PROPS.get(style)
     if props:
         props(coll, root, style)
+    if style in CLOUD_STYLES and style not in DARK_STYLES:
+        _clouds(coll, style)
+    _atmosphere(coll, style)
     return coll
+
+
+def _clouds(coll, style):
+    """Nuages en volumes : grappes de 3–5 sphères écrasées, placées dans le
+    repère caméra (mêmes graine et tirages que la scène live) hors de l'ancre
+    des emblèmes (haut-avant)."""
+    cfg = TOON["clouds"]
+    cm = toon_hd("g_cloud", color="#ffffff", rough=0.6, spec_k=0.15,
+                 rim="#dff6ff", rim_k=0.35, shadow_tint="#8fa0ff")
+    rnd = random.Random(cfg["seed"])
+    r0, r1 = cfg["radius"]
+    s0, s1 = cfg["size"]
+    n = 0
+    for c in range(cfg["count"]):
+        lat = math.radians(rnd.uniform(-55, 40))
+        lng = math.radians(rnd.uniform(-150, 150))
+        base = Vector((math.cos(lat) * math.sin(lng), math.sin(lat),
+                       math.cos(lat) * math.cos(lng)))
+        for k in range(rnd.randint(3, 5)):
+            off = Vector((rnd.uniform(-0.12, 0.12), rnd.uniform(-0.05, 0.05),
+                          rnd.uniform(-0.12, 0.12)))
+            p = (base + off).normalized() * rnd.uniform(r0, r1)
+            r = rnd.uniform(s0, s1)
+            loc = common.three_to_rig(p)
+            # écrasement le long de la normale (le « haut » du nuage)
+            s = sphere(coll, f"gcloud_{c}_{k}", r, loc, cm, seg=24, rings=12)
+            s.rotation_euler = loc.normalized().to_track_quat("Z", "Y").to_euler()
+            s.scale = (1.0, 1.0, cfg["squash"])
+            n += 1
+    return n
+
+
+def _atmosphere(coll, style):
+    cfg = TOON["atmosphere"]
+    atm = sphere(coll, f"gatmo_{style}", cfg["radius"], (0, 0, 0),
+                 common.atmosphere_material(), seg=64, rings=32)
+    atm.visible_shadow = False
+    return atm
 
 
 def _geo_root(coll, cid):
@@ -274,150 +310,73 @@ def _land_object(coll, cid, style):
     coll.objects.link(obj)
     mat = _globe_material(style, land=True)
     obj.data.materials.append(mat)
-    # contour encre : coque inverted-hull teintée par le land du style
-    ink_base = LAND_HEX.get(style) or "#4a5568"
-    ink = outline_of(ink_base)
-    omat = outline_material(f"ol_land_{style}", ink)
-    omat["ggKind"] = "landink"  # le live remplace la couleur par style
-    hull_mesh = mesh.copy()
-    hb = bmesh.new()
-    hb.from_mesh(hull_mesh)
-    hb.normal_update()
-    for v in hb.verts:
-        v.co += v.normal * 0.009
-    hb.to_mesh(hull_mesh)
-    hb.free()
-    hull_mesh.materials.clear()
-    hull_mesh.materials.append(omat)
-    hull = bpy.data.objects.new(obj.name + "_ol", hull_mesh)
-    coll.objects.link(hull)
-    hull.parent = obj
     return obj
 
 
 # ---------------------------------------------------------------- matériaux ---
+def _style_tex_socket(style, sat, val, object_space):
+    """Texture équirect du style (+ saturation) : par UV (sphère) ou projetée
+    depuis la position OBJET (continents, géo pure : u = atan2(x,-y)/2π+½,
+    v = asin(z)/π+½ — indépendante de la rotation defaultFace du GeoRoot)."""
+    def build(nt):
+        tex = nt.nodes.new("ShaderNodeTexImage")
+        path = os.path.join(TEXDIR, f"{style}.png")
+        tex.image = bpy.data.images.load(path, check_existing=True)
+        tex.extension = "REPEAT"
+        if object_space:
+            geo_in = nt.nodes.new("ShaderNodeTexCoord")
+            ln = nt.nodes.new("ShaderNodeVectorMath")
+            ln.operation = "NORMALIZE"
+            nt.links.new(geo_in.outputs["Object"], ln.inputs[0])
+            sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+            nt.links.new(ln.outputs["Vector"], sep.inputs["Vector"])
+            neg = nt.nodes.new("ShaderNodeMath")
+            neg.operation = "MULTIPLY"
+            neg.inputs[1].default_value = -1.0
+            nt.links.new(sep.outputs["Y"], neg.inputs[0])
+            at2 = nt.nodes.new("ShaderNodeMath")
+            at2.operation = "ARCTAN2"
+            nt.links.new(sep.outputs["X"], at2.inputs[0])
+            nt.links.new(neg.outputs["Value"], at2.inputs[1])
+            udiv = nt.nodes.new("ShaderNodeMath")
+            udiv.operation = "MULTIPLY_ADD"
+            udiv.inputs[1].default_value = 1.0 / (2 * math.pi)
+            udiv.inputs[2].default_value = 0.5
+            nt.links.new(at2.outputs["Value"], udiv.inputs[0])
+            asin = nt.nodes.new("ShaderNodeMath")
+            asin.operation = "ARCSINE"
+            nt.links.new(sep.outputs["Z"], asin.inputs[0])
+            vdiv = nt.nodes.new("ShaderNodeMath")
+            vdiv.operation = "MULTIPLY_ADD"
+            vdiv.inputs[1].default_value = 1.0 / math.pi
+            vdiv.inputs[2].default_value = 0.5
+            nt.links.new(asin.outputs["Value"], vdiv.inputs[0])
+            comb = nt.nodes.new("ShaderNodeCombineXYZ")
+            nt.links.new(udiv.outputs["Value"], comb.inputs["X"])
+            nt.links.new(vdiv.outputs["Value"], comb.inputs["Y"])
+            nt.links.new(comb.outputs["Vector"], tex.inputs["Vector"])
+        else:
+            uv = nt.nodes.new("ShaderNodeTexCoord")
+            nt.links.new(uv.outputs["UV"], tex.inputs["Vector"])
+        hsv = nt.nodes.new("ShaderNodeHueSaturation")
+        hsv.inputs["Saturation"].default_value = sat
+        hsv.inputs["Value"].default_value = val
+        nt.links.new(tex.outputs["Color"], hsv.inputs["Color"])
+        return hsv.outputs["Color"]
+    return build
+
+
 def _globe_material(style, land=False):
-    """Toon émission : texture équirect du style × bandes + rim (+glint).
-    land=True : même graph (mêmes UV) + marqueur ggKind pour la preview live."""
+    """ToonHD × texture du style. land=True : projection espace objet +
+    marqueur ggKind=landtex (la scène live pose la texture au runtime)."""
     name = f"globe_{style}" + ("_land" if land else "")
-    mat = bpy.data.materials.new(name)
-    mat.use_nodes = True
-    nt = mat.node_tree
-    nt.nodes.clear()
-    cfg = {**DEFAULT, **OVERRIDES.get(style, {})}
-
-    out = nt.nodes.new("ShaderNodeOutputMaterial")
-    emit = nt.nodes.new("ShaderNodeEmission")
-    nt.links.new(emit.outputs["Emission"], out.inputs["Surface"])
-
-    tex = nt.nodes.new("ShaderNodeTexImage")
-    path = os.path.join(TEXDIR, f"{style}.png")
-    tex.image = bpy.data.images.load(path, check_existing=True)
-    tex.extension = "REPEAT"
-    if land:
-        # UV équirect calculés depuis la position OBJET (géo pure : indépendante
-        # de la rotation defaultFace portée par le GeoRoot parent)
-        geo_in = nt.nodes.new("ShaderNodeTexCoord")
-        sep = nt.nodes.new("ShaderNodeSeparateXYZ")
-        nt.links.new(geo_in.outputs["Object"], sep.inputs["Vector"])
-        # u = 0.5 + atan2(x, -y)/2pi ; v = 0.5 + asin(z/len)/pi
-        neg = nt.nodes.new("ShaderNodeMath")
-        neg.operation = "MULTIPLY"
-        neg.inputs[1].default_value = -1.0
-        nt.links.new(sep.outputs["Y"], neg.inputs[0])
-        at2 = nt.nodes.new("ShaderNodeMath")
-        at2.operation = "ARCTAN2"
-        nt.links.new(sep.outputs["X"], at2.inputs[0])
-        nt.links.new(neg.outputs["Value"], at2.inputs[1])
-        udiv = nt.nodes.new("ShaderNodeMath")
-        udiv.operation = "MULTIPLY_ADD"
-        udiv.inputs[1].default_value = 1.0 / (2 * math.pi)
-        udiv.inputs[2].default_value = 0.5
-        nt.links.new(at2.outputs["Value"], udiv.inputs[0])
-        ln = nt.nodes.new("ShaderNodeVectorMath")
-        ln.operation = "NORMALIZE"
-        nt.links.new(geo_in.outputs["Object"], ln.inputs[0])
-        sep2 = nt.nodes.new("ShaderNodeSeparateXYZ")
-        nt.links.new(ln.outputs["Vector"], sep2.inputs["Vector"])
-        asin = nt.nodes.new("ShaderNodeMath")
-        asin.operation = "ARCSINE"
-        nt.links.new(sep2.outputs["Z"], asin.inputs[0])
-        vdiv = nt.nodes.new("ShaderNodeMath")
-        vdiv.operation = "MULTIPLY_ADD"
-        vdiv.inputs[1].default_value = 1.0 / math.pi
-        vdiv.inputs[2].default_value = 0.5
-        nt.links.new(asin.outputs["Value"], vdiv.inputs[0])
-        comb = nt.nodes.new("ShaderNodeCombineXYZ")
-        nt.links.new(udiv.outputs["Value"], comb.inputs["X"])
-        nt.links.new(vdiv.outputs["Value"], comb.inputs["Y"])
-        nt.links.new(comb.outputs["Vector"], tex.inputs["Vector"])
-        mat["ggKind"] = "landtex"
-        mat["ggHex"] = LAND_HEX.get(style) or "#7cc45e"
-
-    # bandes toon (multiplicateur de la texture)
-    geo = nt.nodes.new("ShaderNodeNewGeometry")
-    dot = nt.nodes.new("ShaderNodeVectorMath")
-    dot.operation = "DOT_PRODUCT"
-    dot.inputs[1].default_value = common.key_light_dir()
-    nt.links.new(geo.outputs["Normal"], dot.inputs[0])
-    remap = nt.nodes.new("ShaderNodeMapRange")
-    remap.inputs["From Min"].default_value = -1.0
-    remap.inputs["From Max"].default_value = 1.0
-    nt.links.new(dot.outputs["Value"], remap.inputs["Value"])
-    ramp = nt.nodes.new("ShaderNodeValToRGB")
-    ramp.color_ramp.interpolation = "CONSTANT"
-    b0, b1, b2 = cfg["bands"]
-    mx = max(b0, b1, b2)
-    ramp.color_ramp.elements[0].position = 0.0
-    ramp.color_ramp.elements[0].color = (b0 / mx,) * 3 + (1.0,)
-    ramp.color_ramp.elements[1].position = 0.40
-    ramp.color_ramp.elements[1].color = (b1 / mx,) * 3 + (1.0,)
-    e2 = ramp.color_ramp.elements.new(0.72)
-    e2.color = (b2 / mx,) * 3 + (1.0,)
-    nt.links.new(remap.outputs["Result"], ramp.inputs["Fac"])
-
-    mul = nt.nodes.new("ShaderNodeVectorMath")
-    mul.operation = "MULTIPLY"
-    nt.links.new(tex.outputs["Color"], mul.inputs[0])
-    nt.links.new(ramp.outputs["Color"], mul.inputs[1])
-    scale = nt.nodes.new("ShaderNodeVectorMath")
-    scale.operation = "SCALE"
-    scale.inputs["Scale"].default_value = mx
-    nt.links.new(mul.outputs["Vector"], scale.inputs[0])
-
-    # rim froid sur la silhouette
-    rim_hex, rim_k = cfg["rim"]
-    lw = nt.nodes.new("ShaderNodeLayerWeight")
-    lw.inputs["Blend"].default_value = 0.55
-    rimramp = nt.nodes.new("ShaderNodeValToRGB")
-    rimramp.color_ramp.interpolation = "CONSTANT"
-    rimramp.color_ramp.elements[0].color = (0, 0, 0, 1)
-    er = rimramp.color_ramp.elements[1]
-    er.position = 0.72
-    rc = hexc(rim_hex)
-    er.color = (rc[0] * rim_k, rc[1] * rim_k, rc[2] * rim_k, 1)
-    nt.links.new(lw.outputs["Facing"], rimramp.inputs["Fac"])
-    add1 = nt.nodes.new("ShaderNodeVectorMath")
-    add1.operation = "ADD"
-    nt.links.new(scale.outputs["Vector"], add1.inputs[0])
-    nt.links.new(rimramp.outputs["Color"], add1.inputs[1])
-
-    # glint spéculaire cartoon (calotte claire côté lumière)
-    if cfg["glint"] > 0:
-        gl = nt.nodes.new("ShaderNodeValToRGB")
-        gl.color_ramp.interpolation = "CONSTANT"
-        gl.color_ramp.elements[0].color = (0, 0, 0, 1)
-        eg = gl.color_ramp.elements.new(0.955)
-        k = cfg["glint"]
-        eg.color = (k, k, k * 0.92, 1)
-        nt.links.new(remap.outputs["Result"], gl.inputs["Fac"])
-        add2 = nt.nodes.new("ShaderNodeVectorMath")
-        add2.operation = "ADD"
-        nt.links.new(add1.outputs["Vector"], add2.inputs[0])
-        nt.links.new(gl.outputs["Color"], add2.inputs[1])
-        nt.links.new(add2.outputs["Vector"], emit.inputs["Color"])
-    else:
-        nt.links.new(add1.outputs["Vector"], emit.inputs["Color"])
+    cfg = LAND if land else OCEAN
+    dark = style in DARK_STYLES
+    mat = toon_hd(name, color_socket=_style_tex_socket(style, cfg["sat"], cfg["val"], land),
+                  rough=cfg["rough"], spec_k=cfg["spec_k"], rim_k=cfg["rim_k"],
+                  emissive=TOON["darkEmissive"] if dark else 0.0, cache=False)
+    mat["ggKind"] = "landtex" if land else "toon"
+    mat["ggHex"] = LAND_HEX.get(style) or "#7cc45e"
     return mat
 
 
@@ -509,40 +468,46 @@ def _props_relief(coll, root, style):
 
 
 def _ice_cap(coll, root, name, lat):
-    """Calotte polaire : disque bombé toon posé au pôle, bord irrégulier bas."""
+    """Calotte polaire : disque bombé toon posé au pôle (Cartoon HD : plus
+    large et plus épais, formes rondes)."""
     mat = toon_material("g_icecap", "#f6fbff", rim=0.12)
     cap = lathe(coll, f"gprop_{name}",
-                [(0.30, -0.012), (0.285, 0.012), (0.20, 0.026), (0.09, 0.036),
-                 (0.0, 0.039)],
-                mat=mat, segments=28)
-    add_outline(cap, "#cfe4f2", 0.010)
+                [(0.38, -0.014), (0.36, 0.018), (0.27, 0.040), (0.13, 0.054),
+                 (0.0, 0.058)],
+                mat=mat, segments=32)
     anchor = _prop_anchor(coll, root, f"a_{name}", lat, 0)
     _parent_keep(cap, anchor)
 
 
 def _props_ice(coll, root, style):
+    """Monde glacé : calottes + BLOCS DE GLACE ARRONDIS (Cartoon HD) posés à
+    l'intérieur de la silhouette (latitudes ≤ 66°), en grappes de trois."""
     _ice_cap(coll, root, "cap_n", 89)
     _ice_cap(coll, root, "cap_s", -89)
-    crystal = toon_material("g_crystal", "#bfe8ff", light_hex="#ffffff")
-    spots = [("greenland", 71, -41, 0.13, 8), ("siberia", 66, 104, 0.10, -14),
-             ("baffin", 62, -74, 0.085, 20), ("scandi", 64, 16, 0.075, -8)]
-    for name, lat, lng, h, tilt in spots:
-        anchor = _prop_anchor(coll, root, f"cr_{name}", lat, lng)
-        for i, (dx, dy, k) in enumerate([(0, 0, 1.0), (0.05, 0.03, 0.6),
-                                         (-0.045, 0.025, 0.45)]):
-            c = cone(coll, f"gprop_{name}_c{i}", h * 0.30 * k, h * (0.9 + 0.4 * k),
-                     (dx, dy, h * (0.9 + 0.4 * k) / 2),
-                     rot=(tilt * k, tilt * 0.4, 0),
-                     mat=crystal, segments=6, smooth=False)
-            add_outline(c, "#bfe8ff", 0.009)
-            _parent_keep(c, anchor)
+    ice = toon_material("g_iceblock", "#cfeeff", rim=0.28)
+    ice2 = toon_material("g_iceblock2", "#e8f8ff", rim=0.24)
+    spots = [("greenland", 66, -42, 0.115, 8), ("siberia", 62, 100, 0.10, -14),
+             ("canada", 58, -100, 0.09, 20), ("scandi", 63, 18, 0.08, -8)]
+    for name, lat, lng, h, yaw in spots:
+        anchor = _prop_anchor(coll, root, f"cr_{name}", lat, lng, yaw_deg=yaw)
+        for i, (dx, dy, k) in enumerate([(0, 0, 1.0), (0.07, 0.04, 0.62),
+                                         (-0.065, 0.035, 0.5)]):
+            hh = h * k
+            w = hh * 0.62
+            # dôme arrondi à sommet doux (rien ne dépasse de la silhouette)
+            blk = lathe(coll, f"gprop_{name}_c{i}",
+                        [(w * 0.95, 0.0), (w, hh * 0.35), (w * 0.8, hh * 0.7),
+                         (w * 0.45, hh * 0.92), (0.0, hh)],
+                        loc=(dx, dy, 0.0), mat=ice if i else ice2, segments=20)
+            _parent_keep(blk, anchor)
 
 
 def _props_lava(coll, root, style):
     basalt = toon_material("g_basalt", "#2c1a14")
     lava_hot = flat_material("g_lavahot", "#ff9a3a")
-    spots = [("hawaii", 20, -156, 0.17), ("vesuvio", 41, 14, 0.14),
-             ("java", -8, 112, 0.15), ("fuego", 14, -90, 0.13)]
+    # Cartoon HD : volcans grossis (×1.3) pour rester lisibles en vignette
+    spots = [("hawaii", 20, -156, 0.22), ("vesuvio", 41, 14, 0.18),
+             ("java", -8, 112, 0.20), ("fuego", 14, -90, 0.17)]
     for name, lat, lng, h in spots:
         anchor = _prop_anchor(coll, root, f"vol_{name}", lat, lng)
         body = cyl(coll, f"gprop_{name}_bd", h * 0.72, h, (0, 0, h / 2),
@@ -613,26 +578,39 @@ def _props_fractured(coll, root, style):
 
 
 def _props_crown(coll, root, style):
-    """Couronne dorée posée haut-avant (st_crowned), repère géo pur."""
+    """Couronne dorée posée haut-avant (st_crowned), repère géo pur. Cartoon
+    HD : ×2,2 (elle était minuscule), or à joyaux émissifs, ombre de contact."""
     gold = "#f2c14e"
     mg = toon_material("g_crown", gold, extra_hot="#fff2b0")
-    mr = toon_material("g_crownruby", "#d8354a")
-    anchor = _prop_anchor(coll, root, "crown", 50, -5)
-    band = torus(coll, "gprop_crown_band", 0.19, 0.032, mat=mg,
-                 seg_major=32, seg_minor=10)
-    add_outline(band, gold, 0.016)
+    gem = flat_material("g_crowngem", "#e8304a")  # « gem » → émissif (bloom)
+    lat, lng = 50, -5
+    anchor = _prop_anchor(coll, root, "crown", lat, lng)
+    R, tube = 0.42, 0.070
+    band = torus(coll, "gprop_crown_band", R, tube, mat=mg,
+                 seg_major=48, seg_minor=14)
     _parent_keep(band, anchor)
+    # bourrelet supérieur (lecture de l'épaisseur) + velours sombre au centre
+    lip = torus(coll, "gprop_crown_lip", R + 0.02, tube * 0.45, loc=(0, 0, tube * 0.9),
+                mat=toon_material("g_crownlip", "#f8d878"), seg_major=48, seg_minor=10)
+    _parent_keep(lip, anchor)
     for i in range(6):
         a = math.radians(i * 60)
-        sp = cone(coll, f"gprop_crown_spike{i}", 0.05, 0.16,
-                  (0.19 * math.cos(a), 0.19 * math.sin(a), 0.10),
-                  mat=mg, segments=8, smooth=False)
-        add_outline(sp, gold, 0.013)
-        gem = sphere(coll, f"gprop_crown_gem{i}", 0.023,
-                     (0.19 * math.cos(a), 0.19 * math.sin(a), 0.195), mr,
-                     seg=10, rings=8)
+        sp = cone(coll, f"gprop_crown_spike{i}", 0.11, 0.34,
+                  (R * math.cos(a), R * math.sin(a), tube * 0.9 + 0.17),
+                  mat=mg, segments=14, smooth=True)
         _parent_keep(sp, anchor)
-        _parent_keep(gem, anchor)
+        g = sphere(coll, f"gprop_crown_gem{i}", 0.052,
+                   (R * math.cos(a), R * math.sin(a), tube * 0.9 + 0.36), gem,
+                   seg=14, rings=10)
+        _parent_keep(g, anchor)
+        # joyau de ceinture entre deux pointes
+        b = math.radians(i * 60 + 30)
+        g2 = sphere(coll, f"gprop_crown_gem{i}b", 0.040,
+                    ((R + tube * 0.85) * math.cos(b), (R + tube * 0.85) * math.sin(b), 0.0),
+                    gem, seg=12, rings=8)
+        _parent_keep(g2, anchor)
+    common.contact_shadow(coll, "globe_st_crowned", ang_radius=0.60, lat=lat, lng=lng,
+                          radius=1.026, parent=root)
 
 
 PROPS = {

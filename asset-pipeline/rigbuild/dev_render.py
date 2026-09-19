@@ -25,16 +25,8 @@ def setup_camera_and_render(size):
     cam.location = (0.0, -rig["camera"]["distance"], 0.0)
     cam.rotation_euler = (math.radians(90.0), 0.0, 0.0)
     scene.camera = cam
-    scene.render.engine = "CYCLES"
-    scene.cycles.samples = 48
-    scene.cycles.transparent_max_bounces = 64
-    scene.render.film_transparent = True
-    scene.render.resolution_x = size
-    scene.render.resolution_y = size
-    scene.render.image_settings.file_format = "PNG"
-    scene.render.image_settings.color_mode = "RGBA"
-    scene.view_settings.view_transform = "Standard"
-    scene.view_settings.look = "None"
+    common.setup_render(size, samples=32)
+    common.studio_lights()
 
 
 def frame_satellite(margin=0.78):

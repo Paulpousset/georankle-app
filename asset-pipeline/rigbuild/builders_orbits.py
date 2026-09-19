@@ -14,6 +14,8 @@ from common import (
     text_obj,
 )
 
+SC = bpy.context.scene.collection  # éléments discrets créés ici, puis assign()
+
 RINGS = common.RIG["rings"]
 TILT = math.radians(RINGS["tiltDeg"])
 R_IN, R_OUT = RINGS["innerRadius"], RINGS["outerRadius"]
@@ -170,20 +172,29 @@ def o_neon(tmp, back, front):
 
 
 def _rock_mesh(name, r, seed):
-    """Caillou low-poly facetté : icosphère subdiv 1 déformée (cartoon minéral)."""
+    """Caillou ARRONDI (Cartoon HD) : icosphère subdiv 2 doucement déformée,
+    ombrage lisse — la patate spatiale, plus le caillou facetté."""
     import random
     rnd = random.Random(seed)
     bm = bmesh.new()
-    bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    bmesh.ops.create_icosphere(bm, subdivisions=2, radius=r)
     for v in bm.verts:
-        v.co *= 0.82 + rnd.random() * 0.36
+        v.co *= 0.9 + rnd.random() * 0.2
     bmesh.ops.scale(bm, verts=bm.verts,
-                    vec=Vector((1.0 + rnd.random() * 0.35, 0.8 + rnd.random() * 0.3,
-                                0.75 + rnd.random() * 0.3)))
+                    vec=Vector((1.0 + rnd.random() * 0.3, 0.85 + rnd.random() * 0.25,
+                                0.8 + rnd.random() * 0.25)))
+    # deux « bosses » douces pour la silhouette
+    for _ in range(2):
+        d = Vector((rnd.uniform(-1, 1), rnd.uniform(-1, 1), rnd.uniform(-1, 1))).normalized()
+        for v in bm.verts:
+            k = max(0.0, v.co.normalized().dot(d))
+            v.co *= 1.0 + 0.16 * k * k
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     mesh = bpy.data.meshes.new(name)
     bm.to_mesh(mesh)
     bm.free()
-    return mesh  # facettes gardées (pas de smooth)
+    mesh.polygons.foreach_set("use_smooth", [True] * len(mesh.polygons))
+    return mesh
 
 
 def o_asteroids(tmp, back, front):
@@ -243,35 +254,35 @@ def _crystal_mesh(name, ln, w):
 
 
 def o_ice(tmp, back, front):
-    # Amas de cristaux hexagonaux (1 grand + satellites) + éclats scintillants.
+    """Anneau glacé (Cartoon HD) : anneau GIVRÉ continu + prismes hexagonaux
+    dressés dessus (vraies gemmes à double pointe) + éclats scintillants."""
     import random
     rnd = random.Random(424213)
-    ice_hex = "#9fd8f7"
-    mi = toon_material("o_ice", ice_hex, shade_hex="#5a9cd0", light_hex="#e8f8ff",
-                       glow=0.22, extra_hot="#ffffff")
-    mw = toon_material("o_ice2", "#dff2ff", shade_hex="#9cc6e4", glow=0.18,
-                       extra_hot="#ffffff")
+    frost = toon_material("o_frost", "#e4f6ff", rim=0.30, glow=0.10)
+    t = tube(tmp, "frostring", R_MID, 0.030, frost)
+    split_by_y(t, back, front)
+    mi = toon_material("o_ice", "#9fd8f7", glow=0.18, extra_hot="#ffffff")
+    mw = toon_material("o_ice2", "#e6f7ff", glow=0.12, extra_hot="#ffffff")
     n = 0
-    for i in range(16):  # amas répartis uniformément, cristaux plutôt DRESSÉS
-        ang = i * (360 / 16) + rnd.uniform(-5, 5)
-        rad = R_MID + rnd.uniform(-0.08, 0.08)
+    for i in range(14):
+        ang = i * (360 / 14) + rnd.uniform(-5, 5)
         for j in range(2 if i % 2 else 3):
-            ln = (0.16 if j == 0 else 0.09) * (0.85 + rnd.random() * 0.4)
-            w = ln * 0.34
+            ln = (0.15 if j == 0 else 0.095) * (0.9 + rnd.random() * 0.3)
+            w = ln * 0.30
             sh = bpy.data.objects.new(f"shard{n}", _crystal_mesh(f"shard{n}", ln, w))
-            bpy.context.scene.collection.objects.link(sh)
+            SC.objects.link(sh)
             sh.data.materials.append(mi if (n % 3) else mw)
-            sh.location = ring_pos(ang + j * 3.2 - 3, rad + (j - 1) * 0.05,
-                                   rnd.uniform(-0.02, 0.06))
-            sh.rotation_euler = (TILT + rnd.uniform(-0.22, 0.22),
-                                 rnd.uniform(-0.28, 0.28), rnd.uniform(0, 3.1))
-            common.add_outline(sh, ice_hex, 0.014 if j == 0 else 0.010)
+            # posé SUR l'anneau (pointe basse dans le tube), dressé selon la
+            # normale du plan de l'anneau, léger jitter
+            sh.location = ring_pos(ang + (j - 1) * 4.5, R_MID + (j - 1) * 0.045, ln * 0.82)
+            sh.rotation_euler = (TILT + rnd.uniform(-0.14, 0.14),
+                                 rnd.uniform(-0.14, 0.14), rnd.uniform(0, 3.1))
             assign(sh, back, front)
             n += 1
-    for i in range(14):  # éclats blancs entre les amas
-        ang = i * (360 / 14) + rnd.uniform(-9, 9) + 11
-        sp = sphere(bpy.context.scene.collection, f"spk{i}", 0.020 + rnd.random() * 0.012,
-                    ring_pos(ang, R_MID + rnd.uniform(-0.13, 0.13), rnd.uniform(-0.05, 0.06)),
+    for i in range(12):  # éclats blancs entre les amas
+        ang = i * (360 / 12) + rnd.uniform(-8, 8) + 13
+        sp = sphere(SC, f"spk{i}", 0.014 + rnd.random() * 0.010,
+                    ring_pos(ang, R_MID + rnd.uniform(-0.10, 0.10), 0.05 + rnd.random() * 0.06),
                     flat_material("o_icespark", "#ffffff"), seg=8, rings=6)
         assign(sp, back, front)
 
@@ -291,32 +302,24 @@ def o_double(tmp, back, front):
 
 
 def o_fireflies(tmp, back, front):
-    # Essaim RÉPARTI sur tout l'anneau (pas d'amas) : lecture continue en live.
+    """Lucioles (Cartoon HD) : CŒURS nets émissifs (bloom en live) + halo doux,
+    réparties sur tout l'anneau ; plus de traînées (elles lisaient en blobs)."""
     import random
     rnd = random.Random(778899)
-    glow = flat_material("o_fly", "#d8ff5a")
-    glow2 = flat_material("o_fly2", "#f0ffb0")
-    halo = flat_material("o_flyhalo", "#d8ff5a", alpha=0.25)
-    trail = flat_material("o_flytrail", "#d8ff5a", alpha=0.45)
-    for i in range(36):
-        ang = i * (360 / 36) + rnd.uniform(-4.5, 4.5)
-        rad = R_MID + rnd.uniform(-0.13, 0.13)
-        z = rnd.uniform(-0.09, 0.09)
-        r = 0.034 + rnd.random() * 0.026
+    core = flat_material("o_flycore", "#f4ff9a", glow=2.2)
+    core2 = flat_material("o_flycore2", "#d8ff5a", glow=2.2)
+    halo = flat_material("o_flyhalo", "#d8ff5a", alpha=0.20)
+    for i in range(30):
+        ang = i * 12 + rnd.uniform(-4, 4)
+        rad = R_MID + rnd.uniform(-0.12, 0.12)
+        z = rnd.uniform(-0.08, 0.08)
+        big = i % 5 == 0
+        r = (0.034 if big else 0.021) + rnd.random() * 0.010
         p = ring_pos(ang, rad, z)
-        b = sphere(bpy.context.scene.collection, f"fly{i}", r, p,
-                   glow if i % 3 else glow2, seg=10, rings=8)
+        b = sphere(SC, f"fly{i}", r, p, core if i % 3 else core2, seg=12, rings=8)
         assign(b, back, front)
-        h = sphere(bpy.context.scene.collection, f"halo{i}", r * 2.6, p, halo,
-                   seg=10, rings=8)
+        h = sphere(SC, f"halo{i}", r * 2.3, p, halo, seg=10, rings=8)
         assign(h, back, front)
-        if i % 2:
-            tr = ngon_prism(bpy.context.scene.collection, f"tr{i}",
-                            [(0, 0.028), (0, -0.028), (-0.24, 0)], 0.025,
-                            (0, 0, 0), (0, 0, 0), trail)
-            tr.location = p
-            tr.rotation_euler = Euler((TILT, 0, math.radians(-ang)))
-            assign(tr, back, front)
 
 
 def o_saturn(tmp, back, front):
@@ -388,23 +391,63 @@ def o_fire(tmp, back, front):
         assign(em, back, front)
 
 
+def _leaf_pts(L, W):
+    """Contour (x, z) d'une feuille de laurier pointue, base à l'origine."""
+    return [(0.0, 0.0), (W * 0.55, L * 0.22), (W, L * 0.5), (W * 0.62, L * 0.8),
+            (0.0, L), (-W * 0.62, L * 0.8), (-W, L * 0.5), (-W * 0.55, L * 0.22)]
+
+
+def _leaf_at(coll, name, ang, side, spread, curl, lift, mat, L=0.15, W=0.052):
+    """Feuille couchée dans le plan de l'anneau, base sur le tube, longueur le
+    long du rameau (sens `side`), écartée de `spread`° autour de la normale et
+    relevée de `curl`° (vraie feuille 3D, pas un tiret)."""
+    a = math.radians(ang)
+    pos = Vector((R_MID * math.cos(a), -R_MID * math.sin(a), lift))
+    tang = Vector((-math.sin(a), -math.cos(a), 0.0)) * side
+    zax = (Matrix.Rotation(math.radians(spread), 3, "Z") @ tang).normalized()
+    nrm = Vector((0.0, 0.0, 1.0))
+    xax = nrm.cross(zax).normalized()
+    basis = Matrix((xax, nrm, zax)).transposed().to_4x4()
+    leaf = ngon_prism(coll, name, _leaf_pts(L, W), 0.016, mat=mat)
+    leaf.matrix_world = (TILT_M @ Matrix.Translation(pos) @ basis
+                         @ Matrix.Rotation(math.radians(curl), 4, "X"))
+    return leaf
+
+
 def o_st_laurel(tmp, back, front):
+    """Lauriers (Cartoon HD) : deux rameaux de VRAIES feuilles par paires, qui
+    partent du ruban rouge noué devant et remontent vers l'arrière."""
     gold, gold_d = "#e8c04a", "#c69a2e"
     mg = toon_material("o_lgold", gold, extra_hot="#fff2b0")
     mgd = toon_material("o_lgoldd", gold_d)
-    t = tube(tmp, "ring", R_MID, 0.030, mg)
-    for h in split_by_y(t, back, front):
-        common.add_outline(h, gold, 0.02)
-    for i in range(36):
-        ang = i * 10
-        side = 1 if i % 2 else -1
-        leaf = sphere(bpy.context.scene.collection, f"leaf{i}", 0.085,
-                      ring_pos(ang, R_MID + side * 0.055, side * 0.015),
-                      mg if i % 2 else mgd, seg=10, rings=8,
-                      scale=(1.0, 0.34, 0.42))
-        leaf.rotation_euler = Euler((TILT, math.radians(side * 24), math.radians(-ang)))
-        common.add_outline(leaf, gold, 0.014)
-        assign(leaf, back, front)
+    t = tube(tmp, "ring", R_MID, 0.024, mg)
+    split_by_y(t, back, front)
+    n = 0
+    for k in range(16):
+        for side in (1, -1):
+            ang = 90 + side * (10 + k * 10.6)
+            for lr in (1, -1):
+                leaf = _leaf_at(SC, f"leaf{n}", ang, side, lr * 34, -lr * 14,
+                                lr * 0.012, mg if lr > 0 else mgd,
+                                L=0.15 - 0.002 * k, W=0.052)
+                assign(leaf, back, front)
+                n += 1
+    # ruban rouge noué à l'avant : deux boucles + nœud + deux pans
+    red = toon_material("o_lribbon", "#d63b47")
+    for sgn in (1, -1):
+        loop = sphere(SC, f"ribbonloop{sgn}", 0.075, ring_pos(90, R_MID + sgn * 0.075, 0.02),
+                      red, seg=14, rings=10, scale=(1.0, 0.55, 0.62))
+        loop.rotation_euler = Euler((TILT, 0.0, 0.0))
+        assign(loop, back, front)
+        tail = ngon_prism(SC, f"ribbontail{sgn}",
+                          [(0.0, 0.0), (0.035, -0.02), (0.05 * sgn, -0.20), (0.0, -0.17),
+                           (-0.05 * sgn, -0.20), (-0.035, -0.02)],
+                          0.014, mat=red)
+        tail.location = ring_pos(90, R_MID + sgn * 0.02, -0.01)
+        tail.rotation_euler = Euler((TILT, 0.0, math.radians(sgn * 18)))
+        assign(tail, back, front)
+    knot = sphere(SC, "ribbonknot", 0.036, ring_pos(90, R_MID, 0.03), red, seg=12, rings=8)
+    assign(knot, back, front)
 
 
 def o_st_compass(tmp, back, front):

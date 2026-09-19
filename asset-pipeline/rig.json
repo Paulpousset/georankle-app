@@ -1,5 +1,5 @@
 {
-  "$comment": "SOURCE DE VÉRITÉ partagée entre le rig Blender (render_layers.py) et les scènes three.js (buildAvatarHtml.ts). Toute retouche caméra/lumière doit passer par ici pour que les couches pré-rendues et la preview live restent superposables. DA: PRO CARTOON (matériaux toon à paliers, contours épais, couleurs saturées) — pas de photoréalisme.",
+  "$comment": "SOURCE DE VÉRITÉ partagée entre le rig Blender (rigbuild/common.py, render_layers.py) et les scènes three.js (buildAvatarHtml.ts, buildEarthHtml.ts). Toute retouche caméra/lumière/toon doit passer par ici pour que les couches pré-rendues et les scènes live restent superposables. DA : CARTOON HD (Paul, 19/09/2026, registre Fortnite/Pixar) — formes rondes SANS contour, ombrage 3 bandes douces avec vraies ombres portées, spéculaire net, contre-jour cyan, 5 area lights studio, nuages en volumes, bloom dans la scène live.",
   "camera": {
     "fovDeg": 20,
     "distance": 9.15,
@@ -7,13 +7,60 @@
   },
   "globe": {
     "radius": 1.0,
-    "defaultFace": { "lat": 15, "lng": 10 },
+    "defaultFace": {
+      "lat": 15,
+      "lng": 10
+    },
     "$comment": "Face Europe/Afrique vers la caméra, comme le WorldAvatar SVG actuel."
   },
   "lights": {
-    "key":  { "azimuthDeg": -35, "elevationDeg": 30, "intensity": 3.0, "color": "#fff4e0" },
-    "fill": { "azimuthDeg": 60,  "elevationDeg": -10, "intensity": 0.6, "color": "#bcd4ff" },
-    "rim":  { "azimuthDeg": 160, "elevationDeg": 25, "intensity": 1.8, "color": "#9fc0ff" }
+    "$comment": "5 area lights studio visant l'origine à `distance` unités (globe r=1). azimuth/elevation dans le repère caméra (three.js : +Z vers la caméra, +Y haut ; Blender rig : x, -z, y). `power` = watts Blender (area light de `size`), `intensity` = valeur three.js (P/(π²d²), irradiance/π d'un émetteur lambertien).",
+    "distance": 7.0,
+    "key": {
+      "azimuthDeg": -35,
+      "elevationDeg": 32,
+      "power": 1400,
+      "intensity": 2.9,
+      "color": "#fff1d6",
+      "size": 5.0,
+      "shadow": true
+    },
+    "fill": {
+      "azimuthDeg": 60,
+      "elevationDeg": -8,
+      "power": 260,
+      "intensity": 0.54,
+      "color": "#9ec7ff",
+      "size": 7.0,
+      "shadow": false
+    },
+    "rimR": {
+      "azimuthDeg": 150,
+      "elevationDeg": 25,
+      "power": 1500,
+      "intensity": 3.1,
+      "color": "#66f0ff",
+      "size": 3.0,
+      "shadow": false
+    },
+    "rimL": {
+      "azimuthDeg": -150,
+      "elevationDeg": 15,
+      "power": 900,
+      "intensity": 1.86,
+      "color": "#c66bff",
+      "size": 3.0,
+      "shadow": false
+    },
+    "top": {
+      "azimuthDeg": 0,
+      "elevationDeg": 82,
+      "power": 420,
+      "intensity": 0.87,
+      "color": "#ffffff",
+      "size": 5.0,
+      "shadow": false
+    }
   },
   "rings": {
     "tiltDeg": 22,
@@ -33,12 +80,115 @@
     "$comment": "Monument planté à un ancrage canonique face caméra (haut du globe, silhouette dégagée), occlusion par sphère holdout ; sortie = monument + ombre de contact uniquement. La passe sprite (rendu solo serré, monument droit) sert à la preview live three.js."
   },
   "render": {
+    "engine": "BLENDER_EEVEE",
     "layerSize": 512,
     "satelliteSize": 256,
     "spriteSize": 320,
     "cosmosSize": 512,
-    "samples": 48,
-    "$comment": "Matériaux émission pure -> 48 samples suffisent (anti-aliasing seulement), view transform Standard imposé par render_layers.py.",
+    "samples": 64,
+    "$comment": "EEVEE Next obligatoire (Shader-to-RGB) ; taa_render_samples 64, ombres + raytracing + fast GI ; vue Standard (AgX désature le cartoon) imposée par common.setup_render.",
     "filmTransparent": true
+  },
+  "toon": {
+    "$comment": "Matériau ToonHD (Blender : Diffuse→Shader-to-RGB→ColorRamp EASE ; three.js : même rampe sur la luminance diffuse sommée des 5 lumières). ramp = [position, RGB linéaire]. spec = seuil EASE sur le Glossy (roughness) × force. rim = Layer Weight facing^power × couleur × force.",
+    "diffuseAlbedo": 0.8,
+    "ramp": [
+      [
+        0.06,
+        [
+          0.0423,
+          0.0497,
+          0.2582
+        ]
+      ],
+      [
+        0.26,
+        [
+          0.62,
+          0.62,
+          0.68
+        ]
+      ],
+      [
+        0.42,
+        [
+          1.0,
+          1.0,
+          1.0
+        ]
+      ],
+      [
+        0.9,
+        [
+          1.12,
+          1.12,
+          1.08
+        ]
+      ]
+    ],
+    "shadowTint": "#3a3f8a",
+    "spec": {
+      "threshold": [
+        0.35,
+        0.6
+      ],
+      "strength": 0.45,
+      "roughness": 0.35
+    },
+    "rim": {
+      "color": "#7fe8ff",
+      "power": 3.5,
+      "strength": 0.55,
+      "blend": 0.45
+    },
+    "world": {
+      "top": "#1a0f4a",
+      "bottom": "#0c2a66",
+      "$comment": "fond monde du POC : contribue à l'ambiance (éclairage monde EEVEE) même en film transparent"
+    },
+    "clouds": {
+      "styles": [
+        "classic",
+        "pastel",
+        "gaia",
+        "satellite",
+        "political",
+        "vintage"
+      ],
+      "seed": 11,
+      "count": 9,
+      "radius": [
+        1.06,
+        1.09
+      ],
+      "size": [
+        0.05,
+        0.11
+      ],
+      "squash": 0.7
+    },
+    "atmosphere": {
+      "radius": 1.035,
+      "color": "#7fe8ff",
+      "power": 6.0,
+      "strength": 3.0
+    },
+    "darkStyles": [
+      "night",
+      "eclipse",
+      "lava",
+      "cyber",
+      "hologram",
+      "biolum",
+      "st_fractured",
+      "st_galaxy"
+    ],
+    "darkEmissive": 0.9,
+    "bloom": {
+      "threshold": 1.0,
+      "strength": 0.3,
+      "radius": 0.6,
+      "$comment": "scène live uniquement (jamais cuit dans les couches : déborderait sur l'alpha)"
+    }
   }
 }

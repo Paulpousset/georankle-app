@@ -78,118 +78,206 @@ def key_light_dir():
 
 
 # --------------------------------------------------------------- matériaux ---
+# Charte « Cartoon HD » (Paul, 19/09/2026 — registre Fortnite / Pixar) :
+# Diffuse → Shader-to-RGB → ColorRamp EASE à 3 bandes douces (garde les VRAIES
+# ombres portées des 5 area lights de rig.json), point spéculaire net (Glossy
+# seuillé), contre-jour cyan (Layer Weight), sommés en émission. EEVEE
+# obligatoire (Shader-to-RGB n'existe pas en Cycles). Plus AUCUN contour : le
+# volume et la lumière font le travail. Les extras ggKind/ggHex/ggEmis/ggAlpha
+# passent par export_glb → material.userData côté three.js.
 _MAT_CACHE = {}
+TOON = RIG["toon"]
 
 
-def toon_material(name, base_hex, *, bands=(0.42, 0.72), glow=0.0, rim=0.16,
+def toon_hd(name, color=None, color_socket=None, *, rough=None, rim=None, rim_k=None,
+            spec_k=None, emissive=0.0, shadow_tint=None, cache=True):
+    """Matériau ToonHD. color = hex, ou color_socket = fn(node_tree) -> socket.
+
+    emissive > 0 : ajoute couleur × emissive (styles sombres auto-éclairés,
+    flammes, néons) — > 1 déclenche le bloom de la scène live."""
+    key = (name,)
+    if cache and key in _MAT_CACHE:
+        return _MAT_CACHE[key]
+    rough = TOON["spec"]["roughness"] if rough is None else rough
+    rim = TOON["rim"]["color"] if rim is None else rim
+    rim_k = TOON["rim"]["strength"] if rim_k is None else rim_k
+    spec_k = TOON["spec"]["strength"] if spec_k is None else spec_k
+    shadow_tint = TOON["shadowTint"] if shadow_tint is None else shadow_tint
+
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nt = mat.node_tree
+    nt.nodes.clear()
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+
+    if color_socket is None:
+        rgb = nt.nodes.new("ShaderNodeRGB")
+        rgb.outputs[0].default_value = hexc(color or "#ffffff")
+        col_out = rgb.outputs[0]
+    else:
+        col_out = color_socket(nt)
+
+    # bandes douces sur la luminance diffuse (ombres portées comprises)
+    dif = nt.nodes.new("ShaderNodeBsdfDiffuse")
+    a = TOON["diffuseAlbedo"]
+    dif.inputs["Color"].default_value = (a, a, a, 1.0)
+    s2r = nt.nodes.new("ShaderNodeShaderToRGB")
+    nt.links.new(dif.outputs["BSDF"], s2r.inputs["Shader"])
+    ramp = nt.nodes.new("ShaderNodeValToRGB")
+    ramp.color_ramp.interpolation = "EASE"
+    els = ramp.color_ramp.elements
+    stops = TOON["ramp"]
+    els[0].position = stops[0][0]
+    els[0].color = hexc(shadow_tint)
+    els[1].position = stops[1][0]
+    els[1].color = tuple(stops[1][1]) + (1.0,)
+    for pos, rgbv in stops[2:]:
+        e = els.new(pos)
+        e.color = tuple(rgbv) + (1.0,)
+    nt.links.new(s2r.outputs["Color"], ramp.inputs["Fac"])
+    shade = nt.nodes.new("ShaderNodeMixRGB")
+    shade.blend_type = "MULTIPLY"
+    shade.inputs["Fac"].default_value = 1.0
+    nt.links.new(col_out, shade.inputs[1])
+    nt.links.new(ramp.outputs["Color"], shade.inputs[2])
+
+    # point spéculaire net
+    glo = nt.nodes.new("ShaderNodeBsdfGlossy")
+    glo.inputs["Roughness"].default_value = rough
+    s2r2 = nt.nodes.new("ShaderNodeShaderToRGB")
+    nt.links.new(glo.outputs["BSDF"], s2r2.inputs["Shader"])
+    sr = nt.nodes.new("ShaderNodeValToRGB")
+    sr.color_ramp.interpolation = "EASE"
+    t0, t1 = TOON["spec"]["threshold"]
+    sr.color_ramp.elements[0].position = t0
+    sr.color_ramp.elements[0].color = (0, 0, 0, 1)
+    sr.color_ramp.elements[1].position = t1
+    sr.color_ramp.elements[1].color = (spec_k, spec_k, spec_k, 1)
+    nt.links.new(s2r2.outputs["Color"], sr.inputs["Fac"])
+
+    # contre-jour
+    lw = nt.nodes.new("ShaderNodeLayerWeight")
+    lw.inputs["Blend"].default_value = TOON["rim"]["blend"]
+    pw = nt.nodes.new("ShaderNodeMath")
+    pw.operation = "POWER"
+    pw.inputs[1].default_value = TOON["rim"]["power"]
+    nt.links.new(lw.outputs["Facing"], pw.inputs[0])
+    rimk = nt.nodes.new("ShaderNodeMath")
+    rimk.operation = "MULTIPLY"
+    rimk.inputs[1].default_value = rim_k
+    nt.links.new(pw.outputs["Value"], rimk.inputs[0])
+    rimc = nt.nodes.new("ShaderNodeMixRGB")
+    rimc.blend_type = "MULTIPLY"
+    rimc.inputs["Fac"].default_value = 1.0
+    rimc.inputs[2].default_value = hexc(rim)
+    nt.links.new(rimk.outputs["Value"], rimc.inputs[1])
+
+    add1 = nt.nodes.new("ShaderNodeMixRGB")
+    add1.blend_type = "ADD"
+    add1.inputs["Fac"].default_value = 1.0
+    nt.links.new(shade.outputs["Color"], add1.inputs[1])
+    nt.links.new(sr.outputs["Color"], add1.inputs[2])
+    add2 = nt.nodes.new("ShaderNodeMixRGB")
+    add2.blend_type = "ADD"
+    add2.inputs["Fac"].default_value = 1.0
+    nt.links.new(add1.outputs["Color"], add2.inputs[1])
+    nt.links.new(rimc.outputs["Color"], add2.inputs[2])
+    final = add2.outputs["Color"]
+    if emissive > 0:
+        emk = nt.nodes.new("ShaderNodeMixRGB")
+        emk.blend_type = "MULTIPLY"
+        emk.inputs["Fac"].default_value = 1.0
+        emk.inputs[2].default_value = (emissive, emissive, emissive, 1)
+        nt.links.new(col_out, emk.inputs[1])
+        em = nt.nodes.new("ShaderNodeMixRGB")
+        em.blend_type = "ADD"
+        em.inputs["Fac"].default_value = 1.0
+        nt.links.new(final, em.inputs[1])
+        nt.links.new(emk.outputs["Color"], em.inputs[2])
+        final = em.outputs["Color"]
+    emis = nt.nodes.new("ShaderNodeEmission")
+    emis.inputs["Strength"].default_value = 1.0
+    nt.links.new(final, emis.inputs["Color"])
+    nt.links.new(emis.outputs["Emission"], out.inputs["Surface"])
+    mat["ggKind"] = "toon"
+    mat["ggHex"] = color or "#ffffff"
+    mat["ggEmis"] = float(emissive)
+    if cache:
+        _MAT_CACHE[key] = mat
+    return mat
+
+
+def toon_material(name, base_hex, *, bands=None, glow=0.0, rim=0.16,
                   shade_hex=None, light_hex=None, extra_hot=None):
-    """Toon 3 bandes (ombre / base / lumière) + rim optionnel côté opposé.
+    """Matériau toon d'un builder (signature historique conservée).
 
-    bands: seuils du produit scalaire N·L remappé [0,1] (paliers CONSTANT).
-    glow: >0 pousse toutes les bandes vers la couleur claire (matériaux émissifs).
-    extra_hot: hex d'une 4e bande "spéculaire cartoon" au-dessus de 0.92.
+    bands/shade_hex/light_hex ne servent plus (la rampe est globale, rig.json) ;
+    glow → émissif ; rim → force du contre-jour ; extra_hot → spéculaire renforcé.
     """
     key = (name,)
     if key in _MAT_CACHE:
         return _MAT_CACHE[key]
-    mat = bpy.data.materials.new(name)
-    mat.use_nodes = True
-    nt = mat.node_tree
-    nt.nodes.clear()
-
-    out = nt.nodes.new("ShaderNodeOutputMaterial")
-    emit = nt.nodes.new("ShaderNodeEmission")
-    emit.inputs["Strength"].default_value = 1.0
-    nt.links.new(emit.outputs["Emission"], out.inputs["Surface"])
-
-    geo = nt.nodes.new("ShaderNodeNewGeometry")
-    dot = nt.nodes.new("ShaderNodeVectorMath")
-    dot.operation = "DOT_PRODUCT"
-    dot.inputs[1].default_value = key_light_dir()
-    nt.links.new(geo.outputs["Normal"], dot.inputs[0])
-    remap = nt.nodes.new("ShaderNodeMapRange")
-    remap.inputs["From Min"].default_value = -1.0
-    remap.inputs["From Max"].default_value = 1.0
-    nt.links.new(dot.outputs["Value"], remap.inputs["Value"])
-
-    ramp = nt.nodes.new("ShaderNodeValToRGB")
-    ramp.color_ramp.interpolation = "CONSTANT"
-    sh = shade_hex or shade_of(base_hex)
-    li = light_hex or light_of(base_hex)
-    if glow > 0:
-        sh = _mix_hex(sh, li, glow)
-        base_hex_eff = _mix_hex(base_hex, li, glow)
-    else:
-        base_hex_eff = base_hex
-    ramp.color_ramp.elements[0].position = 0.0
-    ramp.color_ramp.elements[0].color = hexc(sh)
-    ramp.color_ramp.elements[1].position = bands[0]
-    ramp.color_ramp.elements[1].color = hexc(base_hex_eff)
-    e2 = ramp.color_ramp.elements.new(bands[1])
-    e2.color = hexc(li)
-    if extra_hot:
-        e3 = ramp.color_ramp.elements.new(0.92)
-        e3.color = hexc(extra_hot)
-    nt.links.new(remap.outputs["Result"], ramp.inputs["Fac"])
-    # extras glTF pour la preview live (userData côté three.js)
+    mat = toon_hd(name, color=base_hex, rim_k=min(0.8, rim * 3.4),
+                  emissive=glow * 1.2, spec_k=0.6 if extra_hot else None,
+                  cache=False)
     mat["ggKind"] = "toon"
-    mat["ggHex"] = base_hex_eff
-
-    if rim > 0:
-        # Rim froid sur les bords (silhouette) : facing -> add léger bleu clair.
-        lw = nt.nodes.new("ShaderNodeLayerWeight")
-        lw.inputs["Blend"].default_value = 0.62
-        rimramp = nt.nodes.new("ShaderNodeValToRGB")
-        rimramp.color_ramp.interpolation = "CONSTANT"
-        rimramp.color_ramp.elements[0].position = 0.0
-        rimramp.color_ramp.elements[0].color = (0, 0, 0, 1)
-        er = rimramp.color_ramp.elements[1]
-        er.position = 0.78
-        rim_col = hexc("#bcd8ff")
-        er.color = (rim_col[0] * rim, rim_col[1] * rim, rim_col[2] * rim, 1)
-        nt.links.new(lw.outputs["Facing"], rimramp.inputs["Fac"])
-        add = nt.nodes.new("ShaderNodeVectorMath")
-        add.operation = "ADD"
-        nt.links.new(ramp.outputs["Color"], add.inputs[0])
-        nt.links.new(rimramp.outputs["Color"], add.inputs[1])
-        nt.links.new(add.outputs["Vector"], emit.inputs["Color"])
-    else:
-        nt.links.new(ramp.outputs["Color"], emit.inputs["Color"])
-
+    mat["ggHex"] = base_hex
     _MAT_CACHE[key] = mat
     return mat
 
 
-def flat_material(name, hex_col, alpha=1.0):
-    """Émission plate (effets : flammes, néons, étoiles...)."""
+# Un matériau « flat » dont le nom évoque une source lumineuse devient émissif
+# (> 1 → bloom en live) ; les autres (encres, yeux, mâts) sont de simples toons.
+GLOW_HINTS = ("fire", "flame", "neon", "fly", "glow", "light", "blink", "lava",
+              "hot", "fissure", "spark", "tail", "trail", "ember", "star", "halo",
+              "beam", "core", "comet", "gem", "ruby", "lamp")
+GLOW_EMISSIVE = 1.6
+
+
+def flat_material(name, hex_col, alpha=1.0, glow=None):
+    """Ex-« émission plate » : toon émissif (flammes, néons, étoiles) ou toon
+    simple (encres). alpha < 1 : émission transparente conservée (halos)."""
     key = (name,)
     if key in _MAT_CACHE:
         return _MAT_CACHE[key]
-    mat = bpy.data.materials.new(name)
-    mat.use_nodes = True
-    mat["ggKind"] = "flat"
-    mat["ggHex"] = hex_col
-    mat["ggAlpha"] = alpha
-    nt = mat.node_tree
-    nt.nodes.clear()
-    out = nt.nodes.new("ShaderNodeOutputMaterial")
-    emit = nt.nodes.new("ShaderNodeEmission")
-    emit.inputs["Color"].default_value = hexc(hex_col)
-    if alpha >= 1.0:
-        nt.links.new(emit.outputs["Emission"], out.inputs["Surface"])
-    else:
+    if alpha < 1.0:
+        mat = bpy.data.materials.new(name)
+        mat.use_nodes = True
+        mat["ggKind"] = "flat"
+        mat["ggHex"] = hex_col
+        mat["ggAlpha"] = alpha
+        mat["ggEmis"] = GLOW_EMISSIVE
+        nt = mat.node_tree
+        nt.nodes.clear()
+        out = nt.nodes.new("ShaderNodeOutputMaterial")
+        emit = nt.nodes.new("ShaderNodeEmission")
+        emit.inputs["Color"].default_value = hexc(hex_col)
         trans = nt.nodes.new("ShaderNodeBsdfTransparent")
         mix = nt.nodes.new("ShaderNodeMixShader")
         mix.inputs["Fac"].default_value = alpha
         nt.links.new(trans.outputs["BSDF"], mix.inputs[1])
         nt.links.new(emit.outputs["Emission"], mix.inputs[2])
         nt.links.new(mix.outputs["Shader"], out.inputs["Surface"])
+        try:
+            mat.surface_render_method = "BLENDED"
+        except AttributeError:
+            pass
+        _MAT_CACHE[key] = mat
+        return mat
+    if glow is None:
+        low = name.lower()
+        glow = GLOW_EMISSIVE if any(h in low for h in GLOW_HINTS) else 0.0
+    mat = toon_hd(name, color=hex_col, emissive=glow, rough=0.3, cache=False)
+    mat["ggKind"] = "flat" if glow > 0 else "toon"
+    mat["ggHex"] = hex_col
+    mat["ggEmis"] = float(glow)
     _MAT_CACHE[key] = mat
     return mat
 
 
 def outline_material(name, hex_col):
-    """Visible uniquement sur les faces arrière -> coque = contour (Cycles ok)."""
+    """Conservé pour compatibilité : la charte Cartoon HD n'a plus de contour
+    (add_outline ne crée plus de coque). Backfacing-only, comme avant."""
     key = (name,)
     if key in _MAT_CACHE:
         return _MAT_CACHE[key]
@@ -237,8 +325,141 @@ def vertex_alpha_material(name, hex_col, max_alpha=0.55):
     nt.links.new(trans.outputs["BSDF"], mix.inputs[1])
     nt.links.new(emit.outputs["Emission"], mix.inputs[2])
     nt.links.new(mix.outputs["Shader"], out.inputs["Surface"])
+    try:
+        mat.surface_render_method = "BLENDED"
+    except AttributeError:
+        pass
     _MAT_CACHE[key] = mat
     return mat
+
+
+def atmosphere_material(name="g_atmo", color=None, power=None, strength=None):
+    """Coquille d'atmosphère : émission cyan × facing^power, transparente ailleurs."""
+    key = (name,)
+    if key in _MAT_CACHE:
+        return _MAT_CACHE[key]
+    cfg = TOON["atmosphere"]
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nt = mat.node_tree
+    nt.nodes.clear()
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    lw = nt.nodes.new("ShaderNodeLayerWeight")
+    lw.inputs["Blend"].default_value = 0.4
+    pw = nt.nodes.new("ShaderNodeMath")
+    pw.operation = "POWER"
+    pw.inputs[1].default_value = cfg["power"] if power is None else power
+    nt.links.new(lw.outputs["Facing"], pw.inputs[0])
+    em = nt.nodes.new("ShaderNodeEmission")
+    em.inputs["Color"].default_value = hexc(color or cfg["color"])
+    em.inputs["Strength"].default_value = cfg["strength"] if strength is None else strength
+    tr = nt.nodes.new("ShaderNodeBsdfTransparent")
+    mix = nt.nodes.new("ShaderNodeMixShader")
+    nt.links.new(pw.outputs["Value"], mix.inputs["Fac"])
+    nt.links.new(tr.outputs["BSDF"], mix.inputs[1])
+    nt.links.new(em.outputs["Emission"], mix.inputs[2])
+    nt.links.new(mix.outputs["Shader"], out.inputs["Surface"])
+    try:
+        mat.surface_render_method = "BLENDED"
+    except AttributeError:
+        pass
+    mat["ggKind"] = "atmo"
+    _MAT_CACHE[key] = mat
+    return mat
+
+
+# ------------------------------------------------------------------ rendu ----
+def three_to_rig(v):
+    """Repère caméra three.js (x droite, y haut, z vers la caméra) → repère du
+    rig Blender (caméra en -Y, Z haut) : (x, y, z) -> (x, -z, y)."""
+    return Vector((v[0], -v[2], v[1]))
+
+
+def light_dir(cfg):
+    """Direction (depuis l'origine VERS la lampe) d'une entrée rig.lights."""
+    az, el = math.radians(cfg["azimuthDeg"]), math.radians(cfg["elevationDeg"])
+    return three_to_rig((math.sin(az) * math.cos(el), math.sin(el),
+                         math.cos(az) * math.cos(el))).normalized()
+
+
+def studio_lights(target=None, scale=1.0, prefix="StudioLight_"):
+    """Les 5 area lights de rig.json, visant `target` (origine par défaut).
+    Idempotent : les lampes existantes sont remplacées."""
+    scene = bpy.context.scene
+    for obj in list(bpy.data.objects):
+        if obj.name.startswith(prefix):
+            bpy.data.objects.remove(obj, do_unlink=True)
+    cfg = RIG["lights"]
+    dist = cfg.get("distance", 7.0)
+    t = Vector(target) if target is not None else Vector((0, 0, 0))
+    made = []
+    for name in ("key", "fill", "rimR", "rimL", "top"):
+        L = cfg[name]
+        d = light_dir(L)
+        data = bpy.data.lights.new(prefix + name, "AREA")
+        data.energy = L["power"] * scale
+        data.color = hexc(L["color"])[:3]
+        data.size = L["size"]
+        data.use_shadow = bool(L.get("shadow", True))
+        obj = bpy.data.objects.new(prefix + name, data)
+        scene.collection.objects.link(obj)
+        obj.location = t + d * dist
+        obj.rotation_euler = (-d).to_track_quat("-Z", "Y").to_euler()
+        made.append(obj)
+    return made
+
+
+def studio_world():
+    """Fond monde du POC (dégradé violet → marine) : invisible en film
+    transparent mais il participe à l'éclairage d'ambiance EEVEE."""
+    scene = bpy.context.scene
+    world = bpy.data.worlds.get("StudioWorld") or bpy.data.worlds.new("StudioWorld")
+    scene.world = world
+    world.use_nodes = True
+    wn = world.node_tree
+    wn.nodes.clear()
+    cfg = TOON["world"]
+    out = wn.nodes.new("ShaderNodeOutputWorld")
+    bg = wn.nodes.new("ShaderNodeBackground")
+    tc = wn.nodes.new("ShaderNodeTexCoord")
+    grad = wn.nodes.new("ShaderNodeTexGradient")
+    grad.gradient_type = "SPHERICAL"
+    ramp = wn.nodes.new("ShaderNodeValToRGB")
+    ramp.color_ramp.elements[0].color = hexc(cfg["top"])
+    ramp.color_ramp.elements[1].color = hexc(cfg["bottom"])
+    wn.links.new(tc.outputs["Generated"], grad.inputs["Vector"])
+    wn.links.new(grad.outputs["Fac"], ramp.inputs["Fac"])
+    wn.links.new(ramp.outputs["Color"], bg.inputs["Color"])
+    bg.inputs["Strength"].default_value = 1.0
+    wn.links.new(bg.outputs["Background"], out.inputs["Surface"])
+    return world
+
+
+def setup_render(size, samples=None, transparent=None):
+    """Moteur EEVEE Next + vue Standard + film transparent (rig.json render)."""
+    scene = bpy.context.scene
+    cfg = RIG["render"]
+    scene.render.engine = cfg.get("engine", "BLENDER_EEVEE")
+    ev = scene.eevee
+    for k, v in (("taa_render_samples", samples or cfg["samples"]),
+                 ("use_shadows", True), ("use_raytracing", True),
+                 ("use_fast_gi", True), ("shadow_ray_count", 2),
+                 ("shadow_step_count", 4)):
+        try:
+            setattr(ev, k, v)
+        except (AttributeError, TypeError):
+            pass
+    scene.render.film_transparent = cfg["filmTransparent"] if transparent is None else transparent
+    scene.render.resolution_x = size
+    scene.render.resolution_y = size
+    scene.render.resolution_percentage = 100
+    scene.render.image_settings.file_format = "PNG"
+    scene.render.image_settings.color_mode = "RGBA"
+    scene.view_settings.view_transform = "Standard"
+    scene.view_settings.look = "None"
+    scene.render.use_compositing = False
+    if scene.world is None or scene.world.name != "StudioWorld":
+        studio_world()
 
 
 # ------------------------------------------------------------------- scène ---
@@ -431,32 +652,15 @@ def text_obj(coll, name, txt, size, mat, loc=(0, 0, 0), rot=(0, 0, 0),
 
 
 # ---------------------------------------------------------------- contours ---
+# Cartoon HD : plus de coque de contour. Les helpers restent (les builders les
+# appellent partout) mais ne créent plus rien — les GLB exportés n'ont donc
+# plus de mesh `_ol`, et la scène live n'a plus rien à masquer.
 def add_outline(obj, base_hex, thickness=0.045):
-    """Coque inverted-hull : copie gonflée le long des normales, matériau
-    backfacing-only (transparent côté caméra, encre côté opposé -> silhouette).
-    Parentée à l'objet pour suivre toutes ses transformations."""
-    mat = outline_material(f"ol_{base_hex}", outline_of(base_hex))
-    mesh = obj.data.copy()
-    bm = bmesh.new()
-    bm.from_mesh(mesh)
-    bm.normal_update()
-    for v in bm.verts:
-        v.co += v.normal * thickness
-    bm.to_mesh(mesh)
-    bm.free()
-    mesh.materials.clear()
-    mesh.materials.append(mat)
-    hull = bpy.data.objects.new(obj.name + "_ol", mesh)
-    for coll in obj.users_collection:
-        coll.objects.link(hull)
-    hull.parent = obj
     return obj
 
 
 def outline_all(coll, base_hex, thickness=0.045, skip=()):
-    for obj in coll.objects:
-        if obj.type == "MESH" and obj.name not in skip and "NoOutline" not in obj.name:
-            add_outline(obj, base_hex, thickness)
+    return None
 
 
 # ------------------------------------------------------------- placements ----
@@ -534,15 +738,18 @@ def plant(coll, cid, scale, pre_rot_x_deg=0.0, lat=None, lng=None):
     return root
 
 
-def contact_shadow(coll, cid, ang_radius=0.17, lat=None, lng=None):
-    """Calotte sphérique d'ombre de contact, alpha en falloff radial doux."""
+def contact_shadow(coll, cid, ang_radius=0.17, lat=None, lng=None, radius=1.004,
+                   parent=None):
+    """Calotte sphérique d'ombre de contact, alpha en falloff radial doux.
+    radius : au-dessus du relief des continents (1.022) pour un prop de globe ;
+    parent : Empty du repère géo (GeoRoot) pour suivre la face par défaut."""
     cfg = RIG["emblem"]
     lat = cfg["anchorLat"] if lat is None else lat
     lng = cfg["anchorLng"] if lng is None else lng
     center, _ = anchor_on_globe(lat, lng)
     center = center.normalized()
     bm = bmesh.new()
-    bmesh.ops.create_uvsphere(bm, u_segments=96, v_segments=64, radius=1.004)
+    bmesh.ops.create_uvsphere(bm, u_segments=96, v_segments=64, radius=radius)
     doomed = [v for v in bm.verts
               if v.co.normalized().angle(center) > ang_radius]
     bmesh.ops.delete(bm, geom=doomed, context="VERTS")
@@ -557,4 +764,6 @@ def contact_shadow(coll, cid, ang_radius=0.17, lat=None, lng=None):
     obj = bpy.data.objects.new(f"ShadowCap_{cid}", mesh)
     coll.objects.link(obj)
     obj.data.materials.append(vertex_alpha_material("contact_shadow", "#101830"))
+    if parent is not None:
+        obj.parent = parent
     return obj

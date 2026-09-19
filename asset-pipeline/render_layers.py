@@ -14,8 +14,9 @@
 #  - satellite : <id>.png (256) cadré serré (caméra avancée automatiquement).
 #  - cosmos : générés par gen_cosmos_textures.mjs, pas de passage Blender.
 #  - 'HoldoutSphere' : masque d'occlusion du globe (emblèmes).
-#  - Matériaux toon émission pure (direction lumière cuite depuis rig.json) :
-#    le rendu ne dépend pas des lampes ; view transform Standard obligatoire.
+#  - Matériaux ToonHD (Shader-to-RGB, rigbuild/common.py) éclairés par les
+#    5 area lights studio de rig.json (ajoutées ici au chargement, jamais
+#    sauvées dans le .blend) : moteur EEVEE Next obligatoire, vue Standard.
 import argparse
 import json
 import math
@@ -26,6 +27,8 @@ import bpy
 from mathutils import Matrix, Vector
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(HERE, "rigbuild"))
+import common  # noqa: E402
 
 
 def load_json(name):
@@ -48,17 +51,7 @@ def apply_camera(rig):
 
 
 def setup_render(rig, size):
-    scene = bpy.context.scene
-    scene.render.engine = "CYCLES"
-    scene.cycles.samples = rig["render"]["samples"]
-    scene.cycles.transparent_max_bounces = 64
-    scene.render.film_transparent = rig["render"]["filmTransparent"]
-    scene.render.resolution_x = size
-    scene.render.resolution_y = size
-    scene.render.image_settings.file_format = "PNG"
-    scene.render.image_settings.color_mode = "RGBA"
-    scene.view_settings.view_transform = "Standard"
-    scene.view_settings.look = "None"
+    common.setup_render(size)
 
 
 def find_layer_collection(layer_coll, name):
@@ -151,6 +144,8 @@ def main():
 
     cam = apply_camera(rig)
     cam_home = cam.location.copy()
+    common.studio_lights()
+    common.studio_world()
     hide_all_item_collections(catalog)
 
     missing = []
