@@ -41,6 +41,12 @@ export const LEAGUE_POOL_V2_FROM = '2026-09-15';
  */
 export const LEAGUE_POOL_V3_FROM = '2026-10-15';
 
+/**
+ * poolV4 ('pinpoint', the point on the borderless globe). A month after v3 so
+ * clients that skipped a release still agree with the server until then.
+ */
+export const LEAGUE_POOL_V4_FROM = '2026-11-15';
+
 /** FROZEN FOREVER — never reorder, never append. */
 const LEAGUE_MODE_POOL_V1: GameMode[] = [
   'globe',
@@ -61,23 +67,28 @@ const LEAGUE_MODE_POOL_V2: GameMode[] = [...LEAGUE_MODE_POOL_V1, 'languages'];
 /** V3 = V2 + the country quizzes. Strict prefix again. */
 const LEAGUE_MODE_POOL_V3: GameMode[] = [...LEAGUE_MODE_POOL_V2, 'challenge'];
 
+/** V4 = V3 + the point on the globe. Strict prefix again. */
+const LEAGUE_MODE_POOL_V4: GameMode[] = [...LEAGUE_MODE_POOL_V3, 'pinpoint'];
+
 /**
  * The pool in force on a date. Lexicographic comparison on `YYYY-MM-DD` is
  * chronological — no Date parsing, no timezone, and trivially reproducible in
  * SQL, which is what keeps the two implementations honest.
  */
 export function leaguePoolFor(date: string): GameMode[] {
+  if (date >= LEAGUE_POOL_V4_FROM) return LEAGUE_MODE_POOL_V4;
   if (date >= LEAGUE_POOL_V3_FROM) return LEAGUE_MODE_POOL_V3;
   return date >= LEAGUE_POOL_V2_FROM ? LEAGUE_MODE_POOL_V2 : LEAGUE_MODE_POOL_V1;
 }
 
 /** The pool in force today — what the screens list. */
-export const LEAGUE_MODE_POOL = LEAGUE_MODE_POOL_V3;
+export const LEAGUE_MODE_POOL = LEAGUE_MODE_POOL_V4;
 
 /** Test/parity hooks. */
 export const __LEAGUE_POOL_V1 = LEAGUE_MODE_POOL_V1;
 export const __LEAGUE_POOL_V2 = LEAGUE_MODE_POOL_V2;
 export const __LEAGUE_POOL_V3 = LEAGUE_MODE_POOL_V3;
+export const __LEAGUE_POOL_V4 = LEAGUE_MODE_POOL_V4;
 
 /** How many modes are drawn each day. */
 export const LEAGUE_MODES_PER_DAY = 3;

@@ -31,6 +31,7 @@ const BOOTABLE: ReadonlySet<string> = new Set<GameMode>([
   'quiz-flag',
   'higherlower',
   'silhouette',
+  'pinpoint',
   'borders',
 ]);
 

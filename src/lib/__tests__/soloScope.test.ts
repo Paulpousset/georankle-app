@@ -28,9 +28,9 @@ import {
 import type { GameMode } from '../../types';
 
 describe('SCOPED_MODES', () => {
-  it('covers the eight country modes and nothing else', () => {
+  it('covers the nine country modes and nothing else', () => {
     expect([...SCOPED_MODES].sort()).toEqual(
-      ['classic', 'globe', 'guess', 'higherlower', 'quiz-capital', 'quiz-flag', 'silhouette', 'streak'].sort(),
+      ['classic', 'globe', 'guess', 'higherlower', 'pinpoint', 'quiz-capital', 'quiz-flag', 'silhouette', 'streak'].sort(),
     );
   });
 
@@ -61,6 +61,14 @@ describe('scopeSupported', () => {
       for (const c of CONTINENTS) {
         expect(scopeSupported(mode, c.id)).toBe(true);
       }
+    }
+  });
+
+  it('refuses Oceania for pinpoint — only 5 countries have a polygon to land in', () => {
+    expect(poolSizeFor('pinpoint', 'Oceania')).toBeLessThan(MIN_POOL.pinpoint);
+    expect(scopeSupported('pinpoint', 'Oceania')).toBe(false);
+    for (const c of ['Africa', 'Americas', 'Asia', 'Europe'] as const) {
+      expect(scopeSupported('pinpoint', c)).toBe(true);
     }
   });
 
@@ -98,7 +106,7 @@ describe('unsupportedModes', () => {
   it('is empty worldwide and lists exactly the two Oceania gaps', () => {
     expect(unsupportedModes(null)).toEqual([]);
     expect(unsupportedModes('Europe')).toEqual([]);
-    expect(unsupportedModes('Oceania').sort()).toEqual(['classic', 'silhouette']);
+    expect(unsupportedModes('Oceania').sort()).toEqual(['classic', 'pinpoint', 'silhouette']);
   });
 });
 

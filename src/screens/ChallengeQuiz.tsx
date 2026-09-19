@@ -24,6 +24,7 @@ import { tr } from '../i18n';
 import { track } from '../lib/analytics';
 import { a11yButton, a11yImage, announce, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
+import { ResultGrid } from '../components/ResultGrid';
 import { RunRecap, type RecapEntry } from '../components/RunRecap';
 import { SoloCoinReward } from '../components/SoloCoinReward';
 import { SoloEndActions } from '../components/SoloEndActions';
@@ -281,7 +282,7 @@ export default function ChallengeQuiz({
           <Text style={[styles.resultTitle, { color: c.text }]}>
             {tr(language, 'Partie terminée', 'Game over')}
           </Text>
-          {isDaily ? <Text style={{ fontSize: 24, textAlign: 'center', marginTop: 12 }}>{grid}</Text> : null}
+          {isDaily ? <ResultGrid grid={grid} style={{ marginTop: 12 }} /> : null}
           <ScoreText style={[styles.bigScore, { color: '#2a6e3f' }]}>{score}</ScoreText>
           <Text style={[styles.resultSub, { color: c.textMuted }]}>{tr(language, 'points', 'points')}</Text>
           <Text style={[styles.resultSub, { color: c.textMuted, marginTop: 6 }]}>

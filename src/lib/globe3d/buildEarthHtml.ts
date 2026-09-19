@@ -74,6 +74,14 @@ interface CoreOptions {
    * texture nor the cartoon coat knows anything about them.
    */
   regionCoat?: boolean;
+  /**
+   * Pinpoint mode: draw the continents WITHOUT country borders. The coat keeps
+   * its coastal halo and land fill, drops the dark outline between countries
+   * and the crisp 3D border lines — the whole puzzle is that the borders are
+   * not readable off the map. The shop skins are never worn here for the same
+   * reason: their textures carry every border.
+   */
+  borderless?: boolean;
 }
 
 /** Lat/lng window an overlay is confined to (see CoreOptions.overlayBox). */
@@ -102,6 +110,7 @@ function core(opts: CoreOptions, gameJs: string): string {
     skin: opts.skin ?? null,
     obox: opts.overlayBox ?? null,
     regionCoat: !!opts.regionCoat,
+    borderless: !!opts.borderless,
   };
   return `<!DOCTYPE html>
 <html>
@@ -361,8 +370,17 @@ function paintOverlay(){
     if(D.drawBaseLand){
       strokeCoat(function(){POLYGONS.forEach(function(p){drawPoly(p.r,null,CART.halo,10*coatK);});});
       POLYGONS.forEach(function(p){drawPoly(p.r,CART.land,null);});
-      strokeCoat(function(){POLYGONS.forEach(function(p){drawPoly(p.r,null,CART.line,3*coatK);});});
-      if(CART.city)D.cities.forEach(function(c){
+      if(D.borderless){
+        // No dark outline between countries. Neighbouring fills still leave a
+        // hairline of antialiasing along their shared edge, which would read as
+        // a faint border: a thin stroke in the LAND colour covers the seam
+        // (and fattens the coastline by a pixel nobody can see).
+        POLYGONS.forEach(function(p){drawPoly(p.r,null,CART.land,1.4);});
+      } else {
+        strokeCoat(function(){POLYGONS.forEach(function(p){drawPoly(p.r,null,CART.line,3*coatK);});});
+      }
+      // Night city lights sit on the capitals: a giveaway on a borderless map.
+      if(CART.city&&!D.borderless)D.cities.forEach(function(c){
         var x=(c[0]+180)/360*OW,y=(90-c[1])/180*OH;
         overlayCtx.save();overlayCtx.shadowColor=CART.city;overlayCtx.shadowBlur=14;
         overlayCtx.fillStyle=CART.city;
@@ -696,6 +714,7 @@ function buildCrispLines(){
   // cartoon coat's own outline thins away as the zoom rises (see coatK), and
   // these lines are what replaces it.
   if(!D.regionCoat&&(!D.drawBaseLand||!D.interactive))return;
+  if(D.borderless)return;               // pinpoint: borders are the secret
   var pos=[];
   for(var i=0;i<POLYGONS.length;i++)ringSegments(POLYGONS[i].r,LINER,pos);
   if(!pos.length)return;
@@ -1577,5 +1596,116 @@ export function buildMenuEarthHtml(opts: {
       skin: opts.skin,
     },
     'D.drawBaseLand=true;function gameInit(){}',
+  );
+}
+
+// ── PINPOINT mode (PinpointGame) ─────────────────────────────────────────────
+
+/**
+ * Borderless globe with a single marker: the point the player must place in a
+ * country. Read-only for picking (the answer is given on the DUO/CARRÉ/CASH
+ * board, not by tapping), but freely rotatable and zoomable — the coastlines
+ * are the only clue, so the player has to look around.
+ *
+ * Contract:
+ *  - posts GLOBE_READY / GLOBE_ERROR;
+ *  - window.setPin(lat, lng, cca3): drops the marker, clears any reveal and
+ *    frames it at a zoom that shows the surrounding region (sized on the answer
+ *    country, so a point in Russia shows more of the world than one in Belgium);
+ *  - window.showResult(correct, picked): outlines the answer country (and the
+ *    wrong pick, if any) around the marker — the borders appear only now;
+ *  - window.__recenter(): back to the pin's own framing.
+ */
+export function buildPinpointEarthHtml(opts: {
+  threeSrc: string;
+  isDark: boolean;
+  pal: MapPalette;
+  polygons: WorldPolygon[];
+  maxDpr?: number;
+}): string {
+  const gameJs = `
+D.drawBaseLand=true;
+// Past ~12x the borderless coat is a wash of green; nothing left to learn.
+ZMAX=12;
+var pin=null,pinHalo=null,pinLL=null,pinZoom=1,pulseUntil=0;
+var resultOn=false;
+// Marker: vermilion disc in a white ring, drawn on a canvas so it stays round
+// (raw points render as squares) and legible on the green land.
+function pinTexture(ring,fill,core){
+  var cv=document.createElement('canvas');cv.width=96;cv.height=96;
+  var c2=cv.getContext('2d');
+  c2.beginPath();c2.arc(48,48,44,0,Math.PI*2);c2.fillStyle=ring;c2.fill();
+  c2.beginPath();c2.arc(48,48,34,0,Math.PI*2);c2.fillStyle=fill;c2.fill();
+  if(core){c2.beginPath();c2.arc(48,48,12,0,Math.PI*2);c2.fillStyle=core;c2.fill();}
+  var t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;return t;}
+function haloTexture(){
+  var cv=document.createElement('canvas');cv.width=96;cv.height=96;
+  var c2=cv.getContext('2d');
+  var g=c2.createRadialGradient(48,48,10,48,48,46);
+  g.addColorStop(0,'rgba(192,74,26,0.55)');g.addColorStop(1,'rgba(192,74,26,0)');
+  c2.fillStyle=g;c2.beginPath();c2.arc(48,48,46,0,Math.PI*2);c2.fill();
+  var t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;return t;}
+// Constant screen size whatever the zoom: the pin is a UI element, not terrain.
+var PIN_PX=0.075,HALO_PX=0.16;
+function gameInit(){
+  pinHalo=new THREE.Sprite(new THREE.SpriteMaterial({map:haloTexture(),transparent:true,
+    sizeAttenuation:false,depthWrite:false}));
+  pinHalo.scale.set(HALO_PX,HALO_PX,1);pinHalo.renderOrder=19;pinHalo.visible=false;globe.add(pinHalo);
+  pin=new THREE.Sprite(new THREE.SpriteMaterial({map:pinTexture('#ffffff','#c04a1a','#2c1810'),
+    transparent:true,sizeAttenuation:false,depthWrite:false}));
+  pin.scale.set(PIN_PX,PIN_PX,1);pin.renderOrder=20;pin.visible=false;globe.add(pin);
+  // A short pulse when the pin lands, so the eye finds it; then the loop
+  // goes quiet again (continuous rendering is a battery cost).
+  frameCbs.push(function(){
+    if(!pinHalo||!pinHalo.visible)return;
+    var now=Date.now();
+    if(now>pulseUntil){pinHalo.scale.set(HALO_PX,HALO_PX,1);return;}
+    var k=1+0.35*Math.sin(now/180);
+    pinHalo.scale.set(HALO_PX*k,HALO_PX*k,1);needsRender=true;});
+  rotLat=20;applyRotation();
+}
+// Opening view: WIDE. The round starts on a regional shot (a small country
+// sits on a map of its whole subcontinent, a big one on a hemisphere) — the
+// player zooms in by hand if they want a closer look. Paul, 2026-09-17: the
+// previous tight framing (up to 4x) opened the round too zoomed in.
+var PIN_FILL=0.12,PIN_ZMIN=1.3,PIN_ZMAX=2.4;
+function framePin(){
+  if(!pinLL)return;
+  var lim=85;
+  rotLon=pinLL.lng;rotLat=Math.max(-lim,Math.min(lim,pinLL.lat));
+  applyRotation();setZoom(pinZoom);}
+window.setPin=function(lat,lng,cca3){
+  pinLL={lat:lat,lng:lng};
+  var v=llToVec(lat,lng,1.012);
+  pin.position.copy(v);pinHalo.position.copy(v);
+  pin.visible=true;pinHalo.visible=true;
+  resultOn=false;setOverlayStates([]);
+  var span=cca3?shapeSpan(cca3,lat,lng):null;
+  pinZoom=span===null?3:Math.max(PIN_ZMIN,Math.min(PIN_ZMAX,fitZoom(Math.max(span,0.6)*1.15,PIN_FILL)));
+  framePin();
+  pulseUntil=Date.now()+3500;needsRender=true;};
+window.showResult=function(correct,picked){
+  resultOn=true;
+  var list=[];
+  if(correct)list.push({id:correct,fill:PAL.okF,stroke:PAL.okS,lw:3.4});
+  if(picked&&picked!==correct)list.push({id:picked,fill:PAL.badF,stroke:PAL.badS,lw:3.4});
+  setOverlayStates(list);
+  needsRender=true;};
+window.resetRound=function(){resultOn=false;setOverlayStates([]);needsRender=true;};
+window.__recenter=function(){framePin();needsRender=true;};`;
+  return core(
+    {
+      threeSrc: opts.threeSrc,
+      isDark: opts.isDark,
+      pal: opts.pal,
+      polygons: opts.polygons,
+      maxDpr: opts.maxDpr,
+      interactive: true,
+      resetAlways: true,
+      borderless: true,
+      initial: { rotLat: 20, fit: 0.9 },
+      skin: null,
+    },
+    gameJs,
   );
 }

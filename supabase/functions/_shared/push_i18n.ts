@@ -26,6 +26,7 @@ const PUSH_STRINGS = {
     "Country Quiz": "Country Quiz",
     "Higher or Lower": "Higher or Lower",
     "Silhouette": "Silhouette",
+    "Pin on the Globe": "Pin on the Globe",
     "Borders": "Borders",
     "Languages": "Languages"
   },
@@ -43,6 +44,7 @@ const PUSH_STRINGS = {
     "Country Quiz": "Quiz Pays",
     "Higher or Lower": "Plus ou Moins",
     "Silhouette": "Silhouette",
+    "Pin on the Globe": "Point sur le Globe",
     "Borders": "Frontières",
     "Languages": "Langues"
   },
@@ -60,6 +62,7 @@ const PUSH_STRINGS = {
     "Country Quiz": "Test de países",
     "Higher or Lower": "Más o menos",
     "Silhouette": "Silueta",
+    "Pin on the Globe": "Punto en el Globo",
     "Borders": "Fronteras",
     "Languages": "Idiomas"
   },
@@ -77,6 +80,7 @@ const PUSH_STRINGS = {
     "Country Quiz": "Quiz de países",
     "Higher or Lower": "Maior ou menor",
     "Silhouette": "Contorno",
+    "Pin on the Globe": "Ponto no Globo",
     "Borders": "Fronteiras",
     "Languages": "Idiomas"
   },
@@ -94,6 +98,7 @@ const PUSH_STRINGS = {
     "Country Quiz": "Länderquiz",
     "Higher or Lower": "Höher oder niedriger",
     "Silhouette": "Umriss",
+    "Pin on the Globe": "Punkt auf dem Globus",
     "Borders": "Grenzen",
     "Languages": "Sprachen"
   },
@@ -111,6 +116,7 @@ const PUSH_STRINGS = {
     "Country Quiz": "Quiz sui paesi",
     "Higher or Lower": "Più o meno",
     "Silhouette": "Profilo",
+    "Pin on the Globe": "Punto sul Globo",
     "Borders": "Confini",
     "Languages": "Lingue"
   },
@@ -128,6 +134,7 @@ const PUSH_STRINGS = {
     "Country Quiz": "Викторина по странам",
     "Higher or Lower": "Больше или меньше",
     "Silhouette": "Силуэт",
+    "Pin on the Globe": "Точка на глобусе",
     "Borders": "Границы",
     "Languages": "Языки"
   },
@@ -145,6 +152,7 @@ const PUSH_STRINGS = {
     "Country Quiz": "Ülke testi",
     "Higher or Lower": "Daha çok mu az mı",
     "Silhouette": "Silüet",
+    "Pin on the Globe": "Küredeki Nokta",
     "Borders": "Sınırlar",
     "Languages": "Diller"
   },
@@ -162,6 +170,7 @@ const PUSH_STRINGS = {
     "Country Quiz": "Quiz o krajach",
     "Higher or Lower": "Więcej czy mniej",
     "Silhouette": "Kształt",
+    "Pin on the Globe": "Punkt na globusie",
     "Borders": "Granice",
     "Languages": "Języki"
   },
@@ -179,6 +188,7 @@ const PUSH_STRINGS = {
     "Country Quiz": "Landenquiz",
     "Higher or Lower": "Hoger of lager",
     "Silhouette": "Silhouet",
+    "Pin on the Globe": "Punt op de globe",
     "Borders": "Grenzen",
     "Languages": "Talen"
   },
@@ -196,6 +206,7 @@ const PUSH_STRINGS = {
     "Country Quiz": "Kuis negara",
     "Higher or Lower": "Lebih besar atau lebih kecil",
     "Silhouette": "Siluet",
+    "Pin on the Globe": "Titik di Bola Dunia",
     "Borders": "Perbatasan",
     "Languages": "Bahasa"
   },
@@ -213,6 +224,7 @@ const PUSH_STRINGS = {
     "Country Quiz": "Trắc nghiệm quốc gia",
     "Higher or Lower": "Cao hơn hay thấp hơn",
     "Silhouette": "Hình bóng",
+    "Pin on the Globe": "Điểm trên quả cầu",
     "Borders": "Biên giới",
     "Languages": "Ngôn ngữ"
   },
@@ -230,6 +242,7 @@ const PUSH_STRINGS = {
     "Country Quiz": "แบบทดสอบประเทศ",
     "Higher or Lower": "มากกว่าหรือน้อยกว่า",
     "Silhouette": "เงารูปร่าง",
+    "Pin on the Globe": "จุดบนลูกโลก",
     "Borders": "พรมแดน",
     "Languages": "ภาษา"
   },
@@ -247,6 +260,7 @@ const PUSH_STRINGS = {
     "Country Quiz": "Вікторина про країни",
     "Higher or Lower": "Більше чи менше",
     "Silhouette": "Силует",
+    "Pin on the Globe": "Точка на глобусі",
     "Borders": "Кордони",
     "Languages": "Мови"
   },
@@ -264,6 +278,7 @@ const PUSH_STRINGS = {
     "Country Quiz": "Test despre țări",
     "Higher or Lower": "Mai mult sau mai puțin",
     "Silhouette": "Contur",
+    "Pin on the Globe": "Punct pe Glob",
     "Borders": "Granițe",
     "Languages": "Limbi"
   },
@@ -281,6 +296,7 @@ const PUSH_STRINGS = {
     "Country Quiz": "Κουίζ χωρών",
     "Higher or Lower": "Πάνω ή κάτω",
     "Silhouette": "Περίγραμμα",
+    "Pin on the Globe": "Σημείο στην Υδρόγειο",
     "Borders": "Σύνορα",
     "Languages": "Γλώσσες"
   }

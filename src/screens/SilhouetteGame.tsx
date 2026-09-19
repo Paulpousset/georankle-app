@@ -55,6 +55,7 @@ import { FONTS } from '../theme/typography';
 import { tr } from '../i18n';
 import { a11yButton, a11yImage, announce, a11yHidden, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
+import { ResultGrid } from '../components/ResultGrid';
 import { AtlasTrophy, AtlasCross } from '../components/AtlasIcons';
 import { SoloCoinReward } from '../components/SoloCoinReward';
 import { SoloEndActions } from '../components/SoloEndActions';
@@ -554,9 +555,7 @@ export default function SilhouetteGame({
               record={isDaily || isOnline ? undefined : { mode: 'silhouette', score, ctx: { scope, review: isReview, training } }}
             />
             <Reveal at={END_CHOREO.verdict}>
-            <Text style={{ fontSize: 24, textAlign: 'center' }} {...a11yHidden}>
-              {grid}
-            </Text>
+            <ResultGrid grid={grid} style={{ marginBottom: 10 }} />
             <ScoreText style={[styles.gameOverScore, { color: c.text }]}>{score}</ScoreText>
             <Text style={{ color: c.textMuted, fontFamily: FONTS.mono, fontSize: 14, marginBottom: 16, textAlign: 'center' }}>
               {tr(language, '{0} / {1} bonnes réponses', '{0} / {1} correct', [correctCount, run.length])}

@@ -30,6 +30,7 @@ import type { GameMode, Language } from '../types';
 const MODE_NAMES: Partial<Record<GameMode, { fr: string; en: string }>> = {
   classic: { fr: 'Rankle', en: 'Rankle' },
   silhouette: { fr: 'Silhouette', en: 'Silhouette' },
+  pinpoint: { fr: 'Point sur le Globe', en: 'Pin on the Globe' },
   globe: { fr: 'Globe Géo', en: 'Geo Globe' },
   guess: { fr: 'Devinez le Pays', en: 'Guess the Country' },
   streak: { fr: 'Streak', en: 'Streak' },

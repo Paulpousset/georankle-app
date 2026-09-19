@@ -1,20 +1,25 @@
 /**
- * « Langues » — guess which language a phrase is written in (or, in the audio
- * variant, spoken in), played on the SAME CARRÉ / DUO / CASH board as
- * Silhouette / ChallengeQuiz: DUO = 2 options / 1 pt, CARRÉ = 4 options / 3 pts,
- * CASH = type the language / 5 pts.
+ * « Point sur le Globe » — a marker on a BORDERLESS 3D globe; which country is
+ * it in? Played on the same CARRÉ / DUO / CASH board as Silhouette and the
+ * country↔capital quiz: pick a difficulty (DUO = 2 options / 1 pt, CARRÉ = 4
+ * options / 3 pts, CASH = type the name / 5 pts), answer, see the borders appear
+ * around the point. In DUO and CARRÉ the wrong options are the countries
+ * closest to the point (src/lib/pinpoint.ts), so the question is really "this
+ * one or its neighbour?".
  *
- * Questions come from src/lib/languages.ts and are fully seeded, so a daily
- * puzzle and both sides of an online match see the same phrases AND the same
- * option grids. Note the grids are read straight off the run rather than being
- * re-shuffled when the player taps a difficulty — two clients must agree even
- * if they pick DUO and CARRÉ in a different order.
+ * Points and questions are seeded so daily and online rounds are identical for
+ * everyone sharing the seed. Scoring is the unified points model (raw 0..N*5),
+ * normalized to 0..1000 for matches. Mirrors SilhouetteGame's solo / daily /
+ * match wiring.
  *
- * Mirrors SilhouetteGame's solo / daily / match wiring.
+ * The globe is always the WebGL one (no Canvas-2D fallback, no shop skin): the
+ * borderless coat only exists there, and a skin's texture would draw every
+ * border back.
  */
 import { showAlert } from '../lib/alert';
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   ScrollView,
   StyleSheet,
@@ -23,35 +28,46 @@ import {
   View,
   TouchableOpacity,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
 import {
-  Moon, Sun, Home, HelpCircle, Eye, CheckCircle, ChevronRight,
+  Moon, Sun, Home, HelpCircle, Eye, CheckCircle, ChevronRight, MapPin,
 } from 'lucide-react-native';
 import type { User } from '@supabase/supabase-js';
 
+import GlobeWebView from '../components/GlobeWebView';
+import type { WebViewMessageEvent } from '../components/GlobeWebView';
 import {
-  buildLanguageRun, buildLanguageSeries, matchesLanguageAnswer,
-  LANGUAGES_QUESTIONS_SOLO, type LanguageQuestion,
-} from '../lib/languages';
-import {
-  getLanguageDef, languageName,
-  type LanguageVariant, type LanguageTier,
-} from '../data/languages';
+  buildPinpointRun,
+  pinpointCountryName,
+  pinpointAcceptedAnswers,
+  type PinpointQuestion,
+} from '../lib/pinpoint';
+import { buildPinpointEarthHtml } from '../lib/globe3d/buildEarthHtml';
+import { getMapPalette } from '../theme/mapPalette';
+import rawWorldPolygons from '../../assets/world_polygons.json';
+import { isAnswerClose } from '../lib/answerMatch';
+import { createSeededRng, seededShuffle } from '../lib/rng';
 import { normalizeRoundScore } from '../lib/score';
 import { track } from '../lib/analytics';
-import { saveSoloScore } from '../lib/soloResult';
 import { awardSoloCoins } from '../lib/coins';
+import { earnsCoins, saveSoloScore } from '../lib/soloResult';
+import { OffLeaderboardNotice } from '../components/OffLeaderboardNotice';
+import { CountryFactCard } from '../components/CountryFactCard';
+import { RunRecap, type RecapEntry } from '../components/RunRecap';
+import { recordRun } from '../lib/reviewPool';
+import type { ContinentId } from '../data/continents';
 import { useToast } from '../components/ToastProvider';
 import type { GameMode, Match } from '../types';
-import { getColors } from '../theme/colors';
+import { getColors, PALETTE } from '../theme/colors';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { FONTS } from '../theme/typography';
 import { tr } from '../i18n';
-import { a11yButton, a11yImage, announce, ICON_HIT_SLOP } from '../lib/a11y';
+import { a11yButton, a11yImage, announce, a11yHidden, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
 import { ResultGrid } from '../components/ResultGrid';
 import { AtlasTrophy, AtlasCross } from '../components/AtlasIcons';
@@ -62,9 +78,6 @@ import { Reveal } from '../components/end/Reveal';
 import { END_CHOREO } from '../lib/motion';
 import { useMyGameGlobe } from '../lib/myGlobe';
 import { TopInsetBar } from '../components/TopInsetBar';
-import PhrasePlayer from '../components/PhrasePlayer';
-import { prefetchPhrases } from '../lib/languageAudio';
-
 import { isMobileLayout as isMobile } from '../lib/layout';
 
 type QuizMode = 'DUO' | 'CARRE' | 'CASH';
@@ -73,18 +86,22 @@ const MODE_POINTS: Record<QuizMode, number> = { DUO: 1, CARRE: 3, CASH: 5 };
 /** Ceiling per question, so match normalization matches the other quizzes. */
 const MAX_POINTS_PER_QUESTION = 5;
 
-/** Right-to-left scripts — the prompt card has to flip for them. */
-const RTL_SCRIPTS = new Set(['arabic', 'hebrew']);
+interface WorldPolygon {
+  id: string;
+  r: number[][][];
+}
+const WORLD_POLYGONS = rawWorldPolygons as unknown as WorldPolygon[];
 
-interface LanguagesGameProps {
+interface GlobeMessage {
+  type: 'GLOBE_READY' | 'GLOBE_ERROR';
+  msg?: string;
+}
+
+interface PinpointGameProps {
   setGameMode: (mode: GameMode) => void;
   user: User | null;
-  /** Which variant to play. Solo picks it in LanguagesFlow; elsewhere the seed does. */
-  variant?: LanguageVariant;
   matchData?: Match | null;
   onRoundComplete?: (score: number) => void;
-  /** Story mode: hide languages above this tier. */
-  maxTier?: LanguageTier;
   /** Daily challenge: deterministic seed for today's puzzle (overrides random). */
   dailySeed?: number;
   /** Daily challenge: fired once at game-over with the score + emoji grid. */
@@ -95,76 +112,147 @@ interface LanguagesGameProps {
   onShare?: () => void;
   /** Daily challenge: reports the live score so a mid-game quit can lock it in. */
   onDailyScoreChange?: (score: number) => void;
+  /**
+   * Entraînement: no mistake ends the run, every answer is explained, and
+   * nothing is recorded (no coins, no leaderboard).
+   */
+  training?: boolean;
+  /** Solo continent scope: narrows the answer countries. Null = worldwide. */
+  scope?: ContinentId | null;
+  /** Review run: countries to ask about first (see lib/reviewPool). */
+  reviewIds?: string[] | null;
 }
 
-export default function LanguagesGame({
+export default function PinpointGame({
   setGameMode,
   user,
-  variant = 'text',
   matchData,
   onRoundComplete,
-  maxTier,
   dailySeed,
   onDailyComplete,
   isDaily,
   onShare,
   onDailyScoreChange,
-}: LanguagesGameProps) {
+  scope = null,
+  reviewIds = null,
+  training = false,
+}: PinpointGameProps) {
   const { isDarkMode, setIsDarkMode } = useTheme();
   const { language, openLanguagePicker } = useLanguage();
   const toast = useToast();
   const c = getColors(isDarkMode);
+  const { height: winH } = useWindowDimensions();
 
+  // Session length: per-round config (custom matches) > match-level > 5.
   const currentRound = matchData?.current_round ?? 1;
   const numQuestions =
     (matchData?.game_data?.rounds?.[currentRound - 1]?.count as number | undefined) ??
     (matchData?.game_data?.roundsPerSet as number | undefined) ??
-    (matchData ? 5 : LANGUAGES_QUESTIONS_SOLO);
+    5;
 
   const isOnline = !!matchData && !!onRoundComplete;
 
-  const [runSeed, setRunSeed] = useState(
+  // The seed drives both the question sequence AND the per-mode option order, so
+  // two players sharing a match seed face the exact same board.
+  const [seed] = useState(
     () =>
       dailySeed ??
-      (matchData?.game_data?.seed as number | undefined) ??
-      Math.floor(Math.random() * 2147483647),
+      (matchData?.game_data?.seed
+        ? matchData.game_data.seed + (currentRound - 1)
+        : Math.floor(Math.random() * 2147483647)),
   );
-
-  /**
-   * Online rounds are sliced out of ONE series computed from the match seed, so
-   * no language repeats across the whole best-of — per-round seeding would
-   * collide constantly in a 31-language pool. Solo and daily just build a run.
-   */
-  const run = useMemo<LanguageQuestion[]>(() => {
-    const opts = { maxTier, hard: !!matchData?.is_ranked };
-    if (!matchData) return buildLanguageRun(runSeed, numQuestions, variant, opts);
-    const counts = Array(Math.max(matchData.best_of ?? 1, currentRound)).fill(numQuestions);
-    return buildLanguageSeries(runSeed, counts, variant, opts)[currentRound - 1] ?? [];
-  }, [runSeed, numQuestions, variant, maxTier, matchData, currentRound]);
+  const [run, setRun] = useState<PinpointQuestion[]>(() =>
+    buildPinpointRun(seed, numQuestions, { continent: scope, reviewIds }),
+  );
+  const [runSeed, setRunSeed] = useState(seed);
 
   const [questionIndex, setQuestionIndex] = useState(0);
   const [mode, setMode] = useState<QuizMode | null>(null);
+  const [options, setOptions] = useState<string[]>([]);
   const [cashInput, setCashInput] = useState('');
   const [feedback, setFeedback] = useState<Feedback | null>(null);
+  /** What the player picked in DUO/CARRÉ (null in CASH) — painted on the reveal. */
+  const [picked, setPicked] = useState<string | null>(null);
   const [score, setScore] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
   /** '🟩'/'🟥' per answered question — the daily share grid. */
   const [grid, setGrid] = useState('');
   /** Per-question outcome, in run order — drives the end-of-run recap. */
-  const [history, setHistory] = useState<{ correct: boolean; points: number }[]>([]);
+  const [history, setHistory] = useState<{ correct: boolean; points: number; yourAnswer?: string }[]>([]);
+  /** Country whose fact sheet is open from a training reveal. */
+  const [factsFor, setFactsFor] = useState<string | null>(null);
+  const isReview = !!reviewIds?.length;
   const [gameOver, setGameOver] = useState(false);
-  /**
-   * Phrase ids whose clip could not be played. Those questions fall back to the
-   * written phrase, keeping the round playable. The fallback is LOCAL only — the
-   * seed, the options and the score are untouched, so an online opponent whose
-   * audio works stays perfectly in sync.
-   */
-  const [audioFailed, setAudioFailed] = useState<Set<string>>(() => new Set());
   const [coinsEarned, setCoinsEarned] = useState<number | null>(null);
   const [coinsCapped, setCoinsCapped] = useState(false);
   const [coinsSyncFailed, setCoinsSyncFailed] = useState(false);
   const { config: myGlobe } = useMyGameGlobe();
   const awardedRef = useRef(false);
+
+  // ── Globe ──────────────────────────────────────────────────────────────────
+  // three.js is loaded once, lazily (it is a ~700 KB string); no flag, no skin:
+  // the borderless coat exists only in the WebGL builder.
+  const [threeSrc, setThreeSrc] = useState<string | null>(null);
+  const [globeError, setGlobeError] = useState<string | null>(null);
+  const [globeReady, setGlobeReady] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    import('../vendor/threeSource')
+      .then((m) => { if (alive) setThreeSrc(m.THREE_SRC); })
+      .catch(() => { if (alive) setGlobeError('three'); });
+    return () => { alive = false; };
+  }, []);
+  const webViewRef = useRef<any>(null);
+  const globeHtml = useMemo(() => {
+    if (!threeSrc) return null;
+    return buildPinpointEarthHtml({
+      threeSrc,
+      isDark: isDarkMode,
+      pal: getMapPalette(isDarkMode),
+      polygons: WORLD_POLYGONS,
+    });
+  }, [threeSrc, isDarkMode]);
+  // A new page (theme flip) has to announce itself again before it is driven
+  // (the "adjust state when a value changes" pattern, no effect needed).
+  const [lastHtml, setLastHtml] = useState(globeHtml);
+  if (lastHtml !== globeHtml) {
+    setLastHtml(globeHtml);
+    setGlobeReady(false);
+  }
+
+  // GlobeWebView keeps the latest handler in a ref, so no memoization needed.
+  const handleMessage = (event: WebViewMessageEvent) => {
+    let msg: GlobeMessage;
+    try {
+      msg = JSON.parse(event.nativeEvent.data);
+    } catch {
+      return;
+    }
+    if (msg.type === 'GLOBE_READY') setGlobeReady(true);
+    else if (msg.type === 'GLOBE_ERROR') setGlobeError(msg.msg ?? 'Globe failed to load');
+  };
+
+  const question = run[questionIndex] ?? null;
+  const correctName = question ? pinpointCountryName(question.answer, language) : '';
+
+  // Drive the page: drop the pin on every question (and again on a reloaded
+  // page), and replay the reveal if one is showing.
+  useEffect(() => {
+    if (!globeReady || !question) return;
+    const wv = webViewRef.current;
+    if (!wv) return;
+    wv.injectJavaScript(
+      `window.setPin(${question.lat},${question.lng},'${question.answer}');true;`,
+    );
+    if (feedback) {
+      wv.injectJavaScript(
+        `window.showResult('${question.answer}',${picked ? `'${picked}'` : 'null'});true;`,
+      );
+    }
+    // The reveal is replayed only when the page reloads mid-feedback; a fresh
+    // reveal is injected by resolve().
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [globeReady, questionIndex, runSeed]);
 
   // Surface the running raw score so the daily host can lock it in on a quit.
   useEffect(() => {
@@ -172,31 +260,30 @@ export default function LanguagesGame({
   }, [isDaily, score, onDailyScoreChange]);
 
   useEffect(() => {
-    if (!matchData && !isDaily) track('game_started', { mode: 'languages', variant });
+    if (!matchData && !isDaily) track('game_started', { mode: 'pinpoint' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Warm the clips for the whole run up front. Only the round's ~10 files, never
-  // the catalogue: a round is ~250 KB, the catalogue is ~8 MB.
-  useEffect(() => {
-    if (variant !== 'audio') return;
-    prefetchPhrases(run.map((q) => ({ code: q.answer, phrase: q.phrase })));
-  }, [variant, run]);
-
-  const question = run[questionIndex] ?? null;
-  const answerDef = question ? getLanguageDef(question.answer) : undefined;
-  const correctName = question ? languageName(question.answer, language) : '';
-  const options = question ? (mode === 'CARRE' ? question.carre : question.duo) : [];
-  const isRtl = !!answerDef && RTL_SCRIPTS.has(answerDef.script);
 
   const pickMode = (m: QuizMode) => {
     if (!question) return;
     Haptics.selectionAsync().catch(() => {});
-    if (m === 'CASH') setCashInput('');
+    if (m === 'CASH') {
+      setCashInput('');
+    } else {
+      // CARRÉ = the answer + its 3 nearest neighbours; DUO = the answer + the
+      // single nearest one. Re-shuffled deterministically so both online
+      // players match.
+      const rng = createSeededRng(runSeed + questionIndex * 131 + (m === 'DUO' ? 1 : 3));
+      const pool =
+        m === 'CARRE'
+          ? [question.answer, ...question.distractors]
+          : [question.answer, question.distractors[0] ?? question.options.find((o) => o !== question.answer)!];
+      setOptions(seededShuffle(pool, rng));
+    }
     setMode(m);
   };
 
-  const resolve = (correct: boolean) => {
+  const resolve = (correct: boolean, pickedCca3: string | null, yourAnswer?: string) => {
     if (!question || feedback) return;
     const points = correct ? MODE_POINTS[mode ?? 'DUO'] : 0;
     if (correct) {
@@ -204,7 +291,8 @@ export default function LanguagesGame({
       setCorrectCount((n) => n + 1);
     }
     setGrid((g) => g + (correct ? '🟩' : '🟥'));
-    setHistory((h) => [...h, { correct, points }]);
+    setHistory((h) => [...h, { correct, points, yourAnswer }]);
+    setPicked(pickedCca3);
     Haptics.notificationAsync(
       correct ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Error,
     ).catch(() => {});
@@ -214,11 +302,19 @@ export default function LanguagesGame({
         : tr(language, 'Mauvaise réponse. {0}', 'Wrong. {0}', [correctName]),
     );
     setFeedback({ correct, points, answer: correctName });
+    // The borders appear only now, around the point.
+    webViewRef.current?.injectJavaScript(
+      `window.showResult('${question.answer}',${pickedCca3 ? `'${pickedCca3}'` : 'null'});true;`,
+    );
   };
 
   const submitCash = () => {
     if (!question || !cashInput.trim()) return;
-    resolve(matchesLanguageAnswer(cashInput, question.answer));
+    resolve(
+      isAnswerClose(cashInput, correctName, pinpointAcceptedAnswers(question.answer)),
+      null,
+      cashInput.trim(),
+    );
   };
 
   const finishRun = (finalScore: number, finalGrid: string) => {
@@ -226,7 +322,7 @@ export default function LanguagesGame({
       if (!awardedRef.current) {
         awardedRef.current = true;
         onRoundComplete!(
-          normalizeRoundScore('languages', finalScore, {
+          normalizeRoundScore('pinpoint', finalScore, {
             numQuestions: run.length,
             maxPointsPerQuestion: MAX_POINTS_PER_QUESTION,
           }),
@@ -235,26 +331,40 @@ export default function LanguagesGame({
       return;
     }
     setGameOver(true);
-    announce(tr(language, 'Partie terminée. Score {0}.', 'Game over. Score {0}.', [finalScore]));
+    announce(
+      tr(language, 'Partie terminée. Score {0}.', 'Game over. Score {0}.', [finalScore]),
+    );
     if (isDaily) {
       onDailyComplete?.(finalScore, finalGrid);
       return;
     }
     // Solo: save the score + award coins.
-    track('game_completed', { mode: 'languages', variant, score: finalScore, correct: correctCount });
+    track('game_completed', {
+      mode: 'pinpoint',
+      score: finalScore,
+      correct: correctCount,
+      scope: scope ?? 'world',
+    });
+    // Feed the "mes erreurs" pool from the run's countries and outcomes.
+    void recordRun(
+      'pinpoint',
+      run.map((q, i) => ({
+        cca3: q.answer,
+        prompt: pinpointCountryName(q.answer, language),
+        correctAnswer: pinpointCountryName(q.answer, language),
+        ok: !!history[i]?.correct,
+      })),
+    );
     if (user) {
-      // Route through saveSoloScore rather than inserting here: it is the one
-      // place that decides whether a run counts for the leaderboard (scope /
-      // training / review). Inserting directly bypassed that rule.
-      void saveSoloScore(user, 'languages', finalScore, {}, () =>
+      void saveSoloScore(user, 'pinpoint', finalScore, { scope, review: isReview, training }, () =>
         showAlert(
           tr(language, 'Erreur', 'Error'),
           tr(language, "Impossible d'enregistrer ton score.", 'Could not save your score.'),
         ),
       );
-      awardSoloCoins(
-        'languages',
-        normalizeRoundScore('languages', finalScore, {
+      if (earnsCoins({ training })) awardSoloCoins(
+        'pinpoint',
+        normalizeRoundScore('pinpoint', finalScore, {
           numQuestions: run.length,
           maxPointsPerQuestion: MAX_POINTS_PER_QUESTION,
         }),
@@ -282,16 +392,20 @@ export default function LanguagesGame({
     }
     setQuestionIndex((i) => i + 1);
     setMode(null);
+    setOptions([]);
     setCashInput('');
     setFeedback(null);
+    setPicked(null);
   };
 
-  /** Remet la manche à zéro sans toucher au tirage (`runSeed`). */
+  /** Remet la manche à zéro sans toucher au tirage (`run`/`runSeed`). */
   const restartRun = () => {
     setQuestionIndex(0);
     setMode(null);
+    setOptions([]);
     setCashInput('');
     setFeedback(null);
+    setPicked(null);
     setScore(0);
     setCorrectCount(0);
     setGrid('');
@@ -301,23 +415,39 @@ export default function LanguagesGame({
     setCoinsCapped(false);
     setCoinsSyncFailed(false);
     awardedRef.current = false;
+    // Same first question again: the effect above only fires on index/seed
+    // changes, so re-drop the pin by hand.
+    if (run[0]) {
+      webViewRef.current?.injectJavaScript(
+        `window.setPin(${run[0].lat},${run[0].lng},'${run[0].answer}');true;`,
+      );
+    }
   };
 
-  /** Rejoue exactement les mêmes phrases, dans le même ordre. */
+  /** Rejoue exactement les mêmes points, dans le même ordre. */
   const replaySameGame = () => restartRun();
 
   /** Nouveau tirage. */
   const resetGame = () => {
-    setRunSeed(Math.floor(Math.random() * 2147483647));
+    const fresh = Math.floor(Math.random() * 2147483647);
+    setRunSeed(fresh);
+    setRun(buildPinpointRun(fresh, numQuestions, { continent: scope, reviewIds }));
     restartRun();
   };
 
   if (!question) return null;
 
-  // Longer phrases need to shrink to stay on one card without scrolling.
-  const phraseSize = question.phrase.text.length > 60 ? 20 : question.phrase.text.length > 38 ? 24 : 28;
-  /** Audio variant, clip still healthy → hide the text and show the player. */
-  const listenOnly = variant === 'audio' && !audioFailed.has(question.phrase.id);
+  // The globe takes a good slice of the screen but must leave the board room:
+  // three difficulty buttons, or four options, or the keyboard.
+  const globeHeight = Math.max(220, Math.min(420, Math.round(winH * 0.38)));
+
+  const recapEntries: RecapEntry[] = run.map((q, i) => ({
+    cca3: q.answer,
+    prompt: tr(language, 'Point n°{0}', 'Point #{0}', [i + 1]),
+    yourAnswer: history[i]?.correct ? undefined : history[i]?.yourAnswer,
+    correctAnswer: pinpointCountryName(q.answer, language),
+    ok: !!history[i]?.correct,
+  }));
 
   return (
     <SafeAreaView
@@ -337,7 +467,9 @@ export default function LanguagesGame({
           >
             <Home color={c.accent} size={18} />
           </TouchableOpacity>
-          <Text style={[styles.title, { color: c.text }]}>{tr(language, 'Langues', 'Languages')}</Text>
+          <Text style={[styles.title, { color: c.text }]} numberOfLines={1}>
+            {tr(language, 'Point sur le Globe', 'Pin on the Globe')}
+          </Text>
         </View>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -377,48 +509,45 @@ export default function LanguagesGame({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
       <ScrollView contentContainerStyle={styles.gameArea} keyboardShouldPersistTaps="handled">
-        <Text style={[styles.turnIndicator, { color: c.accent }]}>
-          {`Question ${questionIndex + 1}/${run.length}`}
-        </Text>
-
-        {/* Prompt card — the mystery phrase. */}
+        {/* The globe — the mystery point on a map with no borders. */}
         <View
-          style={[styles.card, !isDarkMode && styles.cardLight]}
-          accessible={!listenOnly}
-          accessibilityLabel={tr(language, 'Phrase à identifier', 'Phrase to identify')}
+          style={[styles.globeBox, { height: globeHeight, borderColor: c.border, backgroundColor: c.card }]}
+          accessible
+          accessibilityLabel={tr(language, 'Globe sans frontières avec un point mystère', 'Borderless globe with a mystery point')}
         >
-          {listenOnly ? (
-            <PhrasePlayer
-              code={question.answer}
-              phrase={question.phrase}
-              language={language}
-              accent={c.accent}
-              textColor={isDarkMode ? '#d8e8f4' : '#2c1810'}
-              mutedColor="#4a6a88"
-              onUnavailable={() => {
-                track('language_audio_fallback', { code: question.answer, phrase: question.phrase.id });
-                setAudioFailed((s) => new Set(s).add(question.phrase.id));
-              }}
+          {globeHtml && !globeError && (
+            <GlobeWebView
+              ref={webViewRef}
+              source={{ html: globeHtml }}
+              onMessage={handleMessage}
+              originWhitelist={['*']}
+              javaScriptEnabled
+              domStorageEnabled
+              style={styles.webview}
+              scrollEnabled={false}
             />
-          ) : (
-            <Text
-              style={[
-                styles.phrase,
-                {
-                  color: isDarkMode ? '#d8e8f4' : '#2c1810',
-                  fontSize: phraseSize,
-                  writingDirection: isRtl ? 'rtl' : 'ltr',
-                },
-              ]}
-              maxFontSizeMultiplier={1.3}
-            >
-              {question.phrase.text}
-            </Text>
           )}
+          {(!globeReady || globeError) && (
+            <View style={[styles.globeOverlay, { backgroundColor: c.card }]} {...a11yHidden}>
+              {globeError ? (
+                <Text style={[styles.loadingText, { color: c.textMuted }]}>
+                  {tr(language, 'Le globe n’a pas pu se charger.', 'The globe could not load.')}
+                </Text>
+              ) : (
+                <>
+                  <ActivityIndicator size="large" color={PALETTE.chartBlue} />
+                  <Text style={[styles.loadingText, { color: c.textMuted }]}>
+                    {tr(language, 'Chargement du globe…', 'Loading globe…')}
+                  </Text>
+                </>
+              )}
+            </View>
+          )}
+        </View>
+        <View style={styles.promptRow}>
+          <MapPin color={PALETTE.vermilion} size={16} {...a11yHidden} />
           <Text style={[styles.instruction, { color: c.textMuted }]}>
-            {variant === 'audio' && !listenOnly
-              ? tr(language, 'Extrait indisponible — quelle est cette langue ?', 'Clip unavailable — which language is this?')
-              : tr(language, 'Quelle est cette langue ?', 'Which language is this?')}
+            {tr(language, 'Dans quel pays est ce point ?', 'Which country is this point in?')}
           </Text>
         </View>
 
@@ -467,7 +596,7 @@ export default function LanguagesGame({
             </TouchableOpacity>
             <TextInput
               style={[styles.cashInput, !isDarkMode && styles.cashInputLight]}
-              placeholder={tr(language, 'Nom de la langue...', 'Language name...')}
+              placeholder={tr(language, 'Réponse...', 'Answer...')}
               placeholderTextColor={c.textFaint}
               value={cashInput}
               onChangeText={setCashInput}
@@ -486,15 +615,17 @@ export default function LanguagesGame({
           </View>
         ) : (mode === 'DUO' || mode === 'CARRE') && !feedback ? (
           <View style={styles.optionsGrid}>
-            {options.map((code) => (
+            {options.map((cca3) => (
               <TouchableOpacity
-                key={code}
+                key={cca3}
                 style={[styles.optionBtn, !isDarkMode && styles.optionBtnLight]}
-                onPress={() => resolve(code === question.answer)}
-                {...a11yButton(languageName(code, language))}
+                onPress={() =>
+                  resolve(cca3 === question.answer, cca3, pinpointCountryName(cca3, language))
+                }
+                {...a11yButton(pinpointCountryName(cca3, language))}
               >
                 <Text style={[styles.optionText, { color: c.text }]}>
-                  {languageName(code, language)}
+                  {pinpointCountryName(cca3, language)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -508,14 +639,25 @@ export default function LanguagesGame({
               <Text style={[styles.feedbackTitle, { color: c.text }]}>
                 {feedback.correct ? tr(language, 'BIEN JOUÉ !', 'WELL DONE!') : tr(language, 'DOMMAGE...', 'TOO BAD...')}
               </Text>
-              {/* The reveal is the teaching moment: name the language in itself. */}
               <Text style={[styles.feedbackSub, { color: c.text }]}>
                 {feedback.correct
                   ? `+${feedback.points} ${tr(language, 'point(s)', 'point(s)')}`
                   : tr(language, 'La réponse était : {0}', 'The answer was: {0}', [feedback.answer])}
               </Text>
-              {answerDef && (
-                <Text style={[styles.endonym, { color: c.textMuted }]}>{answerDef.endonym}</Text>
+              {/* Entraînement: the reveal is the lesson, so the country's facts
+                  are one tap away instead of waiting for the end-of-run recap. */}
+              {training && question && (
+                <TouchableOpacity
+                  style={[styles.learnBtn, { borderColor: c.accent }]}
+                  onPress={() => setFactsFor(question.answer)}
+                  {...a11yButton(
+                    tr(language, 'En savoir plus sur ce pays', 'Learn more about this country'),
+                  )}
+                >
+                  <Text style={[styles.learnBtnText, { color: c.accent }]}>
+                    {tr(language, 'En savoir plus', 'Learn more')}
+                  </Text>
+                </TouchableOpacity>
               )}
               <TouchableOpacity
                 style={[styles.nextBtn, { backgroundColor: c.accentStrong }]}
@@ -550,7 +692,7 @@ export default function LanguagesGame({
               accent="#2a6e3f"
               animate
               style={{ marginBottom: 10 }}
-              record={isDaily || isOnline ? undefined : { mode: 'languages', score }}
+              record={isDaily || isOnline ? undefined : { mode: 'pinpoint', score, ctx: { scope, review: isReview, training } }}
             />
             <Reveal at={END_CHOREO.verdict}>
             <ResultGrid grid={grid} style={{ marginBottom: 10 }} />
@@ -558,11 +700,12 @@ export default function LanguagesGame({
             <Text style={{ color: c.textMuted, fontFamily: FONTS.mono, fontSize: 14, marginBottom: 16, textAlign: 'center' }}>
               {tr(language, '{0} / {1} bonnes réponses', '{0} / {1} correct', [correctCount, run.length])}
             </Text>
+
+            {!isDaily && !isOnline && <OffLeaderboardNotice run={{ scope, review: isReview, training }} color={c.textMuted} />}
             </Reveal>
 
-            {/* Pièces + doubleur pub AVANT le récap : la récompense d'abord,
-                la solution juste après. */}
-            {/* Animated coins + rewarded-ad doubler (solo only, server-credited). */}
+            {/* Pièces + doubleur pub AVANT le récap : c'est la récompense, elle
+                ne doit pas se mériter au scroll. */}
             <Reveal at={END_CHOREO.detail}>
             <SoloCoinReward
               coinsEarned={coinsEarned}
@@ -572,41 +715,10 @@ export default function LanguagesGame({
             />
             </Reveal>
 
-            {/* Recap: every phrase of the run with its language and outcome. */}
+            {/* Recap: every point of the run with its country and outcome. */}
             <Reveal at={END_CHOREO.reward}>
-            <View style={[styles.recapCard, { backgroundColor: c.card, borderColor: c.border }]}>
-              {run.map((q, i) => {
-                const h = history[i];
-                const name = languageName(q.answer, language);
-                return (
-                  <View
-                    key={q.phrase.id}
-                    style={[styles.recapRow, i > 0 && { borderTopWidth: 1, borderTopColor: c.border }]}
-                    accessible
-                    accessibilityLabel={
-                      h?.correct
-                        ? tr(language, '{0}, bonne réponse, +{1} points', '{0}, correct, +{1} points', [name, h.points])
-                        : tr(language, '{0}, mauvaise réponse', '{0}, wrong', [name])
-                    }
-                  >
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.recapName, { color: c.text }]} numberOfLines={1}>
-                        {name}
-                      </Text>
-                      <Text style={[styles.recapPhrase, { color: c.textMuted }]} numberOfLines={1}>
-                        {q.phrase.text}
-                      </Text>
-                    </View>
-                    {h?.correct ? (
-                      <ScoreText style={{ color: '#2a6e3f', fontSize: 14, fontFamily: FONTS.monoBold }}>
-                        {`+${h.points}`}
-                      </ScoreText>
-                    ) : (
-                      <AtlasCross color="#8b1a1a" size={16} />
-                    )}
-                  </View>
-                );
-              })}
+            <View style={{ alignSelf: 'stretch', marginBottom: 16 }}>
+              <RunRecap entries={recapEntries} />
             </View>
             </Reveal>
 
@@ -632,6 +744,9 @@ export default function LanguagesGame({
         </View>
       )}
       </KeyboardAvoidingView>
+
+      {/* Mounted once at the top level so it opens from a training reveal. */}
+      <CountryFactCard cca3={factsFor} onClose={() => setFactsFor(null)} />
     </SafeAreaView>
   );
 }
@@ -646,7 +761,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     minHeight: 60,
   },
-  title: { fontSize: isMobile ? 16 : 18, fontFamily: FONTS.headingBlack },
+  title: { fontSize: isMobile ? 16 : 18, fontFamily: FONTS.headingBlack, flexShrink: 1 },
   statsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -658,22 +773,32 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 15, fontFamily: FONTS.monoBold },
   iconBtn: { padding: 6, borderRadius: 10, borderWidth: 1 },
 
-  // Board — mirrors ChallengeQuiz / SilhouetteGame so the quizzes match.
-  gameArea: { padding: 20, alignItems: 'center', paddingBottom: 40 },
-  turnIndicator: { fontSize: 18, fontFamily: FONTS.headingBlack, marginBottom: 20, textTransform: 'uppercase' },
-  card: {
-    backgroundColor: '#132040', padding: 24, borderRadius: 24, alignItems: 'center',
-    marginBottom: 30, width: '100%', maxWidth: 600, borderWidth: 1, borderColor: '#2d4a70',
+  // Board — mirrors SilhouetteGame / ChallengeQuiz so the quizzes match.
+  gameArea: { padding: 16, alignItems: 'center', paddingBottom: 40 },
+  globeBox: {
+    width: '100%',
+    maxWidth: 600,
+    borderRadius: 20,
+    borderWidth: 1,
+    overflow: 'hidden',
   },
-  cardLight: { backgroundColor: '#e8d9b8', borderColor: '#c4a87a', elevation: 4, shadowOpacity: 0.1 },
-  /**
-   * NO custom fontFamily here, on purpose. The app's display fonts (Playfair
-   * Display) only ship Latin glyphs, so a Japanese, Arabic, Thai or Tamil phrase
-   * would render as tofu (▯▯▯). The system font is the only one that covers
-   * every script this mode plays.
-   */
-  phrase: { textAlign: 'center', lineHeight: 38, fontWeight: '600' },
-  instruction: { color: '#4a6a88', fontSize: 14, fontFamily: FONTS.mono, marginTop: 14, textAlign: 'center' },
+  webview: { flex: 1, backgroundColor: 'transparent' },
+  globeOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  loadingText: { fontFamily: FONTS.mono, fontSize: 13 },
+  promptRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 10,
+    marginBottom: 16,
+  },
+  instruction: { fontSize: 14, fontFamily: FONTS.mono, textAlign: 'center' },
 
   modeSelection: { flexDirection: 'row', gap: 10, width: '100%', maxWidth: 500, justifyContent: 'center' },
   modeBtn: { flex: 1, backgroundColor: '#132040', padding: 15, borderRadius: 16, alignItems: 'center', borderWidth: 2 },
@@ -682,7 +807,7 @@ const styles = StyleSheet.create({
   modeBtnPoints: { fontSize: 10, color: '#4a6a88', fontFamily: FONTS.mono },
 
   optionsGrid: { gap: 12, width: '100%', maxWidth: 500 },
-  optionBtn: { backgroundColor: '#132040', padding: 20, borderRadius: 16, alignItems: 'center', borderWidth: 2, borderColor: '#2d4a70' },
+  optionBtn: { backgroundColor: '#132040', padding: 18, borderRadius: 16, alignItems: 'center', borderWidth: 2, borderColor: '#2d4a70' },
   optionBtnLight: { backgroundColor: '#e8d9b8', borderColor: '#c4a87a', elevation: 2 },
   optionText: { color: '#d8e8f4', fontSize: 18, fontFamily: FONTS.heading },
 
@@ -695,20 +820,33 @@ const styles = StyleSheet.create({
   cashSubmitBtn: { backgroundColor: '#2a6e3f', padding: 18, borderRadius: 16, alignItems: 'center' },
   cashSubmitText: { color: '#fff', fontFamily: FONTS.monoBold, fontSize: 16 },
 
-  feedbackCard: { padding: 30, borderRadius: 24, alignItems: 'center', width: '100%', maxWidth: 500 },
+  feedbackCard: { padding: 24, borderRadius: 24, alignItems: 'center', width: '100%', maxWidth: 500 },
   correctCard: { backgroundColor: 'rgba(42, 110, 63, 0.15)', borderWidth: 2, borderColor: '#2a6e3f' },
   wrongCard: { backgroundColor: 'rgba(139, 26, 26, 0.15)', borderWidth: 2, borderColor: '#8b1a1a' },
   feedbackTitle: { fontSize: 24, fontFamily: FONTS.headingBlack, color: '#d8e8f4', marginBottom: 5 },
   feedbackSub: { fontSize: 16, color: '#7aa0c4', textAlign: 'center', fontFamily: FONTS.mono },
-  // System font again: the endonym is written in the language's own script.
-  endonym: { fontSize: 18, marginTop: 8, textAlign: 'center' },
+  learnBtn: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    marginBottom: 10,
+    marginTop: 8,
+  },
+  learnBtnText: { fontFamily: FONTS.monoBold, fontSize: 11.5 },
   nextBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    marginTop: 18, paddingVertical: 14, paddingHorizontal: 28, borderRadius: 14, alignSelf: 'stretch',
+    marginTop: 14, paddingVertical: 14, paddingHorizontal: 28, borderRadius: 14, alignSelf: 'stretch',
   },
   nextBtnText: { color: '#fff', fontFamily: FONTS.monoBold, fontSize: 16 },
 
-  gameOverOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  gameOverOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
   gameOverContent: {
     flexGrow: 1,
     justifyContent: 'center',
@@ -720,38 +858,4 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   gameOverScore: { fontSize: 48, fontFamily: FONTS.headingBlack, marginBottom: 4, color: '#2a6e3f', textAlign: 'center' },
-  recapCard: {
-    alignSelf: 'stretch',
-    borderRadius: 16,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    marginBottom: 16,
-  },
-  recapRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
-  recapName: { fontSize: 15, fontFamily: FONTS.heading },
-  // System font: the recap echoes the phrase in its original script.
-  recapPhrase: { fontSize: 12, marginTop: 2 },
-  resetBtn: {
-    backgroundColor: '#c04a1a',
-    paddingVertical: 14,
-    paddingHorizontal: 28,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#a03a10',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  resetBtnText: { color: '#fff', fontFamily: FONTS.monoBold, fontSize: 14, letterSpacing: 1 },
-  menuBtn: {
-    marginTop: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 28,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  menuBtnText: { fontFamily: FONTS.monoBold, fontSize: 14, letterSpacing: 1 },
 });

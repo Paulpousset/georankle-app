@@ -82,6 +82,7 @@ export function normalizeRoundScore(
     }
 
     case 'silhouette':
+    case 'pinpoint':
     case 'challenge':
     case 'languages': {
       // CARRÉ/DUO/CASH quiz: raw = sum of per-question points; the ceiling is

@@ -476,6 +476,30 @@
     ]
   },
   {
+    "key": "A point is dropped on a 3D globe with no borders at all: say which country it lies in. Pick a difficulty each question — DUO (2 options), CARRÉ (4 options) or CASH (type it) — to score more.",
+    "fr": "Un point est posé sur un globe 3D sans aucune frontière : dites dans quel pays il se trouve. Choisissez votre difficulté à chaque question — DUO (2 choix), CARRÉ (4 choix) ou CASH (à écrire) — pour marquer plus de points.",
+    "en": "A point is dropped on a 3D globe with no borders at all: say which country it lies in. Pick a difficulty each question — DUO (2 options), CARRÉ (4 options) or CASH (type it) — to score more.",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/modeIntros.ts"
+    ]
+  },
+  {
+    "key": "A point on a borderless globe: which country?",
+    "fr": "Un point, un globe sans frontières : quel pays ?",
+    "en": "A point on a borderless globe: which country?",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/MainMenu.tsx"
+    ]
+  },
+  {
     "key": "A quiz on a country’s subdivisions: French department numbers, US state capitals, state flags, German Länder capitals, Italian regional capitals… Pick a difficulty each question — DUO (2 options), CARRÉ (4 options) or CASH (type it).",
     "fr": "Un quiz sur les subdivisions d’un pays : numéros de département français, capitales des États américains, drapeaux des États, capitales des Länder, des régions italiennes… Choisissez votre difficulté à chaque question — DUO (2 choix), CARRÉ (4 choix) ou CASH (à écrire).",
     "en": "A quiz on a country’s subdivisions: French department numbers, US state capitals, state flags, German Länder capitals, Italian regional capitals… Pick a difficulty each question — DUO (2 options), CARRÉ (4 options) or CASH (type it).",
@@ -1065,12 +1089,13 @@
     "key": "Answer...",
     "fr": "Réponse...",
     "en": "Answer...",
-    "count": 3,
+    "count": 4,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/ChallengeQuiz.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx",
       "src/screens/VersusCapitals.tsx"
     ]
@@ -1407,13 +1432,14 @@
     "key": "BACK",
     "fr": "RETOUR",
     "en": "BACK",
-    "count": 4,
+    "count": 5,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/ChallengeQuiz.tsx",
       "src/screens/LanguagesGame.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx",
       "src/screens/VersusCapitals.tsx"
     ]
@@ -1482,7 +1508,7 @@
     "key": "Back",
     "fr": "Retour",
     "en": "Back",
-    "count": 38,
+    "count": 39,
     "kinds": [
       "call"
     ],
@@ -1505,6 +1531,7 @@
       "src/screens/LocalParcours.tsx",
       "src/screens/MatchReplay.tsx",
       "src/screens/Matchmaking.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/PlayerProfile.tsx",
       "src/screens/Profile.tsx",
       "src/screens/RankedMatchmaking.tsx",
@@ -1686,6 +1713,18 @@
     ],
     "files": [
       "src/data/cosmetics.ts"
+    ]
+  },
+  {
+    "key": "Borderless globe with a mystery point",
+    "fr": "Globe sans frontières avec un point mystère",
+    "en": "Borderless globe with a mystery point",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/PinpointGame.tsx"
     ]
   },
   {
@@ -1895,13 +1934,14 @@
     "key": "CARRÉ, 3 points",
     "fr": "CARRÉ, 3 points",
     "en": "CARRÉ, 3 points",
-    "count": 4,
+    "count": 5,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/ChallengeQuiz.tsx",
       "src/screens/LanguagesGame.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx",
       "src/screens/VersusCapitals.tsx"
     ]
@@ -1910,13 +1950,14 @@
     "key": "CASH, 5 points",
     "fr": "CASH, 5 points",
     "en": "CASH, 5 points",
-    "count": 4,
+    "count": 5,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/ChallengeQuiz.tsx",
       "src/screens/LanguagesGame.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx",
       "src/screens/VersusCapitals.tsx"
     ]
@@ -2198,6 +2239,19 @@
     ]
   },
   {
+    "key": "Challenge",
+    "fr": "Défier",
+    "en": "Challenge",
+    "count": 2,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/Matchmaking.tsx",
+      "src/screens/PlayerProfile.tsx"
+    ]
+  },
+  {
     "key": "Challenge done: {0}. {1} of {2} challenges today.",
     "fr": "Défi terminé : {0}. {1} défis sur {2} aujourd’hui.",
     "en": "Challenge done: {0}. {1} of {2} challenges today.",
@@ -2207,6 +2261,31 @@
     ],
     "files": [
       "src/screens/DailyEnd.tsx"
+    ]
+  },
+  {
+    "key": "Challenge in {0}",
+    "fr": "Défier en {0}",
+    "en": "Challenge in {0}",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/ChallengeModeSheet.tsx"
+    ]
+  },
+  {
+    "key": "Challenge {0}",
+    "fr": "Défier {0}",
+    "en": "Challenge {0}",
+    "count": 2,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/ChallengeModeSheet.tsx",
+      "src/screens/PlayerProfile.tsx"
     ]
   },
   {
@@ -2252,7 +2331,7 @@
     "key": "Change language",
     "fr": "Changer de langue",
     "en": "Change language",
-    "count": 9,
+    "count": 10,
     "kinds": [
       "call"
     ],
@@ -2262,6 +2341,7 @@
       "src/screens/HigherLowerGame.tsx",
       "src/screens/LanguagesGame.tsx",
       "src/screens/MainMenu.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx",
       "src/screens/StreakGame.tsx"
     ]
@@ -2276,6 +2356,18 @@
     ],
     "files": [
       "src/screens/Profile.tsx"
+    ]
+  },
+  {
+    "key": "Change {0}",
+    "fr": "Modifier {0}",
+    "en": "Change {0}",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/EquippedChips.tsx"
     ]
   },
   {
@@ -2380,13 +2472,14 @@
     "key": "Choose between four answers",
     "fr": "Choisir entre quatre réponses",
     "en": "Choose between four answers",
-    "count": 4,
+    "count": 5,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/ChallengeQuiz.tsx",
       "src/screens/LanguagesGame.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx",
       "src/screens/VersusCapitals.tsx"
     ]
@@ -2395,13 +2488,14 @@
     "key": "Choose between two answers",
     "fr": "Choisir entre deux réponses",
     "en": "Choose between two answers",
-    "count": 4,
+    "count": 5,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/ChallengeQuiz.tsx",
       "src/screens/LanguagesGame.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx",
       "src/screens/VersusCapitals.tsx"
     ]
@@ -2570,13 +2664,14 @@
     "key": "Close",
     "fr": "Fermer",
     "en": "Close",
-    "count": 12,
+    "count": 13,
     "kinds": [
       "call"
     ],
     "files": [
       "src/components/AlertHost.tsx",
       "src/components/AuthModal.tsx",
+      "src/components/ChallengeModeSheet.tsx",
       "src/components/CountryFactCard.tsx",
       "src/components/DailyLeaderboardModal.tsx",
       "src/components/DailyResultCard.tsx",
@@ -2677,7 +2772,7 @@
     "key": "Coins not synced — will retry when you reconnect.",
     "fr": "Pièces non synchronisées — réessai à la reconnexion.",
     "en": "Coins not synced — will retry when you reconnect.",
-    "count": 7,
+    "count": 8,
     "kinds": [
       "call"
     ],
@@ -2687,6 +2782,7 @@
       "src/screens/ClassicGame.tsx",
       "src/screens/HigherLowerGame.tsx",
       "src/screens/LanguagesGame.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx",
       "src/screens/StreakGame.tsx"
     ]
@@ -2951,7 +3047,7 @@
     "key": "Correct",
     "fr": "Bonne réponse",
     "en": "Correct",
-    "count": 7,
+    "count": 8,
     "kinds": [
       "call"
     ],
@@ -2961,6 +3057,7 @@
       "src/screens/FindRegionGame.tsx",
       "src/screens/GuessCountryGame.tsx",
       "src/screens/LanguagesGame.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx",
       "src/screens/VersusCapitals.tsx"
     ],
@@ -3022,13 +3119,14 @@
     "key": "Correct, +{0}",
     "fr": "Bonne réponse, +{0}",
     "en": "Correct, +{0}",
-    "count": 3,
+    "count": 4,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/ChallengeQuiz.tsx",
       "src/screens/LanguagesGame.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx"
     ]
   },
@@ -3262,7 +3360,7 @@
     "key": "Could not save your score.",
     "fr": "Impossible d'enregistrer ton score.",
     "en": "Could not save your score.",
-    "count": 6,
+    "count": 7,
     "kinds": [
       "call"
     ],
@@ -3271,6 +3369,7 @@
       "src/screens/ClassicGame.tsx",
       "src/screens/HigherLowerGame.tsx",
       "src/screens/LanguagesGame.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx",
       "src/screens/StreakGame.tsx"
     ]
@@ -3681,7 +3780,7 @@
     "key": "DUO = 1 pt, CARRÉ = 3 pts, CASH = 5 pts: the riskier the call, the bigger the reward.",
     "fr": "DUO = 1 pt, CARRÉ = 3 pts, CASH = 5 pts : plus c’est risqué, plus ça rapporte.",
     "en": "DUO = 1 pt, CARRÉ = 3 pts, CASH = 5 pts: the riskier the call, the bigger the reward.",
-    "count": 3,
+    "count": 4,
     "kinds": [
       "label"
     ],
@@ -3693,13 +3792,14 @@
     "key": "DUO, 1 point",
     "fr": "DUO, 1 point",
     "en": "DUO, 1 point",
-    "count": 4,
+    "count": 5,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/ChallengeQuiz.tsx",
       "src/screens/LanguagesGame.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx",
       "src/screens/VersusCapitals.tsx"
     ]
@@ -3834,7 +3934,7 @@
     "key": "Dark mode",
     "fr": "Mode sombre",
     "en": "Dark mode",
-    "count": 8,
+    "count": 9,
     "kinds": [
       "call"
     ],
@@ -3844,6 +3944,7 @@
       "src/screens/BordersGame.tsx",
       "src/screens/HigherLowerGame.tsx",
       "src/screens/LanguagesGame.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx",
       "src/screens/StreakGame.tsx"
     ]
@@ -4241,6 +4342,18 @@
     ],
     "files": [
       "src/data/cosmetics.ts"
+    ]
+  },
+  {
+    "key": "Drag to spin",
+    "fr": "Glisse pour tourner",
+    "en": "Drag to spin",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/ProfileHero.tsx"
     ]
   },
   {
@@ -4769,7 +4882,7 @@
     "key": "Error",
     "fr": "Erreur",
     "en": "Error",
-    "count": 33,
+    "count": 34,
     "kinds": [
       "call",
       "label"
@@ -4787,6 +4900,7 @@
       "src/screens/HigherLowerGame.tsx",
       "src/screens/LanguagesGame.tsx",
       "src/screens/Matchmaking.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/PlayerProfile.tsx",
       "src/screens/Profile.tsx",
       "src/screens/RankedMatchmaking.tsx",
@@ -5763,12 +5877,13 @@
     "key": "Game over. Score {0}.",
     "fr": "Partie terminée. Score {0}.",
     "en": "Game over. Score {0}.",
-    "count": 2,
+    "count": 3,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/LanguagesGame.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx"
     ]
   },
@@ -6542,6 +6657,18 @@
     ]
   },
   {
+    "key": "In DUO and CARRÉ the wrong options are the countries closest to the point — beware of neighbours!",
+    "fr": "En DUO et CARRÉ, les mauvaises réponses sont les pays les plus proches du point : gare aux voisins !",
+    "en": "In DUO and CARRÉ the wrong options are the countries closest to the point — beware of neighbours!",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/modeIntros.ts"
+    ]
+  },
+  {
     "key": "In game",
     "fr": "En jeu",
     "en": "In game",
@@ -7290,12 +7417,13 @@
     "key": "Learn more",
     "fr": "En savoir plus",
     "en": "Learn more",
-    "count": 2,
+    "count": 3,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/GuessCountryGame.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx"
     ]
   },
@@ -7303,12 +7431,13 @@
     "key": "Learn more about this country",
     "fr": "En savoir plus sur ce pays",
     "en": "Learn more about this country",
-    "count": 2,
+    "count": 3,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/GuessCountryGame.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx"
     ]
   },
@@ -7537,7 +7666,7 @@
     "key": "Light mode",
     "fr": "Mode clair",
     "en": "Light mode",
-    "count": 8,
+    "count": 9,
     "kinds": [
       "call"
     ],
@@ -7547,8 +7676,21 @@
       "src/screens/BordersGame.tsx",
       "src/screens/HigherLowerGame.tsx",
       "src/screens/LanguagesGame.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx",
       "src/screens/StreakGame.tsx"
+    ]
+  },
+  {
+    "key": "Link copied",
+    "fr": "Lien copié",
+    "en": "Link copied",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/ReferralCard.tsx"
     ]
   },
   {
@@ -7687,12 +7829,13 @@
     "key": "Loading globe…",
     "fr": "Chargement du globe…",
     "en": "Loading globe…",
-    "count": 1,
+    "count": 2,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/screens/FindCountryGame.tsx"
+      "src/screens/FindCountryGame.tsx",
+      "src/screens/PinpointGame.tsx"
     ]
   },
   {
@@ -8143,7 +8286,7 @@
     "key": "Menu",
     "fr": "Menu",
     "en": "Menu",
-    "count": 13,
+    "count": 14,
     "kinds": [
       "call"
     ],
@@ -8156,6 +8299,7 @@
       "src/screens/GuessCountryGame.tsx",
       "src/screens/HigherLowerGame.tsx",
       "src/screens/LanguagesGame.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx",
       "src/screens/StreakGame.tsx"
     ]
@@ -8663,7 +8807,7 @@
     "key": "Next",
     "fr": "Suivant",
     "en": "Next",
-    "count": 11,
+    "count": 13,
     "kinds": [
       "call"
     ],
@@ -8673,6 +8817,7 @@
       "src/screens/FindCountryGame.tsx",
       "src/screens/FindRegionGame.tsx",
       "src/screens/LanguagesGame.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx"
     ]
   },
@@ -9813,6 +9958,18 @@
     ]
   },
   {
+    "key": "Paste it to a friend: you both earn 50 coins.",
+    "fr": "Colle-le à un ami : vous gagnez chacun 50 pièces.",
+    "en": "Paste it to a friend: you both earn 50 coins.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/ReferralCard.tsx"
+    ]
+  },
+  {
     "key": "Pastel",
     "fr": "Pastel",
     "en": "Pastel",
@@ -10089,6 +10246,18 @@
     ]
   },
   {
+    "key": "Pick the duel mode. {0} will get the invite.",
+    "fr": "Choisis le mode du duel. {0} recevra l'invitation.",
+    "en": "Pick the duel mode. {0} will get the invite.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/ChallengeModeSheet.tsx"
+    ]
+  },
+  {
     "key": "Pick this country",
     "fr": "Choisir ce pays",
     "en": "Pick this country",
@@ -10146,6 +10315,31 @@
     ],
     "files": [
       "src/components/ContinentChip.tsx"
+    ]
+  },
+  {
+    "key": "Pin on the Globe",
+    "fr": "Point sur le Globe",
+    "en": "Pin on the Globe",
+    "count": 15,
+    "kinds": [
+      "label",
+      "call"
+    ],
+    "files": [
+      "src/components/ContinentChip.tsx",
+      "src/components/OnlineModeLeaderboardModal.tsx",
+      "src/components/ReviewEntryCard.tsx",
+      "src/data/modeIntros.ts",
+      "src/hooks/useMatchEngine.ts",
+      "src/lib/customMatch.ts",
+      "src/lib/daily.ts",
+      "src/lib/ranked.ts",
+      "src/screens/Leaderboard.tsx",
+      "src/screens/LocalParcours.tsx",
+      "src/screens/MainMenu.tsx",
+      "src/screens/Matchmaking.tsx",
+      "src/screens/PinpointGame.tsx"
     ]
   },
   {
@@ -10446,6 +10640,18 @@
     ]
   },
   {
+    "key": "Point #{0}",
+    "fr": "Point n°{0}",
+    "en": "Point #{0}",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/PinpointGame.tsx"
+    ]
+  },
+  {
     "key": "Points",
     "fr": "Points",
     "en": "Points",
@@ -10584,6 +10790,18 @@
     ]
   },
   {
+    "key": "Private match against {0}",
+    "fr": "Partie privée contre {0}",
+    "en": "Private match against {0}",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/Matchmaking.tsx"
+    ]
+  },
+  {
     "key": "Private, invite a friend",
     "fr": "Privée, inviter un ami",
     "en": "Private, invite a friend",
@@ -10600,13 +10818,12 @@
     "key": "Profile",
     "fr": "Profil",
     "en": "Profile",
-    "count": 3,
+    "count": 2,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx",
-      "src/screens/PlayerProfile.tsx"
+      "src/screens/MainMenu.tsx"
     ]
   },
   {
@@ -11497,18 +11714,6 @@
     ]
   },
   {
-    "key": "Result grid",
-    "fr": "Grille de résultat",
-    "en": "Result grid",
-    "count": 1,
-    "kinds": [
-      "call"
-    ],
-    "files": [
-      "src/components/DailyResultCard.tsx"
-    ]
-  },
-  {
     "key": "Results",
     "fr": "Résultats",
     "en": "Results",
@@ -11654,6 +11859,18 @@
     ],
     "files": [
       "assets/languages.json"
+    ]
+  },
+  {
+    "key": "Rotate and zoom the globe: coastlines and position are your only clues.",
+    "fr": "Faites tourner et zoomez le globe : les côtes et la position sont vos seuls indices.",
+    "en": "Rotate and zoom the globe: coastlines and position are your only clues.",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/modeIntros.ts"
     ]
   },
   {
@@ -11895,13 +12112,14 @@
     "key": "SUBMIT",
     "fr": "VALIDER",
     "en": "SUBMIT",
-    "count": 4,
+    "count": 5,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/ChallengeQuiz.tsx",
       "src/screens/LanguagesGame.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx",
       "src/screens/VersusCapitals.tsx"
     ]
@@ -11934,6 +12152,18 @@
     "key": "Same phrases for both players",
     "fr": "Les mêmes phrases pour les deux joueurs",
     "en": "Same phrases for both players",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/MainMenu.tsx"
+    ]
+  },
+  {
+    "key": "Same points for both players",
+    "fr": "Les mêmes points pour les deux joueurs",
+    "en": "Same points for both players",
     "count": 1,
     "kinds": [
       "call"
@@ -12264,13 +12494,14 @@
     "key": "See score",
     "fr": "Voir le score",
     "en": "See score",
-    "count": 6,
+    "count": 8,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/ChallengeQuiz.tsx",
       "src/screens/LanguagesGame.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx"
     ]
   },
@@ -12310,6 +12541,18 @@
     "files": [
       "src/screens/DailyHub.tsx",
       "src/screens/MainMenu.tsx"
+    ]
+  },
+  {
+    "key": "See {0} in the shop",
+    "fr": "Voir {0} dans la boutique",
+    "en": "See {0} in the shop",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/EquippedChips.tsx"
     ]
   },
   {
@@ -12382,6 +12625,18 @@
     ],
     "files": [
       "src/screens/AdminNotifications.tsx"
+    ]
+  },
+  {
+    "key": "Send the challenge",
+    "fr": "Envoyer le défi",
+    "en": "Send the challenge",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/Matchmaking.tsx"
     ]
   },
   {
@@ -12635,12 +12890,13 @@
     "key": "Sign in to earn coins and save your score.",
     "fr": "Connecte-toi pour gagner des pièces et sauvegarder ton score.",
     "en": "Sign in to earn coins and save your score.",
-    "count": 2,
+    "count": 3,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/LanguagesGame.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx"
     ]
   },
@@ -13166,13 +13422,14 @@
     "key": "Submit",
     "fr": "Valider",
     "en": "Submit",
-    "count": 4,
+    "count": 5,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/ChallengeQuiz.tsx",
       "src/screens/LanguagesGame.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx",
       "src/screens/VersusCapitals.tsx"
     ]
@@ -13427,13 +13684,14 @@
     "key": "TOO BAD...",
     "fr": "DOMMAGE...",
     "en": "TOO BAD...",
-    "count": 4,
+    "count": 5,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/ChallengeQuiz.tsx",
       "src/screens/LanguagesGame.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx",
       "src/screens/VersusCapitals.tsx"
     ]
@@ -13778,13 +14036,14 @@
     "key": "The answer was: {0}",
     "fr": "La réponse était : {0}",
     "en": "The answer was: {0}",
-    "count": 4,
+    "count": 5,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/ChallengeQuiz.tsx",
       "src/screens/LanguagesGame.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx",
       "src/screens/VersusCapitals.tsx"
     ]
@@ -13835,6 +14094,18 @@
     ],
     "files": [
       "src/data/modeIntros.ts"
+    ]
+  },
+  {
+    "key": "The globe could not load.",
+    "fr": "Le globe n’a pas pu se charger.",
+    "en": "The globe could not load.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/PinpointGame.tsx"
     ]
   },
   {
@@ -14506,13 +14777,14 @@
     "key": "Type the answer",
     "fr": "Saisir la réponse",
     "en": "Type the answer",
-    "count": 4,
+    "count": 5,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/ChallengeQuiz.tsx",
       "src/screens/LanguagesGame.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx",
       "src/screens/VersusCapitals.tsx"
     ]
@@ -14905,13 +15177,14 @@
     "key": "WELL DONE!",
     "fr": "BIEN JOUÉ !",
     "en": "WELL DONE!",
-    "count": 4,
+    "count": 5,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/ChallengeQuiz.tsx",
       "src/screens/LanguagesGame.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx",
       "src/screens/VersusCapitals.tsx"
     ]
@@ -15308,6 +15581,18 @@
     ]
   },
   {
+    "key": "Which country is this point in?",
+    "fr": "Dans quel pays est ce point ?",
+    "en": "Which country is this point in?",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/PinpointGame.tsx"
+    ]
+  },
+  {
     "key": "Which language is this phrase?",
     "fr": "De quelle langue vient cette phrase ?",
     "en": "Which language is this phrase?",
@@ -15515,13 +15800,14 @@
     "key": "Wrong",
     "fr": "Mauvaise réponse",
     "en": "Wrong",
-    "count": 4,
+    "count": 5,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/ChallengeQuiz.tsx",
       "src/screens/LanguagesGame.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx",
       "src/screens/VersusCapitals.tsx"
     ]
@@ -15608,13 +15894,14 @@
     "key": "Wrong. {0}",
     "fr": "Mauvaise réponse. {0}",
     "en": "Wrong. {0}",
-    "count": 3,
+    "count": 4,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/ChallengeQuiz.tsx",
       "src/screens/LanguagesGame.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx"
     ]
   },
@@ -16445,13 +16732,14 @@
     "key": "point(s)",
     "fr": "point(s)",
     "en": "point(s)",
-    "count": 3,
+    "count": 4,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/ChallengeQuiz.tsx",
       "src/screens/LanguagesGame.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx"
     ]
   },
@@ -16459,12 +16747,15 @@
     "key": "points",
     "fr": "points",
     "en": "points",
-    "count": 1,
+    "count": 3,
     "kinds": [
+      "label",
       "call"
     ],
     "files": [
-      "src/screens/ChallengeQuiz.tsx"
+      "src/lib/customMatch.ts",
+      "src/screens/ChallengeQuiz.tsx",
+      "src/screens/LocalParcours.tsx"
     ]
   },
   {
@@ -16660,6 +16951,18 @@
     ]
   },
   {
+    "key": "this player",
+    "fr": "ce joueur",
+    "en": "this player",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/Matchmaking.tsx"
+    ]
+  },
+  {
     "key": "to target",
     "fr": "vers la cible",
     "en": "to target",
@@ -16800,13 +17103,14 @@
     "key": "{0} / {1} correct",
     "fr": "{0} / {1} bonnes réponses",
     "en": "{0} / {1} correct",
-    "count": 3,
+    "count": 4,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/ChallengeQuiz.tsx",
       "src/screens/LanguagesGame.tsx",
+      "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx"
     ]
   },
@@ -16904,6 +17208,18 @@
     ],
     "files": [
       "src/components/RewardedAdButton.tsx"
+    ]
+  },
+  {
+    "key": "{0} correct out of {1}",
+    "fr": "{0} bonnes réponses sur {1}",
+    "en": "{0} correct out of {1}",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/ResultGrid.tsx"
     ]
   },
   {
@@ -17426,6 +17742,18 @@
     ],
     "files": [
       "src/screens/MainMenu.tsx"
+    ]
+  },
+  {
+    "key": "{0}, rank {1}, {2} ELO",
+    "fr": "{0}, rang {1}, {2} ELO",
+    "en": "{0}, rank {1}, {2} ELO",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/ProfileHero.tsx"
     ]
   },
   {

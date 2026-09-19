@@ -31,7 +31,7 @@ export interface CustomRegionPick {
 }
 
 /** Builder identity for one custom round. `capital`/`flag` are both `versus`. */
-export type OnlineModeKey = 'capital' | 'flag' | 'classic' | 'streak' | 'globe' | 'guess' | 'regions' | 'challenge' | 'higherlower' | 'silhouette' | 'borders' | 'languages';
+export type OnlineModeKey = 'capital' | 'flag' | 'classic' | 'streak' | 'globe' | 'guess' | 'regions' | 'challenge' | 'higherlower' | 'silhouette' | 'pinpoint' | 'borders' | 'languages';
 
 export const ONLINE_MODE_ORDER: OnlineModeKey[] = [
   'globe',
@@ -40,6 +40,7 @@ export const ONLINE_MODE_ORDER: OnlineModeKey[] = [
   'guess',
   'borders',
   'silhouette',
+  'pinpoint',
   'languages',
   'higherlower',
   'classic',
@@ -73,6 +74,7 @@ export const ONLINE_MODES: Record<OnlineModeKey, OnlineModeMeta> = {
   streak: { key: 'streak', mode: 'streak', configurable: false, defaultCount: 1, fr: 'Streak', en: 'Streak', unitFr: "jusqu'à l'erreur", unitEn: 'until a miss' },
   higherlower: { key: 'higherlower', mode: 'higherlower', configurable: false, defaultCount: 1, fr: 'Plus ou Moins', en: 'Higher or Lower', unitFr: "jusqu'à l'erreur", unitEn: 'until a miss' },
   silhouette: { key: 'silhouette', mode: 'silhouette', configurable: true, defaultCount: 5, fr: 'Silhouette', en: 'Silhouette', unitFr: 'formes', unitEn: 'shapes' },
+  pinpoint: { key: 'pinpoint', mode: 'pinpoint', configurable: true, defaultCount: 5, fr: 'Point sur le Globe', en: 'Pin on the Globe', unitFr: 'points', unitEn: 'points' },
   languages: { key: 'languages', mode: 'languages', configurable: true, defaultCount: 5, fr: 'Langues', en: 'Languages', unitFr: 'phrases', unitEn: 'phrases' },
   borders: { key: 'borders', mode: 'borders', configurable: false, defaultCount: 1, fr: 'Frontières', en: 'Borders', unitFr: 'trajet', unitEn: 'route' },
   globe: { key: 'globe', mode: 'globe', configurable: true, defaultCount: 5, fr: 'Globe Géo', en: 'Geo Globe', unitFr: 'rounds', unitEn: 'rounds' },

@@ -23,6 +23,7 @@ import VersusCapitals from './screens/VersusCapitals';
 import GuessCountryGame from './screens/GuessCountryGame';
 import HigherLowerGame from './screens/HigherLowerGame';
 import SilhouetteGame from './screens/SilhouetteGame';
+import PinpointGame from './screens/PinpointGame';
 import LanguagesFlow from './screens/LanguagesFlow';
 import BordersGame from './screens/BordersGame';
 import FindCountryGame from './screens/FindCountryGame';
@@ -69,6 +70,7 @@ const DIRECT_SOLO_MODES = new Set<GameMode>([
   'streak',
   'higherlower',
   'silhouette',
+  'pinpoint',
   'borders',
   'guess',
   'globe',
@@ -589,6 +591,22 @@ export function Router({
           scope={soloScope('silhouette')}
           training={soloTraining('silhouette')}
           reviewIds={soloReview('silhouette')}
+        />
+      </SafeAreaProvider>
+    );
+  }
+
+  if (gameMode === 'pinpoint') {
+    return (
+      <SafeAreaProvider>
+        <PinpointGame
+          setGameMode={leaveGame}
+          user={user}
+          matchData={matchData}
+          onRoundComplete={matchData ? handleRoundComplete : undefined}
+          scope={soloScope('pinpoint')}
+          training={soloTraining('pinpoint')}
+          reviewIds={soloReview('pinpoint')}
         />
       </SafeAreaProvider>
     );

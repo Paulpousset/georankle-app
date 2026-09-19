@@ -81,6 +81,7 @@ function unlockedModes(level: number): GameMode[] {
   if (level >= 8) modes.push('globe');
   if (level >= 25) modes.push('higherlower');
   if (level >= 45) modes.push('silhouette');
+  if (level >= 55) modes.push('pinpoint');
   if (level >= 60) modes.push('languages');
   if (level >= 80) modes.push('borders');
   if (level >= 120) modes.push('streak');
@@ -117,6 +118,8 @@ function matchModeOf(mode: GameMode): MatchMode {
       return 'globe';
     case 'silhouette':
       return 'silhouette';
+    case 'pinpoint':
+      return 'pinpoint';
     case 'languages':
       return 'languages';
     case 'borders':

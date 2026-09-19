@@ -12,8 +12,9 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { tr } from '../i18n';
-import { a11yButton, a11yImage, ICON_HIT_SLOP } from '../lib/a11y';
+import { a11yButton, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from './ScoreText';
+import { ResultGrid } from './ResultGrid';
 
 interface DailyResultCardProps {
   /** The completed daily result to show, or null to hide the card. */
@@ -124,14 +125,7 @@ export function DailyResultCard({
             {scoreText(result, language)}
           </ScoreText>
 
-          {result.grid ? (
-            <Text
-              {...a11yImage(tr(language, 'Grille de résultat', 'Result grid'))}
-              style={{ fontSize: 24, marginTop: 12, letterSpacing: 2 }}
-            >
-              {result.grid}
-            </Text>
-          ) : null}
+          {result.grid ? <ResultGrid grid={result.grid} size={22} style={{ marginTop: 12 }} /> : null}
 
           <View style={{ flexDirection: 'row', gap: 24, marginTop: 18 }}>
             <View style={{ alignItems: 'center' }}>

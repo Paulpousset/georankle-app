@@ -122,6 +122,38 @@ export const PLAY_DOC_CSS = `    <style id="play-doc-style">
         .pd-bar .pd-brand { color: #d8e8f4; }
         .pd-bar .pd-jump { color: #e8825a; }
       }
+      /* ── Barre masquée (html.pd-nobar) ─────────────────────────────────
+         La croix de la barre la replie : le jeu reprend toute la hauteur,
+         moins une poignée de 20px qui permet de la rouvrir. Le choix est
+         mémorisé (localStorage, voir PLAY_DOC_HEAD_SCRIPT). Le mode lecture
+         la remontre quoi qu'il arrive : c'est elle qui ramène au jeu. */
+      .pd-bar .pd-hide {
+        background: none; border: 0; padding: 0 2px; margin-left: 4px;
+        font: inherit; font-size: 16px; line-height: 1; color: inherit;
+        cursor: pointer; opacity: 0.7;
+      }
+      .pd-bar .pd-hide:hover { opacity: 1; }
+      .pd-show { display: none; }
+      html.pd-nobar:not(.pd-reading) .pd-bar { display: none; }
+      html.pd-nobar:not(.pd-reading) .pd-show {
+        display: flex; align-items: center; justify-content: center;
+        height: 20px; box-sizing: border-box;
+        background: #f8f2e3; border-bottom: 1px solid #c4a87a;
+        font-family: Georgia, "Times New Roman", serif; font-size: 11px;
+        font-weight: 700; letter-spacing: 0.5px; color: #7a5c38;
+        text-decoration: none; cursor: pointer; user-select: none;
+      }
+      html.pd-nobar:not(.pd-reading) .pd-show:hover { color: #2c1810; }
+      html.pd-nobar:not(.pd-reading) #root {
+        height: calc(100vh - 20px) !important;
+        height: calc(100dvh - 20px) !important;
+      }
+      @media (prefers-color-scheme: dark) {
+        html.pd-nobar:not(.pd-reading) .pd-show {
+          background: #132040; border-bottom-color: #2d4a70; color: #7aa0c4;
+        }
+        html.pd-nobar:not(.pd-reading) .pd-show:hover { color: #d8e8f4; }
+      }
       #regles { scroll-margin-top: 46px; }
       .play-doc {
         --pd-bg: #f2e8d0; --pd-surface: #f8f2e3; --pd-ink: #2c1810;
@@ -189,16 +221,33 @@ function modeList(locale) {
 }
 
 /**
+ * Posé en FIN de <head>, juste après le style : relit le choix « barre
+ * masquée » AVANT le premier rendu, sinon la barre apparaîtrait un instant à
+ * chaque rechargement avant de se replier. Clé partagée avec PLAY_DOC_SCRIPT.
+ */
+export const PLAY_DOC_HEAD_SCRIPT = `    <script>
+      try {
+        if (localStorage.getItem('geog.playBar') === 'hidden') {
+          document.documentElement.classList.add('pd-nobar');
+        }
+      } catch (e) {}
+    </script>`;
+
+/**
  * La barre de site posée AU-DESSUS du jeu.
  *
  * Deux rôles : donner le seul chemin fiable vers le texte (le lien « Règles et
  * FAQ », puisque le défilement n'enchaîne pas depuis le jeu), et montrer à un
  * visiteur — ou à un examinateur AdSense — que `/play` appartient à un site.
+ *
+ * La croix à droite la replie (html.pd-nobar) : elle reste dans le DOM — les
+ * robots la voient toujours — et une poignée « GeoG ⌄ » de 20px la rouvre.
  */
 export function playBar(locale) {
   const s = strings(locale);
   const data = localeData(locale);
   const labels = jumpLabels(locale);
+  const dismiss = data ? data.chrome.dismiss : s.dismiss;
   const links = [[href('home', locale), data ? data.chrome.home : s.home]];
   if (!data) links.push([href('guides', locale), s.guides]);
   links.push([href('about', locale), data ? data.chrome.about : s.about]);
@@ -206,7 +255,9 @@ export function playBar(locale) {
     <a class="pd-brand" href="${href('home', locale)}">GeoG</a>
 ${links.map(([url, label]) => `    <a href="${url}">${esc(label)}</a>`).join('\n')}
     <a class="pd-jump" href="#regles"><span class="pd-jump-go">↓ ${esc(labels.go)}</span><span class="pd-jump-back">↑ ${esc(labels.back)}</span></a>
-  </nav>`;
+    <button class="pd-hide" type="button" data-pd-hide title="${esc(dismiss)}" aria-label="${esc(dismiss)}">✕</button>
+  </nav>
+  <a class="pd-show" href="#" data-pd-show aria-label="GeoG">GeoG ⌄</a>`;
 }
 
 /**
@@ -246,6 +297,20 @@ export const PLAY_DOC_SCRIPT = `  <script>
       for (var i = 0; i < backs.length; i++) backs[i].addEventListener('click', function (e) {
         e.preventDefault();
         set(false);
+      });
+      function bar(shown) {
+        html.classList.toggle('pd-nobar', !shown);
+        try {
+          if (shown) localStorage.removeItem('geog.playBar');
+          else localStorage.setItem('geog.playBar', 'hidden');
+        } catch (e) {}
+      }
+      var hide = document.querySelector('[data-pd-hide]');
+      if (hide) hide.addEventListener('click', function () { bar(false); });
+      var show = document.querySelector('[data-pd-show]');
+      if (show) show.addEventListener('click', function (e) {
+        e.preventDefault();
+        bar(true);
       });
       if (location.hash === '#regles') set(true);
       window.addEventListener('hashchange', function () {

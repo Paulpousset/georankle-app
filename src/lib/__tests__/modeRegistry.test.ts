@@ -36,7 +36,7 @@ import type { GameMode, MatchMode } from '../../types';
 /** Every GameMode a player can actually launch (excludes the menu pseudo-mode). */
 const PLAYABLE: GameMode[] = [
   'classic', 'streak', 'versus', 'guess', 'globe', 'regions', 'challenge',
-  'quiz-capital', 'quiz-flag', 'higherlower', 'silhouette', 'borders',
+  'quiz-capital', 'quiz-flag', 'higherlower', 'silhouette', 'pinpoint', 'borders',
   'languages', 'local-builder',
 ];
 
@@ -71,7 +71,7 @@ describe('mode registries stay in sync', () => {
 describe('normalizeRoundScore covers every match mode', () => {
   // The `default:` arm clamps the raw score, which silently turns a 25/50-point
   // quiz round into 25/1000 — a guaranteed loss with no error anywhere.
-  const QUIZ_MODES: MatchMode[] = ['silhouette', 'challenge', 'languages'];
+  const QUIZ_MODES: MatchMode[] = ['silhouette', 'pinpoint', 'challenge', 'languages'];
 
   it('scales point-based quizzes onto the full 0-1000 range', () => {
     for (const mode of QUIZ_MODES) {

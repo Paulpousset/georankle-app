@@ -7,7 +7,7 @@
  * that actually matter, rendered as a short checklist under the blurb.
  */
 import type { ComponentType } from 'react';
-import { Flag, Globe, Info, Landmark, Languages, LayoutGrid, Map, Monitor, Puzzle, Route, Swords, TrendingUp, Zap } from 'lucide-react-native';
+import { Flag, Globe, Info, Landmark, Languages, LayoutGrid, Map, MapPin, Monitor, Puzzle, Route, Swords, TrendingUp, Zap } from 'lucide-react-native';
 
 import { PALETTE } from '../theme/colors';
 import type { GameMode } from '../types';
@@ -73,6 +73,19 @@ export const MODE_INTROS: Partial<Record<GameMode, ModeIntro>> = {
       { fr: 'Observez les côtes, les péninsules et les îles : ce sont les meilleurs indices.', en: 'Look at coastlines, peninsulas and islands — they are the best clues.' },
       { fr: 'DUO = 1 pt, CARRÉ = 3 pts, CASH = 5 pts : plus c’est risqué, plus ça rapporte.', en: 'DUO = 1 pt, CARRÉ = 3 pts, CASH = 5 pts: the riskier the call, the bigger the reward.' },
       { fr: 'Les mauvaises réponses viennent souvent du même continent : méfiez-vous des voisins !', en: 'Wrong options often come from the same continent — beware of neighbours!' },
+    ],
+  },
+  pinpoint: {
+    icon: MapPin,
+    accent: PALETTE.vermilion,
+    titleFr: 'Point sur le Globe',
+    titleEn: 'Pin on the Globe',
+    bodyFr: 'Un point est posé sur un globe 3D sans aucune frontière : dites dans quel pays il se trouve. Choisissez votre difficulté à chaque question — DUO (2 choix), CARRÉ (4 choix) ou CASH (à écrire) — pour marquer plus de points.',
+    bodyEn: 'A point is dropped on a 3D globe with no borders at all: say which country it lies in. Pick a difficulty each question — DUO (2 options), CARRÉ (4 options) or CASH (type it) — to score more.',
+    tips: [
+      { fr: 'Faites tourner et zoomez le globe : les côtes et la position sont vos seuls indices.', en: 'Rotate and zoom the globe: coastlines and position are your only clues.' },
+      { fr: 'DUO = 1 pt, CARRÉ = 3 pts, CASH = 5 pts : plus c’est risqué, plus ça rapporte.', en: 'DUO = 1 pt, CARRÉ = 3 pts, CASH = 5 pts: the riskier the call, the bigger the reward.' },
+      { fr: 'En DUO et CARRÉ, les mauvaises réponses sont les pays les plus proches du point : gare aux voisins !', en: 'In DUO and CARRÉ the wrong options are the countries closest to the point — beware of neighbours!' },
     ],
   },
   languages: {

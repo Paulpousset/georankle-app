@@ -24,6 +24,7 @@ const MODE_KEYS: Record<string, string> = {
   challenge: 'Country Quiz',
   higherlower: 'Higher or Lower',
   silhouette: 'Silhouette',
+  pinpoint: 'Pin on the Globe',
   borders: 'Borders',
   languages: 'Languages',
 };

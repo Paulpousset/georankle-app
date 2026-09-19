@@ -36,6 +36,7 @@ export const REVIEW_MODES: readonly GameMode[] = [
   'globe',
   'guess',
   'silhouette',
+  'pinpoint',
   'quiz-capital',
   'quiz-flag',
 ];

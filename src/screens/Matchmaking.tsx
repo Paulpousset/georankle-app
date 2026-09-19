@@ -79,6 +79,7 @@ function modeName(mode: MatchMode, lang: Language): string {
   if (mode === 'regions') return tr(lang, 'Défis Pays', 'Country Challenges');
   if (mode === 'challenge') return tr(lang, 'Quiz Pays', 'Country Quiz');
   if (mode === 'silhouette') return tr(lang, 'Silhouette', 'Silhouette');
+  if (mode === 'pinpoint') return tr(lang, 'Point sur le Globe', 'Pin on the Globe');
   if (mode === 'borders') return tr(lang, 'Frontières', 'Borders');
   if (mode === 'higherlower') return tr(lang, 'Plus ou Moins', 'Higher or Lower');
   if (mode === 'languages') return tr(lang, 'Langues', 'Languages');

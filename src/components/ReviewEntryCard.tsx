@@ -28,6 +28,7 @@ const MODE_LABELS: Partial<Record<GameMode, { fr: string; en: string }>> = {
   globe: { fr: 'Globe Géo', en: 'Geo Globe' },
   guess: { fr: 'Devinez le Pays', en: 'Guess the Country' },
   silhouette: { fr: 'Silhouette', en: 'Silhouette' },
+  pinpoint: { fr: 'Point sur le Globe', en: 'Pin on the Globe' },
   'quiz-capital': { fr: 'Capitales', en: 'Capitals' },
   'quiz-flag': { fr: 'Drapeaux', en: 'Flags' },
 };

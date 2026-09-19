@@ -47,6 +47,7 @@ export const DAILY_MODES: GameMode[] = [
   // One rotating slot for the 8 country quizzes (dept numbers, US state
   // capitals, Länder…): the day's seed picks which one, the same for everyone.
   'challenge',
+  'pinpoint',
 ];
 
 /** Day index 0 maps to this UTC date — only affects the displayed "#N". */
@@ -327,6 +328,8 @@ export function dailyModeLabel(mode: GameMode, language: Language): string {
       return tr(language, 'Plus ou Moins', 'Higher or Lower');
     case 'silhouette':
       return 'Silhouette';
+    case 'pinpoint':
+      return tr(language, 'Point sur le Globe', 'Pin on the Globe');
     case 'borders':
       return tr(language, 'Frontières', 'Borders');
     case 'languages':

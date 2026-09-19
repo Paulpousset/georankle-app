@@ -38,7 +38,7 @@ import {
 } from './lib/routes.mjs';
 import { renderPage, attr, ADSENSE_HEAD } from './lib/layout.mjs';
 import { loadPage, interpolate, extractFaq } from './lib/content.mjs';
-import { playDoc, playBar, PLAY_DOC_CSS, PLAY_DOC_SCRIPT } from './lib/playDoc.mjs';
+import { playDoc, playBar, PLAY_DOC_CSS, PLAY_DOC_HEAD_SCRIPT, PLAY_DOC_SCRIPT } from './lib/playDoc.mjs';
 import { article, faqPage, videoGame, render as renderJsonLd } from './lib/jsonld.mjs';
 import { buildSitemap } from './lib/sitemap.mjs';
 import { validate } from './lib/validate.mjs';
@@ -216,7 +216,7 @@ ${ADSENSE_HEAD}
   // Le style du site vient en FIN de <head>, APRÈS la feuille « expo-reset » :
   // à spécificité égale c'est l'ordre qui tranche, et placé avant, notre
   // verrou de page perdait contre le `body { overflow:hidden }` d'Expo.
-  html = replaceOnce(html, '</head>', `${PLAY_DOC_CSS}\n  </head>`, 'fin du head');
+  html = replaceOnce(html, '</head>', `${PLAY_DOC_CSS}\n${PLAY_DOC_HEAD_SCRIPT}\n  </head>`, 'fin du head');
 
   // Sans JavaScript, on propose ce qui existe VRAIMENT dans cette langue : les
   // guides pour le français et l'anglais, les pages de mode pour les autres —

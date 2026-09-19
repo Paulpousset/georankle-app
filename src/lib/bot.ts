@@ -93,6 +93,7 @@ export function simulateBotRound(
       break;
     }
     case 'silhouette':
+    case 'pinpoint':
     case 'challenge':
     case 'languages': {
       // CARRÉ/DUO/CASH quiz like versus: raw = per-question points (max n×5).

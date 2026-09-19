@@ -22,6 +22,7 @@ const MODE_LABELS: Record<MatchMode, [string, string]> = {
   challenge: ['Quiz Pays', 'Country Quiz'],
   higherlower: ['Plus ou Moins', 'Higher or Lower'],
   silhouette: ['Silhouette', 'Silhouette'],
+  pinpoint: ['Point sur le Globe', 'Pin on the Globe'],
   borders: ['Frontières', 'Borders'],
   languages: ['Langues', 'Languages'],
 };

@@ -27,9 +27,11 @@ import {
   LEAGUE_MODES_PER_DAY,
   LEAGUE_POOL_V2_FROM,
   LEAGUE_POOL_V3_FROM,
+  LEAGUE_POOL_V4_FROM,
   __LEAGUE_POOL_V1,
   __LEAGUE_POOL_V2,
   __LEAGUE_POOL_V3,
+  __LEAGUE_POOL_V4,
   createLeague,
   fetchLeagueLeaderboard,
   getMyLeagues,
@@ -76,18 +78,22 @@ describe('leagueModesFor', () => {
     // One vector per pool window, each frozen for its own era. A vector only
     // ever moves when its window's pool is the one being extended.
     expect(leagueModesFor('2026-09-20')).toEqual(['higherlower', 'silhouette', 'quiz-flag']);
-    expect(leagueModesFor('2027-03-15')).toEqual(['globe', 'borders', 'regions']);
+    expect(leagueModesFor('2027-03-15')).toEqual(['challenge', 'pinpoint', 'borders']);
   });
 
   it('switches pools exactly on the cutover dates', () => {
     expect(LEAGUE_POOL_V2_FROM).toBe('2026-09-15');
     expect(LEAGUE_POOL_V3_FROM).toBe('2026-10-15');
+    expect(LEAGUE_POOL_V4_FROM).toBe('2026-11-15');
     // Last v1 day / first v2 day — the pair the SQL must reproduce verbatim.
     expect(leagueModesFor('2026-09-14')).toEqual(['quiz-capital', 'regions', 'higherlower']);
     expect(leagueModesFor('2026-09-15')).toEqual(['globe', 'quiz-flag', 'higherlower']);
     // Same for the v2 → v3 boundary.
     expect(leagueModesFor('2026-10-14')).toEqual(['classic', 'regions', 'silhouette']);
     expect(leagueModesFor('2026-10-15')).toEqual(['regions', 'guess', 'quiz-flag']);
+    // And the v3 → v4 boundary.
+    expect(leagueModesFor('2026-11-14')).toEqual(['streak', 'quiz-flag', 'borders']);
+    expect(leagueModesFor('2026-11-15')).toEqual(['silhouette', 'regions', 'classic']);
   });
 
   it('never draws a mode before its cutover, and draws it after', () => {
@@ -105,6 +111,13 @@ describe('leagueModesFor', () => {
     expect(afterV2.some((modes) => modes.includes('languages'))).toBe(true);
     const afterV3 = Array.from({ length: 300 }, (_, i) => leagueModesFor(day(Date.UTC(2026, 9, 15), i)));
     expect(afterV3.some((modes) => modes.includes('challenge'))).toBe(true);
+    // 'pinpoint' stays out until the v4 cutover — 2025-01-01 + 682 days =
+    // 2026-11-14, the last v3 day.
+    for (let i = 0; i < 683; i++) {
+      expect(leagueModesFor(day(before, i))).not.toContain('pinpoint');
+    }
+    const afterV4 = Array.from({ length: 300 }, (_, i) => leagueModesFor(day(Date.UTC(2026, 10, 15), i)));
+    expect(afterV4.some((modes) => modes.includes('pinpoint'))).toBe(true);
   });
 
   it('keeps older pools frozen and each new one a strict superset (mirrors leagues.sql)', () => {
@@ -127,8 +140,11 @@ describe('leagueModesFor', () => {
     expect(__LEAGUE_POOL_V3.slice(0, __LEAGUE_POOL_V2.length)).toEqual(__LEAGUE_POOL_V2);
     expect(__LEAGUE_POOL_V3).toContain('challenge');
     expect(new Set(__LEAGUE_POOL_V3).size).toBe(__LEAGUE_POOL_V3.length);
+    expect(__LEAGUE_POOL_V4.slice(0, __LEAGUE_POOL_V3.length)).toEqual(__LEAGUE_POOL_V3);
+    expect(__LEAGUE_POOL_V4).toContain('pinpoint');
+    expect(new Set(__LEAGUE_POOL_V4).size).toBe(__LEAGUE_POOL_V4.length);
     // The exported pool is the one in force today.
-    expect(LEAGUE_MODE_POOL).toEqual(__LEAGUE_POOL_V3);
+    expect(LEAGUE_MODE_POOL).toEqual(__LEAGUE_POOL_V4);
   });
   // The "every league mode must also be a daily mode" invariant lives in
   // modeRegistry.test.ts, which already mocks daily.ts's Supabase/Sentry chain.

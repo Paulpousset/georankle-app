@@ -23,6 +23,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { CONTINENTS, continentCount, filterCca3sByContinent, type ContinentId } from '../data/continents';
 import { silhouetteCountries } from './silhouette';
+import { pinpointCountries } from './pinpoint';
 import type { GameMode } from '../types';
 
 /** Solo modes whose answer is a country, and which therefore accept a scope. */
@@ -30,6 +31,7 @@ export const SCOPED_MODES: ReadonlySet<GameMode> = new Set<GameMode>([
   'globe',
   'guess',
   'silhouette',
+  'pinpoint',
   'quiz-capital',
   'quiz-flag',
   'higherlower',
@@ -47,6 +49,7 @@ export const MIN_POOL: Record<string, number> = {
   globe: 8,
   guess: 8,
   silhouette: 8,
+  pinpoint: 8,
   'quiz-capital': 8,
   'quiz-flag': 8,
   higherlower: 10,
@@ -56,12 +59,18 @@ export const MIN_POOL: Record<string, number> = {
 
 /** Lazily computed: the shape-eligible pool is derived from world_polygons. */
 let silhouettePool: string[] | null = null;
+/** Same for the point game: only countries with a polygon to land in. */
+let pinpointPool: string[] | null = null;
 
 /** How many countries a mode can actually draw from inside a continent. */
 export function poolSizeFor(mode: GameMode, continent: ContinentId): number {
   if (mode === 'silhouette') {
     silhouettePool ??= silhouetteCountries();
     return filterCca3sByContinent(silhouettePool, continent).length;
+  }
+  if (mode === 'pinpoint') {
+    pinpointPool ??= pinpointCountries();
+    return filterCca3sByContinent(pinpointPool, continent).length;
   }
   return continentCount(continent);
 }

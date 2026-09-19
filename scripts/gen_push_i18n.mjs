@@ -36,6 +36,7 @@ const KEYS = [
   'Country Quiz',
   'Higher or Lower',
   'Silhouette',
+  'Pin on the Globe',
   'Borders',
   'Languages',
 ];

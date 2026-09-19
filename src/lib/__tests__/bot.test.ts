@@ -118,7 +118,7 @@ describe('point-based quiz modes are simulated on their own scale', () => {
   // falling through to the `default:` arm is simulated on the globe scale
   // (1000 per hit), which normalizes to the ceiling — the human loses the round
   // before playing it. Nothing in the type system catches this.
-  const QUIZ_MODES: MatchMode[] = ['silhouette', 'languages'];
+  const QUIZ_MODES: MatchMode[] = ['silhouette', 'pinpoint', 'languages'];
   const N = 5;
 
   it('keeps raw scores inside the N×5 points band', () => {

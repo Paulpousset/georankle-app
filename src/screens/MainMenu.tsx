@@ -18,6 +18,7 @@ import {
   Monitor,
   Moon,
   ShoppingBag,
+  MapPin,
   Puzzle,
   Route,
   SlidersHorizontal,
@@ -1090,6 +1091,17 @@ export function MainMenu({
                 worldOnly={worldOnly('silhouette')}
                 onHelp={() => setHelpMode('silhouette')}
               />
+              <ModeTile
+                icon={MapPin}
+                accent={isDarkMode ? PALETTE.chartBlue : PALETTE.vermilion}
+                tint={isDarkMode ? 'rgba(74,158,255,0.12)' : 'rgba(192,74,26,0.10)'}
+                title={tr(language, 'Point sur le Globe', 'Pin on the Globe')}
+                subtitle={tr(language, 'Un point, un globe sans frontières : quel pays ?', 'A point on a borderless globe: which country?')}
+                isDarkMode={isDarkMode}
+                onPress={() => onPlay('pinpoint')}
+                worldOnly={worldOnly('pinpoint')}
+                onHelp={() => setHelpMode('pinpoint')}
+              />
               {languagesMode && (
                 <ModeTile
                   icon={Languages}
@@ -1471,6 +1483,17 @@ export function MainMenu({
                 onPress={() => onPlayOnline('silhouette')}
                 onLeaderboard={() => onOpenOnlineModeLeaderboard('silhouette', PALETTE.forestGreen)}
                 notify={incomingInviteMode === 'silhouette'}
+              />
+              <ModeCard
+                icon={MapPin}
+                accent={isDarkMode ? PALETTE.chartBlue : PALETTE.vermilion}
+                tint={isDarkMode ? 'rgba(74,158,255,0.12)' : 'rgba(192,74,26,0.10)'}
+                title={tr(language, 'Point sur le Globe', 'Pin on the Globe')}
+                subtitle={tr(language, 'Les mêmes points pour les deux joueurs', 'Same points for both players')}
+                isDarkMode={isDarkMode}
+                onPress={() => onPlayOnline('pinpoint')}
+                onLeaderboard={() => onOpenOnlineModeLeaderboard('pinpoint', isDarkMode ? PALETTE.chartBlue : PALETTE.vermilion)}
+                notify={incomingInviteMode === 'pinpoint'}
               />
               {languagesMode && (
                 <ModeCard
