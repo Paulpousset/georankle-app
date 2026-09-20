@@ -33,7 +33,6 @@ import { COSMETIC_LAYERS } from '../data/cosmeticLayers.gen';
 import { COSMETIC_MODELS, GLOBE_TEXTURES } from '../data/cosmeticModels.gen';
 import type { MapPalette } from '../theme/mapPalette';
 import type { AvatarConfig, CosmeticPart } from '../types';
-import { isFeatureEnabled } from './featureFlags';
 import { moduleToWebViewUri } from './globe3d/textureLoader';
 import { supabase } from './supabase';
 
@@ -418,12 +417,10 @@ export function useGameGlobeSkin(
           settle({ status: 'ready', key, skin: null, threeSrc: null });
           return;
         }
-        // `globe_3d` stays the kill switch: off, every game falls back to the
-        // flat renderer (skin colours only, see skinMapPalette).
-        if (!(await isFeatureEnabled('globe_3d'))) {
-          settle({ status: 'ready', key, skin: null, threeSrc: null });
-          return;
-        }
+        // A worn globe always brings WebGL (it is a texture and a relief, which
+        // a canvas cannot draw) — and a globe is always worn now, so the
+        // `globe_3d` flag no longer gates the games; reduce-motion above is
+        // the only way back to the flat renderer.
         const [skin, three] = await Promise.all([
           loadSkinForKey(key, { withRig, config: pref.config }),
           import('../vendor/threeSource'),

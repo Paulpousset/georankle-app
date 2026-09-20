@@ -42,7 +42,6 @@ import {
   type GameGlobePref,
   type GameGlobeSkin,
 } from '../lib/globeSkin';
-import { useFeatureFlag } from '../lib/featureFlags';
 import { RARITY_META } from '../data/cosmetics';
 import { supabase } from '../lib/supabase';
 import { getMapPalette } from '../theme/mapPalette';
@@ -99,8 +98,6 @@ export default function GlobeLab({ onBack }: GlobeLabProps) {
   const c = getColors(isDarkMode);
   const t = (fr: string, en: string, args?: readonly unknown[]) => tr(language, fr, en, args);
 
-  const flag3d = useFeatureFlag('globe_3d');
-
   const [pref, setPref] = useState<GameGlobePref | null>(null);
   const [preview, setPreview] = useState<PreviewKey>(null);
   // Keyed by the style it belongs to, so a stale texture is never handed to a
@@ -144,8 +141,9 @@ export default function GlobeLab({ onBack }: GlobeLabProps) {
   }, [user]);
 
   // The renderer the games will use, by the same rule as useGameGlobeSkin — so
-  // the preview can't lie: the `globe_3d` flag is the only kill switch.
-  const use3d = flag3d;
+  // the preview can't lie: a worn globe always brings WebGL, and a globe is
+  // always worn.
+  const use3d = true;
 
   useEffect(() => {
     if (!use3d || threeSrc) return;
