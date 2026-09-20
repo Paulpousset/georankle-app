@@ -24,6 +24,7 @@ import { getMapPalette, type MapPalette } from '../theme/mapPalette';
 import { buildFindEarthHtml } from '../lib/globe3d/buildEarthHtml';
 import { skinMapPalette, useGameGlobeSkin } from '../lib/globeSkin';
 import { GlobePickerModal } from '../components/GlobePickerModal';
+import { GlobeRendererToggle } from '../components/GlobeRendererToggle';
 import { FONTS } from '../theme/typography';
 import { getFlagUrl, prefetchFlags } from '../lib/flags';
 import { createSeededRng } from '../lib/rng';
@@ -50,6 +51,7 @@ import { a11yButton, a11yHidden, announce, a11yImage, ICON_HIT_SLOP } from '../l
 import { ScoreText } from '../components/ScoreText';
 import { TopInsetBar } from '../components/TopInsetBar';
 import { countryName } from '../lib/geoNames';
+import { playSfx } from '../lib/sfx';
 
 const DEFAULT_ROUNDS = 5;
 
@@ -774,6 +776,7 @@ export default function FindCountryGame({
   const handleConfirm = () => {
     if (!selectedCca3 || phase !== 'playing') return;
     const correct = selectedCca3 === current.cca3;
+    playSfx(correct ? 'correct' : 'wrong');
     if (correct) setScore((s) => s + 1000);
     roundResults.current.push(correct);
     setRecap((prev) => [
@@ -972,9 +975,18 @@ export default function FindCountryGame({
               <Text style={[styles.scoreLabel, { color: PALETTE.sand }]}>{score} pts</Text>
             )}
           </View>
-          {/* Swap the planet you play on. Only between guesses: the pick rebuilds
-              the globe page, which would wipe a result reveal. A bare icon read
-              as decoration — the label is what tells the player it is a button. */}
+          {/* Swap the planet you play on, or the renderer (3D / basique). Only
+              between guesses: either rebuilds the globe page, which would wipe
+              a result reveal. A bare icon read as decoration — the label is
+              what tells the player it is a button. */}
+          <GlobeRendererToggle
+            value={globeSkin.renderer}
+            onChange={(r) => {
+              setSelectedCca3(null);
+              globeSkin.setRenderer(r);
+            }}
+            disabled={phase !== 'playing'}
+          />
           <TouchableOpacity
             onPress={() => setPickerOpen(true)}
             disabled={phase !== 'playing'}

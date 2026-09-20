@@ -125,6 +125,10 @@ var FRAG=[
 '}'].join('\n');
 
 var CFG=null;
+// Every material made here, so a scene can dim the specular dot as a whole:
+// at 10x zoom a highlight sized for the world view is a sun over the board.
+var REGISTRY=[];
+function specScale(k){REGISTRY.forEach(function(m){if(m.uniforms&&m.uniforms.uSpecK)m.uniforms.uSpecK.value=m.userData.specK0*k;});}
 function cfg(){return CFG||(CFG={diffuseAlbedo:0.8,ramp:[[0.06,[0.0423,0.0497,0.2582]],[0.26,[0.62,0.62,0.68]],[0.42,[1,1,1]],[0.9,[1.12,1.12,1.08]]],
   spec:{threshold:[0.35,0.6],strength:0.45,roughness:0.35},rim:{color:'#7fe8ff',power:3.5,strength:0.55,blend:0.45},
   clouds:{styles:['classic','pastel','gaia','satellite','political','vintage'],seed:11,count:9,radius:[1.06,1.09],size:[0.05,0.11],squash:0.7},
@@ -174,7 +178,10 @@ function material(opts){
   var m=new THREE.ShaderMaterial({uniforms:uniforms,vertexShader:VERT,fragmentShader:FRAG,lights:true,
     defines:defines,transparent:!!opts.transparent,side:opts.side||THREE.FrontSide,
     depthWrite:opts.depthWrite!=null?opts.depthWrite:!opts.transparent});
-  m.userData.toonHd=true;
+  m.userData.toonHd=true;m.userData.specK0=uniforms.uSpecK.value;
+  REGISTRY.push(m);
+  var dispose0=m.dispose.bind(m);
+  m.dispose=function(){var i=REGISTRY.indexOf(m);if(i>=0)REGISTRY.splice(i,1);dispose0();};
   m.color=col; // convenience for the colour pulses (same object as the uniform)
   Object.defineProperty(m,'map',{get:function(){return uniforms.tMap.value;},
     set:function(t){uniforms.tMap.value=t;if(t&&!m.defines.TOON_MAP){m.defines.TOON_MAP='';m.needsUpdate=true;}
@@ -298,7 +305,7 @@ function bloom(renderer,scene,camera,W,H,opts){
     dispose:function(){composer.dispose();}};
 }
 
-return {PyRandom:PyRandom,configure:configure,material:material,lights:lights,enableShadows:enableShadows,
+return {PyRandom:PyRandom,configure:configure,material:material,specScale:specScale,lights:lights,enableShadows:enableShadows,
   remapMaterials:remapMaterials,clouds:clouds,atmosphere:atmosphere,bloom:bloom,dirFrom:dirFrom,cfg:cfg};
 })();
 `;

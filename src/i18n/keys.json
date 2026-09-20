@@ -259,6 +259,30 @@
     ]
   },
   {
+    "key": "3D",
+    "fr": "3D",
+    "en": "3D",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/GlobeRendererToggle.tsx"
+    ]
+  },
+  {
+    "key": "3D globe",
+    "fr": "Globe 3D",
+    "en": "3D globe",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/GlobeRendererToggle.tsx"
+    ]
+  },
+  {
     "key": "3D renderer",
     "fr": "rendu 3D",
     "en": "3D renderer",
@@ -1101,6 +1125,18 @@
     ]
   },
   {
+    "key": "Answers, countdowns, wins and coins.",
+    "fr": "Réponses, décomptes, victoires et pièces.",
+    "en": "Answers, countdowns, wins and coins.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/Profile.tsx"
+    ]
+  },
+  {
     "key": "Antarctic",
     "fr": "Antarct.",
     "en": "Antarctic",
@@ -1593,6 +1629,30 @@
     ],
     "files": [
       "src/screens/GlobeLab.tsx"
+    ]
+  },
+  {
+    "key": "Basic",
+    "fr": "Basique",
+    "en": "Basic",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/GlobeRendererToggle.tsx"
+    ]
+  },
+  {
+    "key": "Basic globe",
+    "fr": "Globe basique",
+    "en": "Basic globe",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/GlobeRendererToggle.tsx"
     ]
   },
   {
@@ -6085,6 +6145,18 @@
     ],
     "files": [
       "src/screens/GlobeLab.tsx"
+    ]
+  },
+  {
+    "key": "Globe style",
+    "fr": "Style du globe",
+    "en": "Globe style",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/GlobeRendererToggle.tsx"
     ]
   },
   {
@@ -12026,6 +12098,18 @@
     ]
   },
   {
+    "key": "SOUND",
+    "fr": "SON",
+    "en": "SOUND",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/Profile.tsx"
+    ]
+  },
+  {
     "key": "STANDINGS",
     "fr": "CLASSEMENT",
     "en": "STANDINGS",
@@ -13032,6 +13116,18 @@
     ],
     "files": [
       "src/screens/LeagueHub.tsx"
+    ]
+  },
+  {
+    "key": "Sound effects",
+    "fr": "Effets sonores",
+    "en": "Sound effects",
+    "count": 2,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/Profile.tsx"
     ]
   },
   {

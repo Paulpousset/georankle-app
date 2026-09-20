@@ -507,6 +507,9 @@ function updateCamera(){
   camera.fov=fov*180/Math.PI;
   camera.lookAt(0,0,0);
   camera.updateProjectionMatrix();
+  // The specular dot is sized for the world view; zoomed in it would be a sun
+  // over the board, so it fades with the zoom (gone by 2.2x).
+  if(window.ToonHD)ToonHD.specScale(Math.max(0,Math.min(1,1-(zoom-1)/1.2)));
   needsRender=true;}
 
 // ── Framing helpers (shared by the reveal and by Régions' country fit) ───────
@@ -1080,14 +1083,22 @@ function repaintStates(){
 // Every OTHER dot stays neutral: painting them all in the selection colour (as
 // this globe used to) meant tapping one changed nothing on screen — there was
 // no way to tell what you had picked.
+// A country whose polygon is a speck on screen (Antigua, Grenade, Malte… at the
+// reveal zoom) gets the same marker as a dot country: its painted outline is
+// two pixels wide and a « Raté ! » with nothing highlighted read as a bug
+// (Paul, 20/09/2026). Re-evaluated on every zoom, since the speck grows.
+function dotLike(id){
+  if(polyMap[id]===undefined)return true;
+  var c=centreMap[id];
+  return !!c&&polyRadiusPx(c)<=TINY_MIN_PX*1.6;}
 function dotStates(){
   var out=[];
   if(resultMode){
-    if(resultCorrect&&polyMap[resultCorrect]===undefined)out.push({id:resultCorrect,color:PAL.okS});
-    if(resultPicked&&resultPicked!==resultCorrect&&polyMap[resultPicked]===undefined)out.push({id:resultPicked,color:PAL.badS});
+    if(resultCorrect&&dotLike(resultCorrect))out.push({id:resultCorrect,color:PAL.okS});
+    if(resultPicked&&resultPicked!==resultCorrect&&dotLike(resultPicked))out.push({id:resultPicked,color:PAL.badS});
   } else {
-    if(hov&&!locked&&hov!==sel&&polyMap[hov]===undefined)out.push({id:hov,color:PAL.hovS});
-    if(sel&&polyMap[sel]===undefined)out.push({id:sel,color:PAL.selS});
+    if(hov&&!locked&&hov!==sel&&dotLike(hov))out.push({id:hov,color:PAL.hovS});
+    if(sel&&dotLike(sel))out.push({id:sel,color:PAL.selS});
   }
   return out;}
 // The highlighted dots are redrawn on their own layer, bigger and in the state
@@ -1144,7 +1155,8 @@ function gameInit(){
     if(dotsObj)dotsObj.material.size=dotSize();
     if(dotHalo)dotHalo.material.size=dotSize()+7;
     if(activeDot)activeDot.material.size=dotSize()*1.8;
-    if(activeHalo)activeHalo.material.size=dotSize()*1.8+8;};
+    if(activeHalo)activeHalo.material.size=dotSize()*1.8+8;
+    updateHiDot();};
   onTapCb=function(x,y){
     if(locked)return;
     var hit=pickAt(x,y);

@@ -34,6 +34,7 @@ import { a11yButton, a11yHidden, announce, a11yImage, ICON_HIT_SLOP } from '../l
 import { buildRegionEarthHtml } from '../lib/globe3d/buildEarthHtml';
 import { skinMapPalette, useGameGlobeSkin } from '../lib/globeSkin';
 import { GlobePickerModal } from '../components/GlobePickerModal';
+import { GlobeRendererToggle } from '../components/GlobeRendererToggle';
 import { ScoreText } from '../components/ScoreText';
 import { RunRecap, type RecapEntry } from '../components/RunRecap';
 import { SoloCoinReward } from '../components/SoloCoinReward';
@@ -45,6 +46,7 @@ import { useMyGameGlobe } from '../lib/myGlobe';
 import { useSoloCoins } from '../lib/useSoloCoins';
 import { TopInsetBar } from '../components/TopInsetBar';
 import { countryName } from '../lib/geoNames';
+import { playSfx } from '../lib/sfx';
 
 const DEFAULT_ROUNDS = 5;
 
@@ -701,6 +703,7 @@ export default function FindRegionGame({
   const handleConfirm = () => {
     if (!selectedId || !current || phase !== 'playing') return;
     const correct = selectedId === current.id;
+    playSfx(correct ? 'correct' : 'wrong');
     if (correct) setScore((s) => s + 1000);
     roundResults.current.push(correct);
     const picked = curRegions.find((r) => r.id === selectedId);
@@ -909,6 +912,11 @@ export default function FindRegionGame({
         </View>
         {/* Swap the planet the regions are drawn on. Only between guesses: the
             pick rebuilds the map page, which would wipe a result reveal. */}
+        <GlobeRendererToggle
+          value={globeSkin.renderer}
+          onChange={globeSkin.setRenderer}
+          disabled={phase !== 'playing'}
+        />
         <TouchableOpacity
           onPress={() => setPickerOpen(true)}
           disabled={phase !== 'playing'}

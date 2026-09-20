@@ -39,6 +39,7 @@ import { getMapPalette, type MapPalette } from '../theme/mapPalette';
 import { buildBordersEarthHtml } from '../lib/globe3d/buildEarthHtml';
 import { skinMapPalette, useGameGlobeSkin } from '../lib/globeSkin';
 import { GlobePickerModal } from '../components/GlobePickerModal';
+import { GlobeRendererToggle } from '../components/GlobeRendererToggle';
 import { AtlasGlobe } from '../components/AtlasIcons';
 import { getFlagUrl } from '../lib/flags';
 import { normalizeRoundScore } from '../lib/score';
@@ -64,6 +65,7 @@ import { TopInsetBar } from '../components/TopInsetBar';
 
 import { isMobileLayout as isMobile } from '../lib/layout';
 import { countryName } from '../lib/geoNames';
+import { playSfx } from '../lib/sfx';
 
 interface StatEntry {
   cca3: string;
@@ -544,6 +546,7 @@ export default function BordersGame({
 
   const finishRun = (won: boolean, finalScore: number) => {
     setOutcome(won ? 'won' : 'lost');
+    playSfx(won ? 'win' : 'lose');
     if (isDaily) {
       onDailyScoreChange?.(finalScore);
       onDailyComplete?.(finalScore);
@@ -613,11 +616,13 @@ export default function BordersGame({
       toast.error(msg);
       announce(msg);
       if (newMisses >= BORDERS_MAX_MISSES) finishRun(false, 0);
+      else playSfx('wrong');
       return;
     }
 
     const newChain = [...chain, cca3];
     setChain(newChain);
+    playSfx('correct');
     const addedMsg = tr(
       language, '{0} ajouté ✓', '{0} added ✓', [localCountryName(cca3, language)],
     );
@@ -832,6 +837,7 @@ export default function BordersGame({
         {/* Swap the planet. Safe at any point here: the page reload re-pushes the
             chain on GLOBE_READY, so nothing on screen is lost. */}
         <View style={styles.globeBtnRow}>
+          <GlobeRendererToggle value={globeSkin.renderer} onChange={globeSkin.setRenderer} />
           <TouchableOpacity
             onPress={() => setPickerOpen(true)}
             style={[styles.globeBtn, { backgroundColor: c.surface, borderColor: c.border }]}
@@ -1081,7 +1087,7 @@ const styles = StyleSheet.create({
   },
   // Under the globe rather than in the header: that row is already full (title,
   // steps, lives, language, theme) and truncates the title on a 360 px phone.
-  globeBtnRow: { width: '100%', maxWidth: 520, alignItems: 'flex-end', marginBottom: 12 },
+  globeBtnRow: { width: '100%', maxWidth: 520, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 8, marginBottom: 12 },
   globeBtn: {
     flexDirection: 'row',
     alignItems: 'center',

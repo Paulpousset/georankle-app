@@ -249,6 +249,26 @@ export function skinMapPalette(pal: MapPalette, key: string | null): MapPalette 
 
 const K_OVERRIDE = 'gameGlobe:override';
 const K_CONFIG = 'gameGlobe:config';
+const K_RENDERER = 'gameGlobe:renderer';
+
+/**
+ * How the board is drawn: the 3D world (WebGL, the worn globe with its relief)
+ * or the basic flat globe (Canvas-2D, the skin's colours only). A visible
+ * switch in every globe game (Paul, 20/09/2026) — device-local, like the pick.
+ */
+export type GlobeRenderer = '3d' | 'basic';
+
+export async function loadGameGlobeRenderer(): Promise<GlobeRenderer> {
+  try {
+    return (await AsyncStorage.getItem(K_RENDERER)) === 'basic' ? 'basic' : '3d';
+  } catch {
+    return '3d';
+  }
+}
+
+export async function setGameGlobeRenderer(r: GlobeRenderer): Promise<void> {
+  await AsyncStorage.setItem(K_RENDERER, r).catch(() => {});
+}
 
 /**
  * Paul, 19/09/2026: the games ALWAYS wear a shop globe — the free classic Earth
@@ -385,10 +405,16 @@ const RESOLVE_TIMEOUT_RIG_MS = 8000;
  */
 export function useGameGlobeSkin(
   opts: { withRig?: boolean } = {},
-): GameGlobeSkinState & { choose: (key: string | null) => void } {
+): GameGlobeSkinState & {
+  choose: (key: string | null) => void;
+  /** The board renderer in use, and the in-game switch (re-resolves the page). */
+  renderer: GlobeRenderer;
+  setRenderer: (r: GlobeRenderer) => void;
+} {
   const withRig = opts.withRig !== false;
   const [state, setState] = useState<GameGlobeSkinState>({ status: 'pending' });
-  // Bumped by choose(): re-runs the whole resolution with the new pick.
+  const [renderer, setRendererState] = useState<GlobeRenderer>('3d');
+  // Bumped by choose()/setRenderer(): re-runs the whole resolution.
   const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
@@ -406,14 +432,17 @@ export function useGameGlobeSkin(
     );
     (async () => {
       try {
-        const [pref, reduceMotion] = await Promise.all([
+        const [pref, reduceMotion, wanted] = await Promise.all([
           loadGameGlobePref(),
           AccessibilityInfo.isReduceMotionEnabled().catch(() => false),
+          loadGameGlobeRenderer(),
         ]);
+        if (alive) setRendererState(wanted);
         const key = resolveSkinKey(pref);
-        // Reduce-motion keeps the proven flat renderer; the skin then degrades
-        // to its palette alone (see skinMapPalette), which is still its colours.
-        if (reduceMotion) {
+        // Reduce-motion and the « basic » switch keep the proven flat renderer;
+        // the skin then degrades to its palette alone (see skinMapPalette),
+        // which is still its colours.
+        if (reduceMotion || wanted === 'basic') {
           settle({ status: 'ready', key, skin: null, threeSrc: null });
           return;
         }
@@ -455,7 +484,16 @@ export function useGameGlobeSkin(
     })();
   }, []);
 
-  return { ...state, choose };
+  const setRenderer = useCallback((r: GlobeRenderer) => {
+    setRendererState(r);
+    (async () => {
+      await setGameGlobeRenderer(r);
+      setState({ status: 'pending' });
+      setNonce((n) => n + 1);
+    })();
+  }, []);
+
+  return { ...state, choose, renderer, setRenderer };
 }
 
 /**
