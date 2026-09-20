@@ -35,6 +35,7 @@ import { Burst, Confetti, WaveRings } from '../components/end/Confetti';
 import { CountUp } from '../components/end/CountUp';
 import { ScoreText } from '../components/ScoreText';
 import { MODE_META } from './DailyHub';
+import { playSfx } from '../lib/sfx';
 
 const GOLD = '#f5b301';
 const GOLD_DEEP = '#8a5a00';
@@ -148,6 +149,7 @@ export default function DailyEnd({ result, streak, streakIncreased, onNext, onSh
   useEffect(() => {
     if (rm || !streakIncreased) return;
     const t = setTimeout(() => {
+      playSfx('levelup');
       Animated.sequence([
         Animated.timing(flame, { toValue: 1.5, duration: 260, easing: Easing.out(Easing.quad), useNativeDriver: NATIVE_ANIM }),
         Animated.spring(flame, { toValue: 1.15, friction: 4, useNativeDriver: NATIVE_ANIM }),

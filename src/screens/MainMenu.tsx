@@ -35,6 +35,7 @@ import {
 } from 'lucide-react-native';
 import { AtlasFlame } from '../components/AtlasIcons';
 import { MenuGlobe } from '../components/MenuGlobe';
+import { whenLaunchIntroDone } from '../components/LaunchIntro';
 import { useFeatureFlag } from '../lib/featureFlags';
 import type { ComponentType } from 'react';
 
@@ -61,6 +62,7 @@ import { scopeSupported, useSoloScope, useTrainingMode } from '../lib/soloScope'
 import { getHasSeenTutorial, setHasSeenTutorial } from '../lib/tutorial';
 import { useStageWidth } from '../lib/stage';
 import { hoverLift } from '../lib/webHover';
+import { playSfx } from '../lib/sfx';
 
 export type PlayType = 'solo' | 'local' | 'online';
 
@@ -411,7 +413,10 @@ function PlayTabs({
         return (
           <TouchableOpacity
             key={t.label}
-            onPress={() => onSelect(i)}
+            onPress={() => {
+              if (!active) playSfx('tap');
+              onSelect(i);
+            }}
             style={{
               flex: 1,
               flexDirection: 'row',
@@ -559,8 +564,11 @@ export function MainMenu({
   useEffect(() => {
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    getHasSeenTutorial().then((seen) => {
+    getHasSeenTutorial().then(async (seen) => {
       if (cancelled || seen) return;
+      // L'intro de lancement d'abord : le tour s'ouvrirait par-dessus.
+      await whenLaunchIntroDone();
+      if (cancelled) return;
       // Small delay so the menu has fully laid out before we measure targets.
       timer = setTimeout(() => {
         if (!cancelled) setShowTutorial(true);

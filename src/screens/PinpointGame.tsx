@@ -33,6 +33,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
+import { playSfx } from '../lib/sfx';
 import {
   Moon, Sun, Home, HelpCircle, Eye, CheckCircle, ChevronRight, MapPin,
 } from 'lucide-react-native';
@@ -267,6 +268,7 @@ export default function PinpointGame({
   const pickMode = (m: QuizMode) => {
     if (!question) return;
     Haptics.selectionAsync().catch(() => {});
+    playSfx('tap');
     if (m === 'CASH') {
       setCashInput('');
     } else {
@@ -296,6 +298,7 @@ export default function PinpointGame({
     Haptics.notificationAsync(
       correct ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Error,
     ).catch(() => {});
+    playSfx(correct ? 'correct' : 'wrong');
     announce(
       correct
         ? tr(language, 'Bonne réponse, +{0}', 'Correct, +{0}', [points])

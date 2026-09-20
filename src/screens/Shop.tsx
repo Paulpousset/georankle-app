@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Check, Coins, ArrowLeft, Palette, X, Sparkles, Package } from 'lucide-react-native';
 import { AtlasGlobe } from '../components/AtlasIcons';
 import * as Haptics from 'expo-haptics';
+import { playSfx } from '../lib/sfx';
 
 import { supabase } from '../lib/supabase';
 import { log } from '../lib/log';
@@ -243,6 +244,7 @@ export default function Shop({ onBack, onEditAvatar, onOpenGlobeLab, initialItem
     const result = await purchaseCosmetic(part.id, userId);
     if (result.ok) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      playSfx('purchase');
       setBalance(result.newBalance);
       setOwned((prev) => new Set(prev).add(part.id));
       track('cosmetic_purchased', { item_id: part.id, price });
@@ -296,6 +298,7 @@ export default function Shop({ onBack, onEditAvatar, onOpenGlobeLab, initialItem
             const result = await purchaseBundle(bundle.id, userId);
             if (result.ok) {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+              playSfx('purchase');
               setBalance(result.newBalance);
               setOwned((prev) => {
                 const next = new Set(prev);

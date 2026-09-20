@@ -17,6 +17,7 @@ import { Animated, ScrollView, Text, TouchableOpacity, View } from 'react-native
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
+import { playSfx } from '../lib/sfx';
 import { ChevronRight, Heart, Map as MapIcon, RotateCcw, Star } from 'lucide-react-native';
 
 import type { StoryLevel } from '../data/story';
@@ -125,6 +126,8 @@ export default function StoryLevelEnd({
     Haptics.notificationAsync(
       passed ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Error,
     ).catch(() => {});
+    playSfx('stamp');
+    playSfx(passed ? 'win' : 'lose');
     if (rm) return;
     Animated.sequence([
       Animated.timing(shake, { toValue: 1, duration: 50, useNativeDriver: NATIVE_ANIM }),

@@ -42,6 +42,7 @@ import { createSeededRng, seededShuffle } from '../lib/rng';
 import { ScoreText } from '../components/ScoreText';
 import type { Match, MatchMode } from '../types';
 import type { Json } from '../types/database';
+import { playSfx } from '../lib/sfx';
 
 const SESSION_SIZE = 8;
 
@@ -185,6 +186,7 @@ export default function RankedMatchmaking({
           const newMatch = payload.new;
           setMatchState(newMatch);
           if (newMatch.status === 'in_progress') {
+            playSfx('found');
             announce(tr(language, 'Adversaire trouvé, la partie classée commence', 'Opponent found, ranked match starting'));
             const { data: fullMatch } = await supabase
               .from('matches')

@@ -26,6 +26,7 @@ import { Burst } from './Confetti';
 import { CountUp } from './CountUp';
 import { EndStamp } from './EndStamp';
 import { Reveal } from './Reveal';
+import { playSfx } from '../../lib/sfx';
 
 interface RankLadderProps {
   oldElo: number;
@@ -61,6 +62,7 @@ export function RankLadder({ oldElo, newElo, eloChange, config, photoUrl, userna
       return;
     }
     const timer = setTimeout(() => {
+      playSfx(promoted ? 'levelup' : 'leveldown');
       Animated.timing(climb, {
         toValue: 1,
         duration: promoted ? 800 : 1000,

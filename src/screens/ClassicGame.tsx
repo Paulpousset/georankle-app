@@ -50,6 +50,7 @@ import { TopInsetBar } from '../components/TopInsetBar';
 
 import { isMobileLayout as isMobile } from '../lib/layout';
 import { countryName } from '../lib/geoNames';
+import { playSfx } from '../lib/sfx';
 
 /**
  * A finished classic session, captured so it can be reviewed read-only later
@@ -359,6 +360,8 @@ export function ClassicGame({
     const country = rounds[currentRoundIndex];
     if (!country) return;
     const rank = country.ranks[themeId] || MISSING_RANK;
+    // Un top 10 sonne comme une bonne réponse ; le reste, un simple toucher.
+    playSfx(rank <= 10 ? 'correct' : 'tap');
 
     setSelections((prev) => ({
       ...prev,

@@ -49,7 +49,7 @@ import { PALETTE } from '../theme/colors';
 import type { Language, LocalizedLabel } from '../types';
 import { pickLabel, tr } from '../i18n';
 
-type Mode = 'login' | 'signup' | 'forgot' | 'profile';
+type Mode = 'login' | 'signup' | 'forgot' | 'confirm' | 'profile';
 
 /** Where the password-reset email link sends the user to set a new password. */
 const RESET_REDIRECT_URL = 'https://playgeog.com/reset-password.html';
@@ -70,6 +70,10 @@ const Auth = ({ onAuthSuccess, language, initialMode = 'login' }: AuthProps) => 
   const [bestStreak, setBestStreak] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  // 'confirm' screen: the address the confirmation link went to, and whether
+  // the user already asked for it again (inline feedback, no popup).
+  const [confirmEmail, setConfirmEmail] = useState('');
+  const [resent, setResent] = useState(false);
   const [mode, setMode] = useState<Mode>(initialMode);
 
   // Connexion sociale : chaque bouton exige son flag serveur (créés OFF par
@@ -175,7 +179,10 @@ const Auth = ({ onAuthSuccess, language, initialMode = 'login' }: AuthProps) => 
     backToLogin: { fr: 'Retour à la connexion', en: 'Back to login' },
     error: { fr: 'Erreur', en: 'Error' },
     success: { fr: 'Succès', en: 'Success' },
-    checkEmail: { fr: "Vérifiez vos emails pour confirmer l'inscription !", en: 'Check your email for confirmation link!' },
+    confirmTitle: { fr: 'Vérifie tes emails', en: 'Check your inbox' },
+    confirmSpam: { fr: 'Rien reçu ? Regarde dans les spams, ou renvoie le lien.', en: 'Nothing yet? Check your spam folder, or resend the link.' },
+    resend: { fr: "Renvoyer l'email", en: 'Resend email' },
+    resent: { fr: 'Email renvoyé !', en: 'Email resent!' },
     passwordsDontMatch: { fr: 'Les mots de passe ne correspondent pas', en: 'Passwords do not match' },
     invalidEmail: { fr: 'Adresse email invalide', en: 'Invalid email address' },
     invalidUsername: { fr: 'Pseudo invalide', en: 'Invalid username' },
@@ -319,11 +326,22 @@ const Auth = ({ onAuthSuccess, language, initialMode = 'login' }: AuthProps) => 
       track('signed_up');
       onAuthSuccess();
     } else {
-      // Email confirmation enabled: prompt the user to check their inbox.
+      // Email confirmation enabled: the account is not usable until the link in
+      // the email is clicked. A popup was too easy to dismiss without reading,
+      // so this shows a dedicated screen that stays until the user leaves it.
       track('signed_up');
-      showAlert(tr(language, 'Compte créé !', 'Account created!'), t.checkEmail);
-      setMode('login');
+      setConfirmEmail(email.trim());
+      setResent(false);
+      setMode('confirm');
     }
+    setLoading(false);
+  }
+
+  async function resendConfirmation() {
+    setLoading(true);
+    const { error } = await supabase.auth.resend({ type: 'signup', email: confirmEmail });
+    if (error) showAlert(t.error, error.message);
+    else setResent(true);
     setLoading(false);
   }
 
@@ -425,6 +443,48 @@ const Auth = ({ onAuthSuccess, language, initialMode = 'login' }: AuthProps) => 
               {...a11yButton(tr(language, 'Déconnexion', 'Logout'))}
             >
               <Text style={styles.buttonText}>{tr(language, 'Déconnexion', 'Logout')}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : mode === 'confirm' ? (
+          <View>
+            <Text style={styles.title}>{tr(language, 'Compte créé !', 'Account created!')}</Text>
+            <View style={styles.resetIconWrap}>
+              <Mail size={32} color={PALETTE.forestGreen} />
+            </View>
+            <Text style={styles.resetSentTitle}>{t.confirmTitle}</Text>
+            <Text style={styles.resetIntro}>
+              {tr(
+                language,
+                'On t’a envoyé un lien de confirmation à {0}. Clique dessus pour activer ton compte, puis reviens te connecter.',
+                'We sent a confirmation link to {0}. Click it to activate your account, then come back to log in.',
+                [confirmEmail],
+              )}
+            </Text>
+            <Text style={styles.resetIntro}>{resent ? t.resent : t.confirmSpam}</Text>
+
+            <TouchableOpacity
+              style={[styles.button, (loading || resent) && styles.buttonDisabled]}
+              onPress={resendConfirmation}
+              disabled={loading || resent}
+              {...a11yButton(t.resend, { disabled: loading || resent, busy: loading })}
+            >
+              {loading ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <>
+                  <Mail size={20} color="white" />
+                  <Text style={styles.buttonText}>{t.resend}</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setMode('login')}
+              style={styles.backRow}
+              {...a11yButton(t.backToLogin)}
+            >
+              <ArrowLeft size={16} color={PALETTE.vermilion} />
+              <Text style={styles.switchText}>{t.backToLogin}</Text>
             </TouchableOpacity>
           </View>
         ) : mode === 'forgot' ? (

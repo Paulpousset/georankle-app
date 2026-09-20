@@ -3,6 +3,7 @@ import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View, useWindowD
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
+import { playSfx } from '../lib/sfx';
 import { Home, RotateCcw, Trophy } from 'lucide-react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -159,6 +160,8 @@ export function MatchResult({
           ? Haptics.NotificationFeedbackType.Success
           : Haptics.NotificationFeedbackType.Error,
     ).catch(() => {});
+    playSfx('stamp');
+    playSfx(isDraw ? 'draw' : iWon ? 'win' : 'lose');
   };
   useEffect(() => {
     // Announce the match outcome and final score for screen-reader users.

@@ -50,6 +50,7 @@ import { useMyGameGlobe } from '../lib/myGlobe';
 import { TopInsetBar } from '../components/TopInsetBar';
 
 import { isMobileLayout as isMobile } from '../lib/layout';
+import { playSfx } from '../lib/sfx';
 
 // How long the revealed ranks stay on screen (correct answer highlighted green)
 // before the game-over screen appears / the match advances.
@@ -254,6 +255,7 @@ export default function StreakGame({
     const newRevealed: Record<string, number> = {};
     options.forEach((o) => (newRevealed[o.id] = o.rank));
     setRevealedRanks(newRevealed);
+    playSfx(isCorrect ? 'correct' : 'wrong');
 
     if (isCorrect) {
       setLastAnswerCorrect(true);

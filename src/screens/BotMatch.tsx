@@ -19,6 +19,7 @@ import { Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
+import { playSfx } from '../lib/sfx';
 import type { User } from '@supabase/supabase-js';
 
 import type { AvatarConfig, GameMode, Match, MatchMode } from '../types';
@@ -134,11 +135,13 @@ function OpponentReveal({
   useEffect(() => {
     if (countdown <= 0) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      playSfx('go');
       announce(tr(language, 'C\'est parti !', 'Let\'s go!'));
       readyStable();
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    playSfx('tick');
     const t = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
     return () => clearTimeout(t);
   }, [countdown, readyStable, language]);

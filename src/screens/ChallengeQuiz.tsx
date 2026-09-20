@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
+import { playSfx } from '../lib/sfx';
 import { ArrowLeft, HelpCircle, Eye, CheckCircle, ChevronRight } from 'lucide-react-native';
 
 import { getColors } from '../theme/colors';
@@ -162,6 +163,7 @@ export default function ChallengeQuiz({
 
   const pickMode = (m: QuizMode) => {
     Haptics.selectionAsync().catch(() => {});
+    playSfx('tap');
     if (m !== 'CASH') {
       const n = m === 'DUO' ? 1 : 3;
       const rng = createSeededRng(seed + index * 131 + (m === 'DUO' ? 1 : 3));
@@ -193,6 +195,7 @@ export default function ChallengeQuiz({
     Haptics.notificationAsync(
       correct ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Error,
     ).catch(() => {});
+    playSfx(correct ? 'correct' : 'wrong');
     announce(correct
       ? tr(language, 'Bonne réponse, +{0}', 'Correct, +{0}', [points])
       : tr(language, 'Mauvaise réponse. {0}', 'Wrong. {0}', [correctAnswer]));

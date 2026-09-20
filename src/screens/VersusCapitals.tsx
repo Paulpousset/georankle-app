@@ -26,6 +26,7 @@ import {
 import { AtlasStar, AtlasTrophy, AtlasCross } from '../components/AtlasIcons';
 
 import * as Haptics from 'expo-haptics';
+import { playSfx } from '../lib/sfx';
 import { track } from '../lib/analytics';
 import { normalizeRoundScore } from '../lib/score';
 import { getFlagUrl } from '../lib/flags';
@@ -381,6 +382,7 @@ export default function VersusCapitals({
     Haptics.impactAsync(
       isCorrect ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Heavy,
     ).catch(() => {});
+    playSfx(isCorrect ? 'correct' : 'wrong');
 
     announce(
       isCorrect
@@ -418,6 +420,7 @@ export default function VersusCapitals({
     Haptics.impactAsync(
       isCorrect ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Heavy,
     ).catch(() => {});
+    playSfx(isCorrect ? 'correct' : 'wrong');
 
     announce(
       isCorrect

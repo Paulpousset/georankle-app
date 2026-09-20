@@ -12,6 +12,7 @@
 import { useEffect, useState } from 'react';
 import { Animated, Easing, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { playSfx } from '../../lib/sfx';
 
 import type { AvatarConfig } from '../../types';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -80,7 +81,10 @@ function DroppingGlobe({ player, at, isMe, size }: { player: PodiumPlayer; at: n
     if (rm) return;
     const t = setTimeout(() => {
       Animated.timing(drop, { toValue: 1, duration: 650, easing: Easing.bounce, useNativeDriver: NATIVE_ANIM }).start();
-      setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}), 380);
+      setTimeout(() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        playSfx('stamp');
+      }, 380);
     }, at);
     return () => clearTimeout(t);
   }, [at, drop, rm]);
@@ -107,6 +111,14 @@ export function FfaPodium({ ranked, meId, width = 320 }: FfaPodiumProps) {
     if (rm) return;
     Animated.timing(rise, { toValue: 1, duration: 600, easing: Easing.out(Easing.cubic), useNativeDriver: NATIVE_ANIM }).start();
   }, [rise, rm]);
+
+  // La fanfare part avec la couronne (1,6 s) ; sans « réduire les
+  // animations », tout est déjà en place et le son part tout de suite.
+  const iWon = ranked[0]?.id === meId;
+  useEffect(() => {
+    const t = setTimeout(() => playSfx(iWon ? 'win' : 'draw'), rm ? 0 : 1650);
+    return () => clearTimeout(t);
+  }, [iWon, rm]);
 
   // Ordre visuel : 2e à gauche, 1er au centre, 3e à droite.
   const slots = [ranked[1], ranked[0], ranked[2]];

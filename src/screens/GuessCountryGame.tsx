@@ -75,6 +75,7 @@ import { tr } from '../i18n';
 import { a11yButton, announce, a11yImage, a11yHidden, ICON_HIT_SLOP } from '../lib/a11y';
 import { useStageWidth } from '../lib/stage';
 import { countryAnswerNames, countryName } from '../lib/geoNames';
+import { playSfx } from '../lib/sfx';
 
 /** Atlas line-icon per comparison category (rendered white on the colored tile). */
 const CAT_ICONS: Record<CatId, ComponentType<AtlasIconProps>> = {
@@ -410,6 +411,9 @@ export default function GuessCountryGame({
     const isCorrect = guessedCountry.cca3 === target.country.cca3;
     const newGuessCount = guesses.length + 1;
     setGuesses((prev) => [{ country: guessedCountry, comparison, isCorrect }, ...prev]);
+    // Un essai raté n'est pas une « mauvaise réponse » : c'est le jeu. Un
+    // simple toucher, et la fanfare quand le pays tombe.
+    playSfx(isCorrect ? 'win' : 'tap');
     if (isCorrect) {
       const score = calcScore(newGuessCount);
       setMyScore(score);

@@ -14,6 +14,7 @@
 import { useEffect, useState } from 'react';
 import { Animated, Easing, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { playSfx } from '../../lib/sfx';
 
 import type { AvatarConfig } from '../../types';
 import { RARITY_META } from '../../data/cosmetics';
@@ -74,6 +75,9 @@ export function DuelArena({ me, opponent, outcome, size = 92, width = 320 }: Due
     }).start(() => {
       setImpacted(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+      playSfx('impact');
+      // Égalité : choc sans casse (voir l'en-tête) — pas d'éclats à entendre.
+      if (outcome !== 'draw') playSfx('shatter');
       Animated.sequence([
         Animated.timing(flash, { toValue: 1, duration: 60, useNativeDriver: NATIVE_ANIM }),
         Animated.timing(flash, { toValue: 0, duration: 260, useNativeDriver: NATIVE_ANIM }),
@@ -92,7 +96,7 @@ export function DuelArena({ me, opponent, outcome, size = 92, width = 320 }: Due
         useNativeDriver: NATIVE_ANIM,
       }).start();
     });
-  }, [after, approach, flash, rm, shake]);
+  }, [after, approach, flash, outcome, rm, shake]);
 
   const half = width / 2;
   const gapStart = half - size / 2 - 12; // position de départ, près des bords

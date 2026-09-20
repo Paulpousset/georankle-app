@@ -16,7 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as ImagePicker from 'expo-image-picker';
-import { Bell, Camera, Check, Coins, Eye, EyeOff, ArrowLeft, HelpCircle, LayoutGrid, LogOut, Palette, ShoppingBag, Trash2, Zap } from 'lucide-react-native';
+import { Bell, Camera, Check, Coins, Eye, EyeOff, ArrowLeft, HelpCircle, LayoutGrid, LogOut, Palette, ShoppingBag, Trash2, Volume2, Zap } from 'lucide-react-native';
 
 import { supabase } from '../lib/supabase';
 import { useCachedData, cacheClear } from '../lib/cache';
@@ -37,6 +37,7 @@ import { MODE_INTROS } from '../data/modeIntros';
 import { a11yButton, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSfxEnabled } from '../lib/sfx';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import type { AvatarConfig, GameMode, MatchMode } from '../types';
@@ -127,6 +128,8 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
       setReminderTime(p.time);
     });
   }, []);
+
+  const [sfxOn, setSfxOn] = useSfxEnabled();
 
   const toggleReminder = async (value: boolean) => {
     setReminderOn(value);
@@ -669,6 +672,32 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
               </Text>
               <Text style={{ fontFamily: FONTS.monoBold, color: c.text, fontSize: 15 }}>{reminderTime}</Text>
             </TouchableOpacity>
+          </View>
+
+          {/* Sound effects — one switch, persisted (see src/lib/sfx.ts). */}
+          <Text style={[styles.outerSectionTitle, { color: c.textMuted }]}>
+            {tr(language, 'SON', 'SOUND')}
+          </Text>
+          <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border }]}>
+            <View style={styles.sectionHeadRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Volume2 color={c.textMuted} size={16} />
+                <Text style={[styles.sectionTitle, { color: c.textMuted }]}>
+                  {tr(language, 'Effets sonores', 'Sound effects')}
+                </Text>
+              </View>
+              <Switch
+                value={sfxOn}
+                onValueChange={setSfxOn}
+                trackColor={{ false: c.border, true: '#e8772e' }}
+                thumbColor="#fff"
+                accessibilityLabel={tr(language, 'Effets sonores', 'Sound effects')}
+                accessibilityState={{ checked: sfxOn }}
+              />
+            </View>
+            <Text style={[styles.hint, { color: c.textFaint, marginTop: 6 }]}>
+              {tr(language, 'Réponses, décomptes, victoires et pièces.', 'Answers, countdowns, wins and coins.')}
+            </Text>
           </View>
 
           {/* Help — replay the guided tour + every "how to play" card. */}

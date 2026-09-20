@@ -31,6 +31,7 @@ import { a11yButton, announce, ICON_HIT_SLOP } from '../lib/a11y';
 // game_data, c'est lui que les deux clients lisent pour jouer la même partie.
 import { buildClassicSessions } from '../lib/rematch';
 import { countryName } from '../lib/geoNames';
+import { playSfx } from '../lib/sfx';
 
 type MatchmakingView = 'lobby' | 'create' | 'waiting' | 'friends' | 'region-picker';
 
@@ -328,6 +329,7 @@ export default function Matchmaking({
           const newMatch = payload.new;
           setMatchState(newMatch);
           if (newMatch.status === 'in_progress') {
+            playSfx('found');
             announce(tr(language, 'Adversaire trouvé, la partie commence', 'Opponent found, match starting'));
             const { data: fullMatch } = await supabase
               .from('matches').select('*').eq('id', newMatch.id).single();

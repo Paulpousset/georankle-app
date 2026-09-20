@@ -27,6 +27,7 @@ import { a11yButton, announce } from '../lib/a11y';
 import { useToast } from './ToastProvider';
 import { ScoreText } from './ScoreText';
 import { RewardedAdButton } from './RewardedAdButton';
+import { playSfx } from '../lib/sfx';
 
 // A rich, saturated gold that reads as a *filled* element on both the cream
 // parchment (light) and the navy chart (dark) backgrounds.
@@ -91,6 +92,7 @@ export function SoloCoinReward({
   // Animate up to the current target whenever it changes (initial reveal + each grant).
   useEffect(() => {
     if (target <= 0) return;
+    playSfx('coin');
     Animated.timing(anim, {
       toValue: target,
       duration: 750,

@@ -53,6 +53,7 @@ import { TopInsetBar } from '../components/TopInsetBar';
 import { isMobileLayout as isMobile } from '../lib/layout';
 import { countryName } from '../lib/geoNames';
 import { themeDisplay } from '../lib/themeDisplay';
+import { playSfx } from '../lib/sfx';
 
 /** Reveal linger before the next pair (correct) or game over (wrong). */
 const NEXT_DELAY = 1400;
@@ -239,6 +240,7 @@ export default function HigherLowerGame({
       },
     ];
     setRecap(nextRecap);
+    playSfx(correct ? 'correct' : 'wrong');
 
     if (correct) {
       announce(tr(language, 'Correct ! Série {0}', 'Correct! Chain {0}', [score + 1]));

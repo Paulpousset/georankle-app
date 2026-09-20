@@ -2455,9 +2455,9 @@
     ]
   },
   {
-    "key": "Check your email for confirmation link!",
-    "fr": "Vérifiez vos emails pour confirmer l'inscription !",
-    "en": "Check your email for confirmation link!",
+    "key": "Check your inbox",
+    "fr": "Vérifie tes emails",
+    "en": "Check your inbox",
     "count": 1,
     "kinds": [
       "label"
@@ -4748,6 +4748,18 @@
     "key": "Email",
     "fr": "Email",
     "en": "Email",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/screens/Auth.tsx"
+    ]
+  },
+  {
+    "key": "Email resent!",
+    "fr": "Email renvoyé !",
+    "en": "Email resent!",
     "count": 1,
     "kinds": [
       "label"
@@ -9289,6 +9301,18 @@
     ]
   },
   {
+    "key": "Nothing yet? Check your spam folder, or resend the link.",
+    "fr": "Rien reçu ? Regarde dans les spams, ou renvoie le lien.",
+    "en": "Nothing yet? Check your spam folder, or resend the link.",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/screens/Auth.tsx"
+    ]
+  },
+  {
     "key": "Number of active military personnel. #1 has the largest armed forces in the world by headcount.",
     "fr": "Nombre de militaires en activité. Le #1 possède la plus grande armée du monde en effectifs.",
     "en": "Number of active military personnel. #1 has the largest armed forces in the world by headcount.",
@@ -11725,6 +11749,18 @@
     ],
     "files": [
       "src/i18n/themeDescriptions.ts"
+    ]
+  },
+  {
+    "key": "Resend email",
+    "fr": "Renvoyer l'email",
+    "en": "Resend email",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/screens/Auth.tsx"
     ]
   },
   {
@@ -15364,6 +15400,18 @@
     ],
     "files": [
       "src/components/RewardedAdButton.tsx"
+    ]
+  },
+  {
+    "key": "We sent a confirmation link to {0}. Click it to activate your account, then come back to log in.",
+    "fr": "On t’a envoyé un lien de confirmation à {0}. Clique dessus pour activer ton compte, puis reviens te connecter.",
+    "en": "We sent a confirmation link to {0}. Click it to activate your account, then come back to log in.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/Auth.tsx"
     ]
   },
   {

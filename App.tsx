@@ -38,6 +38,8 @@ import { SideRailAds } from './src/components/SideRailAds';
 import { DesktopStage } from './src/components/DesktopStage';
 import { UiScaleProvider } from './src/components/UiScaleProvider';
 import { WebHoverStyles } from './src/components/WebHoverStyles';
+import { LaunchIntro, markLaunchIntroDone } from './src/components/LaunchIntro';
+import { initSfx, preloadSfx } from './src/lib/sfx';
 
 // Start crash reporting as early as possible so startup errors are captured.
 initSentry();
@@ -92,6 +94,12 @@ function AppContent() {
   // daily challenge (playable logged out) instead of the menu — the Wordle loop.
   // `/play?mode=quiz-flag` boots that solo mode instead: it is where the site's
   // per-mode pages send their "play" button.
+  // Effets sonores : réglage lu une fois, session audio prête (silencieux iOS,
+  // mixage avec la musique du joueur), lecteurs des sons fréquents créés.
+  useEffect(() => {
+    initSfx().then(() => preloadSfx());
+  }, []);
+
   useEffect(() => {
     const intent = getInitialWebIntent();
     if (intent?.screen === 'daily') nav.pushPage({ name: 'daily' });
@@ -350,6 +358,15 @@ function App() {
   }, []);
   const fontsReady = fontsLoaded || fontTimedOut;
 
+  // L'intro animée (rose des vents + titre) qui enchaîne sur l'écran natif.
+  // Pas sur un lien web direct (`/play`, `?mode=`) : là, chaque seconde avant
+  // le jeu compte. Elle se démonte une fois son fondu terminé.
+  const [introDone, setIntroDone] = useState(() => {
+    const skip = getInitialWebIntent() != null;
+    if (skip) markLaunchIntroDone();
+    return skip;
+  });
+
   if (!fontsReady) {
     return <View style={{ flex: 1, backgroundColor: '#f2e8d0' }} />;
   }
@@ -379,6 +396,7 @@ function App() {
                   {/* Les confirmations du web (showAlert) : la boîte du
                       navigateur remplacée par une modale au thème de l'app. */}
                   <AlertHost />
+                  {!introDone && <LaunchIntro onDone={() => setIntroDone(true)} />}
                 </ToastProvider>
               </NetworkProvider>
             </AuthProvider>

@@ -30,6 +30,7 @@ import { useMyGameGlobe } from '../lib/myGlobe';
 import { EquippedChips } from './EquippedChips';
 import { ModeIntroCard } from './ModeIntroModal';
 import { PlayerGlobe } from './PlayerGlobe';
+import { playSfx } from '../lib/sfx';
 
 interface SoloStartProps {
   mode: GameMode;
@@ -193,7 +194,10 @@ export function SoloStart({ mode, onStart, onExit, onChangeGlobe, onCustomize, b
         ) : null}
 
         <TouchableOpacity
-          onPress={onStart}
+          onPress={() => {
+            playSfx('go');
+            onStart();
+          }}
           activeOpacity={0.9}
           {...a11yButton(tr(language, 'Commencer la partie', 'Start the game'))}
           style={{
