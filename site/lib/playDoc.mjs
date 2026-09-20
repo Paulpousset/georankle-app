@@ -216,7 +216,14 @@ function modeList(locale) {
     const name = data ? data.modes[mode.id].name : mode[locale].name;
     const copy = MODE_COPY[APP_MODE[mode.id]];
     const rule = locale === 'fr' ? copy.bodyFr : t(locale, copy.body);
-    return `        <li><a href="${href(mode.id, locale)}"><b>${esc(name)}</b></a> — ${esc(fill(rule))}</li>`;
+    // Les quatorze langues générées n'ont pas de pages de mode : le lien
+    // relance le jeu, mode présélectionné.
+    const target = data
+      ? mode.appMode
+        ? `${href('play', locale)}?mode=${mode.appMode}`
+        : href('play', locale)
+      : href(mode.id, locale);
+    return `        <li><a href="${target}"><b>${esc(name)}</b></a> — ${esc(fill(rule))}</li>`;
   }).join('\n');
 }
 
@@ -250,7 +257,9 @@ export function playBar(locale) {
   const dismiss = data ? data.chrome.dismiss : s.dismiss;
   const links = [[href('home', locale), data ? data.chrome.home : s.home]];
   if (!data) links.push([href('guides', locale), s.guides]);
-  links.push([href('about', locale), data ? data.chrome.about : s.about]);
+  // À-propos est une page en français et en anglais, une section de l'accueil
+  // dans les autres langues.
+  links.push(data ? [`${href('home', locale)}#about`, data.chrome.about] : [href('about', locale), s.about]);
   return `  <nav class="pd-bar">
     <a class="pd-brand" href="${href('home', locale)}">GeoG</a>
 ${links.map(([url, label]) => `    <a href="${url}">${esc(label)}</a>`).join('\n')}
@@ -327,9 +336,15 @@ function docNav(locale) {
   // Les guides n'existent qu'en français et en anglais : n'y envoyer personne
   // d'autre. Les autres langues repartent vers leur liste de modes.
   if (!data) links.push([href('guides', locale), s.guides]);
-  links.push([href('about', locale), data ? data.chrome.about : s.about]);
-  links.push([href('contact', locale), data ? data.chrome.contact : s.contact]);
-  links.push([href('privacy', locale), data ? data.chrome.privacy : s.privacy]);
+  if (data) {
+    links.push([`${href('home', locale)}#about`, data.chrome.about]);
+    links.push([`${href('home', locale)}#contact`, data.chrome.contact]);
+    links.push([href('privacy', locale), data.chrome.privacy]);
+  } else {
+    links.push([href('about', locale), s.about]);
+    links.push([href('contact', locale), s.contact]);
+    links.push([href('privacy', locale), s.privacy]);
+  }
   return `      <a class="pd-back" href="#" data-pd-back>↑ ${esc(jumpLabels(locale).back)}</a>
       <nav class="pd-nav">
 ${links.map(([url, label]) => `        <a href="${url}">${esc(label)}</a>`).join('\n')}

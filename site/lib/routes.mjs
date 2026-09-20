@@ -14,10 +14,21 @@
  *      qui pointe vers une 404 annule le bénéfice de tout le bloc.
  *
  * Depuis que l'app parle seize langues, le site les suit — mais pas au même
- * niveau : le français et l'anglais publient les 48 pages écrites à la main
- * (guides, atlas), les quatorze autres publient l'accueil, la coquille du jeu,
- * les douze pages de mode et les trois pages institutionnelles, générées depuis
+ * niveau : le français et l'anglais publient les 52 pages écrites à la main
+ * (guides, atlas, modes), les quatorze autres publient TROIS pages : l'accueil,
+ * la coquille du jeu et la politique de confidentialité, générées depuis
  * `site/content/i18n/` et les catalogues de l'app (voir siteLocales.mjs).
+ *
+ * Elles en publiaient dix-sept jusqu'au 20/09/2026 : douze pages de mode,
+ * à-propos et contact en plus. Ces pages faisaient 50 à 110 mots chacune, avec
+ * le script AdSense dans le <head> — 196 pages sur 342, 70 % du sitemap, de
+ * contenu automatique et quasi vide. C'est le profil exact du motif « contenu
+ * à faible valeur informative » qui a valu le cinquième refus AdSense. Elles
+ * sont retirées : les modes mènent droit au jeu (`/xx/play?mode=…`), à-propos
+ * et contact sont repliés dans l'accueil de la langue, et les anciennes URL
+ * redirigent (vercel.json, vérifié par checkVercelRoutes). Ne pas les recréer
+ * sans un contenu propre par langue (voir generated.mjs).
+ *
  * Une langue qui n'a pas une page ne la déclare pas : la règle 2 ci-dessus fait
  * le reste, et aucun hreflang ne pointe vers une 404.
  */
@@ -87,22 +98,14 @@ const CORE = [
     kind: 'page',
     priority: 0.5,
     changefreq: 'monthly',
-    paths: {
-      fr: '/a-propos/',
-      en: '/en/about/',
-      ...generatedPaths((locale, data) => localized(locale, data.slugs.about)),
-    },
+    paths: { fr: '/a-propos/', en: '/en/about/' },
   },
   {
     id: 'contact',
     kind: 'page',
     priority: 0.4,
     changefreq: 'yearly',
-    paths: {
-      fr: '/contact/',
-      en: '/en/contact/',
-      ...generatedPaths((locale, data) => localized(locale, data.slugs.contact)),
-    },
+    paths: { fr: '/contact/', en: '/en/contact/' },
   },
   // `/privacy.html` est référencé par les fiches des stores et par l'app :
   // l'URL ne peut pas changer, on lui donne juste une version anglaise propre.
@@ -154,17 +157,16 @@ const THEMATIC = [
   },
 ];
 
-/** Les 12 pages de mode (phase 2), dérivées de la table des modes. */
+/**
+ * Les 12 pages de mode (phase 2), dérivées de la table des modes — en français
+ * et en anglais seulement, écrites à la main (900 à 1 100 mots chacune).
+ */
 const MODE_ROUTES = MODES.map((mode) => ({
   id: mode.id,
   kind: 'mode',
   priority: 0.8,
   changefreq: 'monthly',
-  paths: {
-    fr: mode.fr.slug,
-    en: mode.en.slug,
-    ...generatedPaths((locale, data) => localized(locale, data.modes[mode.id].slug)),
-  },
+  paths: { fr: mode.fr.slug, en: mode.en.slug },
   mode: mode.id,
 }));
 

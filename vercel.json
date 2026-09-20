@@ -218,6 +218,146 @@
       "source": "/en/georankle",
       "destination": "/en/georankle/",
       "permanent": true
+    },
+    {
+      "source": "/:locale(es|pt|de|it|ru|tr|pl|nl|id|vi|th|uk|ro|el)/:slug(bayrak-oyunu|doan-quoc-ky|flaggen-quiz|flags|gioco-delle-bandiere|gra-we-flagi|hra-prapory|igra-flagi|jocul-steagurilor|jogo-de-bandeiras|juego-de-banderas|paichnidi-simaies|tebak-bendera|vlaggenspel)/",
+      "destination": "/:locale/play?mode=quiz-flag",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(es|pt|de|it|ru|tr|pl|nl|id|vi|th|uk|ro|el)/:slug(bayrak-oyunu|doan-quoc-ky|flaggen-quiz|flags|gioco-delle-bandiere|gra-we-flagi|hra-prapory|igra-flagi|jocul-steagurilor|jogo-de-bandeiras|juego-de-banderas|paichnidi-simaies|tebak-bendera|vlaggenspel)",
+      "destination": "/:locale/play?mode=quiz-flag",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(es|pt|de|it|ru|tr|pl|nl|id|vi|th|uk|ro|el)/:slug(baskent-testi|capitals|cau-do-thu-do|hauptstaedte-quiz|hoofdsteden-quiz|kouiz-protevouses|kuis-ibu-kota|quiz-de-capitais|quiz-de-capitales|quiz-sulle-capitali|quiz-ze-stolic|test-capitale|viktorina-stolicy|viktoryna-stolytsi)/",
+      "destination": "/:locale/play?mode=quiz-capital",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(es|pt|de|it|ru|tr|pl|nl|id|vi|th|uk|ro|el)/:slug(baskent-testi|capitals|cau-do-thu-do|hauptstaedte-quiz|hoofdsteden-quiz|kouiz-protevouses|kuis-ibu-kota|quiz-de-capitais|quiz-de-capitales|quiz-sulle-capitali|quiz-ze-stolic|test-capitale|viktorina-stolicy|viktoryna-stolytsi)",
+      "destination": "/:locale/play?mode=quiz-capital",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(es|pt|de|it|ru|tr|pl|nl|id|vi|th|uk|ro|el)/:slug(3b-kure|3d-globe|3d-globus|3d-hlobus|glob-3d|globe-3d|globo-3d|globus-3d|qua-cau-3d|ydrogeios-3d)/",
+      "destination": "/:locale/play?mode=globe",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(es|pt|de|it|ru|tr|pl|nl|id|vi|th|uk|ro|el)/:slug(3b-kure|3d-globe|3d-globus|3d-hlobus|glob-3d|globe-3d|globo-3d|globus-3d|qua-cau-3d|ydrogeios-3d)",
+      "destination": "/:locale/play?mode=globe",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(es|pt|de|it|ru|tr|pl|nl|id|vi|th|uk|ro|el)/:slug(hinh-bong-quoc-gia|ksztalty-panstw|laender-umrisse|perigrammata-choron|sagome-dei-paesi|silhouetten-van-landen|silhouettes|silhuetas-de-paises|siluet-negara|siluetas-de-paises|siluete-de-tari|silujety-stran|syluety-krain|ulke-siluetleri)/",
+      "destination": "/:locale/play?mode=silhouette",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(es|pt|de|it|ru|tr|pl|nl|id|vi|th|uk|ro|el)/:slug(hinh-bong-quoc-gia|ksztalty-panstw|laender-umrisse|perigrammata-choron|sagome-dei-paesi|silhouetten-van-landen|silhouettes|silhuetas-de-paises|siluet-negara|siluetas-de-paises|siluete-de-tari|silujety-stran|syluety-krain|ulke-siluetleri)",
+      "destination": "/:locale/play?mode=silhouette",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(es|pt|de|it|ru|tr|pl|nl|id|vi|th|uk|ro|el)/:slug(borders|gioco-dei-confini|gra-w-granice|grenzen-spiel|grenzenspel|hra-kordony|igra-granicy|jocul-granitelor|jogo-de-fronteiras|juego-de-fronteras|paichnidi-synora|permainan-perbatasan|sinir-oyunu|tro-choi-bien-gioi)/",
+      "destination": "/:locale/play?mode=borders",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(es|pt|de|it|ru|tr|pl|nl|id|vi|th|uk|ro|el)/:slug(borders|gioco-dei-confini|gra-w-granice|grenzen-spiel|grenzenspel|hra-kordony|igra-granicy|jocul-granitelor|jogo-de-fronteiras|juego-de-fronteras|paichnidi-synora|permainan-perbatasan|sinir-oyunu|tro-choi-bien-gioi)",
+      "destination": "/:locale/play?mode=borders",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(es|pt|de|it|ru|tr|pl|nl|id|vi|th|uk|ro|el)/:slug(adivina-el-pais|adivinhe-o-pais|doan-quoc-gia|ghiceste-tara|guess-the-country|indovina-il-paese|land-erraten|mantepse-ti-chora|raad-het-land|tebak-negara|ugadaj-stranu|ulkeyi-bil|vhaday-krainu|zgadnij-panstwo)/",
+      "destination": "/:locale/play?mode=guess",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(es|pt|de|it|ru|tr|pl|nl|id|vi|th|uk|ro|el)/:slug(adivina-el-pais|adivinhe-o-pais|doan-quoc-gia|ghiceste-tara|guess-the-country|indovina-il-paese|land-erraten|mantepse-ti-chora|raad-het-land|tebak-negara|ugadaj-stranu|ulkeyi-bil|vhaday-krainu|zgadnij-panstwo)",
+      "destination": "/:locale/play?mode=guess",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(es|pt|de|it|ru|tr|pl|nl|id|vi|th|uk|ro|el)/:slug(rankle)/",
+      "destination": "/:locale/play?mode=classic",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(es|pt|de|it|ru|tr|pl|nl|id|vi|th|uk|ro|el)/:slug(rankle)",
+      "destination": "/:locale/play?mode=classic",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(es|pt|de|it|ru|tr|pl|nl|id|vi|th|uk|ro|el)/:slug(bilshe-chy-menshe|bolshe-ili-menshe|daha-cok-mu-az-mi|higher-or-lower|hoeher-oder-niedriger|hoger-of-lager|hon-hay-kem|lebih-besar-atau-kecil|mai-mult-sau-mai-putin|maior-ou-menor-paises|mas-o-menos-paises|pano-i-kato|piu-o-meno-paesi|wiecej-czy-mniej)/",
+      "destination": "/:locale/play?mode=higherlower",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(es|pt|de|it|ru|tr|pl|nl|id|vi|th|uk|ro|el)/:slug(bilshe-chy-menshe|bolshe-ili-menshe|daha-cok-mu-az-mi|higher-or-lower|hoeher-oder-niedriger|hoger-of-lager|hon-hay-kem|lebih-besar-atau-kecil|mai-mult-sau-mai-putin|maior-ou-menor-paises|mas-o-menos-paises|pano-i-kato|piu-o-meno-paesi|wiecej-czy-mniej)",
+      "destination": "/:locale/play?mode=higherlower",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(es|pt|de|it|ru|tr|pl|nl|id|vi|th|uk|ro|el)/:slug(dagelijkse-uitdaging|daily-challenge|desafio-diario|gunun-gorevi|proklisi-tis-imeras|provocarea-zilei|reto-diario|sfida-del-giorno|tagesaufgabe|tantangan-harian|thu-thach-moi-ngay|wyzwanie-dnia|zadanie-dnya|zavdannya-dnya)/",
+      "destination": "/:locale/play",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(es|pt|de|it|ru|tr|pl|nl|id|vi|th|uk|ro|el)/:slug(dagelijkse-uitdaging|daily-challenge|desafio-diario|gunun-gorevi|proklisi-tis-imeras|provocarea-zilei|reto-diario|sfida-del-giorno|tagesaufgabe|tantangan-harian|thu-thach-moi-ngay|wyzwanie-dnia|zadanie-dnya|zavdannya-dnya)",
+      "destination": "/:locale/play",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(es|pt|de|it|ru|tr|pl|nl|id|vi|th|uk|ro|el)/:slug(cevrimici-duellolar|dau-truc-tuyen|diadiktyakes-monomachies|duel-online|duelli-online|duelos-en-linea|duelos-online|dueluri-online|onlajn-dueli|onlayn-dueli|online-duelle|online-duels|pojedynki-online)/",
+      "destination": "/:locale/play",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(es|pt|de|it|ru|tr|pl|nl|id|vi|th|uk|ro|el)/:slug(cevrimici-duellolar|dau-truc-tuyen|diadiktyakes-monomachies|duel-online|duelli-online|duelos-en-linea|duelos-online|dueluri-online|onlajn-dueli|onlayn-dueli|online-duelle|online-duels|pojedynki-online)",
+      "destination": "/:locale/play",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(es|pt|de|it|ru|tr|pl|nl|id|vi|th|uk|ro|el)/:slug(che-do-xep-hang|dereceli-mod|leitourgia-katataxis|mod-clasat|modalita-competitiva|mode-peringkat|modo-clasificatorio|modo-ranqueado|ranglistenmodus|ranked|ranked-modus|rejtingovyj-rezhim|reytynhovyy-rezhym|tryb-rankingowy)/",
+      "destination": "/:locale/play",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(es|pt|de|it|ru|tr|pl|nl|id|vi|th|uk|ro|el)/:slug(che-do-xep-hang|dereceli-mod|leitourgia-katataxis|mod-clasat|modalita-competitiva|mode-peringkat|modo-clasificatorio|modo-ranqueado|ranglistenmodus|ranked|ranked-modus|rejtingovyj-rezhim|reytynhovyy-rezhym|tryb-rankingowy)",
+      "destination": "/:locale/play",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(es|pt|de|it|ru|tr|pl|nl|id|vi|th|uk|ro|el)/:slug(che-do-cot-truyen|hikaye-modu|leitourgia-istorias|mod-poveste|modalita-storia|mode-cerita|modo-historia|story-mode|story-modus|syuzhetnyj-rezhim|syuzhetnyy-rezhym|tryb-fabularny|verhaalmodus)/",
+      "destination": "/:locale/play",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(es|pt|de|it|ru|tr|pl|nl|id|vi|th|uk|ro|el)/:slug(che-do-cot-truyen|hikaye-modu|leitourgia-istorias|mod-poveste|modalita-storia|mode-cerita|modo-historia|story-mode|story-modus|syuzhetnyj-rezhim|syuzhetnyy-rezhym|tryb-fabularny|verhaalmodus)",
+      "destination": "/:locale/play",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(es|pt|de|it|ru|tr|pl|nl|id|vi|th|uk|ro|el)/:slug(about|despre-joc|gia-to-paichnidi|o-grze|ob-igre|over-het-spel|oyun-hakkinda|pro-hru|sobre-el-juego|sobre-o-jogo|sul-gioco|tentang-game|ueber-das-spiel|ve-tro-choi)/",
+      "destination": "/:locale/#about",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(es|pt|de|it|ru|tr|pl|nl|id|vi|th|uk|ro|el)/:slug(about|despre-joc|gia-to-paichnidi|o-grze|ob-igre|over-het-spel|oyun-hakkinda|pro-hru|sobre-el-juego|sobre-o-jogo|sul-gioco|tentang-game|ueber-das-spiel|ve-tro-choi)",
+      "destination": "/:locale/#about",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(es|pt|de|it|ru|tr|pl|nl|id|vi|th|uk|ro|el)/:slug(contact|contacto|contato|contatti|epikoinonia|iletisim|kontak|kontakt|kontakty|lien-he)/",
+      "destination": "/:locale/#contact",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(es|pt|de|it|ru|tr|pl|nl|id|vi|th|uk|ro|el)/:slug(contact|contacto|contato|contatti|epikoinonia|iletisim|kontak|kontakt|kontakty|lien-he)",
+      "destination": "/:locale/#contact",
+      "permanent": true
     }
   ],
   "rewrites": [

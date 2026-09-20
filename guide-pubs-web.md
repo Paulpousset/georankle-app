@@ -1,4 +1,4 @@
-# Pubs sur le web — état et marche à suivre (mis à jour le 05/09/2026)
+# Pubs sur le web — état et marche à suivre (mis à jour le 20/09/2026)
 
 ## Où on en est
 
@@ -127,6 +127,47 @@ inexistantes renvoient un vrai 404, les pages institutionnelles existent.
 C'est mince pour AdSense, surtout quand chacune se termine par un bouton vers
 l'app. À étoffer si un cinquième refus tombe.
 
+## Le refus du 20/09/2026 — cinquième examen
+
+Motif unique : « contenu à faible valeur informative ». Audit du site tel
+qu'AdSense le voit (sitemap + curl, sans JavaScript) :
+
+**1. 70 % du sitemap était du contenu automatique quasi vide.** Le passage à
+seize langues (05/09) avait ajouté 238 URL générées par gabarit : pour chacune
+des quatorze langues, douze pages de mode de **93 à 109 mots** (un titre, la
+phrase de la pop-up « comment jouer », trois conseils, la liste des autres
+modes — similarité 0,63 à 0,72 entre pages sœurs), un à-propos de 179 mots et
+un contact de 52 mots — **196 pages sur 342, toutes avec le script AdSense
+dans le `<head>`**. C'est mot pour mot la définition Google du contenu généré
+automatiquement et « thin ». Les 104 pages FR/EN écrites à la main (400 à
+1 400 mots, 3–5 % de chevauchement) n'ont jamais été le problème : elles
+étaient noyées.
+
+*Corrigé* : les quatorze langues générées ne publient plus que **trois pages**
+(accueil, `/xx/play`, confidentialité). Les modes de l'accueil mènent droit au
+jeu (`/xx/play?mode=…`), à-propos et contact sont des sections de l'accueil
+(`#about`, `#contact`, ~750 mots au total). Les anciennes URL redirigent en
+308 (28 règles groupées dans vercel.json, dérivées de `retiredRedirects()` dans
+site/lib/generated.mjs et **vérifiées au build**). Sitemap : 342 → 146 URL.
+Ne pas recréer de pages par langue sans un contenu propre écrit dans cette
+langue.
+
+**2. Les pages de confidentialité générées portaient le script AdSense.**
+Contrairement aux versions FR/EN (`ads: false`). Corrigé : `ads: 'false'` dans
+le générateur.
+
+**3. La politique de confidentialité niait la publicité.** « Nous ne les
+utilisons pas à des fins publicitaires », et pas un mot sur Google, les cookies
+publicitaires ou l'opt-out — alors que le règlement AdSense exige exactement
+cette divulgation (fournisseurs tiers, cookie DoubleClick, lien vers les
+paramètres des annonces / aboutads.info). Corrigé : section « Publicité » en
+FR et EN, paragraphe équivalent (`privacy.p4`) dans les quatorze JSON, date de
+mise à jour au 20/09/2026.
+
+**4. Reste vrai après ce correctif** : pas d'Auto ads, pas de pub sur mobile,
+pas de pub sur `/privacy` ni sur le 404. Les slot ids d'`adsWeb.ts` sont
+toujours à vérifier.
+
 ## Répartition cible des formats
 
 | Surface | Format | État |
@@ -163,6 +204,14 @@ qu'il est vide, seuls les deux rails s'affichent.
 
 ## À faire par Paul
 
+0. **Dans la console AdSense** (Sites → playgeog.com) : cocher « Je confirme
+   que j'ai corrigé les problèmes » puis « Demander un examen » — **après** le
+   déploiement du 20/09 (vérifier que https://playgeog.com/sitemap.xml compte
+   146 URL et que /es/juego-de-banderas/ redirige vers /es/play?mode=quiz-flag).
+   Vérifier aussi Annonces → « Annonces automatiques » sur DÉSACTIVÉ pour
+   playgeog.com, et Confidentialité et messages → créer le message RGPD
+   (obligatoire pour servir en UE ; la politique de confidentialité promet
+   désormais ce consentement).
 1. **Déployer le web** sur Vercel (le contenu doit être en ligne avant la
    demande d'examen).
 2. **Vérifier dans la console AdSense** que les deux unités display existent

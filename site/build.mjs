@@ -47,6 +47,8 @@ import { COUNTRY_COUNT, MODE_COUNT } from './lib/constants.mjs';
 import { assertPartition } from './lib/continents.mjs';
 import { localeData } from './lib/siteLocales.mjs';
 import { INVITE_COPY, inviteFile, renderInvite } from './lib/invite.mjs';
+import { retiredRedirects } from './lib/generated.mjs';
+import { modeById } from './lib/modes.mjs';
 
 function fail(message) {
   console.error(`\n[site] ${message}\n`);
@@ -219,14 +221,16 @@ ${ADSENSE_HEAD}
   html = replaceOnce(html, '</head>', `${PLAY_DOC_CSS}\n${PLAY_DOC_HEAD_SCRIPT}\n  </head>`, 'fin du head');
 
   // Sans JavaScript, on propose ce qui existe VRAIMENT dans cette langue : les
-  // guides pour le français et l'anglais, les pages de mode pour les autres —
-  // envoyer un lecteur grec sur un guide français serait pire que rien.
+  // guides pour le français et l'anglais, le jeu lui-même (mode présélectionné)
+  // pour les autres, qui n'ont pas de pages de mode — envoyer un lecteur grec
+  // sur un guide français serait pire que rien.
   const fallbackLinks = generated
     ? ['mode-flags', 'mode-capitals', 'mode-globe', 'mode-daily']
-        .map(
-          (id) =>
-            `          <li><a href="${href(id, locale)}">${attr(generated.modes[id].name)}</a></li>`,
-        )
+        .map((id) => {
+          const appMode = modeById(id).appMode;
+          const target = appMode ? `${href('play', locale)}?mode=${appMode}` : href('play', locale);
+          return `          <li><a href="${target}">${attr(generated.modes[id].name)}</a></li>`;
+        })
         .join('\n')
     : ['guide-countries-count', 'guide-flags', 'guide-capitals', 'guide-borders']
         .map((id) => {
@@ -246,7 +250,11 @@ ${ADSENSE_HEAD}
         <p>${copy.lead}</p>
         <ul>
 ${fallbackLinks}
-          <li>${generated ? '' : `<a href="${href('guides', locale)}">${copy.all}</a> · `}<a href="${href('about', locale)}">${strings(locale).about}</a> · <a href="${href('contact', locale)}">${strings(locale).contact}</a></li>
+          <li>${
+            generated
+              ? `<a href="${href('home', locale)}#about">${attr(generated.chrome.about)}</a> · <a href="${href('home', locale)}#contact">${attr(generated.chrome.contact)}</a>`
+              : `<a href="${href('guides', locale)}">${copy.all}</a> · <a href="${href('about', locale)}">${strings(locale).about}</a> · <a href="${href('contact', locale)}">${strings(locale).contact}</a>`
+          }</li>
         </ul>
       </div>
     </noscript>`;
@@ -547,6 +555,17 @@ function checkVercelRoutes() {
     holes.push(`rewrites: /invite.html (sans lang) → ${inviteFile(DEFAULT_LOCALE)}`);
   } else if (fallback !== invites.length - 1) {
     holes.push('rewrites: le repli /invite.html sans lang doit venir APRÈS les règles à lang');
+  }
+  // Les pages retirées le 20/09/2026 (modes, à-propos, contact des quatorze
+  // langues générées) doivent rediriger, règle pour règle : la source est
+  // dérivée des slugs des JSON, un slug changé sans sa redirection casserait
+  // des liens partagés et laisserait des 404 dans la Search Console.
+  const declared = new Map((conf.redirects || []).map((r) => [r.source, r]));
+  for (const rule of retiredRedirects()) {
+    const hit = declared.get(rule.source);
+    if (!hit || hit.destination !== rule.destination || hit.permanent !== true) {
+      holes.push(`redirects: ${rule.source} → ${rule.destination} (permanent)`);
+    }
   }
   if (holes.length) fail(`vercel.json, entrées manquantes :\n  - ${holes.join('\n  - ')}`);
 }
