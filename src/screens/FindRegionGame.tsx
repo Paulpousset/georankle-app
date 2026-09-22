@@ -864,6 +864,7 @@ export default function FindRegionGame({
               onShare={isDaily ? onShare : undefined}
               onReplaySame={isDaily ? undefined : handleReplaySame}
               onNewGame={isDaily ? undefined : handleReplay}
+              share={{ mode: 'regions', summary: `${correctCount}/${totalRounds}` }}
               onMenu={goBack}
               menuLabel={
                 isDaily

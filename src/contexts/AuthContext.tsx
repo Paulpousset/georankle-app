@@ -3,6 +3,7 @@ import type { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { registerForPushNotifications } from '../lib/notifications';
 import { touchLastSeen } from '../lib/activity';
+import { claimComeback } from '../lib/comeback';
 import { fetchIsAdmin } from '../lib/admin';
 import { syncOnLogin } from '../lib/daily';
 import { track, identify, resetIdentity } from '../lib/analytics';
@@ -48,9 +49,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         registerForPushNotifications(session.user.id);
         // Push any logged-out daily results to the server and adopt its streak.
         syncOnLogin(session.user);
-        // Record activity (powers the "inactive" notification segment) and
+        // Welcome-back bonus first (it measures the absence on last_seen), THEN
+        // record activity (powers the "inactive" notification segment), and
         // learn whether this user can open the admin notifications panel.
-        touchLastSeen();
+        claimComeback().finally(() => touchLastSeen());
         fetchIsAdmin(session.user.id).then(setIsAdmin);
       } else if (event === 'SIGNED_OUT') {
         track('logged_out');

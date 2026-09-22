@@ -1030,6 +1030,13 @@ export default function BordersGame({
                 onShare={isDaily ? onShare : undefined}
                 onReplaySame={isDaily ? undefined : replaySameGame}
                 onNewGame={isDaily ? undefined : resetGame}
+                share={{
+                  mode: 'borders',
+                  summary:
+                    outcome === 'won'
+                      ? tr(language, 'Relié ! {0} pts', 'Linked! {0} pts', [currentScore()])
+                      : tr(language, 'Non relié', 'Not linked'),
+                }}
                 onMenu={() => setGameMode('menu')}
               />
               </Reveal>

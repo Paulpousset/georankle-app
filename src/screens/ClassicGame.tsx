@@ -1330,6 +1330,7 @@ export function ClassicGame({
                     onShare={!reviewData && isDaily ? onShare : undefined}
                     onReplaySame={reviewData || isDaily ? undefined : replaySameGame}
                     onNewGame={reviewData || isDaily ? undefined : initGame}
+                    share={matchData ? undefined : { mode: 'classic', summary: `${efficiency}%` }}
                     onMenu={onExit}
                     menuLabel={reviewData ? tr(language, 'Retour', 'Back') : undefined}
                   />

@@ -40,7 +40,7 @@ export function ReferralCard(): React.ReactElement | null {
 
   const onShare = useCallback(() => {
     if (!info) return;
-    track('referral_shared', {});
+    track('referral_shared', { source: 'friends' });
     const link = myReferralLink(info.code, language);
     const message = tr(
       language, 'Rejoins-moi sur GeoG 🌍 — on gagne tous les deux 50 pièces : {0}', 'Join me on GeoG 🌍 — we both earn 50 coins: {0}', [link],

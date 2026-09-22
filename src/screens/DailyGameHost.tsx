@@ -11,6 +11,7 @@ import { challengeForSeed } from '../data/challenges';
 import { prefetchReferralCode, shareDailyResult } from '../lib/shareDaily';
 import { track } from '../lib/analytics';
 import { maybeAskForReview } from '../lib/reviewPrompt';
+import { cancelStreakGuard } from '../lib/notifications';
 import { tr } from '../i18n';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useToast } from '../components/ToastProvider';
@@ -74,9 +75,15 @@ export default function DailyGameHost({
     completedRef.current = true;
     const result: DailyResult = { mode, date, score, grid };
     resultRef.current = result;
-    track('daily_completed', { mode, score });
     const before = await getLocalState().catch(() => null);
+    // `streak` and `signed_in` are what the streak-bonus sentinel needs: the
+    // bonus is server-side, so a logged-out player can never receive it, and a
+    // milestone needs the streak to land exactly on 7, 14… — both were invisible
+    // in the funnel (ANALYTICS_FUNNELS.md, « Bonus de streak »).
+    track('daily_completed', { mode, score, streak: before?.streak ?? 0, signed_in: Boolean(user) });
     const state = await completeDaily(user, result);
+    // Today's puzzle is done: the evening « streak in danger » reminder is moot.
+    cancelStreakGuard().catch(() => {});
     setStreak(state.streak);
     setEnding({ result, streakIncreased: before != null && state.streak > before.streak });
     setShowEnd(true);

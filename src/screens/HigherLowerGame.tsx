@@ -501,6 +501,7 @@ export default function HigherLowerGame({
               <SoloEndActions
                 onShare={isDaily ? onShare : undefined}
                 onNewGame={isDaily ? undefined : resetGame}
+                share={{ mode: 'higherlower', summary: tr(language, 'Série de {0}', 'Streak of {0}', [score]) }}
                 onMenu={() => setGameMode('menu')}
               />
             </View>

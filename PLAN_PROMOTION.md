@@ -203,8 +203,24 @@ de l'état réel des données, que je ne peux lire qu'avec le niveau B.
 
 ---
 
-## Pour lancer
+## État au 22/09/2026 — lancé
 
-Réponds « go » : je crée les Routines et j'attaque A1 tout de suite. Si tu
-colles les clés du niveau B quand tu as un quart d'heure, le reste s'enchaîne
-sans toi.
+Fait dans la foulée du « go » (branche `claude/app-promotion-plan-swjrje`) :
+
+| Chantier | Livré |
+|---|---|
+| Infra | `expo-updates` (mise à jour à chaud), canaux EAS, `eas-update.yml` (OTA quand la CI est verte sur master), `release.yml` (tag `vX.Y.Z` → build + stores), `migrate.yml` + `scripts/migrate.sh` (migrations de `supabase/migrations/`) |
+| A1 | « Défier un ami » sur toutes les fins de partie solo (`src/lib/shareSolo.ts`), relance parrainage en fin de partie (`ReferralNudge`, après 3 parties, 1×/semaine), `referral_shared` porte `source`, `daily_completed` porte `streak` et `signed_in`, bonus de série tracé sur le chemin de synchronisation |
+| A2 | Notification « série en danger » (`ensureStreakGuard`), bonus de retour après 7 jours (`claim_comeback`, migration), demande de note après une victoire en classé, 2 campagnes push (migration) |
+| A3 | Smart App Banner iOS + cartes Twitter sur `/play`, bouton « Installer l'app » sur les fins de partie web, `install_cta_pressed` |
+| A5 | 4 Routines créées : Contenu SEO (lundi 6 h UTC), Rapport croissance (vendredi 7 h), Audit technique (1er du mois), Notes de version (jeudi 8 h). Journal : `GROWTH_LOG.md` |
+
+Non fait, et pourquoi : les images Open Graph dynamiques par partie
+(`/play` est une page statique, la variante par requête demanderait des pages
+de redirection qui casseraient les liens universels iOS) ; « même grille » pour
+un ami en solo (seuls 4 modes gardent leur graine, les autres tirent au hasard :
+le lien ouvre le même mode, pas la même partie).
+
+Ce qui attend le niveau B : la mise à jour à chaud et les builds (`EXPO_TOKEN`),
+les deux migrations (`SUPABASE_DB_URL`), les chiffres du rapport hebdo
+(`POSTHOG_PERSONAL_API_KEY`). Le code mobile, lui, part au prochain build store.

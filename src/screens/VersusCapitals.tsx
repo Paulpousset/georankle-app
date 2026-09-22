@@ -22,6 +22,7 @@ import {
   Moon,
   Sun,
   Share2,
+  Swords,
 } from 'lucide-react-native';
 import { AtlasStar, AtlasTrophy, AtlasCross } from '../components/AtlasIcons';
 
@@ -29,6 +30,7 @@ import * as Haptics from 'expo-haptics';
 import { playSfx } from '../lib/sfx';
 import { track } from '../lib/analytics';
 import { normalizeRoundScore } from '../lib/score';
+import { shareSoloResult } from '../lib/shareSolo';
 import { getFlagUrl } from '../lib/flags';
 import { isAnswerClose, COUNTRY_ALIASES } from '../lib/answerMatch';
 import { getColors } from '../theme/colors';
@@ -41,6 +43,7 @@ import { tr } from '../i18n';
 import { a11yButton, announce, a11yImage, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
 import { TopInsetBar } from '../components/TopInsetBar';
+import { useToast } from '../components/ToastProvider';
 
 const PLAYER_COLORS = ['#4a9eff', '#8b1a1a', '#2a6e3f', '#c4872a'];
 import countriesStats from '../../assets/countries_stats.json';
@@ -166,6 +169,7 @@ export default function VersusCapitals({
 }: VersusCapitalsProps) {
   const { isDarkMode, setIsDarkMode } = useTheme();
   const { language } = useLanguage();
+  const toast = useToast();
   const insets = useSafeAreaInsets();
   const c = getColors(isDarkMode);
   const isOnline = !!matchData;
@@ -1625,6 +1629,29 @@ export default function VersusCapitals({
                       {tr(language, 'NOUVELLE PARTIE', 'NEW GAME')}
                     </Text>
                   </TouchableOpacity>
+                  {/* « Défier un ami » : bonnes réponses / questions (le récap
+                      n'est tenu qu'en solo). La feuille de partage s'ouvre dans
+                      le tick du tap, sans await avant (web mobile). */}
+                  {soloMode && (
+                    <TouchableOpacity
+                      style={[
+                        styles.resetBtn,
+                        { backgroundColor: 'transparent', borderWidth: 2, borderColor: c.border },
+                      ]}
+                      onPress={() => {
+                        const correct = recap.filter((e) => e.ok).length;
+                        shareSoloResult(soloAnalyticsMode, `${correct}/${totalRounds}`, language, () =>
+                          toast.success(tr(language, 'Score copié !', 'Score copied!')),
+                        ).catch(() => {});
+                      }}
+                      {...a11yButton(tr(language, 'Défier un ami', 'Challenge a friend'))}
+                    >
+                      <Swords color="#fff" size={18} />
+                      <Text style={[styles.resetBtnText, { textTransform: 'uppercase' }]}>
+                        {tr(language, 'Défier un ami', 'Challenge a friend')}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </>
               ) : !matchOver ? (
                 <TouchableOpacity

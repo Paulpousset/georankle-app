@@ -67,14 +67,18 @@ async function write(state: ReviewState): Promise<void> {
  * store sheet. Resolves to whether the OS was asked (it may still decide not
  * to show anything: Apple caps at 3 sheets per 365 days per app).
  */
-export async function maybeAskForReview(streak: number, now: Date = new Date()): Promise<boolean> {
+export async function maybeAskForReview(
+  streak: number,
+  now: Date = new Date(),
+  reason: 'daily_streak' | 'ranked_win' = 'daily_streak',
+): Promise<boolean> {
   if (Platform.OS === 'web') return false;
   const { ask, next } = decide(await read(), streak, now);
   if (!ask) return false;
   try {
     if (!(await StoreReview.hasAction())) return false;
     await write(next);
-    track('review_prompted', { streak });
+    track('review_prompted', { streak, reason });
     await StoreReview.requestReview();
     return true;
   } catch {

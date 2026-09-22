@@ -628,6 +628,7 @@ export default function LanguagesGame({
               onShare={isDaily ? onShare : undefined}
               onReplaySame={isDaily ? undefined : replaySameGame}
               onNewGame={isDaily ? undefined : resetGame}
+              share={{ mode: 'languages', summary: `${correctCount}/${run.length}` }}
               onMenu={() => setGameMode('menu')}
             />
             </Reveal>

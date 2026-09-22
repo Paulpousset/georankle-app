@@ -929,6 +929,7 @@ export default function FindCountryGame({
               onShare={isDaily ? onShare : undefined}
               onReplaySame={isDaily ? undefined : handleReplaySame}
               onNewGame={isDaily ? undefined : handleReplay}
+              share={{ mode: 'globe', summary: `${correctCount}/${totalRounds}` }}
               onMenu={() => setGameMode('menu')}
               accent={PALETTE.chartBlue}
             />

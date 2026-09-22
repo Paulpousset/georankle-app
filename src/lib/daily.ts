@@ -21,6 +21,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { GameMode, Language } from '../types';
 import { supabase } from './supabase';
 import { enqueue } from './syncQueue';
+import { track } from './analytics';
 import { tr } from '../i18n';
 
 /** Shape of the `complete_daily` RPC payload (returned as JSONB). */
@@ -293,6 +294,13 @@ export async function syncOnLogin(_user: User): Promise<void> {
         const d = data as CompleteDailyResult;
         serverStreak = d.streak ?? serverStreak;
         serverBest = d.best_streak ?? serverBest;
+        // A milestone can be paid on THIS path (first server call of the day
+        // for a result played logged out, or a session restore that beats the
+        // game host's own call): the coins were credited silently and the
+        // sentinel stayed at zero. Record it, tagged with its origin.
+        if ((d.streak_bonus ?? 0) > 0) {
+          track('streak_bonus_awarded', { streak: d.streak ?? 0, coins: d.streak_bonus, via: 'sync' });
+        }
       }
     }
 

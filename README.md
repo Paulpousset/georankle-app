@@ -60,5 +60,20 @@ eas submit --profile production --platform ios      # App Store
 eas submit --profile production --platform android   # nécessite google-service-account.json
 ```
 
+### Automatisé (GitHub Actions, secrets à poser une fois)
+
+- **`eas-update.yml`** — quand la CI est verte sur `master`, publie le JS à chaud sur le canal
+  `production` (`expo-updates`, `runtimeVersion` = version de l'app). Une dépendance native ou un
+  changement d'`app.json` exige un build : incrémenter `expo.version` isole les anciens binaires.
+  Secret : `EXPO_TOKEN`.
+- **`release.yml`** — un tag `vX.Y.Z` lance le build iOS + Android et l'envoi aux stores.
+  Secrets : `EXPO_TOKEN`, `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`, `ASC_KEY_ID`, `ASC_ISSUER_ID`,
+  `ASC_PRIVATE_KEY`.
+- **`migrate.yml`** — applique `supabase/migrations/*.sql` (une fois chacune, table
+  `ci_migrations`) à l'arrivée sur `master`. Secret : `SUPABASE_DB_URL`. Les `*.sql` à la racine
+  restent appliqués à la main.
+
+Plan de croissance et journal : `PLAN_PROMOTION.md`, `GROWTH_LOG.md`.
+
 Guides : `guide-deeplinks-interstitiel.md` (universal links + interstitiel), `guide-pubs-admob.md`,
 `store-listing/` (fiches), `ANALYTICS_FUNNELS.md` (funnels PostHog).

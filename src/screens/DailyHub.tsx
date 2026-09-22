@@ -401,11 +401,12 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
           so it reads "install GeoG", not "join me") on a computer. */}
       {Platform.OS === 'web' ? (
         <TouchableOpacity
-          onPress={() =>
+          onPress={() => {
+            track('install_cta_pressed', { source: 'daily_hub' });
             Linking.openURL(
               storeLinkForWeb(typeof navigator !== 'undefined' ? navigator.userAgent : '', language),
-            )
-          }
+            );
+          }}
           style={{
             marginHorizontal: 16,
             marginBottom: 10,
