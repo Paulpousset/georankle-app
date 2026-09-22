@@ -1,0 +1,76 @@
+name: Release (stores)
+
+# Build natif iOS + Android sur EAS et envoi aux stores, déclenché par un tag
+# `vX.Y.Z`. Équivalent de `npm run ship` sans le poste de Paul.
+#
+# Secrets requis :
+#   EXPO_TOKEN                        expo.dev → Access tokens
+#   GOOGLE_PLAY_SERVICE_ACCOUNT_JSON  contenu de google-service-account.json
+#   ASC_KEY_ID, ASC_ISSUER_ID,        App Store Connect → Users and Access → Keys
+#   ASC_PRIVATE_KEY                   (le .p8, contenu complet)
+#
+# Sans les clés ASC, le build iOS est produit mais pas envoyé (à faire depuis
+# expo.dev). Sans le compte de service Play, idem pour Android.
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: ios | android | all
+        default: all
+        required: true
+
+jobs:
+  build-and-submit:
+    name: EAS build + submit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Pre-flight (typecheck + tests)
+        run: |
+          npm run typecheck
+          npm test -- --ci
+
+      - name: Store credentials
+        env:
+          PLAY_SA: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          ASC_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+        run: |
+          if [ -n "$PLAY_SA" ]; then printf '%s' "$PLAY_SA" > google-service-account.json; fi
+          if [ -n "$ASC_KEY" ]; then printf '%s' "$ASC_KEY" > asc-key.p8; fi
+
+      - name: Build and submit
+        env:
+          PLATFORM: ${{ github.event.inputs.platform || 'all' }}
+          HAS_PLAY: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON != '' }}
+          HAS_ASC: ${{ secrets.ASC_KEY_ID != '' }}
+          EXPO_ASC_API_KEY_PATH: ${{ github.workspace }}/asc-key.p8
+          EXPO_ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          EXPO_ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          submit=""
+          case "$PLATFORM" in
+            ios)     [ "$HAS_ASC" = "true" ] && submit="--auto-submit" ;;
+            android) [ "$HAS_PLAY" = "true" ] && submit="--auto-submit" ;;
+            all)     [ "$HAS_ASC" = "true" ] && [ "$HAS_PLAY" = "true" ] && submit="--auto-submit" ;;
+          esac
+          echo "platform=$PLATFORM submit=${submit:-non}"
+          eas build --platform "$PLATFORM" --profile production --non-interactive --no-wait $submit

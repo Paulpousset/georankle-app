@@ -6,6 +6,13 @@
     "version": "5.6.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/eb89ac82-5303-4bd0-94d5-6cfb80467efd",
+      "fallbackToCacheTimeout": 0
+    },
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "plugins": [
