@@ -206,6 +206,8 @@ export function ClassicGame({
   const THEME_CARD_HEIGHT = wide ? 64 : 58;
   /** Largeur du bloc « pays attribué + rang », réservée dès le départ. */
   const SELECTION_SLOT_WIDTH = wide ? 96 : 76;
+  /** Largeur du bouton Infos (icône 16 px + 5 px de chaque côté). */
+  const INFO_BUTTON_WIDTH = 26;
   /** Largeur utile de la colonne de jeu. */
   const CONTENT_MAX_WIDTH = wide ? 860 : 500;
 
@@ -902,7 +904,10 @@ export function ClassicGame({
                       style={[
                         themeStyles.themeCard(isUsed),
                         {
-                          padding: 10,
+                          // Le padding vit sur le bouton (ci-dessous), pas sur la
+                          // carte : la zone cliquable couvre ainsi TOUTE la carte.
+                          padding: 0,
+                          alignItems: 'stretch',
                           borderRadius: 12,
                           // Hauteur FIGÉE : la carte réserve dès le départ la place
                           // du pays attribué, elle ne grandit donc pas au clic.
@@ -915,11 +920,19 @@ export function ClassicGame({
                         },
                       ]}
                     >
-                      {/* Theme-select tap target. Kept a sibling of the info
-                          button (not its parent) so neither renders as a
-                          <button> nested inside another <button> on web. */}
+                      {/* Theme-select tap target: fills the whole card (padding,
+                          empty selection slot included) — before, it was only
+                          the icon+label row, ~22 px tall on web. Kept a sibling
+                          of the info button (not its parent) so neither renders
+                          as a <button> nested inside another <button> on web. */}
                       <TouchableOpacity
-                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
+                        style={{
+                          flex: 1,
+                          alignSelf: 'stretch',
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          padding: 10,
+                        }}
                         onPress={() => selectTheme(theme.id)}
                         disabled={isUsed}
                         {...a11yButton(
@@ -950,44 +963,58 @@ export function ClassicGame({
                         >
                           {pickLabel(theme.label, language)}
                         </Text>
+
+                        {/* Espace réservé au bouton Infos (posé en absolu par-dessus). */}
+                        <View style={{ width: INFO_BUTTON_WIDTH }} />
+
+                        {/* Emplacement réservé en permanence (même vide) : c'est ce
+                            qui empêche la carte de changer de gabarit au clic. */}
+                        <View style={[styles.selectionInfo, { width: SELECTION_SLOT_WIDTH }]}>
+                          {isUsed && (
+                            <>
+                              <Text
+                                style={[themeStyles.selectionCountry, { fontSize: wide ? 11 : 10 }]}
+                                numberOfLines={1}
+                              >
+                                {selection.countryName}
+                              </Text>
+                              <Text
+                                style={[
+                                  styles.selectionRank,
+                                  { fontSize: wide ? 20 : 18, color: getRankColor(selection.rank) },
+                                ]}
+                              >
+                                #{selection.rank}
+                              </Text>
+                            </>
+                          )}
+                        </View>
                       </TouchableOpacity>
 
+                      {/* Bouton Infos : frère du bouton de thème, posé en absolu
+                          dans l'espace réservé ci-dessus (entre le libellé et le
+                          rang), pleine hauteur pour être facile à viser. */}
                       <TouchableOpacity
                         onPress={() => setShowThemeInfo(theme)}
                         hitSlop={ICON_HIT_SLOP}
                         {...a11yButton(
                           tr(language, 'Infos sur le thème {0}', 'Info about {0} theme', [themeName]),
                         )}
-                        style={{ padding: 5 }}
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          bottom: 0,
+                          right: 10 + SELECTION_SLOT_WIDTH,
+                          width: INFO_BUTTON_WIDTH,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
                       >
                         <Info
                           size={16}
                           color={isUsed ? c.textFaint : c.textMuted}
                         />
                       </TouchableOpacity>
-
-                      {/* Emplacement réservé en permanence (même vide) : c'est ce
-                          qui empêche la carte de changer de gabarit au clic. */}
-                      <View style={[styles.selectionInfo, { width: SELECTION_SLOT_WIDTH }]}>
-                        {isUsed && (
-                          <>
-                            <Text
-                              style={[themeStyles.selectionCountry, { fontSize: wide ? 11 : 10 }]}
-                              numberOfLines={1}
-                            >
-                              {selection.countryName}
-                            </Text>
-                            <Text
-                              style={[
-                                styles.selectionRank,
-                                { fontSize: wide ? 20 : 18, color: getRankColor(selection.rank) },
-                              ]}
-                            >
-                              #{selection.rank}
-                            </Text>
-                          </>
-                        )}
-                      </View>
                     </View>
                   );
                 })}
