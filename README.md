@@ -66,7 +66,8 @@ eas submit --profile production --platform android   # nécessite google-service
   `production` (`expo-updates`, `runtimeVersion` = version de l'app). Une dépendance native ou un
   changement d'`app.json` exige un build : incrémenter `expo.version` isole les anciens binaires.
   Secret : `EXPO_TOKEN`.
-- **`release.yml`** — un tag `vX.Y.Z` lance le build iOS + Android et l'envoi aux stores.
+- **`release.yml`** — un tag `vX.Y.Z` (ou « Run workflow » dans l'onglet Actions : les sessions
+  Claude ne peuvent pas pousser de tag) lance le build iOS + Android et l'envoi aux stores.
   Secrets : `EXPO_TOKEN`, `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`, `ASC_KEY_ID`, `ASC_ISSUER_ID`,
   `ASC_PRIVATE_KEY`.
 - **`migrate.yml`** — applique `supabase/migrations/*.sql` (une fois chacune, table

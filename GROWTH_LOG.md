@@ -42,6 +42,21 @@ seuil.
 
 ## Entrées
 
+### 2026-09-23 — première chaîne complète
+
+- PR #2 et #3 fusionnées ; CI de `master` verte (elle était rouge depuis le
+  16/09 : lint sur `plugins/withoutAppleSignIn.js`).
+- `eas-update.yml` : premier run en échec (eas-cli 24 exige Node 22), corrigé,
+  deuxième run OK → canal `production` créé, mise à jour publiée pour le
+  runtime 5.7.0.
+- `release.yml` lancé à la main (le proxy git des sessions Claude refuse le
+  push de tags ; `workflow_dispatch` fait le même travail) : Android
+  versionCode 23 et iOS build 50 en cours sur EAS, **sans envoi aux stores**
+  (secrets Play et App Store Connect absents). À envoyer depuis expo.dev, ou
+  poser les secrets pour que ce soit automatique la prochaine fois.
+- Tant que 5.7.0 n'est pas dans les stores, les joueurs mobiles n'ont ni les
+  nouveautés A1/A2 ni la mise à jour à chaud. Le web (`playgeog.com`) les a.
+
 ### 2026-09-22 — mise en place
 
 - Infrastructure : EAS Update (mise à jour à chaud du JS), workflows
