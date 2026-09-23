@@ -62,10 +62,17 @@ jobs:
           PLATFORM: ${{ github.event.inputs.platform || 'all' }}
           HAS_PLAY: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON != '' }}
           HAS_ASC: ${{ secrets.ASC_KEY_ID != '' }}
-          EXPO_ASC_API_KEY_PATH: ${{ github.workspace }}/asc-key.p8
-          EXPO_ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          EXPO_ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         run: |
+          # Les variables EXPO_ASC_* ne sont posées QUE si la clé existe : posées
+          # à vide, elles faisaient chercher un fichier absent au lieu de laisser
+          # eas interroger les identifiants stockés chez Expo (premier run, 23/09).
+          if [ "$HAS_ASC" = "true" ]; then
+            export EXPO_ASC_API_KEY_PATH="$GITHUB_WORKSPACE/asc-key.p8"
+            export EXPO_ASC_KEY_ID="$ASC_KEY_ID"
+            export EXPO_ASC_ISSUER_ID="$ASC_ISSUER_ID"
+          fi
           submit=""
           case "$PLATFORM" in
             ios)     [ "$HAS_ASC" = "true" ] && submit="--auto-submit" ;;
