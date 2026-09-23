@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { Home, Search, XCircle, RefreshCcw, Wifi, Flag, Info, Share2 } from 'lucide-react-native';
+import { Home, Search, XCircle, RefreshCcw, Wifi, Flag, Info, Share2, Swords } from 'lucide-react-native';
 import {
   AtlasWin,
   AtlasLose,
@@ -56,6 +56,8 @@ import { recordRun } from '../lib/reviewPool';
 import { getFlagUrl } from '../lib/flags';
 import { COUNTRY_ALIASES } from '../lib/answerMatch';
 import { normalizeRoundScore } from '../lib/score';
+import { shareSoloResult } from '../lib/shareSolo';
+import { useToast } from '../components/ToastProvider';
 import { track } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
 import { createSeededRng } from '../lib/rng';
@@ -308,6 +310,7 @@ export default function GuessCountryGame({
 }: Props) {
   const { isDarkMode } = useTheme();
   const { language } = useLanguage();
+  const toast = useToast();
   const isOnline = !!matchData;
   const isPlayer1 = matchData?.player1_id === user?.id;
   const width = useStageWidth();
@@ -707,14 +710,35 @@ export default function GuessCountryGame({
                   <Text style={styles.replayText}>{tr(language, 'Partager', 'Share')}</Text>
                 </TouchableOpacity>
               ) : (
-                <TouchableOpacity
-                  style={styles.replayBtn}
-                  onPress={reset}
-                  {...a11yButton(tr(language, 'Rejouer', 'Play again'))}
-                >
-                  <RefreshCcw color="#fff" size={18} />
-                  <Text style={styles.replayText}>{tr(language, 'Rejouer', 'Play Again')}</Text>
-                </TouchableOpacity>
+                <>
+                  <TouchableOpacity
+                    style={styles.replayBtn}
+                    onPress={reset}
+                    {...a11yButton(tr(language, 'Rejouer', 'Play again'))}
+                  >
+                    <RefreshCcw color="#fff" size={18} />
+                    <Text style={styles.replayText}>{tr(language, 'Rejouer', 'Play Again')}</Text>
+                  </TouchableOpacity>
+                  {/* « Défier un ami » : le score tel qu'affiché juste au-dessus
+                      (« 3 essais »). La feuille de partage s'ouvre dans le tick
+                      du tap, sans await avant (web mobile). */}
+                  <TouchableOpacity
+                    style={[styles.challengeBtn, { borderColor: border }]}
+                    onPress={() => {
+                      const tries = guesses.length;
+                      const summary = `${tries} ${tr(language, tries === 1 ? 'essai' : 'essais', tries === 1 ? 'try' : 'tries')}`;
+                      shareSoloResult('guess', summary, language, () =>
+                        toast.success(tr(language, 'Score copié !', 'Score copied!')),
+                      ).catch(() => {});
+                    }}
+                    {...a11yButton(tr(language, 'Défier un ami', 'Challenge a friend'))}
+                  >
+                    <Swords color={textPri} size={18} />
+                    <Text style={[styles.challengeText, { color: textPri }]}>
+                      {tr(language, 'Défier un ami', 'Challenge a friend')}
+                    </Text>
+                  </TouchableOpacity>
+                </>
               )}
             </View>
           )}
@@ -957,6 +981,17 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   replayText: { color: '#fff', fontFamily: FONTS.monoBold, fontSize: 14, letterSpacing: 1 },
+  challengeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    marginTop: 4,
+  },
+  challengeText: { fontFamily: FONTS.monoBold, fontSize: 14, letterSpacing: 1 },
 
   hint: { textAlign: 'center', fontFamily: FONTS.mono, fontSize: 12, marginBottom: 16, lineHeight: 20 },
 

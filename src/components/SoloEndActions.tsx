@@ -12,17 +12,35 @@
  *
  * En défi quotidien la partie est unique : « Rejouer la même » n'a pas de sens
  * et « Partager » prend la place principale (`onShare`).
+ *
+ * En partie solo ordinaire, `share` ajoute « Défier un ami » : un message
+ * court avec le score et un lien qui ouvre le même mode dans le navigateur
+ * (src/lib/shareSolo.ts). Avant, la plupart des parties finissaient sur un
+ * écran sans aucune sortie vers l'extérieur. La relance parrainage s'y greffe
+ * (ReferralNudge), avec sa propre parcimonie.
  */
-import { Text, TouchableOpacity, View } from 'react-native';
-import { Home, RefreshCcw, Share2, Shuffle } from 'lucide-react-native';
+import { Linking, Platform, Text, TouchableOpacity, View } from 'react-native';
+import { Home, RefreshCcw, Share2, Shuffle, Smartphone, Swords } from 'lucide-react-native';
 
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { a11yButton, a11yHidden } from '../lib/a11y';
+import { shareSoloResult } from '../lib/shareSolo';
+import { storeLinkForWeb } from '../lib/links';
+import { track } from '../lib/analytics';
+import type { GameMode } from '../types';
 import { ScoreText } from './ScoreText';
+import { ReferralNudge } from './ReferralNudge';
+import { useToast } from './ToastProvider';
 import { tr } from '../i18n';
+
+export interface SoloShare {
+  mode: GameMode;
+  /** Résumé du score déjà formaté (« 12/15 », « 87 % », « Série de 9 »). */
+  summary: string;
+}
 
 interface SoloEndActionsProps {
   /** Rejoue exactement le même contenu. Absent = bouton masqué. */
@@ -31,6 +49,8 @@ interface SoloEndActionsProps {
   onNewGame?: () => void;
   /** Quotidien : remplace les deux boutons ci-dessus. */
   onShare?: () => void;
+  /** Solo : « Défier un ami » avec ce score. Ignoré quand `onShare` est fourni. */
+  share?: SoloShare;
   onMenu: () => void;
   /** Libellé du bouton de sortie (« Menu » par défaut, « Retour » en révision). */
   menuLabel?: string;
@@ -42,14 +62,32 @@ export function SoloEndActions({
   onReplaySame,
   onNewGame,
   onShare,
+  share,
   onMenu,
   menuLabel,
   accent,
 }: SoloEndActionsProps) {
   const { isDarkMode } = useTheme();
   const { language } = useLanguage();
+  const toast = useToast();
   const c = getColors(isDarkMode);
   const primary = accent ?? c.accentStrong;
+  const soloShare = !onShare && share ? share : null;
+
+  // Web player who just finished a game: the one moment to offer the app —
+  // straight to the store on a phone, the install page on a computer.
+  const onInstall = () => {
+    track('install_cta_pressed', { source: 'solo_end' });
+    Linking.openURL(storeLinkForWeb(typeof navigator !== 'undefined' ? navigator.userAgent : '', language));
+  };
+
+  const onChallenge = () => {
+    if (!soloShare) return;
+    // Même tick que le tap : pas d'await avant la feuille de partage.
+    shareSoloResult(soloShare.mode, soloShare.summary, language, () =>
+      toast.success(tr(language, 'Score copié !', 'Score copied!')),
+    ).catch(() => {});
+  };
 
   const btn = (
     key: string,
@@ -125,6 +163,16 @@ export function SoloEndActions({
           {btn('menu', menuLabel ?? tr(language, 'Menu', 'Menu'), Home, onMenu, 'secondary')}
         </View>
       </View>
+
+      {soloShare
+        ? btn('challenge', tr(language, 'Défier un ami', 'Challenge a friend'), Swords, onChallenge, 'secondary')
+        : null}
+      {Platform.OS === 'web'
+        ? btn('install', tr(language, "Installer l'app — gratuit", 'Get the free app'), Smartphone, onInstall, 'secondary')
+        : null}
+      {/* En quotidien, la relance vit dans DailyEnd (posé par-dessus) : ne pas
+          la compter deux fois pour la même partie. */}
+      {onShare ? null : <ReferralNudge source="end_of_game" />}
     </View>
   );
 }

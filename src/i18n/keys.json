@@ -2095,6 +2095,18 @@
     ]
   },
   {
+    "key": "Can you beat it? 👇",
+    "fr": "Tu fais mieux ? 👇",
+    "en": "Can you beat it? 👇",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/lib/shareSolo.ts"
+    ]
+  },
+  {
     "key": "Canada",
     "fr": "Canada",
     "en": "Canada",
@@ -2309,6 +2321,20 @@
     "files": [
       "src/screens/Matchmaking.tsx",
       "src/screens/PlayerProfile.tsx"
+    ]
+  },
+  {
+    "key": "Challenge a friend",
+    "fr": "Défier un ami",
+    "en": "Challenge a friend",
+    "count": 5,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/SoloEndActions.tsx",
+      "src/screens/GuessCountryGame.tsx",
+      "src/screens/VersusCapitals.tsx"
     ]
   },
   {
@@ -6074,6 +6100,18 @@
     ]
   },
   {
+    "key": "Get the free app",
+    "fr": "Installer l'app — gratuit",
+    "en": "Get the free app",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/SoloEndActions.tsx"
+    ]
+  },
+  {
     "key": "Give up (0 pt)",
     "fr": "Abandonner (0 pt)",
     "en": "Give up (0 pt)",
@@ -6993,13 +7031,26 @@
     "key": "Invite a friend",
     "fr": "Inviter un ami",
     "en": "Invite a friend",
-    "count": 3,
+    "count": 4,
     "kinds": [
       "call"
     ],
     "files": [
+      "src/components/ReferralNudge.tsx",
       "src/screens/CustomMatchmaking.tsx",
       "src/screens/Matchmaking.tsx"
+    ]
+  },
+  {
+    "key": "Invite a friend: 50 coins each",
+    "fr": "Invite un ami : 50 pièces chacun",
+    "en": "Invite a friend: 50 coins each",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/ReferralNudge.tsx"
     ]
   },
   {
@@ -7131,12 +7182,13 @@
     "key": "Join me on GeoG 🌍 — we both earn 50 coins: {0}",
     "fr": "Rejoins-moi sur GeoG 🌍 — on gagne tous les deux 50 pièces : {0}",
     "en": "Join me on GeoG 🌍 — we both earn 50 coins: {0}",
-    "count": 1,
+    "count": 2,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/components/ReferralCard.tsx"
+      "src/components/ReferralCard.tsx",
+      "src/components/ReferralNudge.tsx"
     ]
   },
   {
@@ -7748,12 +7800,13 @@
     "key": "Link copied",
     "fr": "Lien copié",
     "en": "Link copied",
-    "count": 1,
+    "count": 2,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/components/ReferralCard.tsx"
+      "src/components/ReferralCard.tsx",
+      "src/components/ReferralNudge.tsx"
     ]
   },
   {
@@ -7784,12 +7837,13 @@
     "key": "Linked! {0} pts",
     "fr": "Relié ! {0} pts",
     "en": "Linked! {0} pts",
-    "count": 1,
+    "count": 2,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/lib/share.ts"
+      "src/lib/share.ts",
+      "src/screens/BordersGame.tsx"
     ]
   },
   {
@@ -9256,12 +9310,13 @@
     "key": "Not linked",
     "fr": "Non relié",
     "en": "Not linked",
-    "count": 1,
+    "count": 2,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/lib/share.ts"
+      "src/lib/share.ts",
+      "src/screens/BordersGame.tsx"
     ]
   },
   {
@@ -10024,12 +10079,13 @@
     "key": "Paste it to a friend: you both earn 50 coins.",
     "fr": "Colle-le à un ami : vous gagnez chacun 50 pièces.",
     "en": "Paste it to a friend: you both earn 50 coins.",
-    "count": 1,
+    "count": 2,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/components/ReferralCard.tsx"
+      "src/components/ReferralCard.tsx",
+      "src/components/ReferralNudge.tsx"
     ]
   },
   {
@@ -12444,6 +12500,20 @@
     ]
   },
   {
+    "key": "Score copied!",
+    "fr": "Score copié !",
+    "en": "Score copied!",
+    "count": 3,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/SoloEndActions.tsx",
+      "src/screens/GuessCountryGame.tsx",
+      "src/screens/VersusCapitals.tsx"
+    ]
+  },
+  {
     "key": "Score:",
     "fr": "Score :",
     "en": "Score:",
@@ -12459,12 +12529,13 @@
     "key": "Score: {0}",
     "fr": "Score : {0}",
     "en": "Score: {0}",
-    "count": 1,
+    "count": 2,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/lib/share.ts"
+      "src/lib/share.ts",
+      "src/lib/shareSolo.ts"
     ]
   },
   {
@@ -12778,12 +12849,13 @@
     "key": "Share",
     "fr": "Partager",
     "en": "Share",
-    "count": 7,
+    "count": 8,
     "kinds": [
       "call"
     ],
     "files": [
       "src/components/DailyResultCard.tsx",
+      "src/components/ReferralNudge.tsx",
       "src/components/SoloEndActions.tsx",
       "src/screens/DailyEnd.tsx",
       "src/screens/DailyHub.tsx",
@@ -13483,14 +13555,16 @@
     "key": "Streak of {0}",
     "fr": "Série de {0}",
     "en": "Streak of {0}",
-    "count": 3,
+    "count": 5,
     "kinds": [
       "call"
     ],
     "files": [
       "src/components/DailyResultCard.tsx",
       "src/lib/share.ts",
-      "src/screens/DailyEnd.tsx"
+      "src/screens/DailyEnd.tsx",
+      "src/screens/HigherLowerGame.tsx",
+      "src/screens/StreakGame.tsx"
     ]
   },
   {
@@ -16161,6 +16235,18 @@
     ]
   },
   {
+    "key": "You have {0} h left to play today’s challenge and keep it.",
+    "fr": "Il te reste {0} h pour jouer le défi du jour et la garder.",
+    "en": "You have {0} h left to play today’s challenge and keep it.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/lib/notifications.ts"
+    ]
+  },
+  {
     "key": "You haven't played against each other yet.",
     "fr": "Vous n'avez encore jamais joué l'un contre l'autre.",
     "en": "You haven't played against each other yet.",
@@ -16378,6 +16464,18 @@
     ]
   },
   {
+    "key": "Your referral link is ready.",
+    "fr": "Ton lien de parrainage est prêt.",
+    "en": "Your referral link is ready.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/ReferralNudge.tsx"
+    ]
+  },
+  {
     "key": "Your run will be saved with your current score and you won’t be able to replay this mode today.",
     "fr": "Ta partie sera enregistrée avec ton score actuel et tu ne pourras pas rejouer ce mode aujourd’hui.",
     "en": "Your run will be saved with your current score and you won’t be able to replay this mode today.",
@@ -16423,6 +16521,18 @@
     ],
     "files": [
       "src/components/OnboardingTutorial.tsx"
+    ]
+  },
+  {
+    "key": "Your {0}-day streak is at risk 🔥",
+    "fr": "Ta série de {0} jours est en danger 🔥",
+    "en": "Your {0}-day streak is at risk 🔥",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/lib/notifications.ts"
     ]
   },
   {
@@ -17285,6 +17395,18 @@
     ]
   },
   {
+    "key": "{0} coins for coming back. Today’s challenge is waiting 🌍",
+    "fr": "{0} pièces offertes pour ton retour. Le défi du jour t’attend 🌍",
+    "en": "{0} coins for coming back. Today’s challenge is waiting 🌍",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/lib/comeback.ts"
+    ]
+  },
+  {
     "key": "{0} correct out of {1}",
     "fr": "{0} bonnes réponses sur {1}",
     "en": "{0} correct out of {1}",
@@ -18106,6 +18228,18 @@
     ],
     "files": [
       "src/screens/BordersGame.tsx"
+    ]
+  },
+  {
+    "key": "👋 Welcome back!",
+    "fr": "👋 Content de te revoir !",
+    "en": "👋 Welcome back!",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/lib/comeback.ts"
     ]
   },
   {

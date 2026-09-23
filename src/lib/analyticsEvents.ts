@@ -33,6 +33,15 @@ export type AnalyticsEvent =
   // Share sheet rejected/dismissed (props: reason). See src/lib/shareDaily.ts.
   | 'daily_share_failed'
   | 'daily_reminder_set'
+  // « Défier un ami » after a solo game (props: mode, with_code). src/lib/shareSolo.ts.
+  | 'solo_shared'
+  | 'solo_share_failed'
+  // One-shot local reminder armed because a streak ≥ 2 would break tonight.
+  | 'streak_guard_scheduled'
+  // Welcome-back bonus credited after 7+ days away (props: coins, days_away).
+  | 'comeback_granted'
+  // Web → app: the install button on an end screen was tapped (props: source).
+  | 'install_cta_pressed'
   // Store rating sheet requested after a daily with a streak (src/lib/reviewPrompt.ts).
   | 'review_prompted'
   // Leagues (friend groups over the daily challenge)

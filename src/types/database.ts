@@ -916,6 +916,7 @@ export type Database = {
       get_daily_quests: { Args: never; Returns: Json }
       get_featured_cosmetic: { Args: never; Returns: Json }
       get_referral_info: { Args: never; Returns: Json }
+      claim_comeback: { Args: never; Returns: Json }
       get_my_leagues: { Args: never; Returns: Json }
       create_league: { Args: { p_name: string }; Returns: Json }
       join_league: { Args: { p_code: string }; Returns: Json }

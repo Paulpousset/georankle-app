@@ -1,0 +1,33 @@
+name: Migrations Supabase
+
+# Applique les nouvelles migrations de `supabase/migrations/` à la base de
+# production quand elles arrivent sur master. Chaque fichier est appliqué une
+# seule fois (table public.ci_migrations), dans une transaction.
+#
+# Les fichiers *.sql historiques à la racine du dépôt ont été appliqués à la
+# main et ne sont PAS concernés : seule `supabase/migrations/` est pilotée ici.
+#
+# Secret requis : SUPABASE_DB_URL (Supabase → Settings → Database → URI,
+# mot de passe inclus ; préférer le pooler en mode session, port 5432).
+on:
+  push:
+    branches: [master]
+    paths: ['supabase/migrations/**']
+  workflow_dispatch:
+
+concurrency:
+  group: migrate
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Appliquer
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Apply pending migrations
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: bash scripts/migrate.sh

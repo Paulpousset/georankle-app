@@ -314,6 +314,7 @@ export default function ChallengeQuiz({
               onShare={isDaily ? onShare : undefined}
               onReplaySame={isDaily ? undefined : replaySame}
               onNewGame={isDaily ? undefined : replay}
+              share={{ mode: 'challenge', summary: `${correctCount}/${questions.length}` }}
               onMenu={onExit}
               menuLabel={tr(language, 'Retour', 'Back')}
               accent="#2a6e3f"

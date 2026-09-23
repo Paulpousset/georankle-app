@@ -38,6 +38,11 @@ export function setCachedReferralCode(code: string | null): void {
   cachedCode = code;
 }
 
+/** The prefetched code, read synchronously at tap time (null when logged out). */
+export function getCachedReferralCode(): string | null {
+  return cachedCode;
+}
+
 export type ShareOutcome = 'shared' | 'copied' | 'failed';
 
 /**

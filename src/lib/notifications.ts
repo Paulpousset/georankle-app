@@ -6,6 +6,7 @@ import Constants from 'expo-constants';
 
 import { supabase } from './supabase';
 import { log } from './log';
+import { track } from './analytics';
 import { tr } from '../i18n';
 import type { Language } from '../types';
 
@@ -298,5 +299,118 @@ async function doScheduleDailyReminder(
   } catch (e) {
     log.debug('Schedule daily reminder skipped:', e);
     return false;
+  }
+}
+
+// ── Streak guard (one-shot, the evening a streak ≥ 2 is about to break) ──────
+// The 09:00 reminder is generic. Loss aversion is what actually brings people
+// back: a player with a 5-day streak who has not played by early evening gets
+// ONE notification saying exactly what they are about to lose. Cancelled the
+// moment today's puzzle is done, re-armed on every launch / foreground.
+
+const STREAK_GUARD_ID_KEY = 'daily:streak_guard_id';
+/** Local hour the guard fires at, unless UTC midnight (the puzzle day) is sooner. */
+export const STREAK_GUARD_HOUR = 20;
+/** Never fire closer than this to the deadline — the player needs time to play. */
+const STREAK_GUARD_MARGIN_MS = 3 * 60 * 60 * 1000;
+/** Do not bother scheduling something that fires in the next few minutes. */
+const STREAK_GUARD_MIN_LEAD_MS = 15 * 60 * 1000;
+
+export interface StreakGuardPlan {
+  /** When to fire. */
+  at: Date;
+  /** Whole hours left to play once it fires (what the copy says). */
+  hoursLeft: number;
+}
+
+/**
+ * Pure policy: when should tonight's guard fire, given the local streak and
+ * whether today's puzzle is already done? `deadline` is the next UTC midnight
+ * (the puzzle changes then). Returns null when there is nothing to protect,
+ * the day is done, or it is already too late tonight.
+ */
+export function planStreakGuard(
+  now: Date,
+  deadline: Date,
+  streak: number,
+  playedToday: boolean,
+): StreakGuardPlan | null {
+  if (streak < 2 || playedToday) return null;
+  const evening = new Date(now);
+  evening.setHours(STREAK_GUARD_HOUR, 0, 0, 0);
+  const latest = deadline.getTime() - STREAK_GUARD_MARGIN_MS;
+  const at = new Date(Math.min(evening.getTime(), latest));
+  if (at.getTime() - now.getTime() < STREAK_GUARD_MIN_LEAD_MS) return null;
+  const hoursLeft = Math.max(1, Math.round((deadline.getTime() - at.getTime()) / 3_600_000));
+  return { at, hoursLeft };
+}
+
+/** Cancel tonight's guard (today's puzzle is done, or nothing to protect). */
+export async function cancelStreakGuard(): Promise<void> {
+  if (Platform.OS === 'web') return;
+  try {
+    const id = await AsyncStorage.getItem(STREAK_GUARD_ID_KEY);
+    if (id) await Notifications.cancelScheduledNotificationAsync(id).catch(() => {});
+    await AsyncStorage.setItem(STREAK_GUARD_ID_KEY, '');
+  } catch (e) {
+    log.debug('Cancel streak guard skipped:', e);
+  }
+}
+
+let streakGuardChain: Promise<void> = Promise.resolve();
+
+/**
+ * Arm (or disarm) tonight's guard from the local daily state. Safe to call on
+ * every launch and foreground: it replaces any prior schedule, and it never
+ * asks for the permission itself — the daily reminder already did, and a
+ * player who refused it must not be asked twice.
+ */
+export function ensureStreakGuard(
+  state: { streak: number; todayCount: number },
+  language: Language = 'fr',
+  now: Date = new Date(),
+): Promise<void> {
+  if (Platform.OS === 'web') return Promise.resolve();
+  const run = streakGuardChain.then(
+    () => doEnsureStreakGuard(state, language, now),
+    () => doEnsureStreakGuard(state, language, now),
+  );
+  streakGuardChain = run;
+  return run;
+}
+
+async function doEnsureStreakGuard(
+  state: { streak: number; todayCount: number },
+  language: Language,
+  now: Date,
+): Promise<void> {
+  try {
+    const deadline = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+    const plan = planStreakGuard(now, deadline, state.streak, state.todayCount > 0);
+    const prior = await AsyncStorage.getItem(STREAK_GUARD_ID_KEY);
+    if (prior) await Notifications.cancelScheduledNotificationAsync(prior).catch(() => {});
+    if (!plan) {
+      if (prior) await AsyncStorage.setItem(STREAK_GUARD_ID_KEY, '');
+      return;
+    }
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') return;
+
+    const id = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: tr(language, 'Ta série de {0} jours est en danger 🔥', 'Your {0}-day streak is at risk 🔥', [state.streak]),
+        body: tr(
+          language,
+          'Il te reste {0} h pour jouer le défi du jour et la garder.',
+          'You have {0} h left to play today’s challenge and keep it.',
+          [plan.hoursLeft],
+        ),
+      },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: plan.at },
+    });
+    await AsyncStorage.setItem(STREAK_GUARD_ID_KEY, id);
+    track('streak_guard_scheduled', { streak: state.streak, hours_left: plan.hoursLeft });
+  } catch (e) {
+    log.debug('Ensure streak guard skipped:', e);
   }
 }

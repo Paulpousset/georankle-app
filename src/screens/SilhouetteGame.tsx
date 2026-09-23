@@ -638,6 +638,7 @@ export default function SilhouetteGame({
               onShare={isDaily ? onShare : undefined}
               onReplaySame={isDaily ? undefined : replaySameGame}
               onNewGame={isDaily ? undefined : resetGame}
+              share={{ mode: 'silhouette', summary: `${correctCount}/${run.length}` }}
               onMenu={() => setGameMode('menu')}
             />
             </Reveal>

@@ -7,6 +7,7 @@ import { tr } from '../i18n';
 import { track } from '../lib/analytics';
 import { log } from '../lib/log';
 import { setActiveMatch, clearActiveMatch } from '../lib/activeMatch';
+import { maybeAskForReview, MIN_STREAK } from '../lib/reviewPrompt';
 import { forfeitWindowElapsed, FORFEIT_WINDOW_SECONDS } from '../lib/match';
 import type { GameMode, Match, MatchMode } from '../types';
 import type { RoundSummaryData } from '../components/RoundSummary';
@@ -238,6 +239,14 @@ export function useMatchEngine({ setGameMode, clearPages }: MatchEngineDeps) {
       oldElo: result.old_elo ?? 0,
     });
     if (typeof result.coins_awarded === 'number') setCoinsAwarded(result.coins_awarded);
+    // A ranked win is the other moment a player is demonstrably happy. Same
+    // caps as the daily-streak ask (3 per device, 90 days apart), and only once
+    // the result screen has settled — the OS sheet must not cover the reveal.
+    if ((result.elo_change ?? 0) > 0) {
+      setTimeout(() => {
+        maybeAskForReview(MIN_STREAK, new Date(), 'ranked_win').catch(() => {});
+      }, 2500);
+    }
   };
 
   // Coins for non-ranked online matches. Server-authoritative + idempotent

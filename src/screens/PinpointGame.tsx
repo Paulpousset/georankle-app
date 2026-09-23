@@ -740,6 +740,7 @@ export default function PinpointGame({
               onShare={isDaily ? onShare : undefined}
               onReplaySame={isDaily ? undefined : replaySameGame}
               onNewGame={isDaily ? undefined : resetGame}
+              share={{ mode: 'pinpoint', summary: `${correctCount}/${run.length}` }}
               onMenu={() => setGameMode('menu')}
             />
             </Reveal>

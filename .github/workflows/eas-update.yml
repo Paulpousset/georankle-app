@@ -1,0 +1,62 @@
+name: EAS Update (OTA)
+
+# Publie le JavaScript et les assets à chaud vers les apps déjà installées,
+# sans repasser par les stores. Se déclenche UNIQUEMENT quand le workflow CI
+# est vert sur master : on ne pousse jamais un bundle qui a échoué aux tests.
+#
+# Périmètre : runtimeVersion suit `expo.version` (app.json). Une mise à jour
+# n'atteint donc que les builds natifs de la même version. Une dépendance
+# native nouvelle ou un changement dans app.json exige un vrai build : on
+# incrémente la version, ce qui isole automatiquement les anciens binaires,
+# puis on tague `vX.Y.Z` (voir release.yml).
+#
+# Secret requis : EXPO_TOKEN (expo.dev → Access tokens).
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      message:
+        description: Message de la mise à jour
+        required: false
+
+concurrency:
+  group: eas-update-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: Publier sur le canal production
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Publish update
+        env:
+          MESSAGE: ${{ github.event.inputs.message }}
+        run: |
+          msg="${MESSAGE:-$(git log -1 --pretty=%s)}"
+          eas update --channel production --message "$msg" --non-interactive

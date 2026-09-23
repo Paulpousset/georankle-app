@@ -35,6 +35,11 @@ const BOOTABLE: ReadonlySet<string> = new Set<GameMode>([
   'borders',
 ]);
 
+/** Can a shared URL open straight into this mode? (See `BOOTABLE`.) */
+export function isBootableMode(mode: string): boolean {
+  return BOOTABLE.has(mode);
+}
+
 /** The screen the current web URL asks for, or null (native, or no match). */
 export function getInitialWebIntent(): WebIntent {
   if (Platform.OS !== 'web') return null;

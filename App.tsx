@@ -4,7 +4,9 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Font from 'expo-font';
 import { PostHogProvider } from 'posthog-react-native';
 
-import { ensureDailyReminder, ensureLeagueReminder } from './src/lib/notifications';
+import { ensureDailyReminder, ensureLeagueReminder, ensureStreakGuard } from './src/lib/notifications';
+import { getLocalState } from './src/lib/daily';
+import { claimComeback } from './src/lib/comeback';
 import { touchLastSeen } from './src/lib/activity';
 import type { GameMode, MatchMode, Language } from './src/types';
 import { posthog, trackScreen } from './src/lib/analytics';
@@ -28,6 +30,7 @@ import { useNavigationStack } from './src/hooks/useNavigationStack';
 import { useSocialNotifications } from './src/hooks/useSocialNotifications';
 import { useDeepLinks } from './src/hooks/useDeepLinks';
 import { getInitialWebIntent } from './src/lib/webEntry';
+import { prefetchReferralCode, setCachedReferralCode } from './src/lib/shareDaily';
 import { Router } from './src/Router';
 import { ScreenErrorBoundary } from './src/components/ScreenErrorBoundary';
 import { SwipeBack } from './src/components/SwipeBack';
@@ -43,6 +46,13 @@ import { initSfx, preloadSfx } from './src/lib/sfx';
 
 // Start crash reporting as early as possible so startup errors are captured.
 initSentry();
+
+/** Read the local daily state and arm/disarm tonight's streak guard. */
+function armStreakGuard(language: Language): void {
+  getLocalState()
+    .then((state) => ensureStreakGuard(state, language))
+    .catch(() => {});
+}
 
 /**
  * Nom lisible du mode à l'écran, pour la barre de marque du web ordinateur.
@@ -135,6 +145,10 @@ function AppContent() {
   // exists (covers both a fresh sign-in and a restored session).
   useEffect(() => {
     if (user) setShowAuthModal(false);
+    // The referral code rides every share (daily AND solo end screens): fetch it
+    // once per session so the share sheet can open in the same tick as the tap.
+    if (user) prefetchReferralCode().catch(() => {});
+    else setCachedReferralCode(null);
   }, [user]);
 
   // Daily challenge reminders are ON by default for everyone (a local
@@ -151,10 +165,17 @@ function AppContent() {
   // the helper). This is what makes "inactive for N days" targeting meaningful.
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active' && user) touchLastSeen();
+      if (state === 'active' && user) claimComeback().finally(() => touchLastSeen());
+      if (state === 'active') armStreakGuard(language);
     });
     return () => sub.remove();
-  }, [user]);
+  }, [user, language]);
+
+  // « Série en danger » : one-shot local reminder tonight when a streak ≥ 2 is
+  // still unplayed. Armed on launch and every foreground (see notifications.ts).
+  useEffect(() => {
+    armStreakGuard(language);
+  }, [language]);
 
   // Screen tracking. Navigation is custom (pageStack + gameMode + matchData),
   // so PostHog autocapture can't see it — derive a name and report it ourselves.
