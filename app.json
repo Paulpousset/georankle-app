@@ -3,7 +3,7 @@
     "name": "GeoG",
     "slug": "geog",
     "scheme": "geog",
-    "version": "5.6.1",
+    "version": "5.7.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "runtimeVersion": {
