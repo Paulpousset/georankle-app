@@ -403,6 +403,38 @@ function paintOverlay(){
   if(overlayTex)overlayTex.needsUpdate=true;
   needsRender=true;}
 function setOverlayStates(list){overlayStates=list||[];paintOverlay();}
+// Regions: the board is ONE country, but the planet's texture draws every other
+// one too — the whole of Europe competing with France for the eye (Paul,
+// 24/09/2026). A veil of plain sea hides everything but the country, as on the
+// flat map. It is lit exactly like the ocean it covers, so it reads as the
+// planet itself, not as a sheet laid on it. Boxed: the country's own window
+// gets a veil at the overlay's resolution (its coastline is the board's edge)
+// and plain sphere patches — cut to the box's exact meridians and parallels, a
+// texture's filtering would leave a seam there — cover the rest of the world.
+function buildVeil(boxGeo){
+  var sea=SKIN?SKIN.ocean:PAL.ocean1;
+  var sk=SKIN&&SKIN.specK!=null?SKIN.specK:1;
+  var r=(1+SURF)/2;
+  function veilMesh(geo,cv){
+    var t=null;
+    if(cv){t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=overlayTex.anisotropy;}
+    var m=new THREE.Mesh(geo,ToonHD.material({color:t?'#ffffff':sea,map:t,transparent:true,alphaTest:!!t,depthWrite:false,
+      rough:0.25,specK:0.55*sk,rimK:0.6,emissive:SKIN&&SKIN.unlit?D.toon.darkEmissive:0}));
+    m.receiveShadow=true;m.renderOrder=-1;globe.add(m);}
+  var cv=document.createElement('canvas');cv.width=OW;cv.height=OH;
+  var c=cv.getContext('2d');
+  c.fillStyle=sea;c.fillRect(0,0,OW,OH);
+  c.globalCompositeOperation='destination-out';
+  (BOX?[0]:[-360,0,360]).forEach(function(off){
+    c.beginPath();POLYGONS.forEach(function(p){traceRings(c,p.r,off);});c.fill();});
+  veilMesh(BOX?boxGeo.clone().scale(r/SURF,r/SURF,r/SURF):new THREE.SphereGeometry(r,96,96),cv);
+  if(!BOX)return;
+  // The patches reach a hair into the box, so no crack opens along the joins.
+  var R=Math.PI/180,e=0.02;
+  var t1=(90-BOX.lat1+e)*R,t0=(90-BOX.lat0-e)*R;
+  veilMesh(new THREE.SphereGeometry(r,96,48,0,2*Math.PI,0,t1));
+  veilMesh(new THREE.SphereGeometry(r,96,48,0,2*Math.PI,t0,Math.PI-t0));
+  veilMesh(new THREE.SphereGeometry(r,96,24,(BOX.lng1+180-e)*R,(360-(BOX.lng1-BOX.lng0)+2*e)*R,t1-2*e*R,t0-t1+4*e*R));}
 
 // ── Scene ────────────────────────────────────────────────────────────────────
 function initScene(){
@@ -452,6 +484,7 @@ function initScene(){
     :new THREE.MeshBasicMaterial({map:overlayTex,transparent:true,depthWrite:false}));
   overlayMesh.receiveShadow=litCoat;
   globe.add(overlayMesh);
+  if(D.regionCoat)buildVeil(oGeo);
   // Clouds are decorative-only (menu): on the gameplay globes they would hide
   // the very country the player must find. The rig's volumetric clusters ride
   // the planet, parked in the camera frame at the initial view so they match
@@ -1388,9 +1421,49 @@ function angDist(la1,lo1,la2,lo2){
   return 2*Math.asin(Math.min(1,Math.sqrt(s*s+Math.cos(la1*r)*Math.cos(la2*r)*t*t)))*180/Math.PI;}
 var dotMap={};
 DOTS.forEach(function(d){dotMap[d.id]=d;});
-// Smallest region containing the tap (an enclave beats the region around it),
-// then a snap to the nearest label point for the ones that are sub-pixel here.
+// Tiny regions — Paris and its petite couronne, Brussels, Washington DC, Basel —
+// are a pixel or two at the country framing: invisible, and a finger on them
+// lands in the neighbour that surrounds them, so they read as unclickable. While
+// a region is under TINY_PX of screen radius it is drawn as a marker on its label
+// point and outranks the polygons within TINY_TAP_PX of it (the microstate dots
+// of the world globe). Zoomed in past that, it is an ordinary shape again.
+var TINY_PX=7,TINY_TAP_PX=18;
+var tinyIds=[],tinyDot=null,tinyHalo=null;
+var regionSpan={};
+function updateTiny(){
+  if(!tinyDot)return;
+  var list=[];
+  for(var i=0;i<DOTS.length;i++){var d=DOTS[i];
+    if(regionSpan[d.id]===undefined)regionSpan[d.id]=shapeSpan(d.id,d.lat,d.lng);
+    var s=regionSpan[d.id];
+    if(s!==null&&projRadius(s*Math.PI/180,zoom)<TINY_PX)list.push(d.id);}
+  tinyIds=list;paintTiny();}
+function paintTiny(){
+  if(!tinyDot)return;
+  var pos=[],col=[];
+  tinyIds.forEach(function(id){var d=dotMap[id];
+    var v=llToVec(d.lat,d.lng,DOTR);pos.push(v.x,v.y,v.z);
+    var c=new THREE.Color(id===sel?PAL.selS:(id===hov&&!locked?PAL.hovS:tinyDot.userData.base));
+    col.push(c.r,c.g,c.b);});
+  [tinyHalo,tinyDot].forEach(function(o){
+    o.geometry.setAttribute('position',new THREE.BufferAttribute(new Float32Array(pos),3));
+    o.geometry.setAttribute('color',new THREE.BufferAttribute(new Float32Array(col),3));
+    o.geometry.setDrawRange(0,pos.length/3);
+    o.visible=pos.length>0;});
+  needsRender=true;}
+function pickTiny(tx,ty){
+  var best=null,bestD=TINY_TAP_PX;
+  syncMatrices();
+  for(var i=0;i<tinyIds.length;i++){var d=dotMap[tinyIds[i]];
+    var p=projectLL(d.lat,d.lng,DOTR);if(!p.vis)continue;
+    var dd=Math.hypot(p.sx-tx,p.sy-ty);
+    if(dd<bestD){bestD=dd;best=d.id;}}
+  return best;}
+// A tiny region's marker first, then the smallest region containing the tap (an
+// enclave beats the region around it), then a snap to the nearest label point.
 function pickAt(tx,ty){
+  var tiny=pickTiny(tx,ty);
+  if(tiny)return tiny;
   var coords=unproject(tx,ty);
   if(!coords)return null;
   var hit=hitTest(coords);
@@ -1410,6 +1483,7 @@ function repaintStates(){
     if(sel)list.push({id:sel,fill:PAL.selF,stroke:PAL.selS,lw:10});
   }
   setOverlayStates(list);
+  paintTiny();
   updateMarks();}
 // A tiny region can be a couple of pixels wide: the reveal also plants a marker
 // on its label point, or the player never sees where the answer was.
@@ -1465,6 +1539,7 @@ function frameReveal(correct){
 // cropped away at the very moment the answer is revealed. A player who zoomed in
 // themselves keeps their view.
 window.addEventListener('resize',function(){
+  updateTiny();
   if(fitMode==='country')frameCountry();
   else if(fitMode==='reveal'&&resultCorrect)frameReveal(resultCorrect);});
 function gameInit(){
@@ -1476,7 +1551,12 @@ function gameInit(){
     o.visible=false;globe.add(o);return o;};
   markHalo=mk(22,false);markHalo.renderOrder=8;
   markDot=mk(14,true);markDot.renderOrder=9;
-  onZoomCb=function(){fitMode=null;};
+  tinyHalo=mk(13,false);tinyHalo.renderOrder=6;
+  tinyDot=mk(8,true);tinyDot.renderOrder=7;
+  tinyDot.userData.base=SKIN?SKIN.crispLine:PAL.landS;
+  // The halo is the dot's opposite, so the marker holds on any texture.
+  tinyHalo.material.color=new THREE.Color(new THREE.Color(tinyDot.userData.base).getHSL({}).l>0.5?'#0a1221':'#ffffff');
+  onZoomCb=function(){fitMode=null;updateTiny();};
   onTapCb=function(x,y){
     if(locked)return;
     var hit=pickAt(x,y);
