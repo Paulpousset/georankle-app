@@ -128,6 +128,13 @@ export interface GameGlobeSkin {
    *   'fill'    — Mars: the texture is bare crust, no landmasses at all.
    */
   coat: 'none' | 'outline' | 'fill';
+  /**
+   * Sun glint and brightness of the planet's material, 1 = the rig's look.
+   * A white planet under the specular dot and the ramp's 1.12 top band burns
+   * out to pure white and swallows the borders (Ice, Paul 24/09/2026).
+   */
+  specK: number;
+  val: number;
   /** Translucent land tint, only used by the 'fill' coat. */
   landCoat: string | null;
   /** Decorative cloud layer (menu globe only — clouds would hide the answer). */
@@ -155,6 +162,13 @@ const COATS: Record<string, 'outline' | 'fill'> = {
   mars: 'fill',
   // Continents are there but nearly black-on-black.
   eclipse: 'outline',
+  // White land with pale blue borders: under the sun they vanish.
+  ice: 'outline',
+};
+
+/** Per-skin glint/brightness overrides (see GameGlobeSkin.specK). */
+const GLOSS: Record<string, { specK: number; val: number }> = {
+  ice: { specK: 0.15, val: 0.93 },
 };
 
 /**
@@ -210,6 +224,8 @@ export function buildGameGlobeSkin(
     crispLine: dark ? '#ffffff' : '#1a1824',
     grat: dark ? 'rgba(255,255,255,0.16)' : 'rgba(24,22,32,0.14)',
     coat: COATS[key] ?? 'none',
+    specK: GLOSS[key]?.specK ?? 1,
+    val: GLOSS[key]?.val ?? 1,
     landCoat: COATS[key] === 'fill' ? rgba(gs.land === 'none' ? lit : gs.land, 0.3) : null,
     clouds: !!gs.clouds,
     stars: isDarkColor(deep),

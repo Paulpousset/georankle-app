@@ -562,9 +562,11 @@ function shapeSpan(id,clat,clng){
 function remapMaterials(root){ToonHD.remapMaterials(root);}
 // Dark styles are self-lit in the rig: emissive texture, same soft ramp.
 function skinMaterial(tex,land){
+  // Per-skin glint/brightness (globeSkin GLOSS): a white planet must not burn out.
+  var sk=SKIN.specK!=null?SKIN.specK:1,sv=SKIN.val!=null?SKIN.val:1;
   return land
-    ?ToonHD.material({map:tex,rough:0.5,specK:0.25,rimK:0.5,sat:1.25,val:1.02,emissive:SKIN.unlit?D.toon.darkEmissive:0})
-    :ToonHD.material({map:tex,rough:0.25,specK:0.55,rimK:0.6,sat:1.2,val:1.05,emissive:SKIN.unlit?D.toon.darkEmissive:0});}
+    ?ToonHD.material({map:tex,rough:0.5,specK:0.25*sk,rimK:0.5,sat:1.25,val:1.02*sv,emissive:SKIN.unlit?D.toon.darkEmissive:0})
+    :ToonHD.material({map:tex,rough:0.25,specK:0.55*sk,rimK:0.6,sat:1.2,val:1.05*sv,emissive:SKIN.unlit?D.toon.darkEmissive:0});}
 function dressLand(root,tex){
   root.traverse(function(n){
     if(n.isMesh&&n.userData.ggKind==='landtex'){
