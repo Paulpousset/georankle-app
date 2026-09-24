@@ -42,6 +42,7 @@ import { DesktopStage } from './src/components/DesktopStage';
 import { UiScaleProvider } from './src/components/UiScaleProvider';
 import { WebHoverStyles } from './src/components/WebHoverStyles';
 import { LaunchIntro, markLaunchIntroDone } from './src/components/LaunchIntro';
+import { SoundToggle } from './src/components/SoundToggle';
 import { initSfx, preloadSfx } from './src/lib/sfx';
 
 // Start crash reporting as early as possible so startup errors are captured.
@@ -411,6 +412,8 @@ function App() {
               <NetworkProvider>
                 <ToastProvider>
                   <AppContent />
+                  {/* Couper / remettre le son depuis n'importe quel écran. */}
+                  <SoundToggle />
                   {/* Le sélecteur des seize langues, monté une fois : n'importe
                       quel écran l'ouvre par `openLanguagePicker()`. */}
                   <LanguagePickerModal />
