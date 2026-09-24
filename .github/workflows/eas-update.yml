@@ -59,4 +59,8 @@ jobs:
           MESSAGE: ${{ github.event.inputs.message }}
         run: |
           msg="${MESSAGE:-$(git log -1 --pretty=%s)}"
+          # `eas update` ne lit PAS build.production.env d'eas.json : sans ces
+          # variables, le bundle OTA plante au démarrage (Supabase manquant).
+          eval "$(node -e 'const e=require("./eas.json").build.production.env;for(const[k,v]of Object.entries(e))console.log(`export ${k}=${JSON.stringify(v)}`)')"
+          test -n "$EXPO_PUBLIC_SUPABASE_URL" || { echo "EXPO_PUBLIC_SUPABASE_URL manquant"; exit 1; }
           eas update --channel production --message "$msg" --non-interactive
