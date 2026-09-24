@@ -44,7 +44,7 @@ const STYLES = {
   gold:     { ocean: ['#ffe08a', '#c8871e'], land: '#e0b23e', halo: 'rgba(255,246,200,0.7)', line: '#7a5212', grat: 'rgba(122,82,18,0.3)' },
   night:    { ocean: ['#152a52', '#070f24'], land: '#1d3a5f', halo: 'rgba(122,160,196,0.35)', line: '#5d86ac', grat: 'rgba(122,160,196,0.15)', cities: true },
   ice:      { ocean: ['#bfe6f7', '#6aa8d0'], land: '#f4fafd', halo: 'rgba(255,255,255,0.9)', line: '#9cc2d8', grat: 'rgba(255,255,255,0.3)' },
-  mars:     { ocean: ['#e8935a', '#8a3c16'], land: null, halo: null, line: null, grat: 'rgba(110,47,20,0.35)', craters: true },
+  // mars : texture procédurale à part → gen_mars_texture.mjs (refonte 24/09/2026).
   lava:     { ocean: ['#3a1410', '#140404'], land: '#241009', halo: 'rgba(255,106,42,0.35)', line: '#ff7a2e', grat: 'rgba(58,20,16,0.6)', cracks: '#ff8a3a' },
   blueprint:{ ocean: ['#1d4d8f', '#0e2c58'], land: null, halo: null, line: '#dce9fa', grat: 'rgba(220,233,250,0.5)', dash: true },
   cyber:    { ocean: ['#0a1420', '#03070f'], land: null, halo: 'rgba(192,77,240,0.3)', line: '#c04df0', grat: 'rgba(58,240,160,0.35)', nodes: '#3af0a0' },

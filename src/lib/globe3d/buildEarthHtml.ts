@@ -596,15 +596,18 @@ function remapMaterials(root){ToonHD.remapMaterials(root);}
 // Dark styles are self-lit in the rig: emissive texture, same soft ramp.
 function skinMaterial(tex,land){
   // Per-skin glint/brightness (globeSkin GLOSS): a white planet must not burn out.
-  var sk=SKIN.specK!=null?SKIN.specK:1,sv=SKIN.val!=null?SKIN.val:1;
+  var sk=SKIN.specK!=null?SKIN.specK:1,sv=SKIN.val!=null?SKIN.val:1,rc=SKIN.rimColor||undefined;
   return land
-    ?ToonHD.material({map:tex,rough:0.5,specK:0.25*sk,rimK:0.5,sat:1.25,val:1.02*sv,emissive:SKIN.unlit?D.toon.darkEmissive:0})
-    :ToonHD.material({map:tex,rough:0.25,specK:0.55*sk,rimK:0.6,sat:1.2,val:1.05*sv,emissive:SKIN.unlit?D.toon.darkEmissive:0});}
+    ?ToonHD.material({map:tex,rough:0.5,specK:0.25*sk,rimK:0.5,sat:1.25,val:1.02*sv,rimColor:rc,emissive:SKIN.unlit?D.toon.darkEmissive:0})
+    :ToonHD.material({map:tex,rough:0.25,specK:0.55*sk,rimK:0.6,sat:1.2,val:1.05*sv,rimColor:rc,emissive:SKIN.unlit?D.toon.darkEmissive:0});}
 function dressLand(root,tex){
   root.traverse(function(n){
-    if(n.isMesh&&n.userData.ggKind==='landtex'){
+    var k=n.isMesh&&n.userData.ggKind;
+    // landtex: raised continents (livelier). planettex: relief that must melt
+    // into the sphere (Mars' volcanoes) — the sphere's own material settings.
+    if(k==='landtex'||k==='planettex'){
       if(n.material&&n.material.dispose)n.material.dispose();
-      n.material=skinMaterial(tex,true);n.castShadow=true;n.receiveShadow=true;}});}
+      n.material=skinMaterial(tex,k==='landtex');n.castShadow=true;n.receiveShadow=true;}});}
 // Props animations (pulsing lava, breathing ice crystals, crown gems).
 var propAnims=[];
 function nodesOf(root,re){var out=[];root.traverse(function(n){
@@ -794,7 +797,7 @@ function loadRig(tex){
   // them out for the games (loadSkinForKey withProps) — this is belt and braces.
   if(SKIN.propsModel&&!D.interactive){
     loader.load(SKIN.propsModel,function(g){
-      var props=g.scene;remapMaterials(props);
+      var props=g.scene;remapMaterials(props);dressLand(props,tex);
       props.rotation.y=Math.PI/2;globe.add(props);
       propsObj=props;setupPropsAnims(props);
       updateCrispLines(); // the GLB lands async: apply the current sink at once

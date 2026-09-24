@@ -19,6 +19,7 @@
  *                window.setReduceMotion(bool)
  */
 import RIG from '../../../asset-pipeline/rig.json';
+import { SKIN_LOOK } from '../globe3d/skinLook';
 import { TOON_HD_JS } from '../globe3d/toonHdSource';
 import { CITY_LIGHTS, GLOBE_STYLES, POLITICAL_PALETTE } from '../../components/WorldAvatar';
 import { EMBLEM_COORD } from '../../components/worldGlyphs';
@@ -68,6 +69,7 @@ export function buildAvatarHtml(opts: BuildAvatarHtmlOptions): string {
   const payload = {
     rig: RIG,
     styles: GLOBE_STYLES,
+    look: SKIN_LOOK,
     polys: WORLD_POLYS,
     cities: CITY_LIGHTS,
     palette: POLITICAL_PALETTE,
@@ -403,15 +405,28 @@ function loadUri(uri,cb){texLoader.load(uri,function(t){t.colorSpace=THREE.SRGBC
 var GLOBE_DARK={night:1,lava:1,eclipse:1,biolum:1,hologram:1,cyber:1,st_galaxy:1,st_fractured:1};
 // Relief 3D des continents (GLB partagé) ; mars/st_galaxy n'ont pas de continents.
 var NO_RELIEF={mars:1,st_galaxy:1};
+// Reflet / luminosité / contre-jour par planète (src/lib/globe3d/skinLook.ts).
+function lookOf(styleId){var l=D.look[styleId]||{};
+  return {sk:l.specK!=null?l.specK:1,sv:l.val!=null?l.val:1,rc:l.rim||undefined};}
+function landMat(styleId,tex){var L=lookOf(styleId);
+  return ToonHD.material({map:tex,rough:0.5,specK:0.25*L.sk,rimK:0.5,sat:1.25,val:1.02*L.sv,rimColor:L.rc,
+    emissive:GLOBE_DARK[styleId]?RIG.toon.darkEmissive:0});}
+function sphereMat(styleId,tex){var L=lookOf(styleId);
+  return ToonHD.material({map:tex,rough:0.25,specK:0.55*L.sk,rimK:0.6,sat:1.2,val:1.05*L.sv,rimColor:L.rc,
+    emissive:GLOBE_DARK[styleId]?RIG.toon.darkEmissive:0});}
+// Pièces de relief des props qui portent la texture de la planète (volcans de Mars…).
+function dressProps(root,styleId,tex){if(!tex)return;
+  root.traverse(function(n){var k=n.isMesh&&n.userData.ggKind;
+    if(k==='landtex'||k==='planettex'){
+    if(n.material&&n.material.dispose)n.material.dispose();
+    n.material=k==='landtex'?landMat(styleId,tex):sphereMat(styleId,tex);n.castShadow=true;n.receiveShadow=true;}});}
 var landObj=null,propsObj=null,propsStyle=null;
 function setLandStyle(styleId,tex){
   if(!landObj)return;
-  var dark=!!GLOBE_DARK[styleId];
   landObj.traverse(function(n){
     if(!n.isMesh)return;
     if(n.userData.ggKind==='landtex'){
-      var m=ToonHD.material({map:tex,rough:0.5,specK:0.25,rimK:0.5,sat:1.25,val:1.02,
-        emissive:dark?RIG.toon.darkEmissive:0});
+      var m=landMat(styleId,tex);
       if(n.material&&n.material.dispose)n.material.dispose();
       n.material=m;n.castShadow=true;n.receiveShadow=true;
     }});
@@ -444,6 +459,7 @@ function ensureLand(styleId,tex){
     gltfLoader.load(assets.globePropsModel,function(g){
       if(propsStyle!==styleId||propsObj)return;
       propsObj=g.scene;remapMaterials(propsObj);
+      dressProps(propsObj,styleId,(assets.globeTex&&packTexCache[assets.globeTex])||tex);
       propsObj.rotation.y=Math.PI/2;
       globeGroup.add(propsObj);
       setupPropsAnims(propsObj,styleId);
@@ -464,8 +480,7 @@ function applyGlobeStyle(styleId){
     var texUri=assets.globeTex;
     var usePack=function(t){
       if(req!==globeReq)return; // un style plus récent a été demandé entre-temps
-      var m=ToonHD.material({map:t,rough:0.25,specK:0.55,rimK:0.6,sat:1.2,val:1.05,
-        emissive:GLOBE_DARK[styleId]?RIG.toon.darkEmissive:0});
+      var m=sphereMat(styleId,t);
       var old=globeMesh.material;globeMesh.material=m;
       if(old&&old.dispose)old.dispose();
       ensureLand(styleId,t);

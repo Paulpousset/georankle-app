@@ -33,6 +33,7 @@ import { COSMETIC_LAYERS } from '../data/cosmeticLayers.gen';
 import { COSMETIC_MODELS, GLOBE_TEXTURES } from '../data/cosmeticModels.gen';
 import type { MapPalette } from '../theme/mapPalette';
 import type { AvatarConfig, CosmeticPart } from '../types';
+import { SKIN_LOOK } from './globe3d/skinLook';
 import { moduleToWebViewUri } from './globe3d/textureLoader';
 import { supabase } from './supabase';
 
@@ -135,6 +136,8 @@ export interface GameGlobeSkin {
    */
   specK: number;
   val: number;
+  /** Back-light colour, null = the rig's cyan (see skinLook.ts). */
+  rimColor: string | null;
   /** Translucent land tint, only used by the 'fill' coat. */
   landCoat: string | null;
   /** Decorative cloud layer (menu globe only — clouds would hide the answer). */
@@ -164,11 +167,6 @@ const COATS: Record<string, 'outline' | 'fill'> = {
   eclipse: 'outline',
   // White land with pale blue borders: under the sun they vanish.
   ice: 'outline',
-};
-
-/** Per-skin glint/brightness overrides (see GameGlobeSkin.specK). */
-const GLOSS: Record<string, { specK: number; val: number }> = {
-  ice: { specK: 0.15, val: 0.93 },
 };
 
 /**
@@ -224,8 +222,9 @@ export function buildGameGlobeSkin(
     crispLine: dark ? '#ffffff' : '#1a1824',
     grat: dark ? 'rgba(255,255,255,0.16)' : 'rgba(24,22,32,0.14)',
     coat: COATS[key] ?? 'none',
-    specK: GLOSS[key]?.specK ?? 1,
-    val: GLOSS[key]?.val ?? 1,
+    specK: SKIN_LOOK[key]?.specK ?? 1,
+    val: SKIN_LOOK[key]?.val ?? 1,
+    rimColor: SKIN_LOOK[key]?.rim ?? null,
     landCoat: COATS[key] === 'fill' ? rgba(gs.land === 'none' ? lit : gs.land, 0.3) : null,
     clouds: !!gs.clouds,
     stars: isDarkColor(deep),

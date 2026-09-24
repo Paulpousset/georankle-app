@@ -35,8 +35,10 @@ def select_objects(objs):
     return count
 
 
-def export_glb(path):
+def export_glb(path, images=True):
+    extra = {} if images else {"export_image_format": "NONE"}
     bpy.ops.export_scene.gltf(
+        **extra,
         filepath=path,
         export_format="GLB",
         use_selection=True,
@@ -106,7 +108,9 @@ def main():
             root.matrix_world = Matrix.Identity(4)
             bpy.context.view_layer.update()
         if select_objects(objs):
-            export_glb(os.path.join(OUT, f"{out_name}.glb"))
+            # Pas d'image embarquée : les pièces landtex reçoivent la texture du
+            # style AU RUNTIME (dressLand) — l'embarquer pesait ~10 Mo pour rien.
+            export_glb(os.path.join(OUT, f"{out_name}.glb"), images=False)
             done.append(out_name)
         if root and saved is not None:
             root.matrix_world = saved

@@ -55,6 +55,14 @@ LAND_HEX = {
 LAND_TOP = 1.022
 LAND_BASE = 0.994
 NO_RELIEF = {"mars", "st_galaxy"}
+# Miroir de src/lib/globe3d/skinLook.ts (reflet / luminosité / contre-jour par
+# planète) : la vignette de la boutique et la scène live doivent coïncider.
+SKIN_LOOK = {
+    "ice": {"specK": 0.15, "val": 0.93},
+    # 0 ici (0.2 en live) : les 5 grandes area lights du studio se reflètent en
+    # larges taches blanches sur la vignette, pas en point net.
+    "mars": {"specK": 0.0, "rim": "#ffb27a", "atmo": "#ff9a5a"},
+}
 
 
 def build(cid):
@@ -106,8 +114,9 @@ def _clouds(coll, style):
 
 def _atmosphere(coll, style):
     cfg = TOON["atmosphere"]
-    atm = sphere(coll, f"gatmo_{style}", cfg["radius"], (0, 0, 0),
-                 common.atmosphere_material(), seg=64, rings=32)
+    tint = SKIN_LOOK.get(style, {}).get("atmo")
+    mat = common.atmosphere_material(f"g_atmo_{style}", color=tint) if tint else common.atmosphere_material()
+    atm = sphere(coll, f"gatmo_{style}", cfg["radius"], (0, 0, 0), mat, seg=64, rings=32)
     atm.visible_shadow = False
     return atm
 
@@ -372,8 +381,10 @@ def _globe_material(style, land=False):
     name = f"globe_{style}" + ("_land" if land else "")
     cfg = LAND if land else OCEAN
     dark = style in DARK_STYLES
-    mat = toon_hd(name, color_socket=_style_tex_socket(style, cfg["sat"], cfg["val"], land),
-                  rough=cfg["rough"], spec_k=cfg["spec_k"], rim_k=cfg["rim_k"],
+    look = SKIN_LOOK.get(style, {})
+    mat = toon_hd(name, color_socket=_style_tex_socket(style, cfg["sat"], cfg["val"] * look.get("val", 1.0), land),
+                  rough=cfg["rough"], spec_k=cfg["spec_k"] * look.get("specK", 1.0), rim_k=cfg["rim_k"],
+                  rim=look.get("rim"),
                   emissive=TOON["darkEmissive"] if dark else 0.0, cache=False)
     mat["ggKind"] = "landtex" if land else "toon"
     mat["ggHex"] = LAND_HEX.get(style) or "#7cc45e"
@@ -523,34 +534,103 @@ def _props_lava(coll, root, style):
 
 
 def _props_mars(coll, root, style):
-    _mars_cap(coll, root)
-    rim_mat = toon_material("g_craterrim", "#b0511f")
-    craters = [("hellas", -38, 66, 0.115), ("gale", -5, 137, 0.085),
-               ("jezero", 20, 76, 0.075), ("argyre", -48, -44, 0.10),
-               ("utopia", 46, 118, 0.11), ("valles", -12, -58, 0.085),
-               ("chryse", 25, -32, 0.09)]
-    for name, lat, lng, R in craters:
-        anchor = _prop_anchor(coll, root, f"cra_{name}", lat, lng)
-        ring = torus(coll, f"gprop_{name}_rg", R, R * 0.30, mat=rim_mat,
-                     seg_major=18, seg_minor=8, scale=(1, 1, 0.62))
-        add_outline(ring, "#b0511f", 0.010)
-        _parent_keep(ring, anchor)
-    oly = _prop_anchor(coll, root, "oly", 18, -134)
-    mons = cyl(coll, "gprop_oly_mons", 0.19, 0.11, (0, 0, 0.055),
-               mat=toon_material("g_marsmons", "#c96a33"),
-               segments=12, r2=0.075, smooth=False)
-    add_outline(mons, "#c96a33", 0.011)
-    _parent_keep(mons, oly)
+    """Mars (refonte 24/09/2026) : les grands reliefs en VRAI relief, qui portent
+    la texture de la planète (ggKind=landtex, UV équirect comme le relief des
+    continents) — donc exactement là où gen_mars_texture.mjs les a peints.
+    Olympus Mons et Tharsis en boucliers à caldeira, Elysium, Alba Mons tout plat,
+    et la calotte nord en dôme de glace. Plus d'anneaux de cratères en tores
+    posés sur la croûte : la texture les porte, ombrés, par centaines."""
+    mat = _globe_material(style, land=True)
+    # « planettex » : même texture ET mêmes réglages que la sphère (pas le
+    # rendu plus saturé des continents) — le relief se fond dans la croûte.
+    mat["ggKind"] = "planettex"
+    #          nom        lat     lng     rayon°  hauteur  caldeira
+    shields = [("olympus", 18.6, -134.0, 8.5, 0.036, 0.16),
+               ("arsia", -8.3, -120.5, 4.6, 0.022, 0.20),
+               ("pavonis", 0.8, -113.4, 4.0, 0.020, 0.18),
+               ("ascraeus", 11.8, -104.5, 4.3, 0.022, 0.20),
+               ("elysium", 24.8, 146.9, 3.6, 0.016, 0.16),
+               ("alba", 40.5, -109.6, 9.0, 0.009, 0.12)]
+    for name, lat, lng, R, A, cal in shields:
+        def prof(t, A=A, cal=cal):
+            if t < 1.0:
+                h = A * (0.82 * (1.0 - t) ** 0.85 + 0.18)
+                h -= A * 0.35 * math.exp(-(t / cal) ** 2)
+            else:
+                h = A * 0.18 * max(0.0, 1.0 - (t - 1.0) / 0.2)
+            return h
+        _mars_relief(coll, root, f"gprop_mars_{name}", lat, lng, R * 1.2, R, prof, mat)
+    # Calotte nord : dôme de glace aplati, bord adouci (la texture y est blanche).
+    def cap(t):
+        return 0.011 * (1.0 - min(1.0, t) ** 3) if t < 1.0 else 0.0
+    _mars_relief(coll, root, "gprop_mars_cap", 90.0, 0.0, 11.5, 10.5, cap, mat, rings=16)
 
 
-def _mars_cap(coll, root):
-    mat = toon_material("g_marscap", "#f2e8dc", rim=0.1)
-    cap = lathe(coll, "gprop_marscap",
-                [(0.30, 0.0), (0.27, 0.016), (0.16, 0.030), (0.0, 0.038)],
-                mat=mat, segments=24)
-    add_outline(cap, "#e0d4c4", 0.010)
-    anchor = _prop_anchor(coll, root, "a_marscap", 88, 0)
-    _parent_keep(cap, anchor)
+def _mars_relief(coll, root, name, lat, lng, reach_deg, R_deg, prof, mat,
+                 rings=20, segs=56, sink=0.004):
+    """Pièce de relief en calotte sphérique déplacée : r = 1 + prof(d/R) − sink,
+    le bord extérieur rentre sous la sphère (aucune couture visible). Repère géo
+    pur (x = sin lng·cos lat, y = −cos lng·cos lat, z = sin lat) ; UV équirect
+    par loop, V pré-inversé comme _build_land_mesh."""
+    la, lo = math.radians(lat), math.radians(lng)
+    c = Vector((math.sin(lo) * math.cos(la), -math.cos(lo) * math.cos(la), math.sin(la)))
+    ref = Vector((0, 0, 1)) if abs(c.z) < 0.95 else Vector((1, 0, 0))
+    e1 = ref.cross(c).normalized()
+    e2 = c.cross(e1).normalized()
+    bm = bmesh.new()
+    ring_verts = []
+    center = bm.verts.new(c * (1.0 + prof(0.0) - sink))
+    for i in range(1, rings + 1):
+        d_deg = reach_deg * (i / rings)
+        d = math.radians(d_deg)
+        t = d_deg / R_deg
+        r = 1.0 + prof(t) - (sink if t < 1.15 else sink * 2.5)
+        row = []
+        for k in range(segs):
+            a = 2 * math.pi * k / segs
+            p = (c * math.cos(d) + (e1 * math.cos(a) + e2 * math.sin(a)) * math.sin(d)).normalized()
+            row.append(bm.verts.new(p * r))
+        ring_verts.append(row)
+    for k in range(segs):
+        bm.faces.new((center, ring_verts[0][k], ring_verts[0][(k + 1) % segs]))
+    for i in range(rings - 1):
+        a, b = ring_verts[i], ring_verts[i + 1]
+        for k in range(segs):
+            k2 = (k + 1) % segs
+            bm.faces.new((a[k], b[k], b[k2], a[k2]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    uv = bm.loops.layers.uv.new("UVMap")
+    for face in bm.faces:
+        us = []
+        pole_loops = []
+        for loop in face.loops:
+            co = loop.vert.co.normalized()
+            if co.x * co.x + co.y * co.y < 1e-12:
+                pole_loops.append(loop)
+                continue
+            u = 0.5 + math.atan2(co.x, -co.y) / (2 * math.pi)
+            v2 = 0.5 - math.asin(max(-1.0, min(1.0, co.z))) / math.pi
+            loop[uv].uv = (u, v2)
+            us.append(u)
+        if us and max(us) - min(us) > 0.5:
+            for loop in face.loops:
+                if loop not in pole_loops and loop[uv].uv[0] < 0.5:
+                    loop[uv].uv = (loop[uv].uv[0] + 1.0, loop[uv].uv[1])
+        if pole_loops:
+            # Sommet au pôle : u moyen de la face (sinon un éventail tordu).
+            others = [l[uv].uv[0] for l in face.loops if l not in pole_loops]
+            for loop in pole_loops:
+                zz = loop.vert.co.normalized().z
+                loop[uv].uv = (sum(others) / len(others), 0.0 if zz > 0 else 1.0)
+    mesh = bpy.data.meshes.new(name)
+    bm.to_mesh(mesh)
+    bm.free()
+    mesh.polygons.foreach_set("use_smooth", [True] * len(mesh.polygons))
+    obj = bpy.data.objects.new(name, mesh)
+    coll.objects.link(obj)
+    obj.data.materials.append(mat)
+    obj.parent = root
+    return obj
 
 
 def _props_fractured(coll, root, style):
