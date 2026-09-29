@@ -1,5 +1,5 @@
 /** Source « Audience » : PostHog (HogQL), app native + web dans le même projet. */
-import { env, need, http, settle, dayRange } from './lib.mjs';
+import { env, need, http, settle, buckets, hourly } from './lib.mjs';
 
 // App native = lib posthog-react-native ; tout le reste = web (site + /play).
 const PLATFORM = `multiIf(properties.$lib = 'posthog-react-native', if(properties.$os = 'Android', 'Android', 'iOS'), 'Web')`;
@@ -37,11 +37,11 @@ export async function posthog({ days }) {
     },
     dauByPlatform: async () => {
       const rows = await hogql(`
-        select toDate(timestamp) d, ${PLATFORM} p, uniq(person_id)
+        select ${hourly(days) ? `formatDateTime(toStartOfHour(toTimeZone(timestamp, 'UTC')), '%Y-%m-%dT%H')` : 'toString(toDate(timestamp))'} d, ${PLATFORM} p, uniq(person_id)
         from events where ${win} group by d, p order by d`);
       const series = {};
       for (const [d, p, n] of rows) (series[p] ??= {})[d] = n;
-      const daysList = dayRange(days);
+      const daysList = buckets(days);
       return ['iOS', 'Android', 'Web'].map((name) => ({
         name,
         points: daysList.map((x) => ({ x, y: series[name]?.[x] ?? 0 })),

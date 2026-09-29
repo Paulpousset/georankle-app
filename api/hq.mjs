@@ -1,5 +1,5 @@
 /**
- * GET /api/hq?source=<nom>&days=<7|28|90>
+ * GET /api/hq?source=<nom>&days=<1|7|28|90>  (1 = 24 h, séries à l'heure)
  * Tableau de bord privé (page /hq). Réservé aux profils is_admin : la page
  * envoie le jeton de session Supabase, on le vérifie avant toute requête.
  */
@@ -30,7 +30,7 @@ const json = (body, status = 200, extra = {}) =>
 export async function GET(request) {
   const url = new URL(request.url);
   const source = url.searchParams.get('source');
-  const days = [7, 28, 90].includes(Number(url.searchParams.get('days'))) ? Number(url.searchParams.get('days')) : 28;
+  const days = [1, 7, 28, 90].includes(Number(url.searchParams.get('days'))) ? Number(url.searchParams.get('days')) : 28;
 
   // Config publique de connexion (la clé anon est déjà dans le bundle de l'app).
   if (source === 'config') return json({ supabaseUrl: SUPABASE_URL(), anonKey: SUPABASE_ANON() });

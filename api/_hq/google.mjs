@@ -131,7 +131,7 @@ export async function admob({ days }) {
       method: 'POST',
       body: JSON.stringify({
         reportSpec: {
-          dateRange: { startDate: d(daysAgo(days)), endDate: d(daysAgo(0)) },
+          dateRange: { startDate: d(daysAgo(days === 1 ? 0 : days)), endDate: d(daysAgo(0)) }, // 24 h = aujourd'hui
           dimensions,
           metrics: ['ESTIMATED_EARNINGS', 'IMPRESSIONS', 'AD_REQUESTS', 'MATCH_RATE', 'CLICKS', 'IMPRESSION_RPM'],
           localizationSettings: { currencyCode: 'EUR' },
@@ -171,7 +171,7 @@ const ADSENSE = ['https://www.googleapis.com/auth/adsense.readonly'];
 
 export async function adsense({ days }) {
   const base = `https://adsense.googleapis.com/v2/accounts/${PUB()}`;
-  const s = daysAgo(days);
+  const s = daysAgo(days === 1 ? 0 : days); // 24 h = aujourd'hui
   const e = daysAgo(0);
   const range =
     `dateRange=CUSTOM&startDate.year=${s.getUTCFullYear()}&startDate.month=${s.getUTCMonth() + 1}&startDate.day=${s.getUTCDate()}` +

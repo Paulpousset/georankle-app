@@ -80,6 +80,7 @@ header {
 .icon-btn { border: 0; background: var(--surface-2); width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; cursor: pointer; color: var(--ink-2); }
 .icon-btn.spin svg { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+@media (max-width: 440px) { .brand .name { display: none; } .seg button { padding: 5px 9px; } }
 .stamp { font-size: 12px; color: var(--muted); width: 100%; max-width: 1240px; margin: 4px auto 0; }
 
 /* Onglets : barre du bas sur mobile, en ligne sur ordinateur */
@@ -221,10 +222,10 @@ details.tv .scroll-x { max-height: 240px; overflow-y: auto; }
     <div class="bar">
       <div class="brand">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18"/></svg>
-        GeoG HQ
+        <span class="name">GeoG HQ</span>
       </div>
       <div class="seg" role="group" aria-label="Période">
-        <button data-days="7">7 j</button><button data-days="28">28 j</button><button data-days="90">90 j</button>
+        <button data-days="1">24 h</button><button data-days="7">7 j</button><button data-days="28">28 j</button><button data-days="90">90 j</button>
       </div>
       <button class="icon-btn" id="refresh" aria-label="Actualiser" title="Actualiser">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg>
@@ -281,6 +282,11 @@ const compact = (n) => (n == null ? '—' : new Intl.NumberFormat('fr-FR', { not
 const pct = (x, d = 1) => (x == null ? '—' : `${fmt(x * 100, d)} %`);
 const eur = (x) => (x == null ? '—' : new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: x < 10 ? 2 : 0 }).format(x));
 const dm = (iso) => { const [, m, d] = String(iso).slice(0, 10).split('-'); return `${d}/${m}`; };
+/** Étiquette d'un seau : jour « 29/09 » ou heure locale « 14h » (clé UTC 'YYYY-MM-DDTHH'). */
+const fx = (k) => (String(k).length === 13 ? `${new Date(`${k}:00:00Z`).getHours()}h` : dm(k));
+/** Période affichée : « 24 h » ou « 28 j ». */
+const unit = () => (S.days === 1 ? 'heure' : 'jour');
+const per = () => (S.days === 1 ? '24 h' : `${S.days} j`);
 const region = (() => { try { return new Intl.DisplayNames(['fr'], { type: 'region' }); } catch { return null; } })();
 const country = (c) => { if (!c || c === '(aucun)') return 'Inconnu'; try { return c.length === 2 ? region?.of(c.toUpperCase()) ?? c : c.toUpperCase(); } catch { return c; } };
 const mode = (m) => MODE_NAMES[m] ?? m;
@@ -300,7 +306,7 @@ function delta(cur, prev, { invert = false } = {}) {
   const r = (cur - prev) / prev;
   const cls = Math.abs(r) < 0.02 ? 'flat' : (r > 0) !== invert ? 'up' : 'down';
   const arrow = Math.abs(r) < 0.02 ? '→' : r > 0 ? '▲' : '▼';
-  return `<span class="delta ${cls}" title="vs ${S.days} j précédents">${arrow} ${fmt(Math.abs(r) * 100)} %</span>`;
+  return `<span class="delta ${cls}" title="vs ${per()} précédent(e)s">${arrow} ${fmt(Math.abs(r) * 100)} %</span>`;
 }
 
 // ─── Données ─────────────────────────────────────────────────────────────────
@@ -429,9 +435,9 @@ function chart(series, { type = 'line', fmtY = (v) => fmt(v), height = 170, yMax
     ? `<div class="legend">${series.map((s) => `<span><i style="background:${s.color}"></i>${esc(s.name)} <b class="num">${fmtY(sum(s.points, (p) => p.y))}</b></span>`).join('')}</div>`
     : '';
   const xs = series[0].points.map((p) => p.x);
-  const tv = `<details class="tv"><summary>Voir le tableau</summary><div class="scroll-x"><table class="tbl"><thead><tr><th>Jour</th>${series
+  const tv = `<details class="tv"><summary>Voir le tableau</summary><div class="scroll-x"><table class="tbl"><thead><tr><th>${S.days === 1 ? 'Heure' : 'Jour'}</th>${series
     .map((s) => `<th class="r">${esc(s.name)}</th>`).join('')}</tr></thead><tbody>${xs
-    .map((x, i) => `<tr><td>${dm(x)}</td>${series.map((s) => `<td class="r num">${fmtY(s.points[i]?.y)}</td>`).join('')}</tr>`)
+    .map((x, i) => `<tr><td>${fx(x)}</td>${series.map((s) => `<td class="r num">${fmtY(s.points[i]?.y)}</td>`).join('')}</tr>`)
     .reverse().join('')}</tbody></table></div></details>`;
   return `${legend}<div class="chart" id="${id}" style="height:${height}px"></div>${tv}`;
 }
@@ -469,7 +475,7 @@ function drawChart(el, { series, type, fmtY, height, yMax }) {
   }
   const xs = series[0].points.map((p) => p.x);
   const ticks = n <= 1 ? [0] : [0, Math.floor((n - 1) / 2), n - 1];
-  for (const i of ticks) g += `<text class="axis" x="${X(i)}" y="${H - 4}" text-anchor="${i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}">${dm(xs[i])}</text>`;
+  for (const i of ticks) g += `<text class="axis" x="${X(i)}" y="${H - 4}" text-anchor="${i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}">${fx(xs[i])}</text>`;
 
   if (type === 'bar') {
     const bw = Math.max(2, iw / n - 2); // 2 px d'écart entre barres
@@ -516,7 +522,7 @@ function drawChart(el, { series, type, fmtY, height, yMax }) {
       c.style.display = y == null ? 'none' : '';
       if (y != null) { c.setAttribute('cx', x); c.setAttribute('cy', Y(y)); }
     });
-    tip.innerHTML = `<b>${dm(xs[i])}</b><br>${series.map((s) => `${series.length > 1 ? `<i style="background:${s.color}"></i>${esc(s.name)} ` : ''}<b class="num">${fmtY(s.points[i]?.y)}</b>`).join('<br>')}`;
+    tip.innerHTML = `<b>${fx(xs[i])}</b><br>${series.map((s) => `${series.length > 1 ? `<i style="background:${s.color}"></i>${esc(s.name)} ` : ''}<b class="num">${fmtY(s.points[i]?.y)}</b>`).join('<br>')}`;
     tip.style.opacity = 1;
     const tx = (x / W) * rect.width;
     tip.style.left = `${Math.min(Math.max(tx - tip.offsetWidth / 2, 0), rect.width - tip.offsetWidth)}px`;
@@ -578,7 +584,7 @@ function overview() {
   return `
   <h2 class="section">À surveiller</h2>
   ${alerts()}
-  <h2 class="section">Chiffres clés · ${S.days} j</h2>
+  <h2 class="section">Chiffres clés · ${per()}</h2>
   <div class="kpis">
     ${tile('Visiteurs uniques', ph, 'active', (v) => ({ value: compact(v.period), sub: delta(v.period, v.periodPrev) }))}
     ${tile('Actifs aujourd’hui', ph, 'active', (v) => ({ value: fmt(v.dau), sub: `${fmt(v.wau)} sur 7 j` }))}
@@ -594,8 +600,8 @@ function overview() {
     ${tile('Site', 'deploys', 'health', (v) => ({ value: v.every((h) => h.ok) ? 'En ligne' : 'Panne', sub: `${Math.round(sum(v, (h) => h.ms) / v.length)} ms en moyenne` }))}
   </div>
   <div class="grid two" style="margin-top:12px">
-    ${card('Utilisateurs actifs par jour', ph, block(ph, 'dauByPlatform', (v) => chart(v.map((s) => ({ ...s, color: s.name === 'iOS' ? 'var(--s1)' : s.name === 'Android' ? 'var(--s2)' : 'var(--s3)' })))))}
-    ${card('Activité de jeu par jour', 'supabase', S.data.supabase ? chart(gamesSeries()) : '<div class="skel"></div>')}
+    ${card(`Utilisateurs actifs par ${unit()}`, ph, block(ph, 'dauByPlatform', (v) => chart(v.map((s) => ({ ...s, color: s.name === 'iOS' ? 'var(--s1)' : s.name === 'Android' ? 'var(--s2)' : 'var(--s3)' })))))}
+    ${card(`Activité de jeu par ${unit()}`, 'supabase', S.data.supabase ? chart(gamesSeries()) : '<div class="skel"></div>')}
   </div>`;
 }
 
@@ -604,7 +610,7 @@ function players() {
   return `
   <h2 class="section">Comptes</h2>
   <div class="kpis">
-    ${tile('Comptes', sb, 'users', (v) => ({ value: fmt(v.total), sub: `+${fmt(v.signups)} sur ${S.days} j` }))}
+    ${tile('Comptes', sb, 'users', (v) => ({ value: fmt(v.total), sub: `+${fmt(v.signups)} sur ${per()}` }))}
     ${tile('Vus aujourd’hui', sb, 'active', (v) => ({ value: fmt(v.d1), sub: 'last_seen < 24 h' }))}
     ${tile('Vus sur 30 j', sb, 'active', (v) => ({ value: fmt(v.d30), sub: `${fmt(v.d7)} sur 7 j` }))}
     ${tile('Notifs activées', sb, 'active', (v) => ({ value: fmt(v.pushTokens), sub: 'jetons push' }))}
@@ -612,7 +618,7 @@ function players() {
     ${tile('Séries ≥ 3 j', sb, 'active', (v) => ({ value: fmt(v.activeStreaks3), sub: 'défi du jour' }))}
   </div>
   <div class="grid two" style="margin-top:12px">
-    ${card('Inscriptions par jour', sb, block(sb, 'users', (v) => chart([{ name: 'Inscriptions', color: 'var(--s1)', points: v.signupsByDay }], { type: 'bar' })))}
+    ${card(`Inscriptions par ${unit()}`, sb, block(sb, 'users', (v) => chart([{ name: 'Inscriptions', color: 'var(--s1)', points: v.signupsByDay }], { type: 'bar' })))}
     ${card('Rétention par cohorte', ph, block(ph, 'retention', (v) => `
       <div class="legend"><span>J1 moyen <b class="num">${pct(v.d1)}</b></span><span>J7 moyen <b class="num">${pct(v.d7)}</b></span></div>
       ${table([
@@ -628,7 +634,7 @@ function players() {
     ${card('Défi du jour par mode', sb, block(sb, 'daily', (v) => `<p class="muted" style="margin:0 0 8px;font-size:12px">${fmt(v.plays)} participations</p>${hlist(v.byMode, { label: (r) => mode(r.label), color: 'var(--s3)' })}`))}
     ${card('Matchs en ligne par mode', sb, block(sb, 'online', (v) => `<p class="muted" style="margin:0 0 8px;font-size:12px">${fmt(v.matches)} matchs · ${fmt(v.ranked)} classés · ${fmt(v.ffa)} à plusieurs</p>${hlist(v.byMode, { label: (r) => mode(r.label), color: 'var(--s2)' })}`))}
     ${card('Issue des matchs en ligne', sb, block(sb, 'online', (v) => hlist(v.byStatus, { label: (r) => ({ completed: 'Terminés', cancelled: 'Annulés', in_progress: 'En cours / abandonnés', waiting: 'En attente' }[r.label] ?? r.label), color: 'var(--s2)' })))}
-    ${card('Mode Histoire', sb, block(sb, 'story', (v) => `<p class="muted" style="margin:0 0 8px;font-size:12px">${fmt(v.players)} joueurs · niveau max ${v.maxLevel} · ${fmt(v.levelsCompleted)} niveaux finis sur ${S.days} j</p>${hlist(v.distribution, { label: (r) => `Niveau ${r.label}`, limit: 6 })}`))}
+    ${card('Mode Histoire', sb, block(sb, 'story', (v) => `<p class="muted" style="margin:0 0 8px;font-size:12px">${fmt(v.players)} joueurs · niveau max ${v.maxLevel} · ${fmt(v.levelsCompleted)} niveaux finis sur ${per()}</p>${hlist(v.distribution, { label: (r) => `Niveau ${r.label}`, limit: 6 })}`))}
     ${card('Parties terminées (événements)', ph, block(ph, 'modes', (v) => hlist(v, { label: (r) => mode(r.label) })))}
   </div>
   <h2 class="section">Parcours</h2>
@@ -644,9 +650,9 @@ function players() {
     ${card('Versions de l’app (7 j)', ph, block(ph, 'appVersions', (v) => hlist(v, { label: (r) => `v${r.label}` })))}
     ${card('Économie', sb, block(sb, 'economy', (v) => table([{ h: 'Indicateur', f: (r) => r[0] }, { h: '', r: 1, f: (r) => r[1] }], [
       ['Pièces en circulation', fmt(v.coinsInCirculation)],
-      [`Pubs récompensées (${S.days} j)`, fmt(v.rewardedAds)],
-      [`Cosmétiques achetés (${S.days} j)`, fmt(v.cosmeticsBought)],
-      [`Achats intégrés (${S.days} j)`, fmt(v.iapPurchases)],
+      [`Pubs récompensées (${per()})`, fmt(v.rewardedAds)],
+      [`Cosmétiques achetés (${per()})`, fmt(v.cosmeticsBought)],
+      [`Achats intégrés (${per()})`, fmt(v.iapPurchases)],
     ])))}
   </div>`;
 }
@@ -709,7 +715,7 @@ function acquisition() {
       { h: 'Vitrine', f: (r) => r.store }, { h: 'Note', r: 1, f: (r) => (r.count ? `${fmt(r.rating, 1)}★` : '—') },
       { h: 'Nb', r: 1, f: (r) => fmt(r.count) }, { h: 'Version', f: (r) => r.version }], v)))}
     ${card('App Store — téléchargements', 'appstore', block('appstore', 'sales', (v) => chart([{ name: 'Nouveaux téléchargements', color: 'var(--s1)', points: v.map((r) => ({ x: r.x, y: r.downloads })) }], { type: 'bar' }) + `<p class="muted" style="font-size:12px;margin:6px 0 0">${fmt(sum(v, (r) => r.downloads))} nouveaux · ${fmt(sum(v, (r) => r.redownloads))} re-téléchargements · ${fmt(sum(v, (r) => r.updates))} mises à jour</p>`))}
-    ${card('Installations (événement app)', ph, block(ph, 'funnel', (v) => { const i = v.find((r) => r.event === 'Application Installed'); return `<div class="tile" style="border:0;box-shadow:none;padding:0"><div class="val num">${fmt(i?.users)}</div><div class="sub">premières ouvertures iOS + Android sur ${S.days} j</div></div>`; }))}
+    ${card('Installations (événement app)', ph, block(ph, 'funnel', (v) => { const i = v.find((r) => r.event === 'Application Installed'); return `<div class="tile" style="border:0;box-shadow:none;padding:0"><div class="val num">${fmt(i?.users)}</div><div class="sub">premières ouvertures iOS + Android sur ${per()}</div></div>`; }))}
   </div>
   <div class="grid two" style="margin-top:12px">
     ${card('Avis App Store', 'appstore', block('appstore', 'reviews', reviews))}
@@ -766,14 +772,14 @@ function quality() {
   <div class="kpis">
     ${tile('Erreurs ouvertes', se, 'unresolved', (v) => ({ value: fmt(v.total), sub: `${fmt(v.last24h)} nouvelle(s) en 24 h` }))}
     ${tile('Sessions sans crash', se, 'crashFree', (v) => ({ value: pct(v.session, 2), sub: `${compact(v.sessions)} sessions` }))}
-    ${tile('Utilisateurs sans crash', se, 'crashFree', (v) => ({ value: pct(v.user, 2), sub: `sur ${S.days} j` }))}
-    ${tile('Événements d’erreur', se, 'errorsByDay', (v) => ({ value: compact(sum(v, (r) => r.y)), sub: `sur ${S.days} j` }))}
+    ${tile('Utilisateurs sans crash', se, 'crashFree', (v) => ({ value: pct(v.user, 2), sub: `sur ${per()}` }))}
+    ${tile('Événements d’erreur', se, 'errorsByDay', (v) => ({ value: compact(sum(v, (r) => r.y)), sub: `sur ${per()}` }))}
     ${tile('Crash Android', pl, 'crashes', (v) => ({ value: pct(v.at(-1)?.userPerceivedCrashRate, 2), sub: 'perçu, dernier jour (seuil Play 1,09 %)' }))}
     ${tile('ANR Android', pl, 'anrs', (v) => ({ value: pct(v.at(-1)?.userPerceivedAnrRate, 2), sub: 'perçu, dernier jour (seuil 0,47 %)' }))}
   </div>
   <div class="grid two" style="margin-top:12px">
-    ${card('Événements d’erreur par jour', se, block(se, 'errorsByDay', (v) => chart([{ name: 'Erreurs', color: 'var(--s2)', points: v }], { type: 'bar' })))}
-    ${card('Sessions sans crash par jour', se, block(se, 'crashFree', (v) => chart([{ name: 'Sans crash', color: 'var(--s1)', points: v.byDay }], { fmtY: (x) => pct(x, 1), yMax: 1 })))}
+    ${card(`Événements d’erreur par ${unit()}`, se, block(se, 'errorsByDay', (v) => chart([{ name: 'Erreurs', color: 'var(--s2)', points: v }], { type: 'bar' })))}
+    ${card(`Sessions sans crash par ${unit()}`, se, block(se, 'crashFree', (v) => chart([{ name: 'Sans crash', color: 'var(--s1)', points: v.byDay }], { fmtY: (x) => pct(x, 1), yMax: 1 })))}
   </div>
   <div class="grid two" style="margin-top:12px">
     ${card('Erreurs les plus fréquentes', se, block(se, 'top', issueRows))}
@@ -841,7 +847,7 @@ function render() {
   const times = Object.values(S.data).map((d) => d?.fetchedAt).filter(Boolean).sort();
   $('#stamp').textContent = S.pending.size
     ? `Chargement… (${SOURCES.length - S.pending.size}/${SOURCES.length} sources)`
-    : times.length ? `Données ${ago(times[0])} · ${S.days} derniers jours` : '';
+    : times.length ? `Données ${ago(times[0])} · ${S.days === 1 ? '24 dernières heures' : `${S.days} derniers jours`}` : '';
 }
 
 function buildTabs() {

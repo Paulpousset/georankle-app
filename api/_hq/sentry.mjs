@@ -1,10 +1,12 @@
 /** Source « Erreurs » : Sentry (org tita-30). */
-import { env, need, http, settle } from './lib.mjs';
+import { env, need, http, settle, hourly } from './lib.mjs';
 
 export async function sentry({ days }) {
   need(['SENTRY_AUTH_TOKEN'], 'Jeton Sentry (org:read, project:read, event:read)');
   const org = env('SENTRY_ORG', 'tita-30');
-  const period = `${Math.min(days, 90)}d`;
+  const period = hourly(days) ? '24h' : `${Math.min(days, 90)}d`;
+  const interval = hourly(days) ? '1h' : '1d';
+  const cut = hourly(days) ? 13 : 10;
   const api = (p) =>
     http(`https://sentry.io/api/0/organizations/${org}/${p}`, {
       headers: { authorization: `Bearer ${env('SENTRY_AUTH_TOKEN')}` },
@@ -36,7 +38,7 @@ export async function sentry({ days }) {
     },
     crashFree: async () => {
       const r = await api(
-        `sessions/?field=crash_free_rate(session)&field=crash_free_rate(user)&field=sum(session)&statsPeriod=${period}&interval=1d&project=-1`,
+        `sessions/?field=crash_free_rate(session)&field=crash_free_rate(user)&field=sum(session)&statsPeriod=${period}&interval=${interval}&project=-1`,
       );
       const g = r.groups?.[0];
       return {
@@ -44,17 +46,17 @@ export async function sentry({ days }) {
         session: g?.totals?.['crash_free_rate(session)'] ?? null,
         user: g?.totals?.['crash_free_rate(user)'] ?? null,
         byDay: (r.intervals ?? []).map((x, i) => ({
-          x: x.slice(0, 10),
+          x: x.slice(0, cut),
           y: g?.series?.['crash_free_rate(session)']?.[i] ?? null,
         })),
       };
     },
     errorsByDay: async () => {
       const r = await api(
-        `stats_v2/?field=sum(quantity)&category=error&interval=1d&statsPeriod=${period}&groupBy=outcome`,
+        `stats_v2/?field=sum(quantity)&category=error&interval=${interval}&statsPeriod=${period}&groupBy=outcome`,
       );
       const accepted = r.groups?.find((g) => g.by?.outcome === 'accepted');
-      return (r.intervals ?? []).map((x, i) => ({ x: x.slice(0, 10), y: accepted?.series?.['sum(quantity)']?.[i] ?? 0 }));
+      return (r.intervals ?? []).map((x, i) => ({ x: x.slice(0, cut), y: accepted?.series?.['sum(quantity)']?.[i] ?? 0 }));
     },
   });
 }

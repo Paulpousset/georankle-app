@@ -1,5 +1,5 @@
 /** Source « Jeu » : la base Supabase (joueurs, parties, économie, crons). */
-import { SUPABASE_URL, env, need, http, settle, isoDay, daysAgo, dayRange } from './lib.mjs';
+import { SUPABASE_URL, env, need, http, settle, isoDay, daysAgo, buckets, bucketOf, hourly } from './lib.mjs';
 
 function rest() {
   need(['SUPABASE_SERVICE_ROLE_KEY']);
@@ -43,9 +43,9 @@ function rest() {
 }
 
 const byDay = (rows, field, days, pred = () => true) => {
-  const m = Object.fromEntries(dayRange(days).map((d) => [d, 0]));
+  const m = Object.fromEntries(buckets(days).map((d) => [d, 0]));
   for (const r of rows) {
-    const d = String(r[field]).slice(0, 10);
+    const d = bucketOf(r[field], days);
     if (d in m && pred(r)) m[d]++;
   }
   return Object.entries(m).map(([x, y]) => ({ x, y }));
@@ -104,13 +104,16 @@ export async function supabase({ days }) {
     },
     daily: async () => {
       const rows = await db.all(
-        `daily_results?select=game_mode,puzzle_date,user_id&puzzle_date=gte.${isoDay(daysAgo(days))}`,
+        hourly(days)
+          ? `daily_results?select=game_mode,created_at,user_id&created_at=gte.${daysAgo(1).toISOString()}`
+          : `daily_results?select=game_mode,puzzle_date,user_id&puzzle_date=gte.${isoDay(daysAgo(days))}`,
       );
+      // Joueurs distincts par seau (jour du puzzle, ou heure de jeu en mode 24 h).
       const players = {};
-      for (const r of rows) (players[r.puzzle_date] ??= new Set()).add(r.user_id);
+      for (const r of rows) (players[hourly(days) ? bucketOf(r.created_at, days) : r.puzzle_date] ??= new Set()).add(r.user_id);
       return {
         plays: rows.length,
-        playersByDay: dayRange(days).map((x) => ({ x, y: players[x]?.size ?? 0 })),
+        playersByDay: buckets(days).map((x) => ({ x, y: players[x]?.size ?? 0 })),
         byMode: tally(rows, 'game_mode'),
       };
     },

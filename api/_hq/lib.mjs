@@ -60,6 +60,18 @@ export async function settle(obj) {
 export const isoDay = (d) => d.toISOString().slice(0, 10);
 export const daysAgo = (n) => new Date(Date.now() - n * 86400000);
 
+/**
+ * Période « 24 h » (days = 1) : les séries passent à l'heure. Clés de seau :
+ * 'YYYY-MM-DD' par jour, 'YYYY-MM-DDTHH' (UTC) par heure.
+ */
+export const hourly = (days) => days === 1;
+export const bucketOf = (iso, days) => String(iso).slice(0, hourly(days) ? 13 : 10);
+export function buckets(days) {
+  if (!hourly(days)) return dayRange(days);
+  const now = Math.floor(Date.now() / 3600000) * 3600000;
+  return Array.from({ length: 24 }, (_, i) => new Date(now - (23 - i) * 3600000).toISOString().slice(0, 13));
+}
+
 /** Liste des jours [from..to] (ISO) pour remplir les trous des séries. */
 export function dayRange(n, endOffset = 0) {
   return Array.from({ length: n }, (_, i) => isoDay(daysAgo(n - 1 - i + endOffset)));
