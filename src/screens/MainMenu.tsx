@@ -34,6 +34,7 @@ import {
   Zap,
 } from 'lucide-react-native';
 import { AtlasFlame } from '../components/AtlasIcons';
+import { LanguageButton } from '../components/LanguageButton';
 import { MenuGlobe } from '../components/MenuGlobe';
 import { whenLaunchIntroDone } from '../components/LaunchIntro';
 import { useFeatureFlag } from '../lib/featureFlags';
@@ -491,7 +492,7 @@ export function MainMenu({
   incomingInviteMode = null,
 }: MainMenuProps) {
   const { isDarkMode, toggleTheme } = useTheme();
-  const { language, openLanguagePicker } = useLanguage();
+  const { language } = useLanguage();
   const c = getColors(isDarkMode);
   const iconColor = c.text;
   const accent = c.accent;
@@ -671,20 +672,7 @@ export function MainMenu({
         </TouchableOpacity>
 
         <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-          <TouchableOpacity
-            onPress={openLanguagePicker}
-            style={[
-              styles.refreshBtn,
-              !isDarkMode && styles.refreshBtnLight,
-              { padding: 8, minWidth: 42, alignItems: 'center' },
-            ]}
-            hitSlop={ICON_HIT_SLOP}
-            {...a11yButton(tr(language, 'Changer de langue', 'Change language'))}
-          >
-            <Text style={{ fontFamily: FONTS.monoBold, color: iconColor, fontSize: 11 }}>
-              {language.toUpperCase()}
-            </Text>
-          </TouchableOpacity>
+          <LanguageButton />
           {isAuthenticated && (
             <TouchableOpacity
               ref={shopRef}
