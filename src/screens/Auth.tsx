@@ -25,6 +25,7 @@ import {
 
 import { track } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
+import type { AuthError } from '@supabase/supabase-js';
 import { a11yButton } from '../lib/a11y';
 import { log } from '../lib/log';
 import { useFeatureFlag } from '../lib/featureFlags';
@@ -195,12 +196,19 @@ const Auth = ({ onAuthSuccess, language, initialMode = 'login' }: AuthProps) => 
     continueApple: { fr: 'Continuer avec Apple', en: 'Continue with Apple' },
     continueGoogle: { fr: 'Continuer avec Google', en: 'Continue with Google' },
     orDivider: { fr: 'ou', en: 'or' },
+    emailRateLimited: { fr: 'Trop d’emails envoyés pour le moment. Réessaie dans quelques minutes.', en: 'Too many emails sent right now. Please try again in a few minutes.' },
   };
   const t = useMemo(
     () => Object.fromEntries(Object.entries(LABELS).map(([key, label]) => [key, pickLabel(label, language)])) as Record<keyof typeof LABELS, string>,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [language],
   );
+
+  // Supabase Auth plafonne les emails (inscription, renvoi, réinitialisation) :
+  // son message brut est en anglais et ne dit pas quoi faire.
+  function authEmailError(error: AuthError): string {
+    return error.code === 'over_email_send_rate_limit' || error.status === 429 ? t.emailRateLimited : error.message;
+  }
 
   async function updateUsername() {
     if (!isValidUsername(username)) {
@@ -260,7 +268,7 @@ const Auth = ({ onAuthSuccess, language, initialMode = 'login' }: AuthProps) => 
     setLoading(false);
     if (error) {
       log.error('Password reset error:', error);
-      showAlert(t.error, error.message);
+      showAlert(t.error, authEmailError(error));
       return;
     }
     // Always land on the confirmation screen — don't reveal whether the address
@@ -316,7 +324,7 @@ const Auth = ({ onAuthSuccess, language, initialMode = 'login' }: AuthProps) => 
 
     if (error) {
       log.error('Signup error details:', error);
-      showAlert(t.error, error.message);
+      showAlert(t.error, authEmailError(error));
     } else if (data?.session) {
       // Email confirmation disabled: the session exists, persist the username now.
       const { error: profileError } = await supabase
@@ -340,7 +348,7 @@ const Auth = ({ onAuthSuccess, language, initialMode = 'login' }: AuthProps) => 
   async function resendConfirmation() {
     setLoading(true);
     const { error } = await supabase.auth.resend({ type: 'signup', email: confirmEmail });
-    if (error) showAlert(t.error, error.message);
+    if (error) showAlert(t.error, authEmailError(error));
     else setResent(true);
     setLoading(false);
   }

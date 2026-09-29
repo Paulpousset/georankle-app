@@ -11,6 +11,8 @@ name: EAS Update (OTA)
 # puis on tague `vX.Y.Z` (voir release.yml).
 #
 # Secret requis : EXPO_TOKEN (expo.dev → Access tokens).
+# Secret optionnel : SENTRY_AUTH_TOKEN (sentry.io → Settings → Auth Tokens,
+# jeton d’organisation) pour envoyer les source maps des bundles OTA.
 on:
   workflow_run:
     workflows: [CI]
@@ -64,3 +66,14 @@ jobs:
           eval "$(node -e 'const e=require("./eas.json").build.production.env;for(const[k,v]of Object.entries(e))console.log(`export ${k}=${JSON.stringify(v)}`)')"
           test -n "$EXPO_PUBLIC_SUPABASE_URL" || { echo "EXPO_PUBLIC_SUPABASE_URL manquant"; exit 1; }
           eas update --channel production --message "$msg" --non-interactive
+
+      # Sans ce lien, les erreurs des bundles OTA arrivent dans Sentry sans
+      # fichiers ni lignes (piles minifiées, issues mélangées). Org et projet
+      # sont lus dans le plugin Sentry d'app.json. Étape sautée tant que le
+      # secret n'existe pas, pour ne jamais bloquer une publication.
+      - name: Upload source maps to Sentry
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        if: env.SENTRY_AUTH_TOKEN != ''
+        continue-on-error: true
+        run: npx sentry-expo-upload-sourcemaps dist

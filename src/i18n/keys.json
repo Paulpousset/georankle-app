@@ -8640,6 +8640,18 @@
     ]
   },
   {
+    "key": "Mute sound",
+    "fr": "Couper le son",
+    "en": "Mute sound",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/SoundToggle.tsx"
+    ]
+  },
+  {
     "key": "My Profile",
     "fr": "Mon Profil",
     "en": "My Profile",
@@ -14610,6 +14622,18 @@
     ]
   },
   {
+    "key": "Too many emails sent right now. Please try again in a few minutes.",
+    "fr": "Trop d’emails envoyés pour le moment. Réessaie dans quelques minutes.",
+    "en": "Too many emails sent right now. Please try again in a few minutes.",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/screens/Auth.tsx"
+    ]
+  },
+  {
     "key": "Topographic relief",
     "fr": "Relief topographique",
     "en": "Topographic relief",
@@ -15032,6 +15056,18 @@
     ],
     "files": [
       "src/screens/StoryMap.tsx"
+    ]
+  },
+  {
+    "key": "Unmute sound",
+    "fr": "Activer le son",
+    "en": "Unmute sound",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/SoundToggle.tsx"
     ]
   },
   {
