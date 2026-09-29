@@ -128,6 +128,48 @@ function withTimeout<T>(p: PromiseLike<T>): Promise<T | typeof TIMEOUT> {
   return Promise.race([Promise.resolve(p), timeout]).finally(() => clearTimeout(timer));
 }
 
+/**
+ * Levels cleared locally but unknown to the server, in play order. They come
+ * from runs played signed out (or whose sync was lost): the local map is ahead,
+ * and the server refuses the next completion (« level N not unlocked ») since it
+ * only accepts `story_max_level + 1`. Stops at the first gap — the server would
+ * refuse everything past it.
+ */
+function levelsToBackfill(progress: StoredProgress, serverMax: number): number[] {
+  const out: number[] = [];
+  for (let level = serverMax + 1; level <= progress.maxLevel; level++) {
+    if ((progress.levels[String(level)]?.stars ?? 0) < 1) break;
+    out.push(level);
+  }
+  return out;
+}
+
+let backfilling: Promise<void> | null = null;
+
+/**
+ * Replay those levels one by one so the server catches up with the map. Runs in
+ * the background (the map already shows local progress) and at most once at a
+ * time; the RPC is idempotent per (user, level), so a retry never double-pays.
+ */
+function backfillToServer(progress: StoredProgress, serverMax: number): Promise<void> {
+  if (backfilling) return backfilling;
+  backfilling = (async () => {
+    for (const level of levelsToBackfill(progress, serverMax)) {
+      const entry = progress.levels[String(level)];
+      const res = await withTimeout(
+        supabase.rpc('complete_story_level', { p_level: level, p_score: entry.score, p_stars: entry.stars }),
+      );
+      // Offline or refused: stop here, the next snapshot will resume from the gap.
+      if (res === TIMEOUT || (res as any).error) return;
+    }
+  })()
+    .catch((e) => log.warn('story: backfill failed', e))
+    .finally(() => {
+      backfilling = null;
+    });
+  return backfilling;
+}
+
 /** Merge the user's own server rows + lives into the local cache. */
 async function reconcileFromServer(
   progress: StoredProgress,
@@ -173,7 +215,9 @@ async function reconcileFromServer(
         max_level?: number;
       } | null;
       if (s) {
-        progress.maxLevel = Math.max(progress.maxLevel, s.max_level ?? 0);
+        const serverMax = s.max_level ?? 0;
+        if (levelsToBackfill(progress, serverMax).length) void backfillToServer(progress, serverMax);
+        progress.maxLevel = Math.max(progress.maxLevel, serverMax);
         // Server lives are authoritative (they enforce the regen + ad cap).
         if (typeof s.lives === 'number') {
           lives = { ...lives, lives: s.lives, updatedAt: Date.now() };
@@ -380,4 +424,4 @@ export async function getFriendsPositions(user: User | null): Promise<FriendPosi
 }
 
 // ── Test hooks ─────────────────────────────────────────────────────────────────
-export const _internal = { settleLives, nextRegenMs };
+export const _internal = { settleLives, nextRegenMs, levelsToBackfill };
