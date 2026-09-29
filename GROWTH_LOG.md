@@ -14,8 +14,8 @@ propre, une FAQ, un bouton « Jouer » vers le mode concerné), puis les coche.
 quasi vides après cinq refus AdSense (commit `aa5e5be`). Une page qui ne peut
 pas être écrite sérieusement n'est pas publiée.
 
-- [ ] Quiz capitales d'Europe — les 44 capitales, pièges (Suisse, Pays-Bas, Australie hors périmètre), méthode de mémorisation par blocs
-- [ ] Les drapeaux les plus difficiles du monde — lesquels, pourquoi (paires, tricolores), comment les distinguer
+- [x] Quiz capitales d'Europe (29/09 : 45 pays dans le jeu, pas 44 ; angle « méthode par blocs », la liste existait déjà) — les 44 capitales, pièges (Suisse, Pays-Bas, Australie hors périmètre), méthode de mémorisation par blocs
+- [x] Les drapeaux les plus difficiles du monde (29/09 : angle notoriété, les sosies restent dans le guide existant) — lesquels, pourquoi (paires, tricolores), comment les distinguer
 - [ ] Classement des pays par population — le top 30 avec les chiffres du jeu, ce qui change d'ici 2050
 - [ ] Classement des pays par superficie — top 30, les surprises (Kazakhstan, Algérie, RDC)
 - [ ] Pays les plus petits du monde — micro-États et leur histoire, lien vers le guide micro-États
@@ -32,7 +32,7 @@ pas être écrite sérieusement n'est pas publiée.
 
 ### Fiches pays (195, à raison de 10 à 20 par semaine)
 
-Non commencées. La première semaine construit le gabarit (`site/lib/routes.mjs`
+**Avancement : 10 / 195** (29/09, les 10 pays les plus peuplés : Inde, Chine, États-Unis, Indonésie, Pakistan, Nigéria, Brésil, Bangladesh, Russie, Éthiopie). Gabarit livré : `COUNTRY_PAGES` dans `routes.mjs`, textes dans `site/content/<langue>/country-<cca3>.html`, garde-fou `checkCountryPages` (≥ 200 mots écrits, ≤ 25 % de phrases communes entre fiches). Prochaine fournée : le Mexique (11ᵉ par la population) et suivants. Le gabarit décrit ci-dessous a servi de base (`site/lib/routes.mjs`
 kind `country`, URL `/pays/<slug>/` et `/en/country/<slug>/`, données lues dans
 `assets/countries_stats.json`, tableau des voisins, drapeau, capitale, bouton
 « Jouer » vers Devinez le pays) puis livre les 10 premières, par ordre de
@@ -41,6 +41,12 @@ langue ; un garde-fou dans `site/lib/validate.mjs` refuse toute fiche sous le
 seuil.
 
 ## Entrées
+
+### 2026-09-29 — Contenu SEO de la semaine
+
+- Pages : `/guides/quiz-capitales-d-europe/`, `/guides/drapeaux-les-plus-difficiles/` et leurs versions EN.
+- 10 premières fiches pays FR + EN (`/pays/…`, `/en/country/…`), listées dans le sommaire des guides.
+- Rafraîchissement : aucune page n'a un `modified` de plus de 60 jours (la plus ancienne date du 23/08), rien relu cette semaine.
 
 ### 2026-09-23 — première chaîne complète
 

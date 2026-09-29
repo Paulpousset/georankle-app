@@ -607,6 +607,71 @@ export function smallestTable(scope, locale) {
   };
 }
 
+const SUBREGION_LABELS = {
+  'Southeast Europe': { fr: 'Europe du Sud-Est', en: 'Southeast Europe' },
+  'Southern Europe': { fr: 'Europe du Sud', en: 'Southern Europe' },
+  'Central Europe': { fr: 'Europe centrale', en: 'Central Europe' },
+  'Western Europe': { fr: 'Europe de l’Ouest', en: 'Western Europe' },
+  'Eastern Europe': { fr: 'Europe de l’Est', en: 'Eastern Europe' },
+  'Northern Europe': { fr: 'Europe du Nord', en: 'Northern Europe' },
+};
+
+/** Les capitales d'un continent regroupées par sous-région : les « blocs » de révision. */
+export function capitalBlocksTable(scope, locale) {
+  const list = scopeCountries(scope);
+  const groups = new Map();
+  for (const c of list) {
+    if (!groups.has(c.subregion)) groups.set(c.subregion, []);
+    groups.get(c.subregion).push(c);
+  }
+  const blocks = [...groups.entries()].sort((a, b) => b[1].length - a[1].length);
+  const rows = blocks.map(([sub, cs]) => {
+    const label = SUBREGION_LABELS[sub]?.[locale] ?? sub;
+    const sorted = [...cs].sort((a, b) => b.population - a.population);
+    return (
+      cell(`<strong>${label}</strong>`) +
+      cell(String(cs.length)) +
+      cell(sorted.map((c) => `${capitalName(c, locale)} (${countryName(c, locale)})`).join(', '))
+    );
+  });
+  return {
+    html: table(
+      locale === 'fr' ? ['Bloc', 'Pays', 'Capitales, du pays le plus peuplé au moins peuplé'] : ['Block', 'Countries', 'Capitals, from the most to the least populous country'],
+      rows,
+    ),
+    items: blocks.map(([sub]) => SUBREGION_LABELS[sub]?.[locale] ?? sub),
+    name: locale === 'fr' ? 'Les capitales par bloc' : 'Capitals by block',
+  };
+}
+
+/** Les drapeaux des pays les moins connus du jeu, avec leur rang de notoriété. */
+export function flagsNotorietyTable(scope, locale) {
+  const limit = Number(scope) || 24;
+  const list = [...COUNTRIES]
+    .filter((c) => NOTORIETY[c.cca3])
+    .sort((a, b) => NOTORIETY[b.cca3].rank - NOTORIETY[a.cca3].rank)
+    .slice(0, limit);
+  const rows = list.map((c) => {
+    const continent = CONTINENTS.find((k) => k.match(c));
+    return (
+      cell(
+        `<img src="${flagUrl(c.cca3)}" alt="${attr(`${locale === 'fr' ? 'Drapeau de' : 'Flag of'} ${countryName(c, locale)}`)}" width="40" height="27" loading="lazy" decoding="async" />`,
+      ) +
+      cell(`<strong>${countryName(c, locale)}</strong>`) +
+      cell(locale === 'fr' ? continent.fr : continent.en) +
+      cell(`${NOTORIETY[c.cca3].rank}${locale === 'fr' ? 'ᵉ' : ''} / ${COUNTRIES.length}`)
+    );
+  });
+  return {
+    html: table(
+      locale === 'fr' ? ['Drapeau', 'Pays', 'Continent', 'Rang de notoriété'] : ['Flag', 'Country', 'Continent', 'Notoriety rank'],
+      rows,
+    ),
+    items: list.map((c) => countryName(c, locale)),
+    name: locale === 'fr' ? 'Les drapeaux des pays les moins connus' : 'Flags of the least familiar countries',
+  };
+}
+
 /** Le tableau demandé par une directive `{{table:famille:portée}}`. */
 export const TABLES = {
   flags: flagsTable,
@@ -625,4 +690,6 @@ export const TABLES = {
   notoriety: notorietyTable,
   landlocked: landlockedTable,
   smallest: smallestTable,
+  'capital-blocks': capitalBlocksTable,
+  'flags-notoriety': flagsNotorietyTable,
 };
