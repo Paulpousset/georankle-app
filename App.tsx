@@ -101,8 +101,8 @@ function AppContent() {
   // when a request arrives or one you sent is accepted.
   const social = useSocialNotifications();
 
-  // Zero-friction web entry: a shared `/play` link boots straight into today's
-  // daily challenge (playable logged out) instead of the menu — the Wordle loop.
+  // Web entry: a bare `/play` opens the menu (all modes + language button); a
+  // shared daily grid (`/play?s=daily`) boots straight into today's challenge.
   // `/play?mode=quiz-flag` boots that solo mode instead: it is where the site's
   // per-mode pages send their "play" button.
   // Effets sonores : réglage lu une fois, session audio prête (silencieux iOS,

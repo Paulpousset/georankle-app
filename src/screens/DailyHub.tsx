@@ -103,7 +103,7 @@ function shortScore(result: DailyResult): string {
  */
 export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: DailyHubProps) {
   const { isDarkMode } = useTheme();
-  const { language } = useLanguage();
+  const { language, openLanguagePicker } = useLanguage();
   const toast = useToast();
   const c = getColors(isDarkMode);
   const [state, setState] = useState<DailyState | null>(null);
@@ -193,6 +193,22 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
           {tr(language, 'Défi du Jour', 'Daily Challenge')}
         </Text>
         <Text style={{ fontFamily: FONTS.mono, color: c.textMuted, fontSize: 11 }}>#{puzzle}</Text>
+        {/* Même bouton que le menu : sur le web, on peut arriver ici directement
+            par un lien partagé, sans être passé par le menu. */}
+        <TouchableOpacity
+          onPress={openLanguagePicker}
+          style={[
+            styles.refreshBtn,
+            !isDarkMode && styles.refreshBtnLight,
+            { padding: 8, minWidth: 42, alignItems: 'center' },
+          ]}
+          hitSlop={ICON_HIT_SLOP}
+          {...a11yButton(tr(language, 'Changer de langue', 'Change language'))}
+        >
+          <Text style={{ fontFamily: FONTS.monoBold, color: c.text, fontSize: 11 }}>
+            {language.toUpperCase()}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 50 }} showsVerticalScrollIndicator={false}>

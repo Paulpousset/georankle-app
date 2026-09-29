@@ -62,7 +62,8 @@ export function buildShareMessage(
   // code so playing then installing credits both players.
   lines.push(tr(language, 'À toi de faire mieux 👇', 'Beat my score 👇'));
   // No code (logged-out player): still a real URL, tagged so opens are measurable.
-  lines.push(refCode ? playLink(refCode) : `${playLink()}?s=daily`);
+  // `s=daily` is what makes the web open the daily instead of the menu.
+  lines.push(refCode ? `${playLink(refCode)}&s=daily` : `${playLink()}?s=daily`);
 
   return lines.join('\n');
 }

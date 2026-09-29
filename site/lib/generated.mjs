@@ -27,7 +27,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { SITE } from './paths.mjs';
-import { MODES } from './modes.mjs';
+import { MODES, playQuery } from './modes.mjs';
 import { SITE_LOCALES, localeData } from './siteLocales.mjs';
 import { t } from './i18n.mjs';
 
@@ -230,7 +230,8 @@ export function retiredRedirects() {
   };
   for (const mode of MODES) {
     const slugs = SITE_LOCALES.map((l) => localeData(l).modes[mode.id].slug);
-    push(slugs, mode.appMode ? `/:locale/play?mode=${mode.appMode}` : '/:locale/play');
+    const q = playQuery(mode);
+    push(slugs, q ? `/:locale/play?${q}` : '/:locale/play');
   }
   for (const section of ['about', 'contact']) {
     push(

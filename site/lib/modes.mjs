@@ -9,7 +9,7 @@
  * « Histoire » sont des enveloppes autour de plusieurs modes.
  *
  * `appMode` porte l'identifiant que `src/lib/webEntry.ts` sait interpréter
- * dans `/play?mode=…` ; `null` = le lien mène à l'entrée par défaut.
+ * dans `/play?mode=…` ; `null` = le lien mène au menu (sauf `playQuery`).
  *
  * L'ordre est celui de la landing, et `MODE_COUNT` en découle : ajouter un mode
  * ici met à jour « 12 modes » partout sur le site.
@@ -65,8 +65,9 @@ export const MODES = [
   },
   {
     id: 'mode-daily',
-    // Le défi du jour est déjà l'entrée par défaut de /play : pas de paramètre.
+    // Pas un mode de l'app : /play ouvre le menu, `?s=daily` ouvre le défi.
     appMode: null,
+    playQuery: 's=daily',
     fr: { name: 'Défi du jour', slug: '/defi-du-jour/' },
     en: { name: 'Daily Challenge', slug: '/en/daily-challenge/' },
   },
@@ -93,4 +94,10 @@ export const MODES = [
 /** Un mode par son id de route, ou `undefined`. */
 export function modeById(id) {
   return MODES.find((m) => m.id === id);
+}
+
+/** La query de `/play` qui ouvre ce mode dans le jeu (`''` = le menu). */
+export function playQuery(mode) {
+  if (mode.appMode) return `mode=${mode.appMode}`;
+  return mode.playQuery ?? '';
 }

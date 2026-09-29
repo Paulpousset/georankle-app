@@ -196,12 +196,12 @@
     },
     {
       "source": "/:alias(rankle-du-jour|daily-rankle|rankle-daily)",
-      "destination": "/play",
+      "destination": "/play?s=daily",
       "permanent": true
     },
     {
       "source": "/en/:alias(daily-rankle|rankle-daily)",
-      "destination": "/en/play",
+      "destination": "/en/play?s=daily",
       "permanent": true
     },
     {
@@ -301,12 +301,12 @@
     },
     {
       "source": "/:locale(es|pt|de|it|ru|tr|pl|nl|id|vi|th|uk|ro|el)/:slug(dagelijkse-uitdaging|daily-challenge|desafio-diario|gunun-gorevi|proklisi-tis-imeras|provocarea-zilei|reto-diario|sfida-del-giorno|tagesaufgabe|tantangan-harian|thu-thach-moi-ngay|wyzwanie-dnia|zadanie-dnya|zavdannya-dnya)/",
-      "destination": "/:locale/play",
+      "destination": "/:locale/play?s=daily",
       "permanent": true
     },
     {
       "source": "/:locale(es|pt|de|it|ru|tr|pl|nl|id|vi|th|uk|ro|el)/:slug(dagelijkse-uitdaging|daily-challenge|desafio-diario|gunun-gorevi|proklisi-tis-imeras|provocarea-zilei|reto-diario|sfida-del-giorno|tagesaufgabe|tantangan-harian|thu-thach-moi-ngay|wyzwanie-dnia|zadanie-dnya|zavdannya-dnya)",
-      "destination": "/:locale/play",
+      "destination": "/:locale/play?s=daily",
       "permanent": true
     },
     {

@@ -31,7 +31,7 @@ import { strings } from './strings.mjs';
 import { TABLES, rankleExample } from './tables.mjs';
 import { countriesOf } from './continents.mjs';
 import { countryName } from './data.mjs';
-import { modeById } from './modes.mjs';
+import { modeById, playQuery } from './modes.mjs';
 import { itemList } from './jsonld.mjs';
 import { languageSwitch } from './layout.mjs';
 import { generatedPage } from './generated.mjs';
@@ -76,7 +76,8 @@ export function interpolate(body, { locale, file, routeId }) {
         if (!args.length) return base;
         const mode = modeById(args[0]);
         if (!mode) throw new Error(`${file} : mode inconnu dans ${match}`);
-        return mode.appMode ? `${base}?mode=${mode.appMode}` : base;
+        const q = playQuery(mode);
+        return q ? `${base}?${q}` : base;
       }
       case 'playmode': {
         // L'identifiant technique de l'app (`streak`, `classic`…), pas l'id de

@@ -1,8 +1,11 @@
 /**
  * Web-only deep entry. The app's navigation is custom (a page stack, not URL
- * routes), so on web a shared link like `/play` would otherwise just load the
- * menu. This reads the opening URL once and returns the screen to boot into —
- * the zero-friction path: shared link → straight into today's daily challenge.
+ * routes), so on web every URL loads the menu. This reads the opening URL once
+ * and returns the screen to boot into, when the link asks for one.
+ *
+ * A bare `/play` (and `/xx/play`) opens the menu: a first-time visitor sees
+ * every mode and the language button. Only a link that names the daily —
+ * `/daily`, or the share grid's `?s=daily` / `?play=daily` — boots into it.
  *
  * It also honours `?mode=`, which the site's per-mode landing pages point at
  * (`/jeu-drapeaux/` → `/play?mode=quiz-flag`). A visitor who read a page about
@@ -51,13 +54,15 @@ export function getInitialWebIntent(): WebIntent {
     // the fourteen generated languages point their mode pages at `/xx/play?mode=`
     // too, and until 16/09/2026 those landed in the daily challenge instead.
     const onPlayPath = path === '/daily' || /^(\/[a-z]{2})?\/play$/.test(path);
+    const wantsDaily =
+      path === '/daily' || params.get('s') === 'daily' || params.get('play') === 'daily';
 
     const mode = params.get('mode');
     if (onPlayPath && mode && BOOTABLE.has(mode)) {
       return { screen: 'mode', mode: mode as GameMode };
     }
 
-    if (onPlayPath || params.get('play') === 'daily') {
+    if (wantsDaily) {
       return { screen: 'daily' };
     }
   } catch {

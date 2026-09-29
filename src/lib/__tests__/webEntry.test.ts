@@ -29,8 +29,15 @@ describe('getInitialWebIntent', () => {
     Object.defineProperty(Platform, 'OS', { value: originalOS, configurable: true });
   });
 
-  it('boots the daily challenge on /play', () => {
+  it('opens the menu on a bare /play (all modes + language button)', () => {
     atUrl('/play');
+    expect(getInitialWebIntent()).toBeNull();
+  });
+
+  it('boots the daily challenge from a shared daily grid (?s=daily)', () => {
+    atUrl('/play', '?s=daily');
+    expect(getInitialWebIntent()).toEqual({ screen: 'daily' });
+    atUrl('/play', '?code=A3F8C13E&s=daily');
     expect(getInitialWebIntent()).toEqual({ screen: 'daily' });
   });
 
@@ -39,16 +46,16 @@ describe('getInitialWebIntent', () => {
     expect(getInitialWebIntent()).toEqual({ screen: 'daily' });
   });
 
-  it('boots the daily challenge on the English /en/play', () => {
+  it('opens the menu on the English /en/play', () => {
     atUrl('/en/play');
-    expect(getInitialWebIntent()).toEqual({ screen: 'daily' });
+    expect(getInitialWebIntent()).toBeNull();
   });
 
   it('honours ?mode= on every localised play path, not just /play and /en/play', () => {
     atUrl('/es/play', '?mode=quiz-flag');
     expect(getInitialWebIntent()).toEqual({ screen: 'mode', mode: 'quiz-flag' });
     atUrl('/de/play/');
-    expect(getInitialWebIntent()).toEqual({ screen: 'daily' });
+    expect(getInitialWebIntent()).toBeNull();
   });
 
   it('boots a solo mode from ?mode=', () => {
@@ -61,16 +68,16 @@ describe('getInitialWebIntent', () => {
     expect(getInitialWebIntent()).toEqual({ screen: 'mode', mode: 'globe' });
   });
 
-  it('falls back to the daily challenge for a mode that cannot boot alone', () => {
+  it('falls back to the menu for a mode that cannot boot alone', () => {
     // `versus` needs a live match around it: booting into it from a URL would
     // land on an empty screen.
     atUrl('/play', '?mode=versus');
-    expect(getInitialWebIntent()).toEqual({ screen: 'daily' });
+    expect(getInitialWebIntent()).toBeNull();
   });
 
   it('ignores junk in ?mode=', () => {
     atUrl('/play', '?mode=%3Cscript%3E');
-    expect(getInitialWebIntent()).toEqual({ screen: 'daily' });
+    expect(getInitialWebIntent()).toBeNull();
   });
 
   it('ignores ?mode= outside the play paths', () => {

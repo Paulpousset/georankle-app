@@ -37,7 +37,7 @@
  * issues des catalogues de l'app, FAQ. ⚠️ Elles recoupent donc leur propre page
  * d'accueil : à reprendre à la main avant d'ouvrir ces langues au public.
  */
-import { MODES } from './modes.mjs';
+import { MODES, playQuery } from './modes.mjs';
 import { href } from './routes.mjs';
 import { strings } from './strings.mjs';
 import { localeData } from './siteLocales.mjs';
@@ -218,9 +218,10 @@ function modeList(locale) {
     const rule = locale === 'fr' ? copy.bodyFr : t(locale, copy.body);
     // Les quatorze langues générées n'ont pas de pages de mode : le lien
     // relance le jeu, mode présélectionné.
+    const q = playQuery(mode);
     const target = data
-      ? mode.appMode
-        ? `${href('play', locale)}?mode=${mode.appMode}`
+      ? q
+        ? `${href('play', locale)}?${q}`
         : href('play', locale)
       : href(mode.id, locale);
     return `        <li><a href="${target}"><b>${esc(name)}</b></a> — ${esc(fill(rule))}</li>`;
