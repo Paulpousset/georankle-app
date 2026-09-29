@@ -35,6 +35,12 @@ import {
 } from 'lucide-react-native';
 import { AtlasFlame } from '../components/AtlasIcons';
 import { LanguageButton } from '../components/LanguageButton';
+import { AvatarPreview3D } from '../components/AvatarPreview3D';
+import { useAuth } from '../contexts/AuthContext';
+import { useCachedData } from '../lib/cache';
+import { supabase } from '../lib/supabase';
+import { normalizeConfig } from '../data/cosmetics';
+import type { AvatarConfig } from '../types';
 import { MenuGlobe } from '../components/MenuGlobe';
 import { whenLaunchIntroDone } from '../components/LaunchIntro';
 import { useFeatureFlag } from '../lib/featureFlags';
@@ -67,6 +73,8 @@ import { playSfx } from '../lib/sfx';
 
 export type PlayType = 'solo' | 'local' | 'online';
 
+/** Côté du bouton Profil (globe 3D) dans l'en-tête. */
+const PROFILE_BTN = 44;
 /** Flame accent for the daily-challenge hero + streak badge. */
 const DAILY_FLAME = '#e8772e';
 
@@ -558,6 +566,19 @@ export function MainMenu({
   const modesRef = useRef<any>(null);
   const dailyRef = useRef<any>(null);
   const profileRef = useRef<any>(null);
+  const { user: authUser } = useAuth();
+  const fetchMyAvatar = useCallback(async (): Promise<AvatarConfig | null> => {
+    if (!authUser) return null;
+    const { data } = await supabase.from('profiles').select('avatar_config').eq('id', authUser.id).single();
+    return data?.avatar_config ? normalizeConfig(data.avatar_config as unknown as AvatarConfig) : null;
+  }, [authUser]);
+  // ttl 0 : revalide à chaque retour au menu, donc un globe changé dans le
+  // profil ou la boutique apparaît tout de suite.
+  const { data: myAvatar } = useCachedData<AvatarConfig | null>(
+    `menu-avatar:${authUser?.id ?? 'anon'}`,
+    fetchMyAvatar,
+    { enabled: !!authUser, ttl: 0 },
+  );
   const shopRef = useRef<any>(null);
   const friendsRef = useRef<any>(null);
 
@@ -631,43 +652,34 @@ export function MainMenu({
           borderBottomColor: c.border,
         }}
       >
+        {/* Profil = le globe du joueur, en 3D (rotation + satellite + orbite).
+            Plus de libellé : le bouton de langue explicite a pris la place et
+            le bouton Classement sortait de l'écran sur téléphone. */}
         <TouchableOpacity
           ref={profileRef}
           onPress={onOpenAuth}
           style={[
             styles.refreshBtn,
             !isDarkMode && styles.refreshBtnLight,
-            { padding: 10, flexDirection: 'row', alignItems: 'center', gap: 8 },
+            {
+              width: PROFILE_BTN,
+              height: PROFILE_BTN,
+              padding: 0,
+              borderRadius: PROFILE_BTN / 2,
+              overflow: 'hidden',
+              alignItems: 'center',
+              justifyContent: 'center',
+            },
           ]}
+          hitSlop={ICON_HIT_SLOP}
           {...a11yButton(
             isAuthenticated ? tr(language, 'Profil', 'Profile') : tr(language, 'Connexion', 'Login'),
           )}
         >
           {isAuthenticated ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <View
-                style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: 12,
-                  backgroundColor: accent,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <User color="white" size={14} />
-              </View>
-              <Text style={{ fontFamily: FONTS.mono, color: iconColor, fontSize: 11 }}>
-                {tr(language, 'Profil', 'Profile')}
-              </Text>
-            </View>
+            <AvatarPreview3D config={myAvatar} size={PROFILE_BTN} />
           ) : (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <LogIn color={iconColor} size={18} />
-              <Text style={{ fontFamily: FONTS.mono, color: iconColor, fontSize: 11 }}>
-                {tr(language, 'Connexion', 'Login')}
-              </Text>
-            </View>
+            <LogIn color={iconColor} size={20} />
           )}
         </TouchableOpacity>
 
