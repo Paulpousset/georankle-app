@@ -80,7 +80,8 @@ module.exports = [
     // page.evaluate()/addInitScript callbacks, so allow those too.
     // `site/**` est le générateur du site public (Node pur, exécuté au build)
     // et `final-check.mjs` un contrôle Playwright : même famille d'outillage.
-    files: ['index.js', 'scripts/**', 'site/**', 'final-check.mjs'],
+    // `api/**` : fonctions Vercel (Node) du tableau de bord /hq.
+    files: ['index.js', 'scripts/**', 'site/**', 'api/**', 'final-check.mjs'],
     languageOptions: {
       globals: {
         require: 'readonly',
@@ -93,6 +94,8 @@ module.exports = [
         Buffer: 'readonly',
         URL: 'readonly',
         URLSearchParams: 'readonly',
+        AbortSignal: 'readonly',
+        Response: 'readonly',
         document: 'readonly',
         window: 'readonly',
         innerHeight: 'readonly',

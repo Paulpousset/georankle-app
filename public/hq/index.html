@@ -1,0 +1,930 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>GeoG HQ</title>
+<link rel="manifest" href="/hq/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icon-512.png">
+<link rel="icon" href="/icon-512.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GeoG HQ">
+<meta name="theme-color" content="#f6f5f1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)">
+<style>
+:root {
+  color-scheme: light;
+  --page: #f6f5f1;
+  --surface: #fcfcfb;
+  --surface-2: #f0efec;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --border: #e6e5df;
+  --accent: #2a78d6;
+  --s1: #2a78d6; /* iOS / série 1 */
+  --s2: #eb6834; /* Android / série 2 */
+  --s3: #1baf7a; /* Web / série 3 */
+  --good: #0ca30c; --good-ink: #006300;
+  --warn: #fab219; --warn-ink: #8a5a00;
+  --bad: #d03b3b; --bad-ink: #b12a2a;
+  --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --surface-2: #232321;
+    --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781; --grid: #2c2c2a; --border: #2c2c2a;
+    --accent: #3987e5; --s1: #3987e5; --s2: #d95926; --s3: #199e70;
+    --good-ink: #4cc94c; --warn-ink: #fab219; --bad-ink: #ef7070;
+    --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --surface-2: #232321;
+  --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781; --grid: #2c2c2a; --border: #2c2c2a;
+  --accent: #3987e5; --s1: #3987e5; --s2: #d95926; --s3: #199e70;
+  --good-ink: #4cc94c; --warn-ink: #fab219; --bad-ink: #ef7070;
+  --shadow: none;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--page); color: var(--ink);
+  font: 15px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent;
+  padding-bottom: calc(72px + env(safe-area-inset-bottom));
+}
+button, select, input { font: inherit; color: inherit; }
+a { color: var(--accent); text-decoration: none; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* En-tête */
+header {
+  position: sticky; top: 0; z-index: 20;
+  background: color-mix(in srgb, var(--page) 88%, transparent);
+  backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  border-bottom: 1px solid var(--border);
+  padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+}
+.bar { max-width: 1240px; margin: 0 auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.brand { font-weight: 700; font-size: 17px; letter-spacing: -.01em; display: flex; align-items: center; gap: 8px; margin-right: auto; }
+.brand svg { color: var(--accent); }
+.seg { display: inline-flex; background: var(--surface-2); border-radius: 9px; padding: 2px; }
+.seg button { border: 0; background: none; padding: 5px 11px; border-radius: 7px; cursor: pointer; color: var(--ink-2); font-size: 13px; font-weight: 600; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.icon-btn { border: 0; background: var(--surface-2); width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; cursor: pointer; color: var(--ink-2); }
+.icon-btn.spin svg { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.stamp { font-size: 12px; color: var(--muted); width: 100%; max-width: 1240px; margin: 4px auto 0; }
+
+/* Onglets : barre du bas sur mobile, en ligne sur ordinateur */
+nav.tabs {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+  display: flex; justify-content: space-around;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border-top: 1px solid var(--border);
+  padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+}
+nav.tabs button {
+  flex: 1; border: 0; background: none; cursor: pointer; color: var(--muted);
+  display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 10.5px; font-weight: 600; padding: 4px 0;
+}
+nav.tabs button[aria-selected="true"] { color: var(--accent); }
+@media (min-width: 900px) {
+  body { padding-bottom: 32px; }
+  nav.tabs { position: static; background: none; backdrop-filter: none; -webkit-backdrop-filter: none; border: 0; padding: 0 16px; justify-content: flex-start; gap: 4px; max-width: 1272px; margin: 10px auto 0; }
+  nav.tabs button { flex: none; flex-direction: row; gap: 6px; font-size: 14px; padding: 7px 12px; border-radius: 9px; }
+  nav.tabs button[aria-selected="true"] { background: var(--surface-2); color: var(--ink); }
+}
+
+main { max-width: 1240px; margin: 0 auto; padding: 16px; }
+h2.section { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 26px 2px 10px; font-weight: 700; }
+h2.section:first-child { margin-top: 4px; }
+
+/* Grilles */
+.kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (min-width: 640px) { .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1000px) { .kpis { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+@media (min-width: 900px) { .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+/* Tuiles & cartes */
+.tile, .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); min-width: 0; }
+.tile { padding: 12px 13px; display: flex; flex-direction: column; gap: 2px; }
+.tile .lbl { font-size: 12px; color: var(--ink-2); display: flex; align-items: center; gap: 6px; }
+.tile .val { font-size: 25px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; }
+.tile .sub { font-size: 12px; color: var(--muted); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.src { font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.card { padding: 14px 14px 12px; }
+.card-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.card-h h3 { margin: 0; font-size: 15px; font-weight: 650; }
+.delta { font-size: 12px; font-weight: 650; white-space: nowrap; }
+.delta.up { color: var(--good-ink); } .delta.down { color: var(--bad-ink); } .delta.flat { color: var(--muted); }
+
+/* États */
+.skel { height: 120px; border-radius: 10px; background: linear-gradient(90deg, var(--surface-2), var(--grid), var(--surface-2)); background-size: 200% 100%; animation: sh 1.4s infinite; }
+.tile .skel { height: 30px; margin-top: 4px; }
+@keyframes sh { to { background-position: -200% 0; } }
+.setup, .err, .empty { font-size: 13px; border-radius: 10px; padding: 10px 12px; }
+.setup { background: var(--surface-2); color: var(--ink-2); }
+.setup code { font-size: 11.5px; background: var(--surface); padding: 1px 5px; border-radius: 5px; word-break: break-all; }
+.err { background: color-mix(in srgb, var(--bad) 10%, transparent); color: var(--bad-ink); word-break: break-word; }
+.empty { color: var(--muted); }
+
+/* Listes à barres */
+.hlist { display: flex; flex-direction: column; gap: 7px; }
+.hrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; font-size: 13px; }
+.hrow .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
+.hrow .v { color: var(--ink-2); text-align: right; }
+.hrow .track { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+.hrow .fill { height: 100%; border-radius: 3px; background: var(--s1); }
+
+/* Tableaux */
+.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tbl th { text-align: left; color: var(--muted); font-weight: 600; font-size: 11.5px; padding: 6px 6px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.tbl td { padding: 7px 6px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.tbl tr:last-child td { border-bottom: 0; }
+.tbl td.r, .tbl th.r { text-align: right; }
+.tbl td.wrap { word-break: break-word; }
+.scroll-x { overflow-x: auto; margin: 0 -4px; padding: 0 4px; }
+
+/* Graphiques */
+.chart { position: relative; width: 100%; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.chart .axis { fill: var(--muted); font-size: 10.5px; }
+.chart .gl { stroke: var(--grid); stroke-width: 1; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--ink-2); margin-bottom: 6px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.tip {
+  position: absolute; pointer-events: none; z-index: 5; background: var(--ink); color: var(--page);
+  padding: 7px 9px; border-radius: 8px; font-size: 12px; line-height: 1.35; white-space: nowrap; opacity: 0; transition: opacity .1s;
+  box-shadow: 0 4px 16px rgba(0,0,0,.18);
+}
+.tip b { font-weight: 700; }
+.tip i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; }
+details.tv { margin-top: 6px; }
+details.tv summary { font-size: 11.5px; color: var(--muted); cursor: pointer; list-style: none; }
+details.tv summary::-webkit-details-marker { display: none; }
+details.tv[open] summary { margin-bottom: 6px; }
+details.tv .scroll-x { max-height: 240px; overflow-y: auto; }
+
+/* Alertes */
+.alerts { display: flex; flex-direction: column; gap: 8px; }
+.alert { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); font-size: 13.5px; }
+.alert .dot { flex: none; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 12px; font-weight: 800; margin-top: 1px; }
+.alert.bad .dot { background: var(--bad); } .alert.warn .dot { background: var(--warn); color: #3b2a00; } .alert.good .dot { background: var(--good); }
+.alert small { color: var(--muted); display: block; }
+
+.pill { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 650; padding: 1px 8px; border-radius: 99px; background: var(--surface-2); color: var(--ink-2); white-space: nowrap; }
+.pill.good { color: var(--good-ink); } .pill.bad { color: var(--bad-ink); } .pill.warn { color: var(--warn-ink); }
+.stars { color: var(--warn); letter-spacing: 1px; }
+.review { padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.review:last-child { border-bottom: 0; }
+.review .meta { color: var(--muted); font-size: 11.5px; }
+
+/* Connexion */
+.login { max-width: 360px; margin: 12vh auto 0; padding: 0 16px; }
+.login .card { padding: 22px; }
+.login h1 { font-size: 22px; margin: 0 0 4px; }
+.login p { color: var(--ink-2); margin: 0 0 16px; font-size: 14px; }
+.login input { width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--page); margin-bottom: 10px; }
+.btn { width: 100%; padding: 11px; border: 0; border-radius: 10px; background: var(--accent); color: #fff; font-weight: 650; cursor: pointer; }
+.btn.ghost { background: var(--surface-2); color: var(--ink); width: auto; padding: 8px 12px; }
+.muted { color: var(--muted); }
+.hide { display: none !important; }
+@media (prefers-reduced-motion: reduce) { .skel, .icon-btn.spin svg { animation: none; } }
+</style>
+</head>
+<body>
+
+<div id="login" class="login hide">
+  <div class="card">
+    <h1>GeoG HQ</h1>
+    <p>Tableau de bord privé. Connecte-toi avec ton compte admin GeoG.</p>
+    <form id="login-form">
+      <input id="email" type="email" autocomplete="username" placeholder="E-mail" required>
+      <input id="password" type="password" autocomplete="current-password" placeholder="Mot de passe" required>
+      <button class="btn" type="submit">Se connecter</button>
+      <p id="login-err" class="err hide" style="margin-top:10px"></p>
+    </form>
+  </div>
+</div>
+
+<div id="app" class="hide">
+  <header>
+    <div class="bar">
+      <div class="brand">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18"/></svg>
+        GeoG HQ
+      </div>
+      <div class="seg" role="group" aria-label="Période">
+        <button data-days="7">7 j</button><button data-days="28">28 j</button><button data-days="90">90 j</button>
+      </div>
+      <button class="icon-btn" id="refresh" aria-label="Actualiser" title="Actualiser">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg>
+      </button>
+      <button class="icon-btn" id="theme" aria-label="Thème clair / sombre" title="Thème">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor"/></svg>
+      </button>
+    </div>
+    <div class="stamp" id="stamp"></div>
+  </header>
+  <nav class="tabs" role="tablist" id="tabs"></nav>
+  <main id="main"></main>
+</div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+// ─── Réglages ────────────────────────────────────────────────────────────────
+const SOURCES = ['supabase', 'posthog', 'searchconsole', 'admob', 'adsense', 'sentry', 'play', 'appstore', 'deploys'];
+const SOURCE_NAMES = {
+  supabase: 'Supabase', posthog: 'PostHog', searchconsole: 'Search Console', admob: 'AdMob', adsense: 'AdSense',
+  sentry: 'Sentry', play: 'Google Play', appstore: 'App Store', deploys: 'Vercel · EAS',
+};
+const TABS = [
+  ['overview', 'Aperçu', '<path d="M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-3H4zM14 7h6V4h-6z"/>'],
+  ['players', 'Joueurs', '<circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.8-3.3 3-5 5.5-5s4.7 1.7 5.5 5"/><circle cx="17" cy="9" r="2.4"/><path d="M16 14c2.4 0 4 1.5 4.6 4"/>'],
+  ['acquisition', 'Acquisition', '<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.4-4.4"/>'],
+  ['revenue', 'Revenus', '<path d="M4 18h16M6 14l4-4 3 3 5-6"/>'],
+  ['quality', 'Qualité', '<path d="M12 3 4 6v6c0 4.5 3.4 7.8 8 9 4.6-1.2 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/>'],
+  ['deploys', 'Mises en ligne', '<path d="M12 3v12M7 8l5-5 5 5M5 21h14"/>'],
+];
+const MODE_NAMES = {
+  classic: 'Rankle', higherlower: 'Plus ou moins', borders: 'Frontières', streak: 'Série', globe: 'Globe',
+  guess: 'Devine le pays', silhouette: 'Silhouette', regions: 'Régions', versus: 'Duel', pinpoint: 'Point sur le globe',
+  'quiz-flag': 'Quiz drapeaux', 'quiz-capital': 'Quiz capitales', challenge: 'Défis Pays', languages: 'Langues',
+};
+
+const S = {
+  days: Number(store('hq.days')) || 28,
+  tab: store('hq.tab') || 'overview',
+  data: {},
+  pending: new Set(),
+  token: null,
+};
+
+// ─── Utilitaires ─────────────────────────────────────────────────────────────
+function store(k, v) {
+  try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch { return null; }
+}
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = (n, d = 0) => (n == null || Number.isNaN(n) ? '—' : new Intl.NumberFormat('fr-FR', { maximumFractionDigits: d }).format(n));
+const compact = (n) => (n == null ? '—' : new Intl.NumberFormat('fr-FR', { notation: n >= 10000 ? 'compact' : 'standard', maximumFractionDigits: 1 }).format(n));
+const pct = (x, d = 1) => (x == null ? '—' : `${fmt(x * 100, d)} %`);
+const eur = (x) => (x == null ? '—' : new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: x < 10 ? 2 : 0 }).format(x));
+const dm = (iso) => { const [, m, d] = String(iso).slice(0, 10).split('-'); return `${d}/${m}`; };
+const region = (() => { try { return new Intl.DisplayNames(['fr'], { type: 'region' }); } catch { return null; } })();
+const country = (c) => { if (!c || c === '(aucun)') return 'Inconnu'; try { return c.length === 2 ? region?.of(c.toUpperCase()) ?? c : c.toUpperCase(); } catch { return c; } };
+const mode = (m) => MODE_NAMES[m] ?? m;
+function ago(iso) {
+  if (!iso) return '—';
+  const s = (Date.now() - new Date(iso)) / 1000;
+  if (s < 60) return "à l'instant";
+  if (s < 3600) return `il y a ${Math.round(s / 60)} min`;
+  if (s < 86400) return `il y a ${Math.round(s / 3600)} h`;
+  return `il y a ${Math.round(s / 86400)} j`;
+}
+const sum = (arr, f = (x) => x) => (arr ?? []).reduce((a, x) => a + (Number(f(x)) || 0), 0);
+
+/** Variation vs période précédente : flèche + texte, jamais la couleur seule. */
+function delta(cur, prev, { invert = false } = {}) {
+  if (cur == null || prev == null || prev === 0) return '';
+  const r = (cur - prev) / prev;
+  const cls = Math.abs(r) < 0.02 ? 'flat' : (r > 0) !== invert ? 'up' : 'down';
+  const arrow = Math.abs(r) < 0.02 ? '→' : r > 0 ? '▲' : '▼';
+  return `<span class="delta ${cls}" title="vs ${S.days} j précédents">${arrow} ${fmt(Math.abs(r) * 100)} %</span>`;
+}
+
+// ─── Données ─────────────────────────────────────────────────────────────────
+let client;
+async function api(source, fresh = false) {
+  // getSession() rafraîchit le jeton s'il a expiré (onglet resté ouvert).
+  const { data: { session } } = await client.auth.getSession();
+  if (session) S.token = session.access_token;
+  const r = await fetch(`/api/hq?source=${source}&days=${S.days}${fresh ? '&fresh=1' : ''}`, {
+    headers: { authorization: `Bearer ${S.token}` },
+  });
+  if (r.status === 403) throw Object.assign(new Error('forbidden'), { forbidden: true });
+  return r.json();
+}
+
+async function loadAll(fresh = false) {
+  $('#refresh').classList.add('spin');
+  await Promise.all(SOURCES.map(async (src) => {
+    S.pending.add(src);
+    try {
+      S.data[src] = await api(src, fresh);
+    } catch (e) {
+      if (e.forbidden) return forbidden();
+      S.data[src] = { error: e.message };
+    } finally {
+      S.pending.delete(src);
+      scheduleRender();
+    }
+  }));
+  $('#refresh').classList.remove('spin');
+  try { localStorage.setItem(`hq.cache.${S.days}`, JSON.stringify(S.data)); } catch {}
+}
+
+function restoreCache() {
+  try {
+    const c = JSON.parse(localStorage.getItem(`hq.cache.${S.days}`) ?? 'null');
+    if (c) S.data = c;
+  } catch {}
+}
+
+/** Résultat d'une sous-requête : { ok, v } ou { html } (squelette / erreur / à connecter). */
+function part(src, key) {
+  const res = S.data[src];
+  if (!res) return { html: '<div class="skel"></div>' };
+  if (res.notConfigured) return { html: setupHtml(src, res.missing, res.help) };
+  if (res.error) return { html: errHtml(res.error) };
+  const v = key ? res.data?.[key] : res.data;
+  if (v !== undefined) return { ok: true, v };
+  const err = res.data?._errors?.[key];
+  if (err) return { html: errHtml(err) };
+  if (res.data?._missing) return { html: setupHtml(src, res.data._missing) };
+  return { html: '<div class="empty">Pas de données.</div>' };
+}
+/** Erreur courte ; une API Google non activée devient un lien d'activation. */
+function errHtml(msg) {
+  const m = String(msg);
+  const link = m.match(/https:\/\/console\.developers\.google\.com\/apis\/api\/[^\s]+/);
+  if (link) {
+    const api = link[0].match(/api\/([^/]+)\//)?.[1] ?? 'API Google';
+    return `<div class="setup">API à activer : <a href="${esc(link[0])}" target="_blank" rel="noopener">${esc(api)} ↗</a></div>`;
+  }
+  if (/PERMISSION_DENIED|403|does not have|insufficient/i.test(m)) {
+    return `<div class="err" title="${esc(m)}">Accès refusé — ${esc(m.replace(/^\d{3} [^ ]+ — /, '').slice(0, 140))}</div>`;
+  }
+  return `<div class="err" title="${esc(m)}">${esc(m.slice(0, 160))}${m.length > 160 ? '…' : ''}</div>`;
+}
+function setupHtml(src, missing = [], help) {
+  return `<div class="setup">À connecter — variables Vercel : ${missing.map((m) => `<code>${esc(m)}</code>`).join(' ')}${help ? `<br><span class="muted">${esc(help)}</span>` : ''}<br><span class="muted">Guide : HQ_SETUP.md</span></div>`;
+}
+const val = (src, key, f) => { const p = part(src, key); return p.ok ? f(p.v) : undefined; };
+
+// ─── Composants ──────────────────────────────────────────────────────────────
+const charts = [];
+let chartId = 0;
+
+function tile(label, src, key, f) {
+  const p = part(src, key);
+  let body;
+  if (!p.ok) {
+    const res = S.data[src];
+    body = !res ? '<div class="skel"></div>' : `<div class="val muted">—</div><div class="sub">${res.notConfigured || res.data?._missing ? 'à connecter' : 'indisponible'}</div>`;
+  } else {
+    const { value, sub = '' } = f(p.v);
+    body = `<div class="val num">${value}</div><div class="sub">${sub}</div>`;
+  }
+  return `<div class="tile"><div class="lbl">${esc(label)}</div>${body}<div class="src">${SOURCE_NAMES[src]}</div></div>`;
+}
+
+function card(title, src, inner, { extra = '' } = {}) {
+  return `<section class="card"><div class="card-h"><h3>${title}</h3><span class="src">${extra || SOURCE_NAMES[src] || src}</span></div>${inner}</section>`;
+}
+
+/** Bloc de carte dépendant d'une sous-requête. */
+function block(src, key, f) {
+  const p = part(src, key);
+  return p.ok ? f(p.v) : p.html;
+}
+
+function hlist(rows, { label = (r) => r.label, value = (r) => r.value, show = (r) => fmt(value(r)), color = 'var(--s1)', limit = 10 } = {}) {
+  const list = (rows ?? []).slice(0, limit);
+  if (!list.length) return '<div class="empty">Rien sur la période.</div>';
+  const max = Math.max(...list.map(value), 1);
+  return `<div class="hlist">${list.map((r) => `
+    <div class="hrow"><span class="name" title="${esc(label(r))}">${esc(label(r))}</span><span class="v num">${show(r)}</span>
+    <div class="track"><div class="fill" style="width:${(value(r) / max) * 100}%;background:${color}"></div></div></div>`).join('')}</div>`;
+}
+
+function table(cols, rows, { limit = 20 } = {}) {
+  if (!rows?.length) return '<div class="empty">Rien sur la période.</div>';
+  return `<div class="scroll-x"><table class="tbl"><thead><tr>${cols.map((c) => `<th class="${c.r ? 'r' : ''}">${c.h}</th>`).join('')}</tr></thead><tbody>${rows
+    .slice(0, limit)
+    .map((r) => `<tr>${cols.map((c) => `<td class="${c.r ? 'r num' : c.wrap ? 'wrap' : ''}">${c.f(r)}</td>`).join('')}</tr>`)
+    .join('')}</tbody></table></div>`;
+}
+
+/**
+ * Graphique (ligne ou barres). series: [{ name, color, points: [{x, y}] }]
+ * Monté après injection du HTML ; tooltip au survol + vue tableau.
+ */
+function chart(series, { type = 'line', fmtY = (v) => fmt(v), height = 170, yMax } = {}) {
+  series = series.filter((s) => s.points?.length);
+  if (!series.length) return '<div class="empty">Pas de données.</div>';
+  const id = `c${++chartId}`;
+  charts.push({ id, series, type, fmtY, height, yMax });
+  const legend = series.length > 1
+    ? `<div class="legend">${series.map((s) => `<span><i style="background:${s.color}"></i>${esc(s.name)} <b class="num">${fmtY(sum(s.points, (p) => p.y))}</b></span>`).join('')}</div>`
+    : '';
+  const xs = series[0].points.map((p) => p.x);
+  const tv = `<details class="tv"><summary>Voir le tableau</summary><div class="scroll-x"><table class="tbl"><thead><tr><th>Jour</th>${series
+    .map((s) => `<th class="r">${esc(s.name)}</th>`).join('')}</tr></thead><tbody>${xs
+    .map((x, i) => `<tr><td>${dm(x)}</td>${series.map((s) => `<td class="r num">${fmtY(s.points[i]?.y)}</td>`).join('')}</tr>`)
+    .reverse().join('')}</tbody></table></div></details>`;
+  return `${legend}<div class="chart" id="${id}" style="height:${height}px"></div>${tv}`;
+}
+
+function niceMax(v) {
+  if (v <= 0) return 1;
+  const p = 10 ** Math.floor(Math.log10(v));
+  const n = v / p;
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p;
+}
+
+function mountCharts() {
+  for (const c of charts.splice(0)) {
+    const el = document.getElementById(c.id);
+    if (el) drawChart(el, c);
+  }
+}
+
+function drawChart(el, { series, type, fmtY, height, yMax }) {
+  const W = el.clientWidth || 300;
+  const H = height;
+  const m = { l: 38, r: 6, t: 8, b: 20 };
+  const iw = W - m.l - m.r;
+  const ih = H - m.t - m.b;
+  const n = series[0].points.length;
+  const all = series.flatMap((s) => s.points.map((p) => p.y)).filter((y) => y != null);
+  const max = yMax ?? niceMax(Math.max(...all, 0));
+  const X = (i) => m.l + (type === 'bar' ? (i + 0.5) * (iw / n) : n === 1 ? iw / 2 : (i / (n - 1)) * iw);
+  const Y = (v) => m.t + ih - (v / max) * ih;
+  let g = '';
+  for (let k = 0; k <= 3; k++) {
+    const v = (max / 3) * k;
+    g += `<line class="gl" x1="${m.l}" x2="${W - m.r}" y1="${Y(v)}" y2="${Y(v)}"/>`;
+    g += `<text class="axis num" x="${m.l - 6}" y="${Y(v) + 3.5}" text-anchor="end">${compactY(v, fmtY)}</text>`;
+  }
+  const xs = series[0].points.map((p) => p.x);
+  const ticks = n <= 1 ? [0] : [0, Math.floor((n - 1) / 2), n - 1];
+  for (const i of ticks) g += `<text class="axis" x="${X(i)}" y="${H - 4}" text-anchor="${i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}">${dm(xs[i])}</text>`;
+
+  if (type === 'bar') {
+    const bw = Math.max(2, iw / n - 2); // 2 px d'écart entre barres
+    const s = series[0];
+    s.points.forEach((p, i) => {
+      if (!p.y) return;
+      const h = Math.max(1, ih - (Y(p.y) - m.t));
+      const x = X(i) - bw / 2;
+      const y = m.t + ih - h;
+      const r = Math.min(4, bw / 2, h);
+      g += `<path fill="${s.color}" d="M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + bw - r}Q${x + bw},${y} ${x + bw},${y + r}V${y + h}Z"/>`;
+    });
+  } else {
+    for (const s of series) {
+      let d = '';
+      let pen = false;
+      s.points.forEach((p, i) => {
+        if (p.y == null) { pen = false; return; }
+        d += `${pen ? 'L' : 'M'}${X(i).toFixed(1)},${Y(p.y).toFixed(1)}`;
+        pen = true;
+      });
+      g += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    }
+  }
+  g += `<g class="hover" style="display:none"><line x1="0" x2="0" y1="${m.t}" y2="${m.t + ih}" stroke="var(--muted)" stroke-dasharray="3 3"/>${
+    type === 'line' ? series.map((s) => `<circle r="4" fill="${s.color}" stroke="var(--surface)" stroke-width="2"/>`).join('') : ''}</g>`;
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="${esc(series.map((s) => s.name).join(', '))}">${g}<rect x="${m.l}" y="0" width="${iw}" height="${H}" fill="transparent"/></svg><div class="tip"></div>`;
+
+  const svg = el.querySelector('svg');
+  const hov = svg.querySelector('.hover');
+  const tip = el.querySelector('.tip');
+  const move = (ev) => {
+    const rect = svg.getBoundingClientRect();
+    const px = ((ev.clientX - rect.left) / rect.width) * W;
+    const i = type === 'bar'
+      ? Math.min(n - 1, Math.max(0, Math.floor((px - m.l) / (iw / n))))
+      : Math.min(n - 1, Math.max(0, Math.round(((px - m.l) / iw) * (n - 1))));
+    const x = X(i);
+    hov.style.display = '';
+    hov.querySelector('line').setAttribute('x1', x);
+    hov.querySelector('line').setAttribute('x2', x);
+    hov.querySelectorAll('circle').forEach((c, k) => {
+      const y = series[k].points[i]?.y;
+      c.style.display = y == null ? 'none' : '';
+      if (y != null) { c.setAttribute('cx', x); c.setAttribute('cy', Y(y)); }
+    });
+    tip.innerHTML = `<b>${dm(xs[i])}</b><br>${series.map((s) => `${series.length > 1 ? `<i style="background:${s.color}"></i>${esc(s.name)} ` : ''}<b class="num">${fmtY(s.points[i]?.y)}</b>`).join('<br>')}`;
+    tip.style.opacity = 1;
+    const tx = (x / W) * rect.width;
+    tip.style.left = `${Math.min(Math.max(tx - tip.offsetWidth / 2, 0), rect.width - tip.offsetWidth)}px`;
+    tip.style.top = `${-tip.offsetHeight - 6}px`;
+  };
+  svg.addEventListener('pointermove', move);
+  svg.addEventListener('pointerdown', move);
+  svg.addEventListener('pointerleave', () => { hov.style.display = 'none'; tip.style.opacity = 0; });
+}
+const compactY = (v, f) => (v >= 1000 ? new Intl.NumberFormat('fr-FR', { notation: 'compact', maximumFractionDigits: 1 }).format(v) : f(v));
+
+// ─── Vues ────────────────────────────────────────────────────────────────────
+const P = (arr, f) => (arr ?? []).map((r) => ({ x: r.x, y: f(r) }));
+
+function gamesSeries() {
+  const out = [];
+  const solo = val('supabase', 'solo', (v) => v.byDay);
+  const daily = val('supabase', 'daily', (v) => v.playersByDay);
+  const online = val('supabase', 'online', (v) => v.byDay);
+  if (solo) out.push({ name: 'Solo', color: 'var(--s1)', points: solo });
+  if (online) out.push({ name: 'En ligne', color: 'var(--s2)', points: online });
+  if (daily) out.push({ name: 'Joueurs du défi du jour', color: 'var(--s3)', points: daily });
+  return out;
+}
+
+function alerts() {
+  const a = [];
+  const health = val('deploys', 'health', (v) => v);
+  health?.filter((h) => !h.ok).forEach((h) => a.push(['bad', '!', `Site injoignable : ${h.url}`, `HTTP ${h.status || 'timeout'}`]));
+  const unres = val('sentry', 'unresolved', (v) => v);
+  if (unres?.last24h) a.push(['bad', '!', `${unres.last24h} nouvelle(s) erreur(s) Sentry en 24 h`, 'Onglet Qualité']);
+  const cf = val('sentry', 'crashFree', (v) => v.session);
+  if (cf != null && cf < 0.99) a.push(['warn', '!', `Sessions sans crash : ${pct(cf, 2)}`, 'Objectif ≥ 99,5 %']);
+  const cron = val('supabase', 'ops', (v) => v.cronFailures);
+  const recentCron = cron?.filter((c) => Date.now() - new Date(c.created_at) < 7 * 86400000);
+  if (recentCron?.length) a.push(['warn', '!', `${recentCron.length} échec(s) de cron sur 7 j`, recentCron[0].job]);
+  val('adsense', 'alerts', (v) => v)?.forEach((x) => a.push([x.severity === 'SEVERE' ? 'bad' : 'warn', '!', `AdSense : ${x.message}`, x.type]));
+  const acc = val('adsense', 'account', (v) => v);
+  if (acc && acc.state && acc.state !== 'READY') a.push(['warn', '!', `Compte AdSense : ${acc.state}`, acc.pendingTasks.join(', ')]);
+  val('searchconsole', 'sitemaps', (v) => v)?.filter((s) => s.errors).forEach((s) => a.push(['warn', '!', `Sitemap en erreur : ${s.path}`, `${s.errors} erreur(s)`]));
+  const pushes = val('supabase', 'ops', (v) => v.recentPushes);
+  if (pushes && pushes[0] && Date.now() - new Date(pushes[0].created_at) > 36 * 3600000) a.push(['warn', '!', 'Aucun push envoyé depuis plus de 36 h', `dernier ${ago(pushes[0].created_at)}`]);
+  const bad = val('play', 'reviews', (v) => v)?.filter((r) => r.rating <= 2 && Date.now() - new Date(r.date) < 7 * 86400000);
+  if (bad?.length) a.push(['warn', '!', `${bad.length} avis Play ≤ 2★ cette semaine`, 'Onglet Acquisition']);
+  if (!a.length && Object.keys(S.data).length >= SOURCES.length - 1) a.push(['good', '✓', 'Rien à signaler', 'Sur les sources connectées : site en ligne, pas de nouvelle erreur, crons OK']);
+  return a.length
+    ? `<div class="alerts">${a.map(([c, i, t, s]) => `<div class="alert ${c}"><span class="dot">${i}</span><div>${esc(t)}<small>${esc(s ?? '')}</small></div></div>`).join('')}</div>`
+    : '<div class="skel" style="height:48px"></div>';
+}
+
+function overview() {
+  const ph = 'posthog';
+  const adTotal = () => {
+    const a = val('admob', 'byDay', (v) => sum(v, (r) => r.earnings));
+    const w = val('adsense', 'byDay', (v) => sum(v, (r) => r.earnings));
+    return a == null && w == null ? undefined : (a ?? 0) + (w ?? 0);
+  };
+  const ad = adTotal();
+  return `
+  <h2 class="section">À surveiller</h2>
+  ${alerts()}
+  <h2 class="section">Chiffres clés · ${S.days} j</h2>
+  <div class="kpis">
+    ${tile('Visiteurs uniques', ph, 'active', (v) => ({ value: compact(v.period), sub: delta(v.period, v.periodPrev) }))}
+    ${tile('Actifs aujourd’hui', ph, 'active', (v) => ({ value: fmt(v.dau), sub: `${fmt(v.wau)} sur 7 j` }))}
+    ${tile('Inscriptions', 'supabase', 'users', (v) => ({ value: fmt(v.signups), sub: `${delta(v.signups, v.signupsPrev)} ${fmt(v.total)} comptes` }))}
+    ${tile('Joueurs connectés 7 j', 'supabase', 'active', (v) => ({ value: fmt(v.d7), sub: `${fmt(v.d1)} aujourd’hui` }))}
+    ${tile('Rétention J1', ph, 'retention', (v) => ({ value: pct(v.d1, 0), sub: `J7 ${pct(v.d7, 1)}` }))}
+    ${tile('Parties jouées', 'supabase', 'solo', (v) => ({ value: compact(v.games + (val('supabase', 'online', (o) => o.matches) ?? 0) + (val('supabase', 'daily', (d) => d.plays) ?? 0)), sub: 'solo + en ligne + défi' }))}
+    ${tile('Clics Google', 'searchconsole', 'totals', (v) => ({ value: fmt(v.cur?.clicks), sub: `${delta(v.cur?.clicks, v.prev?.clicks)} ${compact(v.cur?.impressions)} impr.` }))}
+    ${ad === undefined ? tile('Revenus pub', 'admob', 'byDay', () => ({})) : `<div class="tile"><div class="lbl">Revenus pub</div><div class="val num">${eur(ad)}</div><div class="sub">AdMob + AdSense</div><div class="src">AdMob · AdSense</div></div>`}
+    ${tile('Erreurs ouvertes', 'sentry', 'unresolved', (v) => ({ value: fmt(v.total), sub: v.last24h ? `<span class="pill bad">+${v.last24h} en 24 h</span>` : 'aucune nouvelle en 24 h' }))}
+    ${tile('Sans crash', 'sentry', 'crashFree', (v) => ({ value: pct(v.session, 2), sub: `${compact(v.sessions)} sessions` }))}
+    ${tile('Note App Store', 'appstore', 'rating', (v) => { const c = sum(v, (r) => r.count); const avg = c ? sum(v, (r) => r.rating * r.count) / c : null; return { value: avg ? `${fmt(avg, 1)}★` : '—', sub: `${c} note(s) · v${v[0]?.version ?? '?'}` }; })}
+    ${tile('Site', 'deploys', 'health', (v) => ({ value: v.every((h) => h.ok) ? 'En ligne' : 'Panne', sub: `${Math.round(sum(v, (h) => h.ms) / v.length)} ms en moyenne` }))}
+  </div>
+  <div class="grid two" style="margin-top:12px">
+    ${card('Utilisateurs actifs par jour', ph, block(ph, 'dauByPlatform', (v) => chart(v.map((s) => ({ ...s, color: s.name === 'iOS' ? 'var(--s1)' : s.name === 'Android' ? 'var(--s2)' : 'var(--s3)' })))))}
+    ${card('Activité de jeu par jour', 'supabase', S.data.supabase ? chart(gamesSeries()) : '<div class="skel"></div>')}
+  </div>`;
+}
+
+function players() {
+  const sb = 'supabase', ph = 'posthog';
+  return `
+  <h2 class="section">Comptes</h2>
+  <div class="kpis">
+    ${tile('Comptes', sb, 'users', (v) => ({ value: fmt(v.total), sub: `+${fmt(v.signups)} sur ${S.days} j` }))}
+    ${tile('Vus aujourd’hui', sb, 'active', (v) => ({ value: fmt(v.d1), sub: 'last_seen < 24 h' }))}
+    ${tile('Vus sur 30 j', sb, 'active', (v) => ({ value: fmt(v.d30), sub: `${fmt(v.d7)} sur 7 j` }))}
+    ${tile('Notifs activées', sb, 'active', (v) => ({ value: fmt(v.pushTokens), sub: 'jetons push' }))}
+    ${tile('Amitiés', sb, 'social', (v) => ({ value: fmt(v.friendships), sub: `${fmt(v.pending)} en attente` }))}
+    ${tile('Séries ≥ 3 j', sb, 'active', (v) => ({ value: fmt(v.activeStreaks3), sub: 'défi du jour' }))}
+  </div>
+  <div class="grid two" style="margin-top:12px">
+    ${card('Inscriptions par jour', sb, block(sb, 'users', (v) => chart([{ name: 'Inscriptions', color: 'var(--s1)', points: v.signupsByDay }], { type: 'bar' })))}
+    ${card('Rétention par cohorte', ph, block(ph, 'retention', (v) => `
+      <div class="legend"><span>J1 moyen <b class="num">${pct(v.d1)}</b></span><span>J7 moyen <b class="num">${pct(v.d7)}</b></span></div>
+      ${table([
+        { h: 'Arrivés le', f: (r) => dm(r.x) },
+        { h: 'Nouveaux', r: 1, f: (r) => fmt(r.n) },
+        { h: 'Revenus J1', r: 1, f: (r) => (r.n ? pct(r.d1 / r.n, 0) : '—') },
+        { h: 'Revenus J7', r: 1, f: (r) => (Date.now() - new Date(r.x) > 8 * 864e5 && r.n ? pct(r.d7 / r.n, 0) : '…') },
+      ], [...v.cohorts].reverse(), { limit: 14 })}`))}
+  </div>
+  <h2 class="section">Jeu</h2>
+  <div class="grid three">
+    ${card('Parties solo par mode', sb, block(sb, 'solo', (v) => `<p class="muted" style="margin:0 0 8px;font-size:12px">${fmt(v.games)} parties · ${fmt(v.players)} joueurs</p>${hlist(v.byMode, { label: (r) => mode(r.label) })}`))}
+    ${card('Défi du jour par mode', sb, block(sb, 'daily', (v) => `<p class="muted" style="margin:0 0 8px;font-size:12px">${fmt(v.plays)} participations</p>${hlist(v.byMode, { label: (r) => mode(r.label), color: 'var(--s3)' })}`))}
+    ${card('Matchs en ligne par mode', sb, block(sb, 'online', (v) => `<p class="muted" style="margin:0 0 8px;font-size:12px">${fmt(v.matches)} matchs · ${fmt(v.ranked)} classés · ${fmt(v.ffa)} à plusieurs</p>${hlist(v.byMode, { label: (r) => mode(r.label), color: 'var(--s2)' })}`))}
+    ${card('Issue des matchs en ligne', sb, block(sb, 'online', (v) => hlist(v.byStatus, { label: (r) => ({ completed: 'Terminés', cancelled: 'Annulés', in_progress: 'En cours / abandonnés', waiting: 'En attente' }[r.label] ?? r.label), color: 'var(--s2)' })))}
+    ${card('Mode Histoire', sb, block(sb, 'story', (v) => `<p class="muted" style="margin:0 0 8px;font-size:12px">${fmt(v.players)} joueurs · niveau max ${v.maxLevel} · ${fmt(v.levelsCompleted)} niveaux finis sur ${S.days} j</p>${hlist(v.distribution, { label: (r) => `Niveau ${r.label}`, limit: 6 })}`))}
+    ${card('Parties terminées (événements)', ph, block(ph, 'modes', (v) => hlist(v, { label: (r) => mode(r.label) })))}
+  </div>
+  <h2 class="section">Parcours</h2>
+  <div class="grid two">
+    ${card('Étapes clés (utilisateurs uniques)', ph, block(ph, 'funnel', (v) => hlist(v, { value: (r) => r.users, show: (r) => `${fmt(r.users)} <span class="muted">· ${compact(r.count)}×</span>`, limit: 12 })))}
+    ${card('Événements les plus fréquents', ph, block(ph, 'topEvents', (v) => hlist(v, { limit: 14 })))}
+  </div>
+  <h2 class="section">Qui joue</h2>
+  <div class="grid three">
+    ${card('Plateformes', ph, block(ph, 'platforms', (v) => hlist(v, { color: 'var(--s1)' })))}
+    ${card('Pays', ph, block(ph, 'countries', (v) => hlist(v, { label: (r) => country(r.label), limit: 12 })))}
+    ${card('Langues', ph, block(ph, 'languages', (v) => hlist(v)))}
+    ${card('Versions de l’app (7 j)', ph, block(ph, 'appVersions', (v) => hlist(v, { label: (r) => `v${r.label}` })))}
+    ${card('Économie', sb, block(sb, 'economy', (v) => table([{ h: 'Indicateur', f: (r) => r[0] }, { h: '', r: 1, f: (r) => r[1] }], [
+      ['Pièces en circulation', fmt(v.coinsInCirculation)],
+      [`Pubs récompensées (${S.days} j)`, fmt(v.rewardedAds)],
+      [`Cosmétiques achetés (${S.days} j)`, fmt(v.cosmeticsBought)],
+      [`Achats intégrés (${S.days} j)`, fmt(v.iapPurchases)],
+    ])))}
+  </div>`;
+}
+
+function acquisition() {
+  const g = 'searchconsole', ph = 'posthog';
+  const gTile = (label, k, f, invert) => tile(label, g, 'totals', (v) => ({ value: f(v.cur?.[k]), sub: delta(v.cur?.[k], v.prev?.[k], { invert }) }));
+  return `
+  <h2 class="section">Google Search${val(g, 'site', (v) => ` · <span style="text-transform:none;letter-spacing:0">${esc(v.site)} · ${dm(v.range[0])} → ${dm(v.range[1])}</span>`) ?? ''}</h2>
+  <div class="kpis">
+    ${gTile('Clics', 'clicks', (x) => fmt(x))}
+    ${gTile('Impressions', 'impressions', (x) => compact(x))}
+    ${gTile('CTR', 'ctr', (x) => pct(x))}
+    ${gTile('Position moyenne', 'position', (x) => fmt(x, 1), true)}
+    ${tile('Visiteurs venus de Google', ph, 'referrers', (v) => ({ value: fmt(sum(v.filter((r) => /google\./.test(r.label)), (r) => r.value)), sub: 'PostHog, tous moteurs Google' }))}
+    ${tile('Venus d’une IA', ph, 'referrers', (v) => ({ value: fmt(sum(v.filter((r) => /chatgpt|perplexity|copilot|gemini|claude/.test(r.label)), (r) => r.value)), sub: 'ChatGPT, Copilot…' }))}
+  </div>
+  <div class="grid two" style="margin-top:12px">
+    ${card('Clics par jour', g, block(g, 'byDay', (v) => chart([{ name: 'Clics', color: 'var(--s1)', points: v.map((r) => ({ x: r.label, y: r.clicks })) }], { type: 'bar' })))}
+    ${card('Impressions par jour', g, block(g, 'byDay', (v) => chart([{ name: 'Impressions', color: 'var(--s1)', points: v.map((r) => ({ x: r.label, y: r.impressions })) }])))}
+  </div>
+  <div class="grid two" style="margin-top:12px">
+    ${card('Requêtes', g, block(g, 'queries', (v) => table([
+      { h: 'Requête', wrap: 1, f: (r) => esc(r.label) },
+      { h: 'Clics', r: 1, f: (r) => fmt(r.clicks) },
+      { h: 'Impr.', r: 1, f: (r) => fmt(r.impressions) },
+      { h: 'Pos.', r: 1, f: (r) => fmt(r.position, 1) },
+    ], v, { limit: 30 })))}
+    ${card('Pages', g, block(g, 'pages', (v) => table([
+      { h: 'Page', wrap: 1, f: (r) => `<a href="${esc(r.label)}" target="_blank" rel="noopener">${esc(r.label.replace(/^https?:\/\/(www\.)?playgeog\.com/, '') || '/')}</a>` },
+      { h: 'Clics', r: 1, f: (r) => fmt(r.clicks) },
+      { h: 'Impr.', r: 1, f: (r) => fmt(r.impressions) },
+      { h: 'Pos.', r: 1, f: (r) => fmt(r.position, 1) },
+    ], v, { limit: 25 })))}
+  </div>
+  <div class="grid three" style="margin-top:12px">
+    ${card('Pays (Google)', g, block(g, 'countries', (v) => hlist(v, { label: (r) => r.label.toUpperCase(), value: (r) => r.impressions, show: (r) => `${fmt(r.clicks)} clics · ${compact(r.impressions)}` })))}
+    ${card('Appareils (Google)', g, block(g, 'devices', (v) => hlist(v, { label: (r) => ({ MOBILE: 'Mobile', DESKTOP: 'Ordinateur', TABLET: 'Tablette' }[r.label] ?? r.label), value: (r) => r.impressions, show: (r) => `${fmt(r.clicks)} clics · ${compact(r.impressions)}` })))}
+    ${card('Sitemaps', g, block(g, 'sitemaps', (v) => table([
+      { h: 'Fichier', wrap: 1, f: (r) => esc(r.path.replace(/^https?:\/\/[^/]+/, '')) },
+      { h: 'URLs', r: 1, f: (r) => fmt(r.submitted) },
+      { h: 'État', f: (r) => (r.errors ? `<span class="pill bad">${r.errors} err.</span>` : r.pending ? '<span class="pill warn">en attente</span>' : '<span class="pill good">✓ OK</span>') },
+      { h: 'Lu', f: (r) => ago(r.lastDownloaded) },
+    ], v)))}
+  </div>
+  <h2 class="section">Trafic web · PostHog</h2>
+  <div class="grid three">
+    ${card('Sources de trafic', ph, block(ph, 'referrers', (v) => hlist(v, { label: (r) => (r.label === '$direct' ? 'Direct / app' : r.label), limit: 12 })))}
+    ${card('Pages vues', ph, block(ph, 'webPages', (v) => hlist(v, { limit: 14 })))}
+    ${card('Campagnes (utm)', ph, block(ph, 'utm', (v) => hlist(v)))}
+    ${card('Core Web Vitals (p75)', ph, block(ph, 'webVitals', (v) => table([{ h: 'Mesure', f: (r) => r[0] }, { h: 'p75', r: 1, f: (r) => r[1] }, { h: '', f: (r) => r[2] }], [
+      ['LCP', `${fmt(v.lcp / 1000, 2)} s`, v.lcp <= 2500 ? '<span class="pill good">✓ bon</span>' : '<span class="pill warn">à améliorer</span>'],
+      ['INP', `${fmt(v.inp)} ms`, v.inp <= 200 ? '<span class="pill good">✓ bon</span>' : '<span class="pill warn">à améliorer</span>'],
+      ['CLS', fmt(v.cls, 3), v.cls <= 0.1 ? '<span class="pill good">✓ bon</span>' : '<span class="pill warn">à améliorer</span>'],
+    ]) + `<p class="muted" style="font-size:12px;margin:6px 0 0">${fmt(v.samples)} mesures</p>`))}
+  </div>
+  <h2 class="section">Stores</h2>
+  <div class="grid three">
+    ${card('App Store — notes', 'appstore', block('appstore', 'rating', (v) => table([
+      { h: 'Vitrine', f: (r) => r.store }, { h: 'Note', r: 1, f: (r) => (r.count ? `${fmt(r.rating, 1)}★` : '—') },
+      { h: 'Nb', r: 1, f: (r) => fmt(r.count) }, { h: 'Version', f: (r) => r.version }], v)))}
+    ${card('App Store — téléchargements', 'appstore', block('appstore', 'sales', (v) => chart([{ name: 'Nouveaux téléchargements', color: 'var(--s1)', points: v.map((r) => ({ x: r.x, y: r.downloads })) }], { type: 'bar' }) + `<p class="muted" style="font-size:12px;margin:6px 0 0">${fmt(sum(v, (r) => r.downloads))} nouveaux · ${fmt(sum(v, (r) => r.redownloads))} re-téléchargements · ${fmt(sum(v, (r) => r.updates))} mises à jour</p>`))}
+    ${card('Installations (événement app)', ph, block(ph, 'funnel', (v) => { const i = v.find((r) => r.event === 'Application Installed'); return `<div class="tile" style="border:0;box-shadow:none;padding:0"><div class="val num">${fmt(i?.users)}</div><div class="sub">premières ouvertures iOS + Android sur ${S.days} j</div></div>`; }))}
+  </div>
+  <div class="grid two" style="margin-top:12px">
+    ${card('Avis App Store', 'appstore', block('appstore', 'reviews', reviews))}
+    ${card('Avis Google Play', 'play', block('play', 'reviews', (v) => (v.length ? reviews(v) : '<div class="empty">Aucun avis avec texte récemment (l’API ne renvoie que ~7 jours).</div>')))}
+  </div>`;
+}
+
+function reviews(v) {
+  if (!v.length) return '<div class="empty">Aucun avis.</div>';
+  return v.slice(0, 10).map((r) => `<div class="review"><span class="stars" aria-label="${r.rating} sur 5">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span> ${r.title ? `<b>${esc(r.title)}</b>` : ''}<div>${esc(r.text ?? '')}</div><div class="meta">${esc(r.author ?? '')} · ${esc(r.territory ?? r.lang ?? '')} · ${r.version ? `v${esc(r.version)} · ` : ''}${ago(r.date)}</div></div>`).join('');
+}
+
+function revenue() {
+  const am = 'admob', as = 'adsense';
+  const amSum = (k) => (v) => sum(v, (r) => r[k]);
+  return `
+  <h2 class="section">App · AdMob</h2>
+  <div class="kpis">
+    ${tile('Revenus estimés', am, 'byDay', (v) => ({ value: eur(amSum('earnings')(v)), sub: `${eur(amSum('earnings')(v) / Math.max(1, S.days))} / jour` }))}
+    ${tile('Impressions', am, 'byDay', (v) => ({ value: compact(amSum('impressions')(v)), sub: `${compact(amSum('requests')(v))} demandes` }))}
+    ${tile('eCPM', am, 'byDay', (v) => { const i = amSum('impressions')(v); return { value: eur(i ? (amSum('earnings')(v) / i) * 1000 : null), sub: 'pour 1 000 impressions' }; })}
+    ${tile('Taux de remplissage', am, 'byDay', (v) => { const q = amSum('requests')(v); return { value: pct(q ? amSum('impressions')(v) / q : null, 0), sub: 'impressions / demandes' }; })}
+    ${tile('Pubs récompensées vues', 'supabase', 'economy', (v) => ({ value: fmt(v.rewardedAds), sub: 'crédits accordés (serveur)' }))}
+    ${tile('Achats intégrés', 'supabase', 'economy', (v) => ({ value: fmt(v.iapPurchases), sub: 'flag iap' }))}
+  </div>
+  <div class="grid two" style="margin-top:12px">
+    ${card('Revenus AdMob par jour', am, block(am, 'byDay', (v) => chart([{ name: 'Revenus', color: 'var(--s1)', points: P(v, (r) => r.earnings) }], { type: 'bar', fmtY: (x) => eur(x) })))}
+    ${card('Impressions AdMob par jour', am, block(am, 'byDay', (v) => chart([{ name: 'Impressions', color: 'var(--s1)', points: P(v, (r) => r.impressions) }])))}
+    ${card('Par format', am, block(am, 'byFormat', (v) => hlist(v, { label: (r) => r.FORMAT, value: (r) => r.earnings, show: (r) => `${eur(r.earnings)} · ${compact(r.impressions)} impr.` })))}
+    ${card('Par pays', am, block(am, 'byCountry', (v) => hlist(v, { label: (r) => r.COUNTRY, value: (r) => r.earnings, show: (r) => `${eur(r.earnings)} · ${compact(r.impressions)}` })))}
+  </div>
+  <h2 class="section">Site · AdSense</h2>
+  <div class="kpis">
+    ${tile('Revenus estimés', as, 'byDay', (v) => ({ value: eur(amSum('earnings')(v)), sub: `RPM ${eur(v.length ? sum(v, (r) => r.rpm) / v.length : null)}` }))}
+    ${tile('Pages vues monétisées', as, 'byDay', (v) => ({ value: compact(amSum('pageViews')(v)), sub: `${compact(amSum('impressions')(v))} impressions` }))}
+    ${tile('État du compte', as, 'account', (v) => ({ value: v.state === 'READY' ? 'Actif' : esc(v.state ?? '?'), sub: v.pendingTasks.length ? esc(v.pendingTasks.join(', ')) : 'aucune tâche en attente' }))}
+  </div>
+  <div class="grid two" style="margin-top:12px">
+    ${card('Revenus AdSense par jour', as, block(as, 'byDay', (v) => chart([{ name: 'Revenus', color: 'var(--s3)', points: P(v, (r) => r.earnings) }], { type: 'bar', fmtY: (x) => eur(x) })))}
+    ${card('Sites & alertes', as, block(as, 'sites', (v) => table([{ h: 'Site', f: (r) => esc(r.domain) }, { h: 'État', f: (r) => `<span class="pill ${r.state === 'READY' ? 'good' : 'warn'}">${esc(r.state)}</span>` }, { h: 'Auto ads', f: (r) => (r.autoAds ? 'oui' : 'non') }], v)) + block(as, 'alerts', (v) => (v.length ? `<div class="alerts" style="margin-top:10px">${v.map((x) => `<div class="alert warn"><span class="dot">!</span><div>${esc(x.message)}</div></div>`).join('')}</div>` : '')))}
+  </div>`;
+}
+
+function quality() {
+  const se = 'sentry', pl = 'play', sb = 'supabase';
+  const issueRows = (v) => table([
+    { h: 'Erreur', wrap: 1, f: (r) => `<a href="${esc(r.url)}" target="_blank" rel="noopener"><b>${esc(r.id)}</b></a> ${esc(r.title)}<div class="muted" style="font-size:11.5px">${esc(r.culprit ?? '')} · ${esc(r.project ?? '')}</div>` },
+    { h: 'Évts', r: 1, f: (r) => compact(r.count) },
+    { h: 'Users', r: 1, f: (r) => fmt(r.users) },
+    { h: 'Vu', f: (r) => ago(r.lastSeen) },
+  ], v, { limit: 12 });
+  return `
+  <h2 class="section">Erreurs · Sentry</h2>
+  <div class="kpis">
+    ${tile('Erreurs ouvertes', se, 'unresolved', (v) => ({ value: fmt(v.total), sub: `${fmt(v.last24h)} nouvelle(s) en 24 h` }))}
+    ${tile('Sessions sans crash', se, 'crashFree', (v) => ({ value: pct(v.session, 2), sub: `${compact(v.sessions)} sessions` }))}
+    ${tile('Utilisateurs sans crash', se, 'crashFree', (v) => ({ value: pct(v.user, 2), sub: `sur ${S.days} j` }))}
+    ${tile('Événements d’erreur', se, 'errorsByDay', (v) => ({ value: compact(sum(v, (r) => r.y)), sub: `sur ${S.days} j` }))}
+    ${tile('Crash Android', pl, 'crashes', (v) => ({ value: pct(v.at(-1)?.userPerceivedCrashRate, 2), sub: 'perçu, dernier jour (seuil Play 1,09 %)' }))}
+    ${tile('ANR Android', pl, 'anrs', (v) => ({ value: pct(v.at(-1)?.userPerceivedAnrRate, 2), sub: 'perçu, dernier jour (seuil 0,47 %)' }))}
+  </div>
+  <div class="grid two" style="margin-top:12px">
+    ${card('Événements d’erreur par jour', se, block(se, 'errorsByDay', (v) => chart([{ name: 'Erreurs', color: 'var(--s2)', points: v }], { type: 'bar' })))}
+    ${card('Sessions sans crash par jour', se, block(se, 'crashFree', (v) => chart([{ name: 'Sans crash', color: 'var(--s1)', points: v.byDay }], { fmtY: (x) => pct(x, 1), yMax: 1 })))}
+  </div>
+  <div class="grid two" style="margin-top:12px">
+    ${card('Erreurs les plus fréquentes', se, block(se, 'top', issueRows))}
+    ${card('Nouvelles erreurs (7 j)', se, block(se, 'fresh', (v) => (v.length ? issueRows(v) : '<div class="empty">Aucune nouvelle erreur cette semaine ✓</div>')))}
+  </div>
+  <div class="grid two" style="margin-top:12px">
+    ${card('Crashs Android (Play vitals)', pl, block(pl, 'crashes', (v) => chart([{ name: 'Taux de crash perçu', color: 'var(--s2)', points: P(v, (r) => r.userPerceivedCrashRate) }], { fmtY: (x) => pct(x, 2) })))}
+    ${card('ANR Android (Play vitals)', pl, block(pl, 'anrs', (v) => chart([{ name: 'Taux d’ANR perçu', color: 'var(--s2)', points: P(v, (r) => r.userPerceivedAnrRate) }], { fmtY: (x) => pct(x, 2) })))}
+  </div>
+  <h2 class="section">Serveur · Supabase</h2>
+  <div class="grid three">
+    ${card('Crons (dernière exécution)', sb, block(sb, 'ops', (v) => table([{ h: 'Job', f: (r) => esc(r.job) }, { h: 'État', f: (r) => `<span class="pill ${r.status === 'ok' ? 'good' : 'bad'}">${esc(r.status)}</span>` }, { h: 'Quand', f: (r) => ago(r.created_at) }], v.cronLatest) + (v.cronFailures.length ? `<p class="muted" style="font-size:12px;margin:8px 0 4px">Derniers échecs</p>${table([{ h: 'Job', f: (r) => esc(r.job) }, { h: 'Motif', wrap: 1, f: (r) => esc(r.status + (r.detail?.reason ? ` · ${r.detail.reason}` : '')) }, { h: 'Quand', f: (r) => ago(r.created_at) }], v.cronFailures, { limit: 5 })}` : '')))}
+    ${card('Derniers push envoyés', sb, block(sb, 'ops', (v) => table([{ h: 'Titre', wrap: 1, f: (r) => esc(r.title) }, { h: 'Reçus', r: 1, f: (r) => `${fmt(r.sent)}/${fmt(r.recipients)}` }, { h: 'Quand', f: (r) => ago(r.created_at) }], v.recentPushes)))}
+    ${card('Feature flags', sb, block(sb, 'ops', (v) => table([{ h: 'Flag', f: (r) => `<code>${esc(r.key)}</code>` }, { h: '', f: (r) => (r.enabled ? '<span class="pill good">● ON</span>' : '<span class="pill">○ off</span>') }], v.flags, { limit: 40 })))}
+  </div>`;
+}
+
+function deploysView() {
+  const d = 'deploys';
+  const state = (s) => ({ READY: '<span class="pill good">✓ en ligne</span>', ERROR: '<span class="pill bad">✕ échec</span>', BUILDING: '<span class="pill warn">… build</span>', QUEUED: '<span class="pill warn">… file</span>', CANCELED: '<span class="pill">annulé</span>' }[s] ?? `<span class="pill">${esc(s)}</span>`);
+  const eas = (s) => ({ FINISHED: '<span class="pill good">✓ fini</span>', ERRORED: '<span class="pill bad">✕ erreur</span>', IN_PROGRESS: '<span class="pill warn">… build</span>', IN_QUEUE: '<span class="pill warn">… file</span>', CANCELED: '<span class="pill">annulé</span>' }[s] ?? `<span class="pill">${esc(s)}</span>`);
+  return `
+  <h2 class="section">Santé du site</h2>
+  ${card('Disponibilité', d, block(d, 'health', (v) => table([{ h: 'URL', wrap: 1, f: (r) => esc(r.url.replace('https://', '')) }, { h: 'HTTP', f: (r) => `<span class="pill ${r.ok ? 'good' : 'bad'}">${r.ok ? '✓' : '✕'} ${r.status || '—'}</span>` }, { h: 'Temps', r: 1, f: (r) => `${r.ms} ms` }], v)))}
+  <h2 class="section">Web · Vercel</h2>
+  ${card('Déploiements récents', d, block(d, 'vercel', (v) => table([
+    { h: 'État', f: (r) => state(r.state) },
+    { h: 'Cible', f: (r) => (r.target === 'production' ? '<b>prod</b>' : 'préview') },
+    { h: 'Commit', wrap: 1, f: (r) => `<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.message ?? '')}</a> <span class="muted">${esc(r.sha ?? '')}</span>` },
+    { h: 'Durée', r: 1, f: (r) => (r.durationS ? `${r.durationS} s` : '—') },
+    { h: 'Quand', f: (r) => ago(r.created) },
+  ], v)))}
+  <h2 class="section">App · EAS</h2>
+  <div class="grid two">
+    ${card('Builds', d, block(d, 'eas', (v) => table([
+      { h: 'État', f: (r) => eas(r.status) },
+      { h: 'OS', f: (r) => (r.platform === 'IOS' ? 'iOS' : 'Android') },
+      { h: 'Version', f: (r) => `${esc(r.appVersion ?? '')} <span class="muted">(${esc(r.appBuildVersion ?? '')})</span>` },
+      { h: 'Profil', f: (r) => esc(r.buildProfile ?? '') },
+      { h: 'Quand', f: (r) => ago(r.createdAt) },
+    ], v.builds)))}
+    ${card('Mises à jour OTA', d, block(d, 'eas', (v) => table([
+      { h: 'Message', wrap: 1, f: (r) => esc(r.message ?? '') },
+      { h: 'Canal', f: (r) => esc(r.branch) },
+      { h: 'Runtime', f: (r) => esc(r.runtimeVersion) },
+      { h: 'Quand', f: (r) => ago(r.createdAt) },
+    ], v.updates)))}
+  </div>`;
+}
+
+const VIEWS = { overview, players, acquisition, revenue, quality, deploys: deploysView };
+
+// ─── Rendu ───────────────────────────────────────────────────────────────────
+let raf = 0;
+function scheduleRender() {
+  cancelAnimationFrame(raf);
+  raf = requestAnimationFrame(render);
+}
+function render() {
+  charts.length = 0;
+  $('#main').innerHTML = VIEWS[S.tab]();
+  mountCharts();
+  document.querySelectorAll('.seg button').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.days) === S.days)));
+  document.querySelectorAll('#tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === S.tab)));
+  const times = Object.values(S.data).map((d) => d?.fetchedAt).filter(Boolean).sort();
+  $('#stamp').textContent = S.pending.size
+    ? `Chargement… (${SOURCES.length - S.pending.size}/${SOURCES.length} sources)`
+    : times.length ? `Données ${ago(times[0])} · ${S.days} derniers jours` : '';
+}
+
+function buildTabs() {
+  $('#tabs').innerHTML = TABS.map(([id, label, icon]) => `<button role="tab" data-tab="${id}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${icon}</svg>${label}</button>`).join('');
+  $('#tabs').addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    S.tab = b.dataset.tab;
+    store('hq.tab', S.tab);
+    render();
+    window.scrollTo({ top: 0 });
+  });
+  document.querySelectorAll('.seg button').forEach((b) => b.addEventListener('click', () => {
+    S.days = Number(b.dataset.days);
+    store('hq.days', S.days);
+    S.data = {};
+    restoreCache();
+    render();
+    loadAll();
+  }));
+  $('#refresh').addEventListener('click', () => loadAll(true));
+  $('#theme').addEventListener('click', () => {
+    const cur = document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    const next = cur === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    store('hq.theme', next);
+    render();
+  });
+  let rt;
+  addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(render, 150); });
+  // Actualisation auto toutes les 5 min quand la page est visible.
+  setInterval(() => { if (document.visibilityState === 'visible') loadAll(); }, 5 * 60000);
+  document.addEventListener('visibilitychange', () => {
+    const t = Object.values(S.data).map((d) => d?.fetchedAt).filter(Boolean).sort()[0];
+    if (document.visibilityState === 'visible' && (!t || Date.now() - new Date(t) > 5 * 60000)) loadAll();
+  });
+}
+
+function forbidden() {
+  $('#app').classList.add('hide');
+  $('#login').classList.remove('hide');
+  const e = $('#login-err');
+  e.textContent = 'Ce compte n’est pas administrateur.';
+  e.classList.remove('hide');
+}
+
+async function start() {
+  const theme = store('hq.theme');
+  if (theme) document.documentElement.dataset.theme = theme;
+  const cfg = await fetch('/api/hq?source=config').then((r) => r.json());
+  client = createClient(cfg.supabaseUrl, cfg.anonKey, { auth: { persistSession: true, autoRefreshToken: true } });
+  client.auth.onAuthStateChange((_e, session) => { S.token = session?.access_token ?? null; });
+  const { data: { session } } = await client.auth.getSession();
+  if (!session) return showLogin();
+  S.token = session.access_token;
+  showApp();
+}
+
+function showLogin() {
+  $('#login').classList.remove('hide');
+  $('#app').classList.add('hide');
+}
+let started = false;
+function showApp() {
+  $('#login').classList.add('hide');
+  $('#app').classList.remove('hide');
+  if (!started) { buildTabs(); started = true; }
+  restoreCache();
+  render();
+  loadAll();
+}
+
+$('#login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const err = $('#login-err');
+  err.classList.add('hide');
+  const { data, error } = await client.auth.signInWithPassword({ email: $('#email').value.trim(), password: $('#password').value });
+  if (error) { err.textContent = error.message; err.classList.remove('hide'); return; }
+  S.token = data.session.access_token;
+  showApp();
+});
+
+start().catch((e) => { document.body.innerHTML = `<p class="err" style="margin:20px">${esc(e.message)}</p>`; });
+</script>
+</body>
+</html>

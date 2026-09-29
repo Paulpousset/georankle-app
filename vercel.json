@@ -21,9 +21,27 @@
           "value": "public, max-age=31536000, immutable"
         }
       ]
+    },
+    {
+      "source": "/hq/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
+      ]
     }
   ],
   "redirects": [
+    {
+      "source": "/hq",
+      "destination": "/hq/",
+      "permanent": false
+    },
     {
       "source": "/landing.html",
       "destination": "/",
