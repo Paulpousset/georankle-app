@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import {
   ArrowLeft,
   BarChart3,
+  ChevronRight,
   Check,
   Flag,
   Globe,
@@ -20,9 +21,10 @@ import {
   TrendingUp,
   Play,
   Share2,
+  Trophy,
   Zap,
 } from 'lucide-react-native';
-import { AtlasFlame } from '../components/AtlasIcons';
+import { AtlasCoin, AtlasFlame } from '../components/AtlasIcons';
 import { LanguageButton } from '../components/LanguageButton';
 import { DailyQuests } from '../components/DailyQuests';
 import type { ComponentType } from 'react';
@@ -43,6 +45,7 @@ import {
   type DailyState,
 } from '../lib/daily';
 import { variantForSeed } from '../lib/languages';
+import { claimDailyOverallNotices, DAILY_OVERALL_PRIZES } from '../lib/dailyOverall';
 import { challengeForSeed, challengeLabel } from '../data/challenges';
 import { prefetchReferralCode, shareDailyResult } from '../lib/shareDaily';
 import { useToast } from '../components/ToastProvider';
@@ -59,6 +62,7 @@ import { DailyLeaderboardModal } from '../components/DailyLeaderboardModal';
 import { ModeIntroCard } from '../components/ModeIntroModal';
 
 const FLAME = '#e8772e';
+const GOLD = '#c4872a';
 
 /** Per-mode card icon + accent, mirroring the MainMenu solo list. Exported for
  *  the league screens, which render the same daily-mode cards. */
@@ -110,7 +114,7 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
   const [state, setState] = useState<DailyState | null>(null);
   const [countdown, setCountdown] = useState(() => msUntilNextPuzzle());
   const [viewing, setViewing] = useState<DailyResult | null>(null);
-  const [leaderboardMode, setLeaderboardMode] = useState<GameMode | null>(null);
+  const [leaderboardMode, setLeaderboardMode] = useState<GameMode | 'overall' | null>(null);
   // Which mode's "how to play" card is open from a "?" button (null = none).
   const [helpMode, setHelpMode] = useState<GameMode | null>(null);
 
@@ -159,6 +163,23 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
   useEffect(() => {
     if (user) prefetchReferralCode().catch(() => {});
   }, [user]);
+
+  // Podium du classement général payé pendant la nuit : annoncé une seule fois
+  // (la RPC marque la victoire comme vue).
+  useEffect(() => {
+    if (!user) return;
+    claimDailyOverallNotices().then((notices) => {
+      for (const n of notices) {
+        toast.success(
+          tr(language, 'Classement général : {0} place, +{1} pièces !', 'Overall ranking: #{0}, +{1} coins!', [
+            language === 'fr' ? (n.rank === 1 ? '1re' : `${n.rank}e`) : n.rank,
+            n.coins,
+          ]),
+        );
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   const shareResult = (result: DailyResult) => {
     shareDailyResult(result, streak, language, result.mode, () =>
@@ -247,6 +268,40 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
             </Text>
           </View>
         </View>
+
+        {/* Classement général : tous les dailies combinés, podium payé en pièces */}
+        <TouchableOpacity
+          onPress={() => setLeaderboardMode('overall')}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+            backgroundColor: c.surface,
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: GOLD,
+            paddingVertical: 12,
+            paddingHorizontal: 14,
+            marginBottom: 8,
+          }}
+          {...a11yButton(tr(language, 'Classement général', 'Overall ranking'), {
+            hint: tr(language, 'Tous les défis du jour combinés', 'Every daily challenge combined'),
+          })}
+        >
+          <Trophy color={GOLD} size={24} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontFamily: FONTS.heading, color: c.text, fontSize: 15 }}>
+              {tr(language, 'Classement général', 'Overall ranking')}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+              <AtlasCoin color={GOLD} size={12} />
+              <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 10 }}>
+                {tr(language, 'Podium : +{0} · +{1} · +{2} pièces', 'Podium: +{0} · +{1} · +{2} coins', [...DAILY_OVERALL_PRIZES])}
+              </Text>
+            </View>
+          </View>
+          <ChevronRight color={c.textMuted} size={18} />
+        </TouchableOpacity>
 
         {/* Daily quests (signed-in only — progress lives server-side) */}
         {user && <DailyQuests />}
@@ -392,7 +447,9 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
       />
       <DailyLeaderboardModal
         mode={leaderboardMode}
-        accent={leaderboardMode ? MODE_META[leaderboardMode].accent : c.accent}
+        accent={
+          leaderboardMode === 'overall' ? GOLD : leaderboardMode ? MODE_META[leaderboardMode].accent : c.accent
+        }
         currentUserId={user?.id ?? null}
         onClose={() => setLeaderboardMode(null)}
         onOpenPlayer={onOpenPlayer}

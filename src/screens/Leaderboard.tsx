@@ -35,7 +35,7 @@ import { a11yButton, a11yImage } from '../lib/a11y';
 import { AsyncState } from '../components/AsyncState';
 import { SkeletonRows } from '../components/Skeleton';
 import { TruncatedText } from '../components/TruncatedText';
-import { WorldAvatar } from '../components/WorldAvatar';
+import { Avatar } from '../components/Avatar';
 import { normalizeConfig } from '../data/cosmetics';
 import type { AvatarConfig } from '../types';
 
@@ -280,7 +280,7 @@ const Leaderboard = ({ onOpenPlayer }: LeaderboardProps) => {
             },
           ]}
         >
-          <WorldAvatar config={entry.avatar} size={avatarSize} round />
+          <Avatar config={entry.avatar} username={name} size={avatarSize} />
         </View>
         <TruncatedText style={[styles.podiumName, { color: c.text }]}>{name}</TruncatedText>
         {isMe && (
@@ -342,7 +342,7 @@ const Leaderboard = ({ onOpenPlayer }: LeaderboardProps) => {
         >
           <Text style={[styles.rankText, { color: isMe ? accent : c.textFaint }]}>{rank}</Text>
           <View style={[styles.rowAvatar, { backgroundColor: c.surface, borderColor: c.border }]}>
-            <WorldAvatar config={item.avatar} size={30} round />
+            <Avatar config={item.avatar} username={name} size={30} />
           </View>
           <View style={styles.userInfo}>
             <View style={styles.nameRow}>
@@ -469,7 +469,7 @@ const Leaderboard = ({ onOpenPlayer }: LeaderboardProps) => {
           >
             <Text style={[styles.rankText, { color: accent }]}>{myRank + 1}</Text>
             <View style={[styles.rowAvatar, { backgroundColor: c.card, borderColor: c.border }]}>
-              <WorldAvatar config={me.avatar} size={30} round />
+              <Avatar config={me.avatar} username={me.username || anonymous} size={30} />
             </View>
             <View style={styles.userInfo}>
               <View style={styles.nameRow}>

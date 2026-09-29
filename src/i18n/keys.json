@@ -15,12 +15,13 @@
     "key": " (you)",
     "fr": " (toi)",
     "en": " (you)",
-    "count": 5,
+    "count": 7,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/DailyLeaderboard.tsx",
+      "src/screens/DailyOverallLeaderboard.tsx",
       "src/screens/LeagueDetail.tsx",
       "src/screens/StoryMap.tsx"
     ],
@@ -1064,12 +1065,13 @@
     "key": "Anonymous",
     "fr": "Anonyme",
     "en": "Anonymous",
-    "count": 2,
+    "count": 3,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/DailyLeaderboard.tsx",
+      "src/screens/DailyOverallLeaderboard.tsx",
       "src/screens/OnlineModeLeaderboard.tsx"
     ]
   },
@@ -2422,11 +2424,11 @@
       "call"
     ],
     "files": [
+      "src/components/LanguageButton.tsx",
       "src/screens/BordersGame.tsx",
       "src/screens/ClassicGame.tsx",
       "src/screens/HigherLowerGame.tsx",
       "src/screens/LanguagesGame.tsx",
-      "src/screens/MainMenu.tsx",
       "src/screens/PinpointGame.tsx",
       "src/screens/SilhouetteGame.tsx",
       "src/screens/StreakGame.tsx"
@@ -3337,12 +3339,13 @@
     "key": "Could not load the leaderboard.",
     "fr": "Impossible de charger le classement.",
     "en": "Could not load the leaderboard.",
-    "count": 4,
+    "count": 5,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/DailyLeaderboard.tsx",
+      "src/screens/DailyOverallLeaderboard.tsx",
       "src/screens/Leaderboard.tsx",
       "src/screens/LeagueDetail.tsx",
       "src/screens/OnlineModeLeaderboard.tsx"
@@ -4555,6 +4558,18 @@
     ]
   },
   {
+    "key": "Each challenge is worth up to 1000 pts (your score ÷ the day’s best). The podium is paid at midnight UTC.",
+    "fr": "Chaque défi rapporte jusqu'à 1000 pts (ton score ÷ le meilleur du jour). Le podium est payé à minuit UTC.",
+    "en": "Each challenge is worth up to 1000 pts (your score ÷ the day’s best). The podium is paid at midnight UTC.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/DailyOverallLeaderboard.tsx"
+    ]
+  },
+  {
     "key": "Each correct answer extends your streak.",
     "fr": "Chaque bonne réponse allonge votre série.",
     "en": "Each correct answer extends your streak.",
@@ -5008,6 +5023,19 @@
     ],
     "files": [
       "src/components/SoloCoinReward.tsx"
+    ]
+  },
+  {
+    "key": "Every daily challenge combined",
+    "fr": "Tous les défis du jour combinés",
+    "en": "Every daily challenge combined",
+    "count": 2,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/DailyLeaderboardModal.tsx",
+      "src/screens/DailyHub.tsx"
     ]
   },
   {
@@ -9235,6 +9263,18 @@
     ]
   },
   {
+    "key": "No results yesterday.",
+    "fr": "Aucun résultat hier.",
+    "en": "No results yesterday.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/DailyOverallLeaderboard.tsx"
+    ]
+  },
+  {
     "key": "No scores for this mode yet.\nBe the first on the board!",
     "fr": "Aucun score pour ce mode.\nSois le premier au classement !",
     "en": "No scores for this mode yet.\nBe the first on the board!",
@@ -9280,6 +9320,18 @@
     ],
     "files": [
       "src/screens/DailyLeaderboard.tsx"
+    ]
+  },
+  {
+    "key": "Nobody has played today yet.\nBe the first!",
+    "fr": "Personne n'a encore joué aujourd'hui.\nSois le premier !",
+    "en": "Nobody has played today yet.\nBe the first!",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/DailyOverallLeaderboard.tsx"
     ]
   },
   {
@@ -9939,6 +9991,31 @@
     "files": [
       "src/screens/StoryLevelEnd.tsx",
       "src/screens/StoryMap.tsx"
+    ]
+  },
+  {
+    "key": "Overall ranking",
+    "fr": "Classement général",
+    "en": "Overall ranking",
+    "count": 3,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/DailyLeaderboardModal.tsx",
+      "src/screens/DailyHub.tsx"
+    ]
+  },
+  {
+    "key": "Overall ranking: #{0}, +{1} coins!",
+    "fr": "Classement général : {0} place, +{1} pièces !",
+    "en": "Overall ranking: #{0}, +{1} coins!",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/DailyHub.tsx"
     ]
   },
   {
@@ -10759,6 +10836,18 @@
     ]
   },
   {
+    "key": "Podium: +{0} · +{1} · +{2} coins",
+    "fr": "Podium : +{0} · +{1} · +{2} pièces",
+    "en": "Podium: +{0} · +{1} · +{2} coins",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/DailyHub.tsx"
+    ]
+  },
+  {
     "key": "Podium: {0}",
     "fr": "Podium : {0}",
     "en": "Podium: {0}",
@@ -11397,12 +11486,13 @@
     "key": "Rank {0}",
     "fr": "Rang {0}",
     "en": "Rank {0}",
-    "count": 5,
+    "count": 6,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/DailyLeaderboard.tsx",
+      "src/screens/DailyOverallLeaderboard.tsx",
       "src/screens/Leaderboard.tsx",
       "src/screens/LeagueDetail.tsx",
       "src/screens/OnlineModeLeaderboard.tsx"
@@ -14574,6 +14664,18 @@
     ]
   },
   {
+    "key": "Today",
+    "fr": "Aujourd'hui",
+    "en": "Today",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/DailyOverallLeaderboard.tsx"
+    ]
+  },
+  {
     "key": "Today's challenges · {0}/{1} done",
     "fr": "Défis du jour · {0}/{1} faits",
     "en": "Today's challenges · {0}/{1} done",
@@ -15238,12 +15340,13 @@
     "key": "View profile",
     "fr": "Voir le profil",
     "en": "View profile",
-    "count": 5,
+    "count": 6,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/DailyLeaderboard.tsx",
+      "src/screens/DailyOverallLeaderboard.tsx",
       "src/screens/Leaderboard.tsx",
       "src/screens/LeagueDetail.tsx",
       "src/screens/OnlineModeLeaderboard.tsx"
@@ -16153,6 +16256,18 @@
     ],
     "files": [
       "src/components/SoloStart.tsx"
+    ]
+  },
+  {
+    "key": "Yesterday",
+    "fr": "Hier",
+    "en": "Yesterday",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/DailyOverallLeaderboard.tsx"
     ]
   },
   {
@@ -17398,11 +17513,12 @@
     "key": "{0} coins",
     "fr": "{0} pièces",
     "en": "{0} coins",
-    "count": 1,
+    "count": 2,
     "kinds": [
       "call"
     ],
     "files": [
+      "src/screens/DailyOverallLeaderboard.tsx",
       "src/screens/Shop.tsx"
     ]
   },
@@ -18036,6 +18152,18 @@
     ],
     "files": [
       "src/screens/MainMenu.tsx"
+    ]
+  },
+  {
+    "key": "{0}/{1} challenges",
+    "fr": "{0}/{1} défis",
+    "en": "{0}/{1} challenges",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/DailyOverallLeaderboard.tsx"
     ]
   },
   {

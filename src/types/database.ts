@@ -926,6 +926,23 @@ export type Database = {
         Returns: Json
       }
       league_daily_modes: { Args: { p_date: string }; Returns: string[] }
+      daily_overall_leaderboard: {
+        Args: { p_date: string }
+        Returns: {
+          user_id: string
+          username: string | null
+          avatar_config: Json | null
+          avatar_url: string | null
+          total: number
+          modes_played: number
+          rank: number
+          coins: number | null
+        }[]
+      }
+      claim_daily_overall_notices: {
+        Args: never
+        Returns: { puzzle_date: string; rank: number; coins: number }[]
+      }
       is_league_member: { Args: { p_league: string; p_user: string }; Returns: boolean }
       redeem_referral: { Args: { p_code: string }; Returns: Json }
       referral_code_for: { Args: { p_user: string }; Returns: string }

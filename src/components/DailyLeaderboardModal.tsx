@@ -3,6 +3,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Home } from 'lucide-react-native';
 
 import { DailyLeaderboard } from '../screens/DailyLeaderboard';
+import { DailyOverallLeaderboard } from '../screens/DailyOverallLeaderboard';
 import { dailyModeLabel, getPuzzleNumber } from '../lib/daily';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -14,15 +15,15 @@ import { DesktopStage } from './DesktopStage';
 import type { GameMode } from '../types';
 
 interface Props {
-  /** The daily mode to rank, or null to hide the modal. */
-  mode: GameMode | null;
+  /** The daily mode to rank, 'overall' for every daily combined, or null to hide the modal. */
+  mode: GameMode | 'overall' | null;
   accent: string;
   currentUserId?: string | null;
   onClose: () => void;
   onOpenPlayer?: (userId: string, username?: string | null) => void;
 }
 
-/** Modal showing today's per-mode daily leaderboard. */
+/** Modal showing today's per-mode daily leaderboard, or the combined one. */
 export function DailyLeaderboardModal({
   mode,
   accent,
@@ -64,16 +65,30 @@ export function DailyLeaderboardModal({
                 </TouchableOpacity>
                 <View>
                   <Text style={{ fontSize: 20, fontFamily: FONTS.headingBlack, color: c.text }}>
-                    {mode ? dailyModeLabel(mode, language) : ''}
+                    {mode === 'overall'
+                      ? tr(language, 'Classement général', 'Overall ranking')
+                      : mode
+                        ? dailyModeLabel(mode, language)
+                        : ''}
                   </Text>
                   <Text style={{ fontSize: 10, fontFamily: FONTS.mono, color: c.textFaint }}>
-                    {tr(language, 'Classement du défi du jour', "Today's daily ranking")} · #{getPuzzleNumber()}
+                    {mode === 'overall'
+                      ? tr(language, 'Tous les défis du jour combinés', 'Every daily challenge combined')
+                      : tr(language, 'Classement du défi du jour', "Today's daily ranking")}{' '}
+                    · #{getPuzzleNumber()}
                   </Text>
                 </View>
               </View>
             </View>
 
-            {mode && (
+            {mode === 'overall' && (
+              <DailyOverallLeaderboard
+                accent={accent}
+                currentUserId={currentUserId}
+                onOpenPlayer={onOpenPlayer}
+              />
+            )}
+            {mode && mode !== 'overall' && (
               <DailyLeaderboard
                 mode={mode}
                 accent={accent}
