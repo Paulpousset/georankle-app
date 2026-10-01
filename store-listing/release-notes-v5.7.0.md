@@ -43,6 +43,12 @@ Absent une semaine ou plus ? Tu es accueilli avec des pièces offertes.
 🎁 Parrainage plus visible
 Ton lien d'invitation est proposé en fin de partie : vous gagnez chacun 50 pièces.
 
+🏆 Défi du Jour : classement général avec podium (+20/+10/+5 pièces).
+
+🌍 Globes 3D plus beaux : Mars refait, globe glacé, régions plus lisibles.
+
+🔊 Bouton son flottant et bouton de langue plus clair.
+
 🛠️ Sous le capot
 Les prochaines corrections arriveront sans mise à jour du store.
 ```
@@ -61,6 +67,12 @@ Away for a week or more? You are greeted with free coins.
 🎁 Referral, easier to find
 Your invite link is offered at the end of a game: you both earn 50 coins.
 
+🏆 Daily Challenge: overall ranking with podium (+20/+10/+5 coins).
+
+🌍 Nicer 3D globes: redone Mars, icy globe, clearer regions.
+
+🔊 Floating sound button and a clearer language button.
+
 🛠️ Under the hood
 Upcoming fixes will arrive without a store update.
 ```
@@ -72,29 +84,47 @@ Upcoming fixes will arrive without a store update.
 <fr-FR>⚔️ Défie un ami : partage ton score en fin de partie, il joue le même mode dans son navigateur.
 🔥 Rappel du soir si ta série du défi du jour est en danger.
 👋 Bonus de retour : des pièces offertes après une semaine d'absence.
-🎁 Ton lien de parrainage proposé en fin de partie (50 pièces chacun).</fr-FR>
+🎁 Ton lien de parrainage proposé en fin de partie (50 pièces chacun).
+🏆 Défi du Jour : classement général et podium (+20/+10/+5 pièces).
+🌍 Globes 3D plus beaux : Mars refait, globe glacé, régions plus lisibles.
+🔊 Bouton son flottant et bouton de langue plus clair.</fr-FR>
 
 <en-US>⚔️ Challenge a friend: share your score at the end of a game, they play the same mode in their browser.
 🔥 Evening reminder when your daily streak is at risk.
 👋 Welcome-back bonus: free coins after a week away.
-🎁 Your referral link offered at the end of a game (50 coins each).</en-US>
+🎁 Your referral link offered at the end of a game (50 coins each).
+🏆 Daily Challenge: overall ranking and podium (+20/+10/+5 coins).
+🌍 Nicer 3D globes: redone Mars, icy globe, clearer regions.
+🔊 Floating sound button and a clearer language button.</en-US>
 
 <es-ES>⚔️ Reta a un amigo: comparte tu puntuación al final de la partida y jugará el mismo modo en su navegador.
 🔥 Recordatorio por la tarde si tu racha del reto diario está en peligro.
 👋 Bono de regreso: monedas de regalo tras una semana sin jugar.
-🎁 Tu enlace de invitación al final de la partida (50 monedas cada uno).</es-ES>
+🎁 Tu enlace de invitación al final de la partida (50 monedas cada uno).
+🏆 Reto diario: clasificación general y podio (+20/+10/+5 monedas).
+🌍 Globos 3D más bonitos: Marte renovado, globo helado, regiones más claras.
+🔊 Botón de sonido flotante y botón de idioma más claro.</es-ES>
 
 <pt-PT>⚔️ Desafia um amigo: partilha a tua pontuação no fim do jogo e ele joga o mesmo modo no browser.
 🔥 Lembrete ao fim do dia se a tua sequência do desafio diário estiver em risco.
 👋 Bónus de regresso: moedas oferecidas após uma semana de ausência.
-🎁 O teu link de convite no fim do jogo (50 moedas para cada um).</pt-PT>
+🎁 O teu link de convite no fim do jogo (50 moedas para cada um).
+🏆 Desafio diário: classificação geral e pódio (+20/+10/+5 moedas).
+🌍 Globos 3D mais bonitos: Marte renovado, globo gelado, regiões mais claras.
+🔊 Botão de som flutuante e botão de idioma mais claro.</pt-PT>
 
 <de-DE>⚔️ Fordere Freunde heraus: Teile deinen Punktestand am Spielende, sie spielen denselben Modus im Browser.
 🔥 Abenderinnerung, wenn deine Serie der Tagesaufgabe in Gefahr ist.
 👋 Willkommen-zurück-Bonus: Gratis-Münzen nach einer Woche Pause.
-🎁 Dein Einladungslink am Spielende (je 50 Münzen).</de-DE>
+🎁 Dein Einladungslink am Spielende (je 50 Münzen).
+🏆 Tagesaufgabe: Gesamtwertung und Podium (+20/+10/+5 Münzen).
+🌍 Schönere 3D-Globen: neuer Mars, Eisglobus, klarere Regionen.
+🔊 Schwebender Sound-Button und klarerer Sprach-Button.</de-DE>
 
 <it-IT>⚔️ Sfida un amico: condividi il punteggio a fine partita, giocherà la stessa modalità nel browser.
 🔥 Promemoria serale se la tua serie della sfida del giorno è a rischio.
 👋 Bonus di ritorno: monete in regalo dopo una settimana di assenza.
-🎁 Il tuo link d'invito a fine partita (50 monete ciascuno).</it-IT>
+🎁 Il tuo link d'invito a fine partita (50 monete ciascuno).
+🏆 Sfida del giorno: classifica generale e podio (+20/+10/+5 monete).
+🌍 Globi 3D più belli: Marte rifatto, globo ghiacciato, regioni più chiare.
+🔊 Pulsante audio mobile e pulsante lingua più chiaro.</it-IT>
