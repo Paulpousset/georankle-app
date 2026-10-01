@@ -102,16 +102,16 @@ Upcoming fixes will arrive without a store update.
 👋 Bono de regreso: monedas de regalo tras una semana sin jugar.
 🎁 Tu enlace de invitación al final de la partida (50 monedas cada uno).
 🏆 Reto diario: clasificación general y podio (+20/+10/+5 monedas).
-🌍 Globos 3D más bonitos: Marte renovado, globo helado, regiones más claras.
-🔊 Botón de sonido flotante y botón de idioma más claro.</es-ES>
+🌍 Globos 3D más bonitos: Marte renovado, globo helado.
+🔊 Botón de sonido flotante e idioma más claro.</es-ES>
 
 <pt-PT>⚔️ Desafia um amigo: partilha a tua pontuação no fim do jogo e ele joga o mesmo modo no browser.
 🔥 Lembrete ao fim do dia se a tua sequência do desafio diário estiver em risco.
 👋 Bónus de regresso: moedas oferecidas após uma semana de ausência.
 🎁 O teu link de convite no fim do jogo (50 moedas para cada um).
 🏆 Desafio diário: classificação geral e pódio (+20/+10/+5 moedas).
-🌍 Globos 3D mais bonitos: Marte renovado, globo gelado, regiões mais claras.
-🔊 Botão de som flutuante e botão de idioma mais claro.</pt-PT>
+🌍 Globos 3D mais bonitos: Marte renovado, globo gelado.
+🔊 Botão de som flutuante e idioma mais claro.</pt-PT>
 
 <de-DE>⚔️ Fordere Freunde heraus: Teile deinen Punktestand am Spielende, sie spielen denselben Modus im Browser.
 🔥 Abenderinnerung, wenn deine Serie der Tagesaufgabe in Gefahr ist.
