@@ -42,6 +42,23 @@ seuil.
 
 ## Entrées
 
+### Audit technique 2026-10
+
+Production inaccessible depuis la session (403 du proxy sur `playgeog.com`, `apps.apple.com`, `play.google.com`, et PageSpeed sans cible) : pas réessayé. Audit mené sur le build local (`dist/`, `npm run build:web:full`).
+
+| Contrôle | Résultat |
+|---|---|
+| Sitemap (build local) | 146 URL, 964 `xhtml:link`, 5 valeurs de `lastmod` distinctes (non figé) ; les 16 `/play` sont des rewrites vers `app-<langue>.html`, vérifiés par le build |
+| hreflang / canonical | réciprocité et canonicals OK sur les 146 pages (`site:check`) |
+| JSON-LD | 336 blocs, tous parsent ; Article avec les deux dates, FAQPage ≥ 1 question |
+| Liens internes (build local) | 0 lien mort |
+| Lint / typecheck / tests | 0 erreur (82 warnings) / OK / 1004 tests OK |
+| PageSpeed mobile (accueil 89–92, guide 97) | non mesuré (réseau) |
+| Pages stores Apple / Google | non vérifiées (réseau) |
+
+- **Anomalies corrigées** : aucune à corriger dans le dépôt.
+- **Restantes** : mesures de production (200 des URL, hreflang servis, PageSpeed, stores) à refaire depuis un réseau qui atteint playgeog.com.
+
 ### 2026-09-23 — première chaîne complète
 
 - PR #2 et #3 fusionnées ; CI de `master` verte (elle était rouge depuis le
