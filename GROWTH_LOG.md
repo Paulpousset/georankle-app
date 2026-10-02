@@ -42,6 +42,24 @@ seuil.
 
 ## Entrées
 
+### 2026-10-02 — rapport hebdo (sans PostHog)
+
+- Pas de `POSTHOG_PERSONAL_API_KEY` dans la session : aucun indicateur produit mesuré. `playgeog.com` est bloqué par le réseau de la session (403 sur CONNECT) : sitemap et PageSpeed non mesurés, pas de nouvel essai.
+
+| Mesurable sans clé | Valeur |
+|---|---|
+| Commits sur 7 jours | 10 (dernier : 01/10) |
+| Pages ajoutées dans `site/content` | 0 (116 fichiers au total) |
+| Cases cochées de la file éditoriale | 0 / 15 |
+| Taux partage/complétion, parrainages, rétention | non mesuré |
+
+Faits saillants :
+1. Semaine centrée produit : /hq (tableau de bord privé), classement combiné du Défi du Jour, bouton de langue, notes v5.7.0.
+2. Aucune page SEO publiée : la Routine « Contenu SEO » n'a rien livré depuis le 23/09.
+3. Les indicateurs A1/A2 (`solo_shared`, `referral_shared`, `install_cta_pressed`, `comeback_granted`) restent à zéro information, faute d'accès PostHog.
+
+Décision : poser `POSTHOG_PERSONAL_API_KEY` et autoriser `playgeog.com` dans l'environnement de la Routine ; vérifier pourquoi « Contenu SEO » n'a pas tourné. File éditoriale inchangée (pas de données pour la justifier).
+
 ### 2026-09-23 — première chaîne complète
 
 - PR #2 et #3 fusionnées ; CI de `master` verte (elle était rouge depuis le
