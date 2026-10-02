@@ -1,0 +1,301 @@
+{
+ "_doc": "Story-map wildlife. key → Quaternius CC0 model (asset-pipeline/critters/glb, see critters/LICENSE.md), clip, frame count, art-directed palette (material name → sRGB hex), camera elevation, hidden meshes. render_critters.py renders, convert_critters.mjs packs. underwater:true = tinted/faded variant for sea animals seen below the surface (convert_critters.mjs). idle = clip shown while a walker pauses; rendered with the SAME camera as the main clip (strip <key>_idle).",
+ "fox": {
+  "model": "Fox",
+  "clip": "Walk",
+  "frames": 12,
+  "palette": {
+   "Main": "#f07a2a",
+   "Main_Light": "#fff3e2",
+   "Grey": "#3a2c26",
+   "Black": "#2a1e1a"
+  },
+  "idle": "Idle_2_HeadLow"
+ },
+ "deer": {
+  "model": "Deer",
+  "clip": "Walk",
+  "frames": 12,
+  "palette": {
+   "Main": "#c47a3e",
+   "Main_Light": "#f6e6c8",
+   "Main_Dark": "#7c4a26",
+   "Eye_Lighter": "#c47a3e"
+  },
+  "eyes": [
+   "Eye_Black"
+  ],
+  "idle": "Eating"
+ },
+ "koi": {
+  "model": "Koi",
+  "clip": "Swim",
+  "frames": 12,
+  "palette": {
+   "Koi_Main": "#ff5a24",
+   "Koi_Light": "#ffffff",
+   "Koi_Fins": "#ffb36a",
+   "Koi_Dark": "#242424"
+  },
+  "yaw": 180
+ },
+ "alpaca": {
+  "model": "Alpaca",
+  "clip": "Walk",
+  "frames": 12,
+  "palette": {
+   "Main": "#f0cf98",
+   "Main_Light": "#fff5de",
+   "Main_Dark": "#7a5230",
+   "Muzzle": "#5a3a22"
+  },
+  "idle": "Eating"
+ },
+ "snake_sand": {
+  "model": "Snake",
+  "clip": "Walk",
+  "frames": 12,
+  "palette": {
+   "DarkGreen": "#d8962e",
+   "LightGreen": "#f7dc94",
+   "Purple": "#8a4a22",
+   "Yellow": "#ffe27a"
+  },
+  "head": 1.25,
+  "idle": "Snake_Idle"
+ },
+ "trex": {
+  "model": "Trex",
+  "clip": "Walk",
+  "frames": 12,
+  "palette": {
+   "Green": "#3c9a3a",
+   "LightGreen": "#86d44e",
+   "LightYellow": "#f6d77e",
+   "Red": "#e2483e"
+  },
+  "head": 1.3,
+  "eye": 0,
+  "idle": "TRex_Idle"
+ },
+ "triceratops": {
+  "model": "Triceratops",
+  "clip": "Walk",
+  "frames": 12,
+  "palette": {
+   "LightBrown": "#f5c56e",
+   "Purple": "#7a52c8",
+   "Brown": "#d97a36"
+  },
+  "head": 1.3,
+  "eye": 0,
+  "idle": "Triceratops_Idle"
+ },
+ "raptor": {
+  "model": "Velociraptor",
+  "clip": "Run",
+  "frames": 10,
+  "palette": {
+   "LightBrown": "#f0a060",
+   "Brown": "#a84a26"
+  },
+  "head": 1.3,
+  "eye": 0,
+  "idle": "Velociraptor_Idle"
+ },
+ "husky": {
+  "model": "Husky",
+  "clip": "Walk",
+  "frames": 12,
+  "palette": {
+   "Material": "#4c5a70",
+   "Material.001": "#ffffff",
+   "Material.006": "#2a2a30"
+  },
+  "eyes": [
+   "Material.002"
+  ],
+  "idle": "Idle_2"
+ },
+ "arctic_wolf": {
+  "model": "Wolf",
+  "clip": "Walk",
+  "frames": 12,
+  "palette": {
+   "Main": "#dfe8f2",
+   "Main_Light": "#ffffff",
+   "Nose": "#2a2a30"
+  },
+  "idle": "Idle_2"
+ },
+ "stag": {
+  "model": "Stag",
+  "clip": "Walk",
+  "frames": 12,
+  "palette": {
+   "Material": "#9a6234",
+   "Material.003": "#f6e6c8",
+   "Material.010": "#5a3a1e"
+  },
+  "eyes": [
+   "Material.011"
+  ],
+  "idle": "Eating"
+ },
+ "frog": {
+  "model": "Frog",
+  "clip": "Jump",
+  "frames": 12,
+  "palette": {
+   "Green": "#4cd24a",
+   "Yellow": "#ffe36a",
+   "Red": "#ff4a36"
+  },
+  "head": 1.2,
+  "eyes": [
+   "Black"
+  ],
+  "idle": "Frog_Idle"
+ },
+ "snake": {
+  "model": "Snake",
+  "clip": "Walk",
+  "frames": 12,
+  "palette": {
+   "DarkGreen": "#2fb86a",
+   "LightGreen": "#c2f27e",
+   "Purple": "#7a3a9a",
+   "Yellow": "#ffe27a"
+  },
+  "head": 1.25,
+  "idle": "Snake_Idle"
+ },
+ "wasp": {
+  "model": "Wasp",
+  "clip": "Flying",
+  "frames": 8,
+  "palette": {
+   "Orange": "#ff8a1a",
+   "Yellow": "#ffd43a",
+   "LightBlue": "#c6ecff"
+  },
+  "yaw": 180,
+  "head": 1.3
+ },
+ "piranha": {
+  "model": "Piranha",
+  "clip": "Swim",
+  "frames": 12,
+  "palette": {
+   "Piranha_Main": "#3d5fd6",
+   "Piranha_Light": "#ff5a36",
+   "Piranha_Fins": "#cfe0ff"
+  },
+  "yaw": 180
+ },
+ "dolphin": {
+  "model": "Dolphin",
+  "clip": "Swim",
+  "frames": 12,
+  "palette": {
+   "Top": "#3f8fe6",
+   "Bottom": "#eaf7ff"
+  },
+  "head": 1.15
+ },
+ "whale": {
+  "model": "Whale",
+  "clip": "Swim",
+  "frames": 12,
+  "elev": 58,
+  "palette": {
+   "Top": "#3a60b8",
+   "Bottom": "#f4dcae"
+  },
+  "head": 1.0,
+  "underwater": true
+ },
+ "manta": {
+  "model": "Manta_ray",
+  "clip": "Swim",
+  "frames": 12,
+  "elev": 62,
+  "palette": {
+   "Top": "#2f5ca8",
+   "Bottom": "#f2f7ff"
+  },
+  "head": 1.0,
+  "underwater": true
+ },
+ "clownfish": {
+  "model": "Clownfish",
+  "clip": "Swim",
+  "frames": 12,
+  "palette": {
+   "Clownfish_Main": "#ff7a1a",
+   "Clownfish_Light": "#ffffff",
+   "Clownfish_Dark": "#1e1e1e"
+  },
+  "yaw": 180,
+  "underwater": true
+ },
+ "buffalo": {
+  "model": "Bull",
+  "clip": "Walk",
+  "frames": 12,
+  "palette": {
+   "Main": "#4a3326",
+   "Main_Light": "#7a5a44",
+   "Horns": "#f4e8c4",
+   "Muzzle": "#2a1e18"
+  },
+  "idle": "Eating"
+ },
+ "horse": {
+  "model": "Horse",
+  "clip": "Walk",
+  "frames": 12,
+  "palette": {
+   "Main": "#c0703a",
+   "Main_Light": "#e0944e",
+   "Main_Dark": "#7c4422",
+   "Hair": "#2e221c"
+  },
+  "idle": "Eating"
+ },
+ "donkey": {
+  "model": "Donkey",
+  "clip": "Walk",
+  "frames": 12,
+  "palette": {
+   "Main": "#8f96a3",
+   "Main_Light": "#e2e7ef",
+   "Main_Dark": "#4a4f5a"
+  },
+  "idle": "Eating"
+ },
+ "astro_frog": {
+  "model": "Astronaut_FinnTheFrog-transformed",
+  "clip": "Wave",
+  "frames": 12,
+  "hide": [
+   "Cube.074"
+  ],
+  "head": 1.15
+ },
+ "astro_bee": {
+  "model": "Astronaut_BarbaraTheBee-transformed",
+  "clip": "Idle",
+  "frames": 12,
+  "hide": [
+   "Cube.074"
+  ],
+  "head": 1.15
+ },
+ "saucer": {
+  "model": "Pancake",
+  "clip": "",
+  "frames": 1,
+  "elev": 40
+ }
+}

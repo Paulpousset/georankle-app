@@ -8,6 +8,10 @@ import {
   difficultyBand,
   questionCountFor,
   starsForScore,
+  starsRequiredForTier,
+  gateForLevel,
+  tierOfLevel,
+  STORY_TIER_COUNT,
 } from '../story';
 import { NOTORIETY_COUNT, notorietyRank } from '../../lib/notoriety';
 import { pickBandCountries } from '../../lib/matchCountries';
@@ -15,7 +19,7 @@ import { BIOMES, biomeForTier } from '../biomes';
 import { STORY_COSMETIC_UNLOCKS, getPartById, ALL_PARTS } from '../cosmetics';
 
 describe('story catalogue', () => {
-  it('builds exactly 300 levels, each with a mode and a seed', () => {
+  it('builds exactly 500 levels, each with a mode and a seed', () => {
     const levels = buildStoryLevels();
     expect(levels).toHaveLength(STORY_LEVEL_COUNT);
     for (const l of levels) {
@@ -128,5 +132,35 @@ describe('story cosmetic rewards', () => {
     const exclusives = ALL_PARTS.filter((p) => p.exclusive);
     expect(exclusives.length).toBeGreaterThanOrEqual(9);
     for (const p of exclusives) expect(p.price).toBe(0);
+  });
+});
+
+describe('world star gates', () => {
+  it('asks 2.0 stars per earlier level at world 2, rising to 2.5 at the last world', () => {
+    expect(starsRequiredForTier(1)).toBe(0);
+    expect(starsRequiredForTier(2)).toBe(20);
+    expect(starsRequiredForTier(STORY_TIER_COUNT)).toBe(Math.ceil((STORY_TIER_COUNT - 1) * 10 * 2.5));
+    for (let t = 2; t <= STORY_TIER_COUNT; t++) {
+      const levels = (t - 1) * 10;
+      // integer formula == ceil(levels × (190 + t) / 96), always reachable (≤ 3★/level)
+      expect(starsRequiredForTier(t)).toBe(Math.ceil((levels * (190 + t)) / 96 - 1e-9));
+      expect(starsRequiredForTier(t)).toBeLessThan(levels * 3);
+      expect(starsRequiredForTier(t)).toBeGreaterThanOrEqual(starsRequiredForTier(t - 1));
+    }
+  });
+
+  it('only stands in front of a world\'s first level', () => {
+    expect(gateForLevel(1, {})).toBeNull();
+    expect(gateForLevel(10, {})).toBeNull();
+    expect(gateForLevel(12, {})).toBeNull();
+    expect(tierOfLevel(11)).toBe(2);
+    const stars: Record<number, number> = {};
+    for (let l = 1; l <= 10; l++) stars[l] = 2;
+    expect(gateForLevel(11, stars)).toEqual({ tier: 2, required: 20, have: 20, open: true });
+    stars[3] = 1;
+    expect(gateForLevel(11, stars)?.open).toBe(false);
+    // stars earned AFTER the gate don't count toward it
+    stars[11] = 3;
+    expect(gateForLevel(11, stars)?.have).toBe(19);
   });
 });

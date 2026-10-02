@@ -56,6 +56,9 @@ export type AnalyticsEvent =
   | 'story_level_started'
   | 'story_level_completed'
   | 'story_life_ad_claimed'
+  | 'story_life_bought'
+  | 'story_coins_ad_claimed'
+  | 'story_gate_blocked'
   // Quests & streak rewards
   | 'quest_claimed'
   | 'streak_bonus_awarded'

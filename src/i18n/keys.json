@@ -159,20 +159,33 @@
       "call"
     ],
     "files": [
-      "src/screens/StoryMap.tsx"
+      "src/components/StoryLivesSheet.tsx"
+    ]
+  },
+  {
+    "key": "+{0} coins",
+    "fr": "+{0} pièces",
+    "en": "+{0} coins",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/StoryLivesSheet.tsx"
     ]
   },
   {
     "key": "+{0} coins!",
     "fr": "+{0} pièces !",
     "en": "+{0} coins!",
-    "count": 2,
+    "count": 3,
     "kinds": [
       "call"
     ],
     "files": [
       "src/components/DailyQuests.tsx",
-      "src/components/RewardedAdButton.tsx"
+      "src/components/RewardedAdButton.tsx",
+      "src/components/StoryLivesSheet.tsx"
     ]
   },
   {
@@ -209,6 +222,18 @@
     ],
     "files": [
       "assets/game_data.json"
+    ]
+  },
+  {
+    "key": "1 life",
+    "fr": "1 vie",
+    "en": "1 life",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/StoryLivesSheet.tsx"
     ]
   },
   {
@@ -660,18 +685,6 @@
     ]
   },
   {
-    "key": "Ad not completed.",
-    "fr": "Pub non terminée.",
-    "en": "Ad not completed.",
-    "count": 1,
-    "kinds": [
-      "call"
-    ],
-    "files": [
-      "src/screens/StoryMap.tsx"
-    ]
-  },
-  {
     "key": "Ad skipped — no bonus.",
     "fr": "Pub interrompue — pas de bonus.",
     "en": "Ad skipped — no bonus.",
@@ -891,6 +904,30 @@
     ],
     "files": [
       "assets/game_data.json"
+    ]
+  },
+  {
+    "key": "All lives",
+    "fr": "Toutes les vies",
+    "en": "All lives",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/StoryLivesSheet.tsx"
+    ]
+  },
+  {
+    "key": "All your lives are back!",
+    "fr": "Toutes tes vies sont rechargées !",
+    "en": "All your lives are back!",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/StoryLivesSheet.tsx"
     ]
   },
   {
@@ -1495,6 +1532,18 @@
     ]
   },
   {
+    "key": "BEST DEAL",
+    "fr": "MEILLEURE OFFRE",
+    "en": "BEST DEAL",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/StoryLivesSheet.tsx"
+    ]
+  },
+  {
     "key": "BEST PICK",
     "fr": "MEILLEUR CHOIX",
     "en": "BEST PICK",
@@ -1631,6 +1680,18 @@
     ],
     "files": [
       "src/screens/GlobeLab.tsx"
+    ]
+  },
+  {
+    "key": "Balance: {0} coins",
+    "fr": "Solde : {0} pièces",
+    "en": "Balance: {0} coins",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/StoryLivesSheet.tsx"
     ]
   },
   {
@@ -1942,6 +2003,18 @@
     ],
     "files": [
       "src/screens/Shop.tsx"
+    ]
+  },
+  {
+    "key": "Buy one life for {0} coins",
+    "fr": "Acheter une vie pour {0} pièces",
+    "en": "Buy one life for {0} coins",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/StoryLivesSheet.tsx"
     ]
   },
   {
@@ -2730,7 +2803,7 @@
     "key": "Close",
     "fr": "Fermer",
     "en": "Close",
-    "count": 13,
+    "count": 14,
     "kinds": [
       "call"
     ],
@@ -2745,6 +2818,7 @@
       "src/components/LanguagePickerModal.tsx",
       "src/components/LeaderboardModal.tsx",
       "src/components/OnlineModeLeaderboardModal.tsx",
+      "src/components/StoryLivesSheet.tsx",
       "src/components/ThemeInfoModal.tsx",
       "src/screens/Shop.tsx",
       "src/screens/StoryMap.tsx"
@@ -3987,6 +4061,18 @@
     ]
   },
   {
+    "key": "Daily video limit reached.",
+    "fr": "Limite de vidéos atteinte pour aujourd’hui.",
+    "en": "Daily video limit reached.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/StoryLivesSheet.tsx"
+    ]
+  },
+  {
     "key": "Danish",
     "fr": "Danois",
     "en": "Danish",
@@ -4639,18 +4725,6 @@
     ],
     "files": [
       "src/data/modeIntros.ts"
-    ]
-  },
-  {
-    "key": "Earn a life",
-    "fr": "Gagner une vie",
-    "en": "Earn a life",
-    "count": 1,
-    "kinds": [
-      "call"
-    ],
-    "files": [
-      "src/screens/StoryMap.tsx"
     ]
   },
   {
@@ -6301,12 +6375,16 @@
     "key": "Got it",
     "fr": "J’ai compris",
     "en": "Got it",
-    "count": 1,
+    "count": 2,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/components/ModeIntroModal.tsx"
+      "src/components/ModeIntroModal.tsx",
+      "src/screens/StoryMap.tsx"
+    ],
+    "frVariants": [
+      "Compris"
     ]
   },
   {
@@ -7449,13 +7527,12 @@
     "key": "Later",
     "fr": "Plus tard",
     "en": "Later",
-    "count": 2,
+    "count": 1,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/screens/Shop.tsx",
-      "src/screens/StoryMap.tsx"
+      "src/screens/Shop.tsx"
     ]
   },
   {
@@ -7943,31 +8020,19 @@
       "call"
     ],
     "files": [
-      "src/screens/StoryMap.tsx"
+      "src/components/StoryLivesSheet.tsx"
     ]
   },
   {
-    "key": "Lives come back over time — or from the map, with an ad.",
-    "fr": "Les vies reviennent avec le temps — ou depuis la carte, avec une pub.",
-    "en": "Lives come back over time — or from the map, with an ad.",
+    "key": "Lives are full",
+    "fr": "Vies au maximum",
+    "en": "Lives are full",
     "count": 1,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/screens/StoryLevelEnd.tsx"
-    ]
-  },
-  {
-    "key": "Lives come back over time.",
-    "fr": "Les vies reviennent avec le temps.",
-    "en": "Lives come back over time.",
-    "count": 1,
-    "kinds": [
-      "call"
-    ],
-    "files": [
-      "src/screens/StoryMap.tsx"
+      "src/components/StoryLivesSheet.tsx"
     ]
   },
   {
@@ -8062,7 +8127,7 @@
     "key": "Login",
     "fr": "Se connecter",
     "en": "Login",
-    "count": 3,
+    "count": 2,
     "kinds": [
       "label",
       "call"
@@ -8991,6 +9056,18 @@
     ]
   },
   {
+    "key": "Next life in {0}",
+    "fr": "Prochaine vie dans {0}",
+    "en": "Next life in {0}",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/StoryLivesSheet.tsx"
+    ]
+  },
+  {
     "key": "Next piece · level {0} · {1}",
     "fr": "Prochaine pièce · niveau {0} · {1}",
     "en": "Next piece · level {0} · {1}",
@@ -9359,6 +9436,18 @@
     ]
   },
   {
+    "key": "Not enough coins.",
+    "fr": "Pas assez de pièces.",
+    "en": "Not enough coins.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/StoryLivesSheet.tsx"
+    ]
+  },
+  {
     "key": "Not enough documented countries in this area to start a round.",
     "fr": "Pas assez de pays documentés dans cette zone pour lancer une manche.",
     "en": "Not enough documented countries in this area to start a round.",
@@ -9381,6 +9470,18 @@
     "files": [
       "src/lib/share.ts",
       "src/screens/BordersGame.tsx"
+    ]
+  },
+  {
+    "key": "Not possible right now, try again.",
+    "fr": "Impossible pour le moment, réessaie.",
+    "en": "Not possible right now, try again.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/StoryLivesSheet.tsx"
     ]
   },
   {
@@ -9782,18 +9883,6 @@
     ]
   },
   {
-    "key": "Open the 300-level campaign",
-    "fr": "Ouvrir la campagne de 300 niveaux",
-    "en": "Open the 300-level campaign",
-    "count": 1,
-    "kinds": [
-      "call"
-    ],
-    "files": [
-      "src/screens/MainMenu.tsx"
-    ]
-  },
-  {
     "key": "Open the daily challenge",
     "fr": "Ouvrir le défi du jour",
     "en": "Open the daily challenge",
@@ -9827,6 +9916,18 @@
     ],
     "files": [
       "src/components/GlobePickerModal.tsx"
+    ]
+  },
+  {
+    "key": "Open the {0}-level campaign",
+    "fr": "Ouvrir la campagne de {0} niveaux",
+    "en": "Open the {0}-level campaign",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/MainMenu.tsx"
     ]
   },
   {
@@ -9981,16 +10082,15 @@
     ]
   },
   {
-    "key": "Out of lives",
-    "fr": "Plus de vies",
-    "en": "Out of lives",
-    "count": 2,
+    "key": "Out of lives: they come back over time, or refill them right now.",
+    "fr": "Plus de vies : elles reviennent avec le temps, ou recharge-les tout de suite.",
+    "en": "Out of lives: they come back over time, or refill them right now.",
+    "count": 1,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/screens/StoryLevelEnd.tsx",
-      "src/screens/StoryMap.tsx"
+      "src/screens/StoryLevelEnd.tsx"
     ]
   },
   {
@@ -10187,6 +10287,18 @@
     ],
     "files": [
       "src/data/cosmetics.ts"
+    ]
+  },
+  {
+    "key": "Pay with your coins",
+    "fr": "Payer avec tes pièces",
+    "en": "Pay with your coins",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/StoryLivesSheet.tsx"
     ]
   },
   {
@@ -11038,7 +11150,7 @@
     "key": "Profile",
     "fr": "Profil",
     "en": "Profile",
-    "count": 2,
+    "count": 1,
     "kinds": [
       "call"
     ],
@@ -11588,6 +11700,31 @@
     ],
     "files": [
       "src/components/ReferralCard.tsx"
+    ]
+  },
+  {
+    "key": "Refill my lives",
+    "fr": "Recharger mes vies",
+    "en": "Refill my lives",
+    "count": 2,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/StoryLevelEnd.tsx",
+      "src/screens/StoryMap.tsx"
+    ]
+  },
+  {
+    "key": "Refill your lives",
+    "fr": "Recharge tes vies",
+    "en": "Refill your lives",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/StoryLivesSheet.tsx"
     ]
   },
   {
@@ -13162,6 +13299,18 @@
     ]
   },
   {
+    "key": "Sign in to pay with coins",
+    "fr": "Connecte-toi pour payer en pièces",
+    "en": "Sign in to pay with coins",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/StoryLivesSheet.tsx"
+    ]
+  },
+  {
     "key": "Sign in to save your streak",
     "fr": "Connecte-toi pour sauvegarder ta série",
     "en": "Sign in to save your streak",
@@ -13171,6 +13320,18 @@
     ],
     "files": [
       "src/screens/DailyHub.tsx"
+    ]
+  },
+  {
+    "key": "Sign in to use your coins.",
+    "fr": "Connecte-toi pour utiliser tes pièces.",
+    "en": "Sign in to use your coins.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/StoryLivesSheet.tsx"
     ]
   },
   {
@@ -15272,6 +15433,18 @@
     ]
   },
   {
+    "key": "VIDEO",
+    "fr": "VIDÉO",
+    "en": "VIDEO",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/StoryLivesSheet.tsx"
+    ]
+  },
+  {
     "key": "Versus",
     "fr": "Versus",
     "en": "Versus",
@@ -15310,6 +15483,30 @@
     ],
     "files": [
       "src/components/MatchResult.tsx"
+    ]
+  },
+  {
+    "key": "Video not finished.",
+    "fr": "Vidéo non terminée.",
+    "en": "Video not finished.",
+    "count": 2,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/StoryLivesSheet.tsx"
+    ]
+  },
+  {
+    "key": "Videos unavailable right now.",
+    "fr": "Vidéos indisponibles pour le moment.",
+    "en": "Videos unavailable right now.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/StoryLivesSheet.tsx"
     ]
   },
   {
@@ -15478,9 +15675,9 @@
     ]
   },
   {
-    "key": "Wait for a life to come back, or watch an ad to get one now.",
-    "fr": "Attends qu’une vie revienne, ou regarde une pub pour en gagner une tout de suite.",
-    "en": "Wait for a life to come back, or watch an ad to get one now.",
+    "key": "WORLD {0} · {2}",
+    "fr": "MONDE {0} · {1}",
+    "en": "WORLD {0} · {2}",
     "count": 1,
     "kinds": [
       "call"
@@ -15579,16 +15776,63 @@
     ]
   },
   {
-    "key": "Watch an ad",
-    "fr": "Regarder une pub",
-    "en": "Watch an ad",
-    "count": 2,
+    "key": "Watch a short video",
+    "fr": "Regarde une courte vidéo",
+    "en": "Watch a short video",
+    "count": 1,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/components/RewardedAdButton.tsx",
-      "src/screens/StoryMap.tsx"
+      "src/components/StoryLivesSheet.tsx"
+    ]
+  },
+  {
+    "key": "Watch a video for {0} coins",
+    "fr": "Regarder une vidéo pour {0} pièces",
+    "en": "Watch a video for {0} coins",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/StoryLivesSheet.tsx"
+    ]
+  },
+  {
+    "key": "Watch a video to refill all lives",
+    "fr": "Regarder une vidéo pour recharger toutes les vies",
+    "en": "Watch a video to refill all lives",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/StoryLivesSheet.tsx"
+    ]
+  },
+  {
+    "key": "Watch a video, bank the coins",
+    "fr": "Regarde une vidéo, garde tes pièces",
+    "en": "Watch a video, bank the coins",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/StoryLivesSheet.tsx"
+    ]
+  },
+  {
+    "key": "Watch an ad",
+    "fr": "Regarder une pub",
+    "en": "Watch an ad",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/RewardedAdButton.tsx"
     ]
   },
   {
@@ -16049,6 +16293,18 @@
     ]
   },
   {
+    "key": "World {0} locked",
+    "fr": "Monde {0} verrouillé",
+    "en": "World {0} locked",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/StoryMap.tsx"
+    ]
+  },
+  {
     "key": "Written",
     "fr": "À l’écrit",
     "en": "Written",
@@ -16410,6 +16666,18 @@
     ]
   },
   {
+    "key": "You need {0} stars to enter this world — you have {1}. Replay earlier levels to earn more stars.",
+    "fr": "Il te faut {0} étoiles pour entrer dans ce monde — tu en as {1}. Rejoue les niveaux précédents pour décrocher plus d’étoiles.",
+    "en": "You need {0} stars to enter this world — you have {1}. Replay earlier levels to earn more stars.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/StoryMap.tsx"
+    ]
+  },
+  {
     "key": "You play exactly the same questions as your opponent.",
     "fr": "Vous jouez exactement les mêmes questions que l’adversaire.",
     "en": "You play exactly the same questions as your opponent.",
@@ -16552,6 +16820,18 @@
     ],
     "files": [
       "src/lib/notifications.ts"
+    ]
+  },
+  {
+    "key": "Your lives are already full.",
+    "fr": "Tes vies sont déjà au maximum.",
+    "en": "Your lives are already full.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/StoryLivesSheet.tsx"
     ]
   },
   {
@@ -17874,12 +18154,13 @@
     "key": "{0} stars",
     "fr": "{0} étoiles",
     "en": "{0} stars",
-    "count": 1,
+    "count": 2,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/screens/MainMenu.tsx",
+      "src/screens/StoryMap.tsx"
     ]
   },
   {

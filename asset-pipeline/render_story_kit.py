@@ -1,9 +1,26 @@
 # Story-map Blender kit — pro-cartoon pre-rendered biome bands + sprites.
-# Runs inside the already-open avatar_rig.blend via the blender-mcp socket.
+# Runs inside the already-open avatar_rig.blend via the blender-mcp socket, or
+# headless:  blender -b --python-expr "exec(open('render_story_kit.py').read()); render_band('prairie')"
+#
+# STYLE (29/09) — « Cartoon HD », the same look as the 3D wildlife walking on the
+# map (render_critters.py) and the player's globes: every toon material is the
+# rig's ToonHD (rigbuild/common.py: soft EASE bands, blue-tinted shadows, glossy
+# highlight, cyan rim), meshes are shaded smooth and blobs subdivided so shapes
+# read rounded, and a cool fill light opposes the warm sun. Set
+# STORY_STYLE=flat to get the previous banded-emission look back.
 # NEVER saves the .blend — everything lives in throwaway scenes
 # 'StoryBand' / 'StorySprites'; renders go to asset-pipeline/out/story/.
-import bpy, math, random, os
+import bpy, math, random, os, sys
 from math import radians, sin, pi
+
+_HERE = '/Users/paulpousset/rankle/georankle-app/asset-pipeline'
+if _HERE + '/rigbuild' not in sys.path:
+    sys.path.insert(0, _HERE + '/rigbuild')
+import common as C  # noqa: E402
+HD = os.environ.get('STORY_STYLE', 'hd') != 'flat'
+INK = '#241510'
+# Props must hold their own next to 60-100 px animals: chunkier in HD.
+PROP_K = 1.5 if HD else 1.0
 
 OUT = '/Users/paulpousset/rankle/georankle-app/asset-pipeline/out/story'
 os.makedirs(OUT, exist_ok=True)
@@ -74,13 +91,20 @@ def purge_kit_materials():
 
 def fresh_scene(name, res, ortho, transparent):
     purge_kit_materials()
-    if name in bpy.data.scenes:
+    if bpy.context.window is None:
+        # headless (blender -b): primitive ops add to the context scene, so
+        # reuse it instead of switching windows to a new one
+        scn = bpy.context.scene
+        for o in list(scn.objects):
+            bpy.data.objects.remove(o, do_unlink=True)
+    elif name in bpy.data.scenes:
         scn = bpy.data.scenes[name]
         for o in list(scn.collection.objects):
             bpy.data.objects.remove(o, do_unlink=True)
+        bpy.context.window.scene = scn
     else:
         scn = bpy.data.scenes.new(name)
-    bpy.context.window.scene = scn
+        bpy.context.window.scene = scn
     r = scn.render
     r.engine = 'BLENDER_EEVEE'
     r.resolution_x, r.resolution_y = res
@@ -115,6 +139,21 @@ def fresh_scene(name, res, ortho, transparent):
     # so camera-leaning props are lit and shadows fall down-screen
     sun.rotation_euler = (radians(-38), 0, radians(24))
     scn.collection.objects.link(sun)
+    if HD:
+        # cool fill from the opposite side (the rig's key/fill pairing), soft,
+        # shadowless: lifts the blue-tinted ToonHD shadows without flattening
+        fill_d = bpy.data.lights.new(name + '_fill', 'SUN')
+        fill_d.energy = 0.9
+        fill_d.color = C.hexc('#9ec7ff')[:3]
+        fill_d.use_shadow = False
+        fill = bpy.data.objects.new(name + '_fill', fill_d)
+        fill.rotation_euler = (radians(40), 0, radians(200))
+        scn.collection.objects.link(fill)
+        try:
+            scn.eevee.use_shadows = True
+            scn.eevee.shadow_ray_count = 2
+        except Exception:
+            pass
     return scn
 
 # ── materials ─────────────────────────────────────────────────────────────────
@@ -133,11 +172,13 @@ def _bands_group(nt, out_sock, levels):
     nt.links.new(s2.outputs[0], rmp.inputs[0])
     nt.links.new(rmp.outputs['Color'], out_sock)
 
-def toon(name, base, patch=None, noise=6.0, emit=0.0, rim=0.0, levels=(0.68, 0.92, 1.08)):
+def toon(name, base, patch=None, noise=6.0, emit=0.0, rim=0.0, levels=(0.68, 0.92, 1.08), spec=None, hd=True):
     """Banded toon material; optional 2-tone noise patches + light rim."""
     name = 'SK_' + name
     if name in bpy.data.materials:
         return bpy.data.materials[name]
+    if HD and hd:
+        return _toon_hd(name, base, patch, noise, emit, spec)
     m = bpy.data.materials.new(name); m.use_nodes = True
     nt = m.node_tree
     for n in list(nt.nodes):
@@ -174,6 +215,24 @@ def toon(name, base, patch=None, noise=6.0, emit=0.0, rim=0.0, levels=(0.68, 0.9
     nt.links.new(em.outputs[0], outn.inputs['Surface'])
     return m
 
+def _toon_hd(name, base, patch, noise, emit, spec):
+    """ToonHD (the wildlife / globe shader) with the kit's 2-tone noise patches."""
+    def sock(nt):
+        if not patch:
+            n = nt.nodes.new('ShaderNodeRGB')
+            n.outputs[0].default_value = lin(base)
+            return n.outputs[0]
+        tex = nt.nodes.new('ShaderNodeTexNoise'); tex.inputs['Scale'].default_value = noise
+        prm = nt.nodes.new('ShaderNodeValToRGB')
+        pc = prm.color_ramp; pc.interpolation = 'EASE'
+        pc.elements[0].position = 0.46; pc.elements[0].color = lin(base)
+        pc.elements[1].position = 0.56; pc.elements[1].color = lin(patch)
+        nt.links.new(tex.outputs['Fac'], prm.inputs[0])
+        return prm.outputs['Color']
+    # Dosed down vs the globes: a whole landscape at full gloss/rim reads glassy.
+    return C.toon_hd(name, color_socket=sock, emissive=emit * 0.6, cache=False,
+                     spec_k=0.16 if spec is None else spec, rim_k=0.22)
+
 def glow(name, base, strength):
     name = 'SK_' + name
     if name in bpy.data.materials:
@@ -196,6 +255,17 @@ def outline_mat(col):
 def finish(obj, mat, out_col=None, out_w=0.07, bevel=0.05):
     obj.data.materials.clear()
     obj.data.materials.append(mat)
+    if HD and obj.type == 'MESH':
+        # rounded read: smooth shading, crisp only on real edges (cone tips…)
+        for poly in ([] if obj.get('keep_flat') else obj.data.polygons):
+            poly.use_smooth = True
+        try:
+            obj.data.set_sharp_from_angle(angle=radians(48))
+        except Exception:
+            pass
+        out_w *= 1.35
+        if out_col:
+            out_col = mixhex(out_col, INK, 0.55)  # the wildlife's warm ink
     if bevel:
         b = obj.modifiers.new('Bev', 'BEVEL'); b.width = bevel; b.segments = 2
     if out_col:
@@ -209,12 +279,21 @@ def _last():
     return bpy.context.active_object
 
 def sphere(loc, r, seg=16):
+    if HD:
+        seg = max(seg, 24)
     bpy.ops.mesh.primitive_uv_sphere_add(radius=r, segments=seg, ring_count=max(6, seg // 2), location=loc)
     return _last()
 
-def ico(loc, r, sub=1):
+def ico(loc, r, sub=1, round_=True):
     bpy.ops.mesh.primitive_ico_sphere_add(radius=r, subdivisions=sub, location=loc)
-    return _last()
+    o = _last()
+    if not round_:
+        o['keep_flat'] = True
+    if HD and round_:
+        # faceted blobs → soft cartoon volumes (foliage, rocks, bergs)
+        m = o.modifiers.new('Round', 'SUBSURF')
+        m.levels = m.render_levels = 2
+    return o
 
 def cone(loc, r1, r2, depth, vs=12):
     bpy.ops.mesh.primitive_cone_add(radius1=r1, radius2=r2, depth=depth, vertices=vs, location=loc)
@@ -467,7 +546,7 @@ def ground(b, rng, soft=False):
                  + (rng.random() - 0.5) * 0.05
     lv = (0.82, 0.97, 1.05) if soft else (0.74, 0.95, 1.07)
     mat = toon('m_bank_%s%s' % (b['key'], '_s' if soft else ''), b['bank'][0],
-               shade(b['bank'][0], 0.10), noise=0.4, levels=lv)
+               shade(b['bank'][0], 0.10), noise=0.4, levels=lv, hd=False)
     finish(g, mat, None, bevel=0)
     return g
 
@@ -513,7 +592,7 @@ def bank_lobes(b, rng):
     scalloped shoreline. Flat outlined blobs in the ground colour, sitting
     ABOVE the ribbons at the edge/halo boundary."""
     mat = toon('m_lobe_' + b['key'], b['bank'][0], shade(b['bank'][0], 0.10), noise=0.4,
-               levels=(0.82, 0.97, 1.06))
+               levels=(0.82, 0.97, 1.06), hd=False)
     out_col = mixhex(b['bank'][1], '#000000', 0.25)
     r = -0.75
     while r < 9.75:
@@ -545,11 +624,11 @@ def build_river(b, rng, lava=False, cosmic=False):
         sparkles(b, rng, '#e8ecff')
     else:
         halo = mixhex(r0, '#ffffff', 0.62)
-        river_curve('edge', 46, 0.45, toon('m_redge_' + b['key'], bank_dark, levels=(0.9, 1.0, 1.02)))
-        river_curve('halo', 38, 0.57, toon('m_halo_' + b['key'], halo, levels=(0.9, 1.0, 1.05)))
-        river_curve('body', 27, 0.69, toon('m_water_' + b['key'], r1, emit=0.3, levels=(0.85, 1.0, 1.08)))
+        river_curve('edge', 46, 0.45, toon('m_redge_' + b['key'], bank_dark, levels=(0.9, 1.0, 1.02), hd=False))
+        river_curve('halo', 38, 0.57, toon('m_halo_' + b['key'], halo, levels=(0.9, 1.0, 1.05), hd=False))
+        river_curve('body', 27, 0.69, toon('m_water_' + b['key'], r1, emit=0.3, levels=(0.85, 1.0, 1.08), hd=False))
         river_curve('core', 10, 0.81, toon('m_wcore_' + b['key'], mixhex(r0, '#ffffff', 0.28),
-                                           emit=0.55, levels=(0.9, 1.0, 1.06)))
+                                           emit=0.55, levels=(0.9, 1.0, 1.06), hd=False))
         sparkles(b, rng)
 
 def feature(b, rng):
@@ -596,7 +675,7 @@ def feature(b, rng):
             rig_prop([m], spot(k), s=1.2 + rng.random() * 0.5)
     elif f == 'iceberg':
         for k in range(4):
-            i1 = ico((0, 0, 1.4), 2.4 + rng.random() * 0.8, 1)
+            i1 = ico((0, 0, 1.4), 2.4 + rng.random() * 0.8, 1, round_=False)  # ice keeps its facets
             i1.scale = (1.25, 0.9, 1.25)
             i1.rotation_euler.z = rng.random() * 3
             finish(i1, toon('m_berg', '#e8f4fd', '#cfe4f2', noise=2.2), '#8fb3cc')
@@ -649,20 +728,20 @@ def feature(b, rng):
 def scatter(b, rng):
     placed = []
     kinds = b['decor']
-    for _ in range(60):
+    for _ in range(140 if HD else 60):
         r = 0.45 + rng.random() * 9.0      # keep tall standing props inside the band
         y_px = (r + 0.5) * ROW_PX
         side = 1 if rng.random() < 0.5 else -1
         x_px = river_px(r) + side * (82 + rng.random() * (W_PX / 2 - 100))
         if x_px < 26 or x_px > W_PX - 26:
             continue
-        if any((x_px - px) ** 2 + (y_px - py) ** 2 < 70 ** 2 for px, py in placed):
+        if any((x_px - px) ** 2 + (y_px - py) ** 2 < (70 * (1.12 if HD else 1)) ** 2 for px, py in placed):
             continue
         placed.append((x_px, y_px))
         kind = kinds[rng.randrange(len(kinds))]
         parts = PROPS[kind]()
         big = kind in ('tree', 'pine', 'pine_snow', 'palm', 'cactus', 'acacia', 'islet')
-        s = (2.0 + rng.random() * 1.0) if big else (1.5 + rng.random() * 0.8)
+        s = ((2.0 + rng.random() * 1.0) if big else (1.5 + rng.random() * 0.8)) * PROP_K
         tilt = TILT_FLAT if kind in FLAT_KINDS else TILT
         # lower-on-screen props sit a hair higher so they overlap those behind them
         rig_prop(parts, u(x_px, y_px, 0.05 + (y_px / BAND_PX) * 0.5), s=s,
@@ -671,7 +750,7 @@ def scatter(b, rng):
     small = [k for k in kinds if k in ('flower', 'grass', 'grass_dry', 'rock', 'rock_dark',
                                       'rock_snow', 'snow', 'ember', 'star', 'wave', 'fern', 'crystal_b',
                                       'crystal_o', 'crystal_p')] or kinds[-2:]
-    for _ in range(26):
+    for _ in range(60 if HD else 26):
         r = 0.15 + rng.random() * 9.55
         y_px = (r + 0.5) * ROW_PX
         side = 1 if rng.random() < 0.5 else -1
@@ -684,9 +763,41 @@ def scatter(b, rng):
         kind = small[rng.randrange(len(small))]
         parts = PROPS[kind]()
         tilt = TILT_FLAT if kind in FLAT_KINDS else TILT
-        rig_prop(parts, u(x_px, y_px, 0.05 + (y_px / BAND_PX) * 0.5), s=1.4 + rng.random() * 0.7,
+        rig_prop(parts, u(x_px, y_px, 0.05 + (y_px / BAND_PX) * 0.5), s=(1.4 + rng.random() * 0.7) * (1.25 if HD else 1),
                  tilt=tilt, rz=(rng.random() - 0.5) * 0.4)
     return len(placed)
+
+def dump_obstacles(path):
+    """Top-down footprint (px, band-local, y down) of every prop / feature, so
+    the app's wildlife can walk AROUND the scenery instead of over it."""
+    import json
+    from mathutils import Vector
+    bpy.context.view_layer.update()
+    out = []
+    # props (rigged) + the big island discs, which are placed as bare meshes
+    groups = [list(e.children_recursive) for e in bpy.context.scene.objects
+              if e.type == 'EMPTY' and e.name.startswith('prop') and e.children]
+    groups += [[o] for o in bpy.context.scene.objects
+               if o.type == 'MESH' and o.parent is None and o.data.materials
+               and o.data.materials[0] and 'isl_' in o.data.materials[0].name]
+    for group in groups:
+        xs, ys = [], []
+        for ch in group:
+            if ch.type != 'MESH':
+                continue
+            for c in ch.bound_box:
+                w = ch.matrix_world @ Vector(c)
+                xs.append(w.x * PXU + CENTER)
+                ys.append(BAND_PX / 2 - w.y * PXU)
+        if not xs:
+            continue
+        x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
+        if max(x1 - x0, y1 - y0) < 14:
+            continue  # tufts, pebbles, flowers: fine to walk past
+        out.append([round(x0), round(y0), round(x1), round(y1)])
+    with open(path, 'w') as fh:
+        json.dump(out, fh)
+    print('obstacles', len(out))
 
 def render_to(path):
     scn = bpy.context.scene
@@ -825,6 +936,7 @@ def render_band(key, style='A', suffix=''):
     build_river(b, rng, lava=(key == 'volcan'), cosmic=(key == 'cosmos'))
     feature(b, rng)
     n = scatter(b, rng)
+    dump_obstacles('%s/props_%s%s.json' % (OUT, key, suffix))
     render_to('%s/band_%s%s.png' % (OUT, key, suffix))
     return n
 

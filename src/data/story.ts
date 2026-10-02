@@ -1,5 +1,5 @@
 /**
- * Story mode — a single 300-level campaign, identical for every player.
+ * Story mode — a single 500-level campaign, identical for every player.
  *
  * Everything is DERIVED from the level number (no 300 hand-authored objects), so
  * the catalogue is deterministic and the same for everyone:
@@ -7,8 +7,9 @@
  *  - `modeForLevel(level)` — one game mode per level, drawn from a pool that
  *    *expands* as you climb (harder modes unlock later).
  *  - `difficultyBand(level)` — a notoriety window that slides from famous
- *    (level 1) to obscure (level 300) for the country-answer modes.
+ *    (level 1) to obscure (level 300, then flat) for the country-answer modes.
  *  - `questionCountFor` / star thresholds — the rest of the difficulty ramp.
+ *  - `starsRequiredForTier` — the star gate between two worlds (tiers).
  *
  * Mode → screen rendering lives in StoryGameHost; scoring is the shared 0..1000
  * `normalizeRoundScore`, so a level's result maps straight onto star thresholds.
@@ -17,7 +18,18 @@ import { createSeededRng } from '../lib/rng';
 import { NOTORIETY_COUNT } from '../lib/notoriety';
 import type { GameMode, MatchMode } from '../types';
 
-export const STORY_LEVEL_COUNT = 300;
+export const STORY_LEVEL_COUNT = 500;
+
+/**
+ * Levels over which the notoriety ramp climbs. It stayed at 300 when the
+ * campaign grew to 500 so the levels already played keep their difficulty;
+ * levels 301+ play at the most obscure band.
+ */
+const DIFFICULTY_RAMP_LEVELS = 300;
+
+/** Levels per world (tier / biome band on the map). */
+export const LEVELS_PER_TIER = 10;
+export const STORY_TIER_COUNT = Math.ceil(STORY_LEVEL_COUNT / LEVELS_PER_TIER);
 
 /** Star cutoffs on the normalized 0..1000 score. ≥1 star unlocks the next level. */
 export const STAR_THRESHOLDS = [400, 650, 850] as const;
@@ -139,12 +151,12 @@ function matchModeOf(mode: GameMode): MatchMode {
 
 /**
  * Notoriety window for a level. The window's centre slides from famous (~rank 12)
- * at level 1 to obscure (~rank 185) at level 300, with a wide half-width so there
- * are always plenty of candidate countries to pick from.
+ * at level 1 to obscure (~rank 185) at level 300 and stays there, with a wide
+ * half-width so there are always plenty of candidate countries to pick from.
  */
 export function difficultyBand(level: number): StoryBand {
   const N = NOTORIETY_COUNT;
-  const t = (Math.min(Math.max(level, 1), STORY_LEVEL_COUNT) - 1) / (STORY_LEVEL_COUNT - 1);
+  const t = (Math.min(Math.max(level, 1), DIFFICULTY_RAMP_LEVELS) - 1) / (DIFFICULTY_RAMP_LEVELS - 1);
   const center = 12 + t * (N - 10 - 12);
   const half = 45;
   const minRank = Math.max(1, Math.round(center - half));
@@ -176,11 +188,60 @@ export function getStoryLevel(level: number): StoryLevel {
     questionCount: questionCountFor(level, mode),
     band: BAND_MODES.has(mode) ? difficultyBand(level) : null,
     seed: storySeedFor(level),
-    tier: Math.floor((level - 1) / 10) + 1,
+    tier: tierOfLevel(level),
   };
 }
 
-/** The full 300-level catalogue (memoized). */
+// ── World gates ────────────────────────────────────────────────────────────────
+
+/** 1-based world (tier) of a level. */
+export function tierOfLevel(level: number): number {
+  return Math.floor((level - 1) / LEVELS_PER_TIER) + 1;
+}
+
+/** First level of a world. */
+export function firstLevelOfTier(tier: number): number {
+  return (tier - 1) * LEVELS_PER_TIER + 1;
+}
+
+/**
+ * Stars needed (over every earlier level) to ENTER a world. World 1 is free;
+ * after that the bar is an average of 2.0 stars per level played so far, rising
+ * to 2.5 by the last world — so you can't rush through on one-star clears.
+ *
+ * Integer-only on purpose: complete_story_level (story_gates.sql) computes the
+ * exact same number to refuse a completion past a closed gate —
+ * ceil(levels × (190 + tier) / 96).
+ */
+export function starsRequiredForTier(tier: number): number {
+  if (tier <= 1) return 0;
+  const levelsBefore = (tier - 1) * LEVELS_PER_TIER;
+  return Math.floor((levelsBefore * (190 + tier) + 95) / 96);
+}
+
+/** Stars earned on the levels BEFORE a given one (what its gate compares). */
+export function starsBeforeLevel(stars: Record<number, number>, level: number): number {
+  let total = 0;
+  for (const [k, v] of Object.entries(stars)) if (Number(k) < level) total += v;
+  return total;
+}
+
+/**
+ * The gate standing in front of a level, or null when it isn't a world's first
+ * level (or is the free first world). `open` compares the stars earned before it.
+ */
+export function gateForLevel(
+  level: number,
+  stars: Record<number, number>,
+): { tier: number; required: number; have: number; open: boolean } | null {
+  if (level <= 1 || (level - 1) % LEVELS_PER_TIER !== 0) return null;
+  const tier = tierOfLevel(level);
+  const required = starsRequiredForTier(tier);
+  const have = starsBeforeLevel(stars, level);
+  return { tier, required, have, open: have >= required };
+}
+
+/** The full catalogue (memoized). */
 let cached: StoryLevel[] | null = null;
 export function buildStoryLevels(): StoryLevel[] {
   if (cached) return cached;

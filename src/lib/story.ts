@@ -18,9 +18,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
 import { enqueue } from './syncQueue';
 import { log } from './log';
+import { gateForLevel } from '../data/story';
 
 export const MAX_LIVES = 5;
 export const REGEN_MS = 20 * 60 * 1000; // one life every 20 minutes
+/** Coins for one life from the « + » sheet. Must mirror buy_story_life (story_gates.sql). */
+export const STORY_LIFE_PRICE = 15;
 const RPC_TIMEOUT_MS = 8000;
 
 const PROGRESS_KEY = 'story:progress';
@@ -297,12 +300,12 @@ export async function consumeLife(user: User | null): Promise<{ ok: boolean; liv
   return { ok: true, lives: lives.lives };
 }
 
-/** Grant +1 life after a watched rewarded ad (server-capped). Returns new count. */
+/** Refill every life after a watched rewarded ad (server-capped). Returns new count. */
 export async function claimLifeFromAd(user: User | null): Promise<{ granted: boolean; lives: number }> {
   let lives = settleLives(await readLives());
   if (!user) {
-    // Logged-out fallback: local grant (no ad cap enforceable offline).
-    if (lives.lives < MAX_LIVES) lives = { ...lives, lives: lives.lives + 1 };
+    // Logged-out fallback: local refill (no ad cap enforceable offline).
+    lives = { ...lives, lives: MAX_LIVES, updatedAt: Date.now() };
     await writeLives(lives);
     return { granted: true, lives: lives.lives };
   }
@@ -322,6 +325,51 @@ export async function claimLifeFromAd(user: User | null): Promise<{ granted: boo
   return { granted: false, lives: lives.lives };
 }
 
+/** Current coin balance, or null when signed out / unreachable. */
+export async function getCoinBalance(user: User | null): Promise<number | null> {
+  if (!user) return null;
+  try {
+    const res = await withTimeout(
+      supabase.from('coin_wallets').select('balance').eq('user_id', user.id).maybeSingle(),
+    );
+    if (res === TIMEOUT || (res as any).error) return null;
+    return ((res as any).data?.balance as number | undefined) ?? 0;
+  } catch {
+    return null;
+  }
+}
+
+export type BuyLifeResult =
+  | { granted: true; lives: number; balance: number }
+  | { granted: false; reason: 'full' | 'funds' | 'signed_out' | 'error'; lives: number; balance?: number };
+
+/** Spend STORY_LIFE_PRICE coins for one life (server-authoritative, account required). */
+export async function buyLifeWithCoins(user: User | null): Promise<BuyLifeResult> {
+  let lives = settleLives(await readLives());
+  if (!user) return { granted: false, reason: 'signed_out', lives: lives.lives };
+  try {
+    const res = await withTimeout(supabase.rpc('buy_story_life'));
+    if (res !== TIMEOUT && !(res as any).error) {
+      const d = (res as any).data as { granted?: boolean; lives?: number; balance?: number; reason?: string } | null;
+      if (d && typeof d.lives === 'number') {
+        // Keep the local regen anchor: buying doesn't restart the running interval.
+        lives = { ...lives, lives: d.lives, updatedAt: d.lives >= MAX_LIVES ? Date.now() : lives.updatedAt };
+        await writeLives(lives);
+        if (d.granted) return { granted: true, lives: d.lives, balance: d.balance ?? 0 };
+        return {
+          granted: false,
+          reason: d.reason === 'full' ? 'full' : 'funds',
+          lives: d.lives,
+          balance: d.balance,
+        };
+      }
+    }
+  } catch (e) {
+    log.warn('story: buy life RPC failed', e);
+  }
+  return { granted: false, reason: 'error', lives: lives.lives };
+}
+
 /**
  * Record a level completion (keeping the best stars/score). Always updates the
  * local cache; when signed in, calls the server RPC and queues it on failure.
@@ -333,6 +381,8 @@ export interface RecordLevelResult {
   synced: boolean;
   /** Cosmetic id just unlocked (caller resolves the localized name). */
   unlockedItemId?: string;
+  /** The server refused: the world's star gate isn't open yet. */
+  gateClosed?: boolean;
 }
 
 export async function recordLevel(
@@ -342,6 +392,14 @@ export async function recordLevel(
   stars: number,
 ): Promise<RecordLevelResult> {
   const progress = await readProgress();
+  // A world's first level behind a closed star gate never counts — the map
+  // refuses to launch it, this only guards stale local state.
+  if (level > progress.maxLevel) {
+    const stars: Record<number, number> = {};
+    for (const [k, v] of Object.entries(progress.levels)) stars[Number(k)] = v.stars;
+    const gate = gateForLevel(level, stars);
+    if (gate && !gate.open) return { firstClear: false, coins: 0, synced: true, gateClosed: true };
+  }
   const key = String(level);
   const existing = progress.levels[key];
   const firstClearLocal = (existing?.stars ?? 0) === 0 && stars >= 1;
@@ -367,6 +425,7 @@ export async function recordLevel(
       coins?: number;
       max_level?: number;
       unlocked?: string | null;
+      gate_closed?: boolean;
     } | null;
     if (d?.max_level != null) {
       progress.maxLevel = Math.max(progress.maxLevel, d.max_level);
@@ -377,6 +436,7 @@ export async function recordLevel(
       coins: d?.coins ?? 0,
       synced: true,
       unlockedItemId: d?.unlocked ?? undefined,
+      gateClosed: !!d?.gate_closed,
     };
   } catch {
     await enqueue({ type: 'story-level', level, score, stars });

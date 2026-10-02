@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Circle, Defs, Ellipse, G, LinearGradient, Path, Polygon, Rect, Stop } from 'react-native-svg';
 import {
-  ArrowLeft, Flag, Gift, Globe, Heart, Info, LayoutGrid, List, Lock, Map as MapIcon,
+  ArrowLeft, Check, Flag, Gift, Globe, Heart, Info, LayoutGrid, List, Lock, Map as MapIcon,
   Plus, MapPin, Puzzle, Route, Star, TrendingUp, X, Zap, type LucideIcon,
 } from 'lucide-react-native';
 import type { User } from '@supabase/supabase-js';
@@ -41,22 +41,23 @@ import { AvatarPreview3D } from '../components/AvatarPreview3D';
 import { Avatar } from '../components/Avatar';
 import type { AvatarConfig, Language } from '../types';
 
-import { STORY_LEVEL_COUNT, buildStoryLevels, type StoryLevel } from '../data/story';
+import { STORY_LEVEL_COUNT, buildStoryLevels, gateForLevel, type StoryLevel } from '../data/story';
 import { biomeForTier, type Biome, type BiomeDecor } from '../data/biomes';
-import { BAND_ART_H, STORY_BAND_ART, STORY_COIN_ART, STORY_COIN_LOCKED } from '../data/storyArt';
+import { BAND_ART_H, BAND_ART_W, STORY_BAND_ART, STORY_COIN_ART, STORY_COIN_LOCKED } from '../data/storyArt';
 import { useFeatureFlag } from '../lib/featureFlags';
 import {
   getStorySnapshot,
   consumeLife,
-  claimLifeFromAd,
   recordLevel,
   getFriendsPositions,
   MAX_LIVES,
   type StorySnapshot,
   type FriendPosition,
 } from '../lib/story';
-import { rewardedAdsAvailable, watchRewardedAd } from '../lib/monetization';
+import { rewardedAdsAvailable } from '../lib/monetization';
 import StoryGameHost from './StoryGameHost';
+import { StoryLivesSheet } from '../components/StoryLivesSheet';
+import { StoryCritters } from '../components/StoryCritters';
 import { useStageWidth } from '../lib/stage';
 
 // ── Layout constants for the winding river-path ────────────────────────────────
@@ -127,6 +128,7 @@ const REWARD_AT = new Map(STORY_COSMETIC_UNLOCKS.map((u) => [u.level, u.itemId])
 const LEVELS = buildStoryLevels();
 
 const EMPTY_FRIENDS: FriendPosition[] = [];
+const EMPTY_STARS: Record<number, number> = {};
 
 interface StoryMapProps {
   user: User | null;
@@ -203,6 +205,7 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
   const [regenAt, setRegenAt] = useState(0);
   const [view, setView] = useState<'map' | 'table'>('map');
   const [bandRange, setBandRange] = useState({ start: 0, end: 1 });
+  const [livesSheet, setLivesSheet] = useState(false);
 
   const scrollRef = useRef<ScrollView>(null);
   const didAutoScroll = useRef(false);
@@ -332,6 +335,7 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
               height={bandBottom(tier) - bandTop(tier)}
               width={width}
               riverX={riverX}
+              art={{ left: (width - bandW) / 2, k: bandW / BAND_ART_W, top: imageTop - bandTop(tier) }}
             />
           </View>,
         );
@@ -433,42 +437,32 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
   }, [tryAutoScroll]);
 
   // ── Actions ────────────────────────────────────────────────────────────────────
-  const watchAdForLife = useCallback(async () => {
-    if (!adAvailable) {
-      toast.info(tr(language, 'Les vies reviennent avec le temps.', 'Lives come back over time.'));
-      return;
-    }
-    const res = await watchRewardedAd();
-    if (!res.earned) {
-      toast.error(tr(language, 'Pub non terminée.', 'Ad not completed.'));
-      return;
-    }
-    const claim = await claimLifeFromAd(user);
-    if (claim.granted) {
-      toast.success(tr(language, '+1 vie !', '+1 life!'));
-      track('story_life_ad_claimed');
-    } else {
-      toast.info(tr(language, 'Vies déjà au maximum ou limite du jour atteinte.', 'Lives already full or daily limit reached.'));
-    }
-    await reload();
-  }, [adAvailable, user, language, toast, reload]);
+  /** The « + » sheet: coins → 1 life, video → every life, video → coins. */
+  const openLivesSheet = useCallback(() => setLivesSheet(true), []);
 
-  const offerAd = useCallback(() => {
-    showAlert(
-      tr(language, 'Plus de vies', 'Out of lives'),
-      tr(
-        language,
-        'Attends qu’une vie revienne, ou regarde une pub pour en gagner une tout de suite.',
-        'Wait for a life to come back, or watch an ad to get one now.',
-      ),
-      [
-        { text: tr(language, 'Plus tard', 'Later'), style: 'cancel' },
-        ...(adAvailable
-          ? [{ text: tr(language, 'Regarder une pub', 'Watch an ad'), onPress: () => void watchAdForLife() }]
-          : []),
-      ],
-    );
-  }, [adAvailable, language, watchAdForLife]);
+  /** Tell the player what a closed world gate asks for. */
+  const explainGate = useCallback(
+    (gate: { tier: number; required: number; have: number }) => {
+      track('story_gate_blocked', { tier: gate.tier, required: gate.required, have: gate.have });
+      showAlert(
+        tr(language, 'Monde {0} verrouillé', 'World {0} locked', [gate.tier]),
+        tr(
+          language,
+          'Il te faut {0} étoiles pour entrer dans ce monde — tu en as {1}. Rejoue les niveaux précédents pour décrocher plus d’étoiles.',
+          'You need {0} stars to enter this world — you have {1}. Replay earlier levels to earn more stars.',
+          [gate.required, gate.have],
+        ),
+        [{ text: tr(language, 'Compris', 'Got it'), style: 'cancel' }],
+      );
+    },
+    [language],
+  );
+
+  /** Leave the in-level screen; the map remounts and re-centres on the player. */
+  const closeLevel = useCallback(() => {
+    didAutoScroll.current = false;
+    setActive(null);
+  }, []);
 
   /** Chaque lancement remonte l'hôte à neuf (rejouer le même niveau compris). */
   const [runId, setRunId] = useState(0);
@@ -482,13 +476,24 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
     async (level: number) => {
       const snap = snapshotRef.current;
       if (!snap) return;
+      // A world's first level stays shut until enough stars were earned before it.
+      if (level > snap.maxLevel) {
+        const gate = gateForLevel(level, snap.stars);
+        if (gate && !gate.open) {
+          if (active) closeLevel();
+          explainGate(gate);
+          return;
+        }
+      }
       if (snap.lives <= 0) {
-        offerAd();
+        if (active) closeLevel();
+        openLivesSheet();
         return;
       }
       const spent = await consumeLife(user);
       if (!spent.ok) {
-        offerAd();
+        if (active) closeLevel();
+        openLivesSheet();
         return;
       }
       setSnapshot((s) => (s ? { ...s, lives: spent.lives } : s));
@@ -497,26 +502,25 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
       setRunId((r) => r + 1);
       setActive(LEVELS[level - 1]);
     },
-    [user, offerAd],
+    [user, active, closeLevel, explainGate, openLivesSheet],
   );
 
   const onTapLevel = useCallback(
     async (level: number) => {
       if (!snapshot) return;
+      const gate = gateForLevel(level, snapshot.stars);
+      if (gate && !gate.open && level > snapshot.maxLevel) {
+        explainGate(gate);
+        return;
+      }
       if (level > currentLevel) {
         toast.info(tr(language, 'Termine les niveaux précédents d’abord.', 'Finish the earlier levels first.'));
         return;
       }
       await launch(level);
     },
-    [snapshot, currentLevel, language, toast, launch],
+    [snapshot, currentLevel, language, toast, launch, explainGate],
   );
-
-  /** Leave the in-level screen; the map remounts and re-centres on the player. */
-  const closeLevel = useCallback(() => {
-    didAutoScroll.current = false;
-    setActive(null);
-  }, []);
 
   /**
    * Le niveau est fini : on l'enregistre SANS quitter l'écran — c'est le
@@ -576,6 +580,9 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
   }
 
   const lives = snapshot?.lives ?? 0;
+  const starMap = snapshot?.stars ?? EMPTY_STARS;
+  let totalStars = 0;
+  for (const v of Object.values(starMap)) totalStars += v;
 
   // ── Visible slice of the map ───────────────────────────────────────────────────
   const firstLevel = bandRange.start * PER_TIER + 1;
@@ -585,6 +592,9 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
     const { x, y } = nodePos(level);
     const meta = LEVELS[level - 1];
     const isCurrent = level === currentLevel;
+    const gate = gateForLevel(level, starMap);
+    // Only a gate still ahead of the player can be shut (earlier worlds stay open).
+    const gateClosed = !!gate && !gate.open && level > (snapshot?.maxLevel ?? 0);
     nodes.push(
       <LevelNode
         key={level}
@@ -595,12 +605,14 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
         biome={biomeForTier(meta.tier)}
         coinArt={
           art3d
-            ? level > currentLevel
+            ? level > currentLevel || gateClosed
               ? STORY_COIN_LOCKED
               : STORY_COIN_ART[biomeForTier(meta.tier).key]
             : undefined
         }
-        locked={level > currentLevel}
+        locked={level > currentLevel || gateClosed}
+        gate={gate}
+        gateClosed={gateClosed}
         isCurrent={isCurrent}
         stars={snapshot?.stars[level] ?? 0}
         rewardItem={REWARD_AT.get(level)}
@@ -650,12 +662,12 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
             <RegenCountdown key={regenAt} targetTs={regenAt} color={c.textMuted} onExpired={reload} />
           ) : null}
           <TouchableOpacity
-            onPress={watchAdForLife}
+            onPress={openLivesSheet}
             hitSlop={ICON_HIT_SLOP}
-            style={{ marginLeft: 6 }}
-            {...a11yButton(tr(language, 'Gagner une vie', 'Earn a life'))}
+            style={{ marginLeft: 6, width: 26, height: 26, borderRadius: 13, backgroundColor: '#e8772e', alignItems: 'center', justifyContent: 'center' }}
+            {...a11yButton(tr(language, 'Recharger mes vies', 'Refill my lives'))}
           >
-            <Plus color={c.accent} size={18} />
+            <Plus color="#fff" size={17} strokeWidth={3} />
           </TouchableOpacity>
         </View>
       </View>
@@ -692,6 +704,16 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
             </TouchableOpacity>
           );
         })}
+        <View style={{ flex: 1 }} />
+        {/* Stars earned — what the world gates are measured in */}
+        <View
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999, backgroundColor: c.card, borderWidth: 1, borderColor: '#e0a93a' }}
+          accessible
+          accessibilityLabel={tr(language, '{0} étoiles', '{0} stars', [totalStars])}
+        >
+          <Star size={15} color="#e0a93a" fill="#ffcf4a" />
+          <Text style={{ fontFamily: FONTS.heading, color: c.text, fontSize: 14 }}>{totalStars}</Text>
+        </View>
       </View>
 
       {view === 'table' ? (
@@ -724,6 +746,17 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
         </View>
       </ScrollView>
       )}
+      <StoryLivesSheet
+        visible={livesSheet}
+        onClose={() => setLivesSheet(false)}
+        user={user}
+        lives={lives}
+        regenAt={regenAt}
+        adAvailable={adAvailable}
+        language={language}
+        colors={c}
+        onChanged={reload}
+      />
     </SafeAreaView>
   );
 }
@@ -768,6 +801,10 @@ interface LevelNodeProps {
   /** Pre-rendered medallion sprite (story_map_3d); undefined = flat SVG-era look. */
   coinArt?: number;
   locked: boolean;
+  /** Star gate at a world's first level (null elsewhere). */
+  gate: { tier: number; required: number; have: number; open: boolean } | null;
+  /** The gate is still shut: the medallion shows locked but explains on tap. */
+  gateClosed: boolean;
   isCurrent: boolean;
   stars: number;
   rewardItem?: string;
@@ -783,7 +820,7 @@ interface LevelNodeProps {
 }
 
 const LevelNode = memo(function LevelNode({
-  level, x, y, meta, biome, coinArt, locked, isCurrent, stars, rewardItem, rewardSide,
+  level, x, y, meta, biome, coinArt, locked, gate, gateClosed, isCurrent, stars, rewardItem, rewardSide,
   showBanner, myAvatar, friends, language, isDarkMode, textColor, onTap, onOpenPlayer,
 }: LevelNodeProps) {
   const ringDark = shade(biome.rim, -0.35);
@@ -792,8 +829,16 @@ const LevelNode = memo(function LevelNode({
 
   return (
     <View style={{ position: 'absolute', left: x - NODE / 2, top: y }}>
-      {/* Tier banner every 10 levels */}
-      {showBanner ? (
+      {/* World gate: stars needed to enter this world */}
+      {showBanner && gate ? (
+        <GateBanner
+          gate={gate}
+          closed={gateClosed}
+          biome={biome}
+          language={language}
+          side={rewardSide}
+        />
+      ) : showBanner ? (
         // décalée plus haut quand le globe du joueur rebondit au-dessus du médaillon
         <View style={{ position: 'absolute', top: isCurrent ? PLAYER_GLOBE_TOP - 40 : -34, left: NODE / 2 - 100, width: 200, alignItems: 'center' }}>
           <View style={{ backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 3, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' }}>
@@ -828,7 +873,7 @@ const LevelNode = memo(function LevelNode({
         {/* outer ring */}
         <TouchableOpacity
           activeOpacity={0.85}
-          disabled={locked}
+          disabled={locked && !gateClosed}
           onPress={() => onTap(level)}
           {...a11yButton(
             locked
@@ -961,6 +1006,63 @@ const LevelNode = memo(function LevelNode({
     </View>
   );
 });
+
+// ── World gate banner ──────────────────────────────────────────────────────────
+
+/**
+ * Sign over a world's first level: the world's name and the stars it asks for.
+ * Shut: padlock + progress bar toward the requirement. Open: a green check.
+ */
+function GateBanner({
+  gate, closed, biome, language, side,
+}: {
+  gate: { tier: number; required: number; have: number };
+  closed: boolean;
+  biome: Biome;
+  language: Language;
+  /** Which side of the medallion has room (away from the river bend). */
+  side: number;
+}) {
+  const pct = Math.min(1, gate.have / Math.max(1, gate.required));
+  const W = 176;
+  // Beside the medallion rather than above it: the row above holds the previous
+  // level, and the player's globe bounces over the current one.
+  return (
+    <View
+      pointerEvents="none"
+      style={{ position: 'absolute', top: NODE / 2 - 30, left: side < 0 ? -(W + 12) : NODE + 12, width: W, alignItems: side < 0 ? 'flex-end' : 'flex-start' }}
+    >
+      <View
+        style={{
+          minWidth: 150,
+          backgroundColor: closed ? 'rgba(20,14,10,0.78)' : 'rgba(0,0,0,0.55)',
+          borderRadius: 14,
+          paddingHorizontal: 12,
+          paddingVertical: 5,
+          borderWidth: 1.5,
+          borderColor: closed ? '#ffcf4a' : 'rgba(255,255,255,0.3)',
+          alignItems: 'center',
+        }}
+      >
+        <Text style={{ fontFamily: FONTS.mono, fontSize: 10, color: '#fff', letterSpacing: 1 }}>
+          {tr(language, 'MONDE {0} · {1}', 'WORLD {0} · {2}', [gate.tier, biome.nameFr.toUpperCase(), biome.nameEn.toUpperCase()])}
+        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 }}>
+          {closed ? <Lock color="#ffcf4a" size={12} /> : <Check color="#7be08a" size={13} strokeWidth={3} />}
+          <Star size={12} color="#ffcf4a" fill="#ffcf4a" />
+          <Text style={{ fontFamily: FONTS.heading, fontSize: 13, color: closed ? '#ffcf4a' : '#fff' }}>
+            {closed ? `${gate.have} / ${gate.required}` : String(gate.required)}
+          </Text>
+        </View>
+        {closed ? (
+          <View style={{ width: 120, height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.18)', marginTop: 4, overflow: 'hidden' }}>
+            <View style={{ width: `${pct * 100}%`, height: 5, backgroundColor: '#ffcf4a' }} />
+          </View>
+        ) : null}
+      </View>
+    </View>
+  );
+}
 
 // ── Table view: friends ranking + rewards checklist ────────────────────────────
 
@@ -1412,10 +1514,12 @@ function DriftCloud({ x, y, s, width, duration, delay, enabled }: {
  * Deterministic per tier; a handful of native-driver loops per visible band.
  */
 function BandFx({
-  biome, tier, top, height, width, riverX,
+  biome, tier, top, height, width, riverX, art,
 }: {
   biome: Biome; tier: number; top: number; height: number; width: number;
   riverX: (y: number) => number;
+  /** Baked band art placement — lets the wildlife dodge the painted scenery. */
+  art?: { left: number; k: number; top: number };
 }) {
   const rm = useReducedMotion();
   const fx = useMemo(() => {
@@ -1510,6 +1614,18 @@ function BandFx({
   return (
     <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, width, height }}>
       {fx}
+      <StoryCritters
+        biomeKey={biome.key}
+        tier={tier}
+        top={top}
+        height={height}
+        width={width}
+        riverX={riverX}
+        riverW={RIVER_W}
+        seed={tier * 7919 + 101}
+        enabled={!rm}
+        art={art}
+      />
     </View>
   );
 }

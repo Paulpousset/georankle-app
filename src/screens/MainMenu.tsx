@@ -928,7 +928,7 @@ export function MainMenu({
           )}
         </TouchableOpacity>
 
-        {/* Story mode hero — the 300-level campaign, right below the daily. */}
+        {/* Story mode hero — the campaign, right below the daily. */}
         <TouchableOpacity
           onPress={onOpenStory}
           style={[
@@ -948,7 +948,7 @@ export function MainMenu({
             },
           ]}
           {...a11yButton(tr(language, 'Mode Histoire', 'Story Mode'), {
-            hint: tr(language, 'Ouvrir la campagne de 300 niveaux', 'Open the 300-level campaign'),
+            hint: tr(language, 'Ouvrir la campagne de {0} niveaux', 'Open the {0}-level campaign', [STORY_LEVEL_COUNT]),
           })}
         >
           <View style={{ backgroundColor: isDarkMode ? 'rgba(26,74,122,0.24)' : 'rgba(26,74,122,0.16)', padding: 12, borderRadius: 12 }}>

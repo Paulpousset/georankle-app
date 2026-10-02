@@ -371,7 +371,7 @@ export default function StoryLevelEnd({
             <View style={{ alignSelf: 'stretch', gap: 10 }}>
               {hasNext ? (
                 <View style={{ flexDirection: 'row' }}>
-                  {btn('next', tr(language, 'Niveau {0}', 'Level {0}', [level.level + 1]), ChevronRight, onNext, 'primary', !canReplay)}
+                  {btn('next', tr(language, 'Niveau {0}', 'Level {0}', [level.level + 1]), ChevronRight, onNext, 'primary')}
                 </View>
               ) : !passed ? (
                 <View style={{ flexDirection: 'row' }}>
@@ -379,21 +379,20 @@ export default function StoryLevelEnd({
                     'retry',
                     canReplay
                       ? tr(language, 'Réessayer · {0} vies', 'Try again · {0} lives', [lives])
-                      : tr(language, 'Plus de vies', 'Out of lives'),
+                      : tr(language, 'Recharger mes vies', 'Refill my lives'),
                     Heart,
                     onReplay,
                     'primary',
-                    !canReplay,
                   )}
                 </View>
               ) : null}
               <View style={{ flexDirection: 'row', gap: 10 }}>
-                {passed ? btn('replay', tr(language, 'Rejouer', 'Replay'), RotateCcw, onReplay, 'secondary', !canReplay) : null}
+                {passed ? btn('replay', tr(language, 'Rejouer', 'Replay'), RotateCcw, onReplay, 'secondary') : null}
                 {btn('map', tr(language, 'Carte', 'Map'), MapIcon, onMap, 'secondary')}
               </View>
               {!canReplay ? (
                 <Text style={{ color: c.textFaint, fontFamily: FONTS.mono, fontSize: 10, textAlign: 'center' }}>
-                  {tr(language, 'Les vies reviennent avec le temps — ou depuis la carte, avec une pub.', 'Lives come back over time — or from the map, with an ad.')}
+                  {tr(language, 'Plus de vies : elles reviennent avec le temps, ou recharge-les tout de suite.', 'Out of lives: they come back over time, or refill them right now.')}
                 </Text>
               ) : null}
             </View>
