@@ -20,7 +20,6 @@ appId: com.paulpousset.geog
     visible: "Solo|SOLO"
     # L'émulateur de la CI rend en logiciel : le premier lancement est lent.
     timeout: 60000
-- runFlow:
-    when:
-      true: ${APP_LANG != 'fr'}
-    file: set-language.yaml
+# Toujours choisir la langue : l'app suit celle de l'appareil (anglais sur
+# l'émulateur de la CI), pas celle de la vidéo.
+- runFlow: set-language.yaml

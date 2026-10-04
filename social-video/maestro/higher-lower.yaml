@@ -6,6 +6,7 @@ name: higher-lower
 env:
   APP_LANG: fr
   APP_LANG_NAME: Français
+  APP_LANG_EN: French
   STREAK: "8"
   FAIL: "1"
   THINK_MS: "1300"
@@ -24,6 +25,7 @@ env:
       - runFlow: subflows/think.yaml
       - tapOn:
           id: "rec-correct"
+          waitToSettleTimeoutMs: 300
 - runFlow:
     when:
       true: ${FAIL == '1'}
@@ -31,6 +33,7 @@ env:
       - runFlow: subflows/think.yaml
       - tapOn:
           id: "rec-wrong"
+          waitToSettleTimeoutMs: 300
 # Laisse l'écran de fin (récap de la série) à l'image.
 - runFlow:
     file: subflows/think.yaml

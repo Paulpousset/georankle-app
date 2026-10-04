@@ -34,6 +34,14 @@ lang_name() {
   esac
 }
 
+# Nom anglais : c'est le libellé d'accessibilité des lignes du sélecteur.
+lang_english() {
+  case "$1" in
+    fr) echo "French" ;; en) echo "English" ;; es) echo "Spanish" ;;
+    pt) echo "Portuguese" ;; de) echo "German" ;; it) echo "Italian" ;;
+  esac
+}
+
 # Barre d'état propre et identique sur toutes les vidéos : 9:41, batterie
 # pleine, réseau plein, pas de notifications.
 case "$PLATFORM" in
@@ -64,7 +72,7 @@ for flow in "${FLOWS[@]}"; do
     out="$flow-$lang"
     echo "▶ $out ($PLATFORM)"
     if maestro test \
-      -e APP_LANG="$lang" -e APP_LANG_NAME="$(lang_name "$lang")" -e OUTPUT="$out" \
+      -e APP_LANG="$lang" -e APP_LANG_NAME="$(lang_name "$lang")" -e APP_LANG_EN="$(lang_english "$lang")" -e OUTPUT="$out" \
       "$HERE/maestro/$flow.yaml"; then
       echo "✓ $OUT/$out.mp4"
     else

@@ -2,7 +2,10 @@
 # réponse. Le passage à la question suivante est automatique dans l'app.
 appId: com.paulpousset.geog
 ---
-- tapOn: "CARRÉ"
+- tapOn:
+    text: "CARRÉ.*"
+    waitToSettleTimeoutMs: 300
 - runFlow: think.yaml
 - tapOn:
     id: "rec-correct"
+    waitToSettleTimeoutMs: 300

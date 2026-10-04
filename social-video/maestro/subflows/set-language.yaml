@@ -2,8 +2,14 @@
 # natif affiché dans le sélecteur (src/i18n/locales.ts) : English, Español…
 appId: com.paulpousset.geog
 ---
-- tapOn: "Changer de langue|Change language"
-- tapOn: ${APP_LANG_NAME}
+- tapOn:
+    text: "Changer de langue|Change language"
+    waitToSettleTimeoutMs: 500
+# Une ligne du sélecteur s'annonce par le nom anglais (« French »), son texte
+# visible est le nom natif (« Français ») : l'un ou l'autre.
+- tapOn:
+    text: ".*(${APP_LANG_NAME}|${APP_LANG_EN}).*"
+    waitToSettleTimeoutMs: 500
 - extendedWaitUntil:
     visible: "Solo|SOLO"
-    timeout: 10000
+    timeout: 15000

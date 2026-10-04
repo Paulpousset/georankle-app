@@ -5,6 +5,7 @@ name: flags
 env:
   APP_LANG: fr
   APP_LANG_NAME: Français
+  APP_LANG_EN: French
   ROUNDS: "6"
   FAIL: "0"
   THINK_MS: "1500"
@@ -24,10 +25,13 @@ env:
     when:
       true: ${FAIL == '1'}
     commands:
-      - tapOn: "CARRÉ"
+      - tapOn:
+          text: "CARRÉ.*"
+          waitToSettleTimeoutMs: 300
       - runFlow: subflows/think.yaml
       - tapOn:
           id: "rec-wrong"
+          waitToSettleTimeoutMs: 300
 - runFlow:
     file: subflows/think.yaml
     env:
