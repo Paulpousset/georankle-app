@@ -112,7 +112,10 @@ jobs:
             adb install -r geog-recording.apk
             ./social-video/record.sh android $FLOWS
 
+      # Un flow qui casse n'empêche pas de monter et publier ceux qui ont tourné
+      # (le run reste rouge pour le signaler).
       - name: Montage
+        if: always() && hashFiles('social-video/out/raw/*.mp4') != ''
         working-directory: social-video/composer
         env:
           VARIANTS: ${{ github.event.inputs.variants || '2' }}
@@ -138,7 +141,7 @@ jobs:
       # Les shorts finis dans une release (pré-version, pas une version de
       # l'app) : chaque vidéo s'ouvre et se télécharge depuis le téléphone.
       - name: Release
-        if: success()
+        if: always() && hashFiles('social-video/out/final/*.mp4') != ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
