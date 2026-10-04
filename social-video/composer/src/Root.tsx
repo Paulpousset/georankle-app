@@ -1,6 +1,6 @@
 import { Composition } from 'remotion';
 
-import { END_CARD_SECONDS, FPS, Short, type ShortProps } from './Short';
+import { FPS, Short, endCardSeconds, type ShortProps } from './Short';
 
 const defaultProps: ShortProps = {
   clip: 'sample.mp4',
@@ -26,7 +26,7 @@ export const Root = () => (
     defaultProps={defaultProps}
     calculateMetadata={({ props }) => ({
       durationInFrames: Math.ceil(
-        FPS * ((props.clipSeconds - props.trimStart) / props.speed + END_CARD_SECONDS),
+        FPS * ((props.clipSeconds - props.trimStart) / props.speed + endCardSeconds(props)),
       ),
     })}
   />

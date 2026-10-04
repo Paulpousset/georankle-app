@@ -61,8 +61,21 @@ for (const file of readdirSync(RAW).filter((f) => f.endsWith('.mp4')).sort()) {
       cta: common.cta,
       ctaSub: common.ctaSub,
       icon: 'icon.png',
+      lang,
+      // Script de la voix off ; voice.mjs y ajoute les fichiers audio et cale
+      // les répliques pour qu'elles ne se chevauchent pas.
+      voice: [
+        { at: 0.2, text: null },
+        ...(copy.captions ?? []).map((c) => ({ at: c.at ?? null, fromEnd: c.fromEnd ?? null, text: c.say ?? c.text })),
+        common.voiceOutro ? { atEnd: true, text: common.voiceOutro } : null,
+      ].filter(Boolean),
       post: `${copy.post}\n\n${common.tags}`,
     };
+    episode.voice[0].text = episode.hook;
+    for (const line of episode.voice) {
+      if (line.fromEnd != null) line.at = Math.max(0, clipSeconds - line.fromEnd);
+      delete line.fromEnd;
+    }
     const name = `${flow}-${lang}-v${v + 1}`;
     writeFileSync(join(EPISODES, `${name}.json`), JSON.stringify(episode, null, 2) + '\n');
     console.log('•', name, '→', episode.hook);

@@ -9,7 +9,12 @@ name: Vidéos réseaux sociaux
 # « rebuild » après un changement d'écran pour en refaire un sur EAS.
 #
 # Secret requis : EXPO_TOKEN (déjà utilisé par release.yml).
+# Secret optionnel : XI_API_KEY (ElevenLabs) pour la voix off ; variables de
+# dépôt optionnelles XI_VOICE, XI_VOICE_FR, XI_VOICE_EN, XI_MODEL.
 on:
+  # Une fournée chaque lundi matin, avec les valeurs par défaut.
+  schedule:
+    - cron: '0 5 * * 1'
   workflow_dispatch:
     inputs:
       flows:
@@ -54,7 +59,7 @@ jobs:
 
       - name: Build `recording` (APK)
         env:
-          REBUILD: ${{ github.event.inputs.rebuild }}
+          REBUILD: ${{ github.event.inputs.rebuild || 'false' }}
         run: |
           url=""
           if [ "$REBUILD" != "true" ]; then
@@ -84,7 +89,7 @@ jobs:
       - name: Tournage dans l'émulateur
         uses: reactivecircus/android-emulator-runner@v2
         env:
-          LANGS: ${{ github.event.inputs.langs }}
+          LANGS: ${{ github.event.inputs.langs || 'fr en' }}
           FLOWS: ${{ github.event.inputs.flows }}
         with:
           api-level: 34
@@ -99,9 +104,17 @@ jobs:
 
       - name: Montage
         working-directory: social-video/composer
+        env:
+          VARIANTS: ${{ github.event.inputs.variants || '2' }}
+          XI_API_KEY: ${{ secrets.XI_API_KEY }}
+          XI_VOICE: ${{ vars.XI_VOICE }}
+          XI_VOICE_FR: ${{ vars.XI_VOICE_FR }}
+          XI_VOICE_EN: ${{ vars.XI_VOICE_EN }}
+          XI_MODEL: ${{ vars.XI_MODEL }}
         run: |
           npm ci --no-audit --no-fund
-          node plan.mjs --variants "${{ github.event.inputs.variants }}"
+          node plan.mjs --variants "$VARIANTS"
+          node voice.mjs
           node render.mjs
 
       - name: Artefact

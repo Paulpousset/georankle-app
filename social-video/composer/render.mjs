@@ -4,6 +4,8 @@
 //   node render.mjs                    # toutes les fiches
 //   node render.mjs higher-lower-en-v1 # une seule
 //
+// Lancer voice.mjs avant pour la voix off (sinon vidéo muette).
+//
 // CHROME_PATH force le navigateur (sinon Remotion télécharge le sien).
 import { bundle } from '@remotion/bundler';
 import { renderMedia, selectComposition } from '@remotion/renderer';

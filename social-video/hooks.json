@@ -1,52 +1,172 @@
 {
-  "_comment": "Accroches par flow et par langue. plan.mjs en tire une par vidéo, en tournant, pour tester plusieurs accroches sur le même jeu. Pas de faux chiffres (« seuls 2 % y arrivent ») : on promet un défi, pas une statistique. captions.fromEnd = secondes avant la fin de la vidéo brute (l'écran de fin dure ~3,5 s).",
+  "_comment": "Accroches par flow et par langue. plan.mjs en tire une par vidéo, en tournant, pour tester plusieurs accroches sur le même jeu. Pas de faux chiffres (« seuls 2 % y arrivent ») : on promet un défi, pas une statistique. captions.fromEnd = secondes avant la fin de la vidéo brute (l'écran de fin dure ~3,5 s). Voix off (voice.mjs) : l'accroche est lue au début, chaque sous-titre est lu avec son champ « say » s'il existe (sinon son texte), et voiceOutro sur la carte de fin. Les emojis sont retirés avant la synthèse.",
   "_common": {
-    "fr": { "cta": "Gratuit sur iOS et Android", "ctaSub": "Lien dans la bio", "tags": "#geographie #quiz #culturegenerale #geog #jeu" },
-    "en": { "cta": "Free on iOS & Android", "ctaSub": "Link in bio", "tags": "#geography #quiz #trivia #geog #geographyquiz" },
-    "es": { "cta": "Gratis en iOS y Android", "ctaSub": "Enlace en la bio", "tags": "#geografia #quiz #trivia #geog" },
-    "pt": { "cta": "Grátis no iOS e Android", "ctaSub": "Link na bio", "tags": "#geografia #quiz #curiosidades #geog" },
-    "de": { "cta": "Kostenlos für iOS & Android", "ctaSub": "Link in der Bio", "tags": "#geografie #quiz #allgemeinwissen #geog" },
-    "it": { "cta": "Gratis su iOS e Android", "ctaSub": "Link in bio", "tags": "#geografia #quiz #culturagenerale #geog" }
+    "fr": {
+      "cta": "Gratuit sur iOS et Android",
+      "ctaSub": "Lien dans la bio",
+      "tags": "#geographie #quiz #culturegenerale #geog #jeu",
+      "voiceOutro": "GeoG, c'est gratuit. Le lien est dans la bio."
+    },
+    "en": {
+      "cta": "Free on iOS & Android",
+      "ctaSub": "Link in bio",
+      "tags": "#geography #quiz #trivia #geog #geographyquiz",
+      "voiceOutro": "GeoG is free. Link in bio."
+    },
+    "es": {
+      "cta": "Gratis en iOS y Android",
+      "ctaSub": "Enlace en la bio",
+      "tags": "#geografia #quiz #trivia #geog",
+      "voiceOutro": "GeoG es gratis. El enlace está en la bio."
+    },
+    "pt": {
+      "cta": "Grátis no iOS e Android",
+      "ctaSub": "Link na bio",
+      "tags": "#geografia #quiz #curiosidades #geog",
+      "voiceOutro": "GeoG é grátis. O link está na bio."
+    },
+    "de": {
+      "cta": "Kostenlos für iOS & Android",
+      "ctaSub": "Link in der Bio",
+      "tags": "#geografie #quiz #allgemeinwissen #geog",
+      "voiceOutro": "GeoG ist kostenlos. Der Link ist in der Bio."
+    },
+    "it": {
+      "cta": "Gratis su iOS e Android",
+      "ctaSub": "Link in bio",
+      "tags": "#geografia #quiz #culturagenerale #geog",
+      "voiceOutro": "GeoG è gratis. Il link è in bio."
+    }
   },
   "higher-lower": {
     "fr": {
-      "hooks": ["Quel pays est au-dessus ? 🤔", "Tu tiens plus longtemps que moi ?", "Plus ou moins : la géo sans pitié"],
-      "subhooks": ["Joue avec moi, réponds avant le tap", "Ma série, en direct", "Compte tes bonnes réponses"],
-      "captions": [{ "at": 1.2, "text": "Facile…" }, { "fromEnd": 5.2, "text": "Ah. 😬" }],
+      "hooks": [
+        "Quel pays est au-dessus ? 🤔",
+        "Tu tiens plus longtemps que moi ?",
+        "Plus ou moins : la géo sans pitié"
+      ],
+      "subhooks": [
+        "Joue avec moi, réponds avant le tap",
+        "Ma série, en direct",
+        "Compte tes bonnes réponses"
+      ],
+      "captions": [
+        {
+          "at": 1.2,
+          "text": "Facile…",
+          "say": "Facile…"
+        },
+        {
+          "fromEnd": 5.2,
+          "text": "Ah. 😬",
+          "say": "Ah. Non, non, non…"
+        }
+      ],
       "post": "Tu aurais tenu combien de manches ? Dis-le en commentaire 👇"
     },
     "en": {
-      "hooks": ["Which country is higher? 🤔", "Can you beat my streak?", "Higher or Lower: geography edition"],
-      "subhooks": ["Answer before I tap", "My streak, live", "Count your right answers"],
-      "captions": [{ "at": 1.2, "text": "Easy…" }, { "fromEnd": 5.2, "text": "Oh no. 😬" }],
+      "hooks": [
+        "Which country is higher? 🤔",
+        "Can you beat my streak?",
+        "Higher or Lower: geography edition"
+      ],
+      "subhooks": [
+        "Answer before I tap",
+        "My streak, live",
+        "Count your right answers"
+      ],
+      "captions": [
+        {
+          "at": 1.2,
+          "text": "Easy…",
+          "say": "Easy…"
+        },
+        {
+          "fromEnd": 5.2,
+          "text": "Oh no. 😬",
+          "say": "Oh no. No no no…"
+        }
+      ],
       "post": "How far would you have made it? Tell me below 👇"
     }
   },
   "flags": {
     "fr": {
-      "hooks": ["6 drapeaux. Tu les as tous ?", "Reconnais ces drapeaux en 2 secondes", "Les drapeaux que tout le monde confond"],
-      "subhooks": ["Réponds avant moi", "Compte tes points", "Le 4e est piégeux"],
-      "captions": [{ "at": 1.0, "text": "Échauffement" }],
+      "hooks": [
+        "6 drapeaux. Tu les as tous ?",
+        "Reconnais ces drapeaux en 2 secondes",
+        "Les drapeaux que tout le monde confond"
+      ],
+      "subhooks": [
+        "Réponds avant moi",
+        "Compte tes points",
+        "Le 4e est piégeux"
+      ],
+      "captions": [
+        {
+          "at": 1.0,
+          "text": "Échauffement"
+        }
+      ],
       "post": "Ton score sur 6 ? 👇"
     },
     "en": {
-      "hooks": ["6 flags. Can you name them all?", "Name these flags in 2 seconds", "Flags everyone mixes up"],
-      "subhooks": ["Answer before I do", "Keep score", "Number 4 is tricky"],
-      "captions": [{ "at": 1.0, "text": "Warm-up" }],
+      "hooks": [
+        "6 flags. Can you name them all?",
+        "Name these flags in 2 seconds",
+        "Flags everyone mixes up"
+      ],
+      "subhooks": [
+        "Answer before I do",
+        "Keep score",
+        "Number 4 is tricky"
+      ],
+      "captions": [
+        {
+          "at": 1.0,
+          "text": "Warm-up"
+        }
+      ],
       "post": "What's your score out of 6? 👇"
     }
   },
   "capitals": {
     "fr": {
-      "hooks": ["6 capitales. Zéro faute ?", "Tu connais vraiment tes capitales ?", "Capitales : le test rapide"],
-      "subhooks": ["Réponds avant moi", "Compte tes points", "Pas de Google 👀"],
-      "captions": [{ "at": 1.0, "text": "Go !" }],
+      "hooks": [
+        "6 capitales. Zéro faute ?",
+        "Tu connais vraiment tes capitales ?",
+        "Capitales : le test rapide"
+      ],
+      "subhooks": [
+        "Réponds avant moi",
+        "Compte tes points",
+        "Pas de Google 👀"
+      ],
+      "captions": [
+        {
+          "at": 1.0,
+          "text": "Go !"
+        }
+      ],
       "post": "Combien sur 6 ? Sois honnête 👇"
     },
     "en": {
-      "hooks": ["6 capitals. Zero mistakes?", "Do you really know your capitals?", "Capitals speed test"],
-      "subhooks": ["Answer before I do", "Keep score", "No Googling 👀"],
-      "captions": [{ "at": 1.0, "text": "Go!" }],
+      "hooks": [
+        "6 capitals. Zero mistakes?",
+        "Do you really know your capitals?",
+        "Capitals speed test"
+      ],
+      "subhooks": [
+        "Answer before I do",
+        "Keep score",
+        "No Googling 👀"
+      ],
+      "captions": [
+        {
+          "at": 1.0,
+          "text": "Go!"
+        }
+      ],
       "post": "How many out of 6? Be honest 👇"
     }
   }

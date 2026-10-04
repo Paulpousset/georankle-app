@@ -7,8 +7,9 @@
  * les boutons j'aime / commenter. L'accroche commence donc sous 200 px et rien
  * d'important ne descend sous 1 650 px.
  *
- * Pas de musique ici : un son tendance ajouté dans l'app au moment de poster
- * pousse plus la portée qu'une piste figée au montage.
+ * Voix off optionnelle (ElevenLabs, voir voice.mjs). Pas de musique ici : un
+ * son tendance ajouté dans l'app au moment de poster pousse plus la portée
+ * qu'une piste figée au montage (le garder bas sous la voix).
  */
 import { loadFont } from '@remotion/fonts';
 import playfair800 from '@fontsource/playfair-display/files/playfair-display-latin-800-normal.woff2';
@@ -16,8 +17,10 @@ import montserrat600 from '@fontsource/montserrat/files/montserrat-latin-600-nor
 import montserrat800 from '@fontsource/montserrat/files/montserrat-latin-800-normal.woff2';
 import {
   AbsoluteFill,
+  Audio,
   Img,
   OffthreadVideo,
+  Sequence,
   interpolate,
   spring,
   staticFile,
@@ -72,7 +75,23 @@ export interface ShortProps {
   ctaSub?: string;
   /** Icône de l'app dans public/, pour la carte de fin. */
   icon: string;
+  /** Répliques de voix off déjà synthétisées (voice.mjs). */
+  voice?: VoiceLine[];
+  /** Durée de la carte de fin, allongée par voice.mjs pour la réplique finale. */
+  endCardSeconds?: number;
 }
+
+export interface VoiceLine {
+  /** Fichier dans public/ ; une réplique sans fichier est ignorée. */
+  file?: string;
+  /** Secondes depuis le début de la vidéo montée. */
+  at?: number | null;
+  /** Lue au début de la carte de fin plutôt qu'à `at`. */
+  atEnd?: boolean;
+}
+
+export const endCardSeconds = (p: Pick<ShortProps, 'endCardSeconds'>) =>
+  p.endCardSeconds ?? END_CARD_SECONDS;
 
 const PHONE_H = 1180;
 const PHONE_TOP = 470;
@@ -80,7 +99,7 @@ const PHONE_TOP = 470;
 export const Short = (p: ShortProps) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
-  const endStart = durationInFrames - Math.round(END_CARD_SECONDS * fps);
+  const endStart = durationInFrames - Math.round(endCardSeconds(p) * fps);
   const inEnd = frame >= endStart;
 
   const hookIn = spring({ frame, fps, config: { damping: 12, mass: 0.6 } });
@@ -104,6 +123,14 @@ export const Short = (p: ShortProps) => {
       }}
     >
       <Graticule frame={frame} />
+
+      {(p.voice ?? []).map((line, i) =>
+        line.file ? (
+          <Sequence key={i} from={line.atEnd ? endStart : Math.round((line.at ?? 0) * fps)}>
+            <Audio src={staticFile(line.file)} />
+          </Sequence>
+        ) : null,
+      )}
 
       <AbsoluteFill style={{ opacity: gameOpacity }}>
         {/* Accroche */}
