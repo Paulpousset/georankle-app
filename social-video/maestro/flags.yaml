@@ -1,0 +1,35 @@
+# « Drapeaux » en CARRÉ : ROUNDS drapeaux, tous justes sauf le dernier si
+# FAIL=1. Même flow pour les capitales via capitals.yaml.
+appId: com.paulpousset.geog
+name: flags
+env:
+  APP_LANG: fr
+  APP_LANG_NAME: Français
+  ROUNDS: "6"
+  FAIL: "0"
+  THINK_MS: "1500"
+  MODE_TITLE: "Drapeaux|Flags"
+---
+- runFlow: subflows/launch.yaml
+- runFlow: subflows/start-solo.yaml
+- extendedWaitUntil:
+    visible: "CARRÉ"
+    timeout: 15000
+- startRecording: ${OUTPUT || 'flags'}
+- repeat:
+    times: ${ROUNDS}
+    commands:
+      - runFlow: subflows/quiz-round.yaml
+- runFlow:
+    when:
+      true: ${FAIL == '1'}
+    commands:
+      - tapOn: "CARRÉ"
+      - runFlow: subflows/think.yaml
+      - tapOn:
+          id: "rec-wrong"
+- runFlow:
+    file: subflows/think.yaml
+    env:
+      THINK_MS: "3000"
+- stopRecording

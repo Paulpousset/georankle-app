@@ -1,0 +1,6 @@
+# Flows de tournage Maestro (https://maestro.dev). Lancés par ../record.sh,
+# un flow = une vidéo brute dans social-video/out/raw/.
+flows:
+  - "*.yaml"
+excludeTags:
+  - wip

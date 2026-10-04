@@ -36,6 +36,22 @@
         "EXPO_PUBLIC_SENTRY_DSN": "https://e4a18a951d6f862c9682749e0015f050@o4510816704987136.ingest.de.sentry.io/4510816708395088"
       },
       "channel": "production"
+    },
+    "recording": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://exwfggaytrywnfzcqpel.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV4d2ZnZ2F5dHJ5d25memNxcGVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5NDA5NjAsImV4cCI6MjA5MjUxNjk2MH0.AZkKT-wiJppVpFl3Pz2i_nwHGCSEng7escy6aO_lFOs",
+        "EXPO_PUBLIC_RECORDING_MODE": "1",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+      },
+      "ios": {
+        "simulator": true
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "channel": "recording"
     }
   },
   "submit": {

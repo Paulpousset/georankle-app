@@ -1,0 +1,8 @@
+# Une question de Capitales/Drapeaux : CARRÉ (4 choix, 3 pts), pause, bonne
+# réponse. Le passage à la question suivante est automatique dans l'app.
+appId: com.paulpousset.geog
+---
+- tapOn: "CARRÉ"
+- runFlow: think.yaml
+- tapOn:
+    id: "rec-correct"

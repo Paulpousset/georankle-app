@@ -13,6 +13,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as StoreReview from 'expo-store-review';
 
 import { track } from './analytics';
+import { RECORDING_MODE } from './recordingMode';
 
 /** Only ask players who came back at least this many days in a row. */
 export const MIN_STREAK = 3;
@@ -72,7 +73,7 @@ export async function maybeAskForReview(
   now: Date = new Date(),
   reason: 'daily_streak' | 'ranked_win' = 'daily_streak',
 ): Promise<boolean> {
-  if (Platform.OS === 'web') return false;
+  if (Platform.OS === 'web' || RECORDING_MODE) return false;
   const { ask, next } = decide(await read(), streak, now);
   if (!ask) return false;
   try {

@@ -49,6 +49,7 @@ import { isFeatureEnabled } from './featureFlags';
 import { recordGameAndShouldShow } from './interstitialGate';
 import { track } from './analytics';
 import { log } from './log';
+import { RECORDING_MODE } from './recordingMode';
 
 /** Store product ids ↔ coins (must mirror grant_iap_coins in SQL). */
 export const COIN_PACKS = [
@@ -338,6 +339,8 @@ function loadAndShowInterstitial(sdk: AdsSdk): Promise<void> {
  * forget: navigation can proceed behind the ad. Never throws.
  */
 export async function maybeShowInterstitial(): Promise<void> {
+  // Mode tournage : aucune pub ne doit couvrir une vidéo.
+  if (RECORDING_MODE) return;
   if (!(await isFeatureEnabled('interstitial_ads'))) return;
   // Web needs its own flag too — checked BEFORE the gate so an off switch
   // doesn't burn gate credits.

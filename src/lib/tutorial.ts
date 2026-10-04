@@ -10,6 +10,8 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { RECORDING_MODE } from './recordingMode';
+
 // v2: rewrote the tour to be much more explicit for newcomers (added a
 // "how you play" step) — re-show it once to everyone.
 const TUTORIAL_VERSION = 2;
@@ -17,6 +19,8 @@ const STORAGE_KEY = `tutorial:seen:v${TUTORIAL_VERSION}`;
 
 /** Has the user already seen (completed or skipped) the onboarding tour? */
 export async function getHasSeenTutorial(): Promise<boolean> {
+  // Mode tournage : la vidéo démarre sur le menu, jamais sur la visite guidée.
+  if (RECORDING_MODE) return true;
   try {
     return (await AsyncStorage.getItem(STORAGE_KEY)) === 'true';
   } catch {

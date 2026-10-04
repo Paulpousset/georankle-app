@@ -1,0 +1,176 @@
+# Vidéos réseaux sociaux — tournage automatique de l'app native
+
+> Objectif : sortir chaque semaine des shorts TikTok / Reels / Shorts filmés sur
+> **la vraie app mobile**, sans tenir le téléphone, pour faire venir des joueurs
+> sur iOS et Android.
+
+## Pourquoi ce dossier
+
+L'ancien pipeline (`~/rankle/videos-pub/video-pipeline`, hors dépôt) filme le
+**build web** dans Playwright avec un viewport de téléphone. Ça se voit : pas de
+barre d'état, polices et animations du navigateur, globe en WebGL du web. Pour
+une campagne qui vend l'app mobile, il faut des images de l'app mobile.
+
+Ce dossier filme l'app native dans un simulateur iOS ou un émulateur Android,
+pilotée par [Maestro](https://maestro.dev), puis la monte en vidéo verticale
+avec [Remotion](https://www.remotion.dev).
+
+```
+build EAS « recording »  →  flows Maestro  →  out/raw/*.mp4
+                                                   │
+                     hooks.json  →  plan.mjs  →  out/episodes/*.json
+                                                   │
+                       ElevenLabs  →  voice.mjs  →  composer/public/voice/*.mp3
+                                                   │
+                                  render.mjs  →  out/final/*.mp4 + *.txt
+```
+
+## Les pièces
+
+| Pièce | Rôle |
+|---|---|
+| `src/lib/recordingMode.ts` (app) | Mode tournage, actif seulement dans le build `recording` : pas de tutoriel, pas de popup de règles, pas de pub, pas de demande de note. Les réponses portent un testID `rec-correct` / `rec-wrong`. |
+| `eas.json` → profil `recording` | Build simulateur iOS + APK Android, canal EAS `recording` (jamais touché par les mises à jour OTA de production), sans clés PostHog ni Sentry : les parties filmées ne faussent pas les chiffres. |
+| `maestro/*.yaml` | Un flow = une vidéo. Il lance l'app, choisit la langue, entre dans le mode, **démarre l'enregistrement sur la première question**, joue une partie écrite d'avance (N bonnes réponses, puis une erreur pour la chute), garde l'écran de fin à l'image. Pause « réflexion » entre deux taps pour que ça ne fasse pas robot. |
+| `record.sh` | Barre d'état propre (9:41, batterie pleine), puis chaque flow dans chaque langue. |
+| `hooks.json` | Accroches, sous-titres, appel à l'action et texte de publication, par flow et par langue. |
+| `composer/` | Projet Remotion. `plan.mjs` fait une fiche de montage par vidéo et par accroche, `voice.mjs` y ajoute la voix off ElevenLabs, `render.mjs` sort un MP4 1080×1920 H.264 et le texte à coller sous la vidéo. |
+| `.github/workflows/social-video.yml` | Tout le circuit Android dans GitHub Actions, chaque lundi ou à la main ; les shorts arrivent en artefact du run. |
+
+## Flows disponibles
+
+| Flow | Ce qu'on voit | Variables utiles |
+|---|---|---|
+| `higher-lower` | « Plus ou Moins » : série de bonnes réponses puis la chute | `STREAK` (8), `FAIL` (1), `THINK_MS` (1300) |
+| `flags` | 6 drapeaux en CARRÉ, sans faute | `ROUNDS` (6), `FAIL` (0) |
+| `capitals` | 6 capitales en CARRÉ, sans faute | `ROUNDS` (6), `FAIL` (0) |
+
+⚠️ Ces flows ont été écrits à partir du code des écrans ; ils n'ont pas encore
+tourné sur un appareil. Le premier passage sur le Mac servira à ajuster les
+sélecteurs (voir « Avec Claude Code » plus bas, c'est fait pour ça).
+
+## Sur le Mac (iOS, la meilleure image)
+
+Une fois :
+
+```bash
+curl -fsSL https://get.maestro.mobile.dev | bash   # Maestro
+eas build --platform ios --profile recording        # build simulateur (~15 min sur EAS)
+```
+
+Télécharger le `.tar.gz` depuis expo.dev, l'extraire, puis :
+
+```bash
+xcrun simctl boot "iPhone 16 Pro"
+open -a Simulator
+xcrun simctl install booted GeoG.app
+```
+
+Ensuite, à chaque fournée :
+
+```bash
+./social-video/record.sh ios                       # tous les flows, fr + en
+LANGS="fr en es" ./social-video/record.sh ios flags
+cd social-video/composer && npm ci
+node plan.mjs --variants 2                         # 2 accroches par vidéo
+XI_API_KEY=… node voice.mjs                        # voix off (facultatif)
+node render.mjs                                    # → social-video/out/final/
+npm run studio                                     # retoucher un montage à l'œil
+```
+
+Sans passer par EAS : `EXPO_PUBLIC_RECORDING_MODE=1 npx expo run:ios --configuration Release`.
+
+## Dans GitHub Actions (Android, sans le Mac)
+
+Actions → « Vidéos réseaux sociaux » → Run workflow. Le build `recording`
+existant est réutilisé ; cocher « rebuild » après un changement d'écran.
+L'émulateur tourne en rendu logiciel : l'image est bonne pour les modes 2D
+(Plus ou Moins, Drapeaux, Capitales), moins pour le globe 3D, qu'il vaut mieux
+filmer sur le Mac.
+
+## Voix off (ElevenLabs)
+
+`voice.mjs` lit l'accroche au début, chaque sous-titre (champ `say` de
+`hooks.json`, sinon son texte) et une phrase de fin sur la carte de fin. Les
+répliques sont calées pour ne jamais se chevaucher, la carte de fin s'allonge
+pour laisser finir la dernière. Sans `XI_API_KEY`, l'étape est sautée et la
+vidéo sort muette, sans erreur.
+
+ElevenLabs reste le meilleur choix pour une voix qui passe pour humaine, en
+français comme dans les autres langues, et la clé sert déjà au mode Langues
+(`scripts/gen_language_audio.mjs`). Ce qui fait la différence n'est pas l'outil
+mais la voix :
+
+1. **Le mieux : cloner ta propre voix** (ElevenLabs → Voices → Add voice →
+   Professional Voice Clone, environ 30 min d'enregistrement propre ; ou Instant
+   Voice Clone avec 1 à 2 min, un peu moins fidèle). La chaîne a alors une
+   voix, la tienne, dans toutes les langues.
+2. Sinon, choisir dans la Voice Library une voix native par langue (filtres
+   « Conversational » ou « Social media ») et noter son Voice ID.
+
+Réglages : `XI_VOICE` (une voix pour tout), `XI_VOICE_FR`, `XI_VOICE_EN`… (une
+par langue), `XI_MODEL` (`eleven_multilingual_v2` par défaut, `eleven_v3` plus
+expressif). Chaque réplique est mise en cache par son texte : relancer ne
+consomme pas de crédits.
+
+## Avec Claude Code : piloter l'app par MCP
+
+Maestro embarque un serveur MCP. Sur le Mac, une fois :
+
+```bash
+claude mcp add maestro -- maestro mcp
+```
+
+Claude Code voit alors le simulateur : il lit la hiérarchie de l'écran, tape,
+fait des captures et lance des flows. C'est la façon la plus rapide de :
+
+- **corriger un flow** qui casse après un changement d'écran (« lance
+  higher-lower.yaml, regarde où il bloque, corrige le sélecteur ») ;
+- **écrire un nouveau flow** en jouant le mode une fois avec lui, puis en
+  figeant les étapes en YAML ;
+- **tourner une idée de vidéo** sur demande (« filme une partie de Silhouette où
+  je trouve en 2 essais »).
+
+Autres serveurs MCP utiles pour le mobile, si Maestro ne suffit pas :
+[mobile-mcp](https://github.com/mobile-next/mobile-mcp) (iOS et Android, vrais
+appareils compris) et [XcodeBuildMCP](https://github.com/cameroncooke/XcodeBuildMCP)
+(builds Xcode et simulateurs).
+
+## Ajouter un mode
+
+1. Dans l'écran du mode, mettre `testID={recAnswerId(estLaBonneRéponse)}` sur
+   chaque réponse (`src/lib/recordingMode.ts`). Hors build `recording`, la
+   valeur est `undefined` : rien ne change pour les joueurs.
+2. Copier `maestro/higher-lower.yaml`, changer `MODE_TITLE` et la boucle.
+3. Ajouter ses accroches dans `hooks.json` (au moins `fr` et `en`).
+
+## À faire à la main, une fois
+
+Dans l'ordre. Après ça, une fournée de shorts sort chaque lundi à 5 h UTC dans
+les artefacts du workflow, sans rien toucher.
+
+1. **Clé ElevenLabs** : GitHub → Settings → Secrets and variables → Actions →
+   New repository secret, nom `XI_API_KEY`. Ne jamais la coller dans un chat ou
+   un fichier du dépôt.
+2. **Voix** : cloner ta voix ou en choisir une (voir « Voix off »), puis, au
+   même endroit, onglet Variables : `XI_VOICE` = son Voice ID (ou `XI_VOICE_FR`
+   et `XI_VOICE_EN`).
+3. **Fusionner la PR** : GitHub ne propose « Run workflow » et ne lance le
+   cron qu'une fois le workflow sur `master`.
+4. **Premier tournage** : Actions → « Vidéos réseaux sociaux » → Run workflow,
+   « rebuild » coché (premier build `recording` sur EAS). S'il échoue sur un
+   sélecteur Maestro, me le dire : les captures d'écran du run suffisent pour
+   corriger le flow.
+5. **Optionnel, sur le Mac** : `claude mcp add maestro -- maestro mcp` pour
+   que Claude Code pilote le simulateur iOS (meilleure image, globe 3D).
+
+## Ce qui reste manuel
+
+- **Publier.** Le workflow s'arrête aux fichiers prêts à poster. Pour aller
+  jusqu'à la publication sans toi, il faut connecter les comptes : YouTube Data
+  API pour les Shorts et Instagram Graph API pour les Reels se branchent sans
+  validation ; l'API TikTok n'autorise la publication publique qu'après un
+  audit de l'app. Un service d'agrégation (type Ayrshare ou Upload-Post, payant)
+  couvre les trois avec une seule clé.
+- **Juger.** Comparer les vues des deux accroches d'une même vidéo, garder les
+  gagnantes dans `hooks.json`, retirer les autres.
