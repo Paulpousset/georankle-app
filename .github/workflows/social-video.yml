@@ -61,13 +61,15 @@ jobs:
         env:
           REBUILD: ${{ github.event.inputs.rebuild || 'false' }}
         run: |
+          # eas lit app.json et ses plugins : il lui faut les dépendances, même
+          # pour lister les builds.
+          npm ci --no-audit --no-fund
           url=""
           if [ "$REBUILD" != "true" ]; then
-            url=$(eas build:list --platform android --buildProfile recording --status finished \
-              --limit 1 --json --non-interactive | jq -r '.[0].artifacts.buildUrl // empty')
+            url=$(eas build:list --platform android --build-profile recording --status finished \
+              --limit 1 --json --non-interactive | jq -r '.[0].artifacts.buildUrl // empty') || url=""
           fi
           if [ -z "$url" ]; then
-            npm ci
             url=$(eas build --platform android --profile recording --wait --json --non-interactive \
               | jq -r '.[0].artifacts.buildUrl')
           fi
