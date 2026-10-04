@@ -13,8 +13,16 @@ env:
 ---
 - runFlow: subflows/launch.yaml
 - runFlow: subflows/start-solo.yaml
+# Écran de réglage de la partie : 10 tours (assez pour ROUNDS), puis JOUER.
+- tapOn:
+    text: "10 tours par manche|10 turns per set"
+    optional: true
+    waitToSettleTimeoutMs: 500
+- tapOn:
+    text: "JOUER|PLAY"
+    waitToSettleTimeoutMs: 500
 - extendedWaitUntil:
-    visible: "CARRÉ"
+    visible: "CARRÉ.*"
     timeout: 15000
 - startRecording: ${OUTPUT || 'flags'}
 - repeat:

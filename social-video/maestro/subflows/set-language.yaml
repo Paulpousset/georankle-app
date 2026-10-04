@@ -6,10 +6,17 @@ appId: com.paulpousset.geog
     text: "Changer de langue|Change language"
     waitToSettleTimeoutMs: 500
 # Une ligne du sélecteur s'annonce par le nom anglais (« French »), son texte
-# visible est le nom natif (« Français ») : l'un ou l'autre.
+# visible est le nom natif (« Français ») : l'un ou l'autre, en entier. Un motif
+# plus large attrapait le fond de la fenêtre (qui regroupe tous les textes) et
+# la refermait sans rien changer : les vidéos anglaises sortaient en français.
 - tapOn:
-    text: ".*(${APP_LANG_NAME}|${APP_LANG_EN}).*"
+    text: "${APP_LANG_NAME}|${APP_LANG_EN}"
     waitToSettleTimeoutMs: 500
 - extendedWaitUntil:
     visible: "Solo|SOLO"
     timeout: 15000
+# Le bouton de langue affiche le code (FR, EN…) : la vidéo ne part pas dans la
+# mauvaise langue sans qu'on le voie.
+- extendedWaitUntil:
+    visible: ${APP_LANG.toUpperCase()}
+    timeout: 10000
