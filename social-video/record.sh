@@ -65,7 +65,15 @@ for flow in "${FLOWS[@]}"; do
       "$HERE/maestro/$flow.yaml"; then
       echo "✓ $OUT/$out.mp4"
     else
-      echo "✗ $out a échoué (voir ~/.maestro/tests)" >&2
+      echo "✗ $out a échoué" >&2
+      # Captures et hiérarchie de l'écran au moment de l'échec, pour corriger le
+      # flow sans rejouer (le workflow les dépose dans l'artefact).
+      last="$(ls -td "$HOME"/.maestro/tests/*/ 2>/dev/null | head -1)"
+      if [ -n "$last" ]; then
+        mkdir -p "$HERE/out/debug"
+        cp -r "$last" "$HERE/out/debug/$out"
+        echo "  debug → social-video/out/debug/$out" >&2
+      fi
       status=1
     fi
   done

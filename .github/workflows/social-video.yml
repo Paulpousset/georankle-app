@@ -122,7 +122,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: shorts-${{ github.run_number }}
-          path: |
-            social-video/out/final/
-            social-video/out/raw/
+          path: social-video/out/
           if-no-files-found: warn
