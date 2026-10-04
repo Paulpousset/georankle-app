@@ -68,6 +68,18 @@ for flow in "${FLOWS[@]}"; do
       echo "✗ $out a échoué" >&2
       # Captures et hiérarchie de l'écran au moment de l'échec, pour corriger le
       # flow sans rejouer (le workflow les dépose dans l'artefact).
+      # Ce que l'écran affiche à cet instant, lisible directement dans le log :
+      # textes et libellés d'accessibilité de la hiérarchie.
+      echo "  écran au moment de l'échec :" >&2
+      maestro hierarchy 2>/dev/null \
+        | jq -r '.. | objects | .attributes? // empty
+                 | [.text, .["accessibilityText"], .["resource-id"]]
+                 | map(select(. != null and . != "")) | select(length > 0) | join(" · ")' \
+        | head -60 | sed 's/^/    /' >&2 || true
+      if [ "$PLATFORM" = android ]; then
+        echo "  logcat (JS et plantages) :" >&2
+        adb logcat -d 2>/dev/null | grep -E "ReactNativeJS|FATAL|AndroidRuntime" | tail -30 | sed 's/^/    /' >&2 || true
+      fi
       last="$(ls -td "$HOME"/.maestro/tests/*/ 2>/dev/null | head -1)"
       if [ -n "$last" ]; then
         mkdir -p "$HERE/out/debug"
