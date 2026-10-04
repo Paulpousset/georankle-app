@@ -2,10 +2,16 @@
 # Le mode tournage coupe déjà tutoriel, popups de règles, pubs et note.
 appId: com.paulpousset.geog
 ---
+# Permissions accordées d'avance : refusées, elles laissaient Android 13+
+# afficher la demande de notifications par-dessus le menu (run du 04/10).
 - launchApp:
     clearState: true
     permissions:
-      all: deny
+      all: allow
+# Filet si une demande s'affiche malgré tout (autre version d'Android, ATT iOS).
+- tapOn:
+    text: "Don’t allow|Don't allow|Ne pas autoriser|Allow|Autoriser"
+    optional: true
 - extendedWaitUntil:
     visible: "Solo|SOLO"
     # L'émulateur de la CI rend en logiciel : le premier lancement est lent.
