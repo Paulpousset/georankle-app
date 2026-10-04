@@ -20,6 +20,22 @@ appId: com.paulpousset.geog
     visible: "Solo|SOLO"
     # L'émulateur de la CI rend en logiciel : le premier lancement est lent.
     timeout: 60000
+    optional: true
+# Sur l'émulateur lent, Android tue parfois l'app au premier lancement (retour
+# à l'accueil, run du 04/10) : on la relance une fois, sans effacer.
+- runFlow:
+    when:
+      notVisible: "Solo|SOLO"
+    commands:
+      - launchApp:
+          permissions:
+            all: allow
+      - tapOn:
+          text: "Wait|Attendre"
+          optional: true
+- extendedWaitUntil:
+    visible: "Solo|SOLO"
+    timeout: 60000
 # Toujours choisir la langue : l'app suit celle de l'appareil (anglais sur
 # l'émulateur de la CI), pas celle de la vidéo.
 - runFlow: set-language.yaml

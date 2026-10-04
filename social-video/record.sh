@@ -54,6 +54,9 @@ case "$PLATFORM" in
     # Pas de boîte « X ne répond pas » : l'émulateur logiciel de la CI est lent
     # et le lanceur Pixel finissait par en afficher une par-dessus l'app.
     adb shell settings put global hide_error_dialogs 1
+    # Compilation AOT de l'app : le premier lancement ne bloque plus assez
+    # longtemps pour qu'Android la déclare « ne répond pas ».
+    adb shell cmd package compile -m speed -f com.paulpousset.geog >/dev/null 2>&1 || true
     adb shell settings put global sysui_demo_allowed 1
     adb shell am broadcast -a com.android.systemui.demo -e command enter
     adb shell am broadcast -a com.android.systemui.demo -e command clock -e hhmm 0941
