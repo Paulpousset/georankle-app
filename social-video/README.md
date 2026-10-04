@@ -35,7 +35,7 @@ build EAS « recording »  →  flows Maestro  →  out/raw/*.mp4
 | `record.sh` | Barre d'état propre (9:41, batterie pleine), puis chaque flow dans chaque langue. |
 | `hooks.json` | Accroches, sous-titres, appel à l'action et texte de publication, par flow et par langue. |
 | `composer/` | Projet Remotion. `plan.mjs` fait une fiche de montage par vidéo et par accroche, `voice.mjs` y ajoute la voix off ElevenLabs, `render.mjs` sort un MP4 1080×1920 H.264 et le texte à coller sous la vidéo. |
-| `.github/workflows/social-video.yml` | Tout le circuit Android dans GitHub Actions, chaque lundi ou à la main ; les shorts arrivent en artefact du run. |
+| `.github/workflows/social-video.yml` | Tout le circuit Android dans GitHub Actions, chaque lundi ou à la main ; les shorts arrivent dans une release « Shorts #N » (et en artefact du run). |
 
 ## Flows disponibles
 
@@ -146,8 +146,8 @@ appareils compris) et [XcodeBuildMCP](https://github.com/cameroncooke/XcodeBuild
 
 ## À faire à la main, une fois
 
-Dans l'ordre. Après ça, une fournée de shorts sort chaque lundi à 5 h UTC dans
-les artefacts du workflow, sans rien toucher.
+Dans l'ordre. Après ça, une fournée de shorts sort chaque lundi à 5 h UTC dans une release
+« Shorts #N » du dépôt (onglet Releases), sans rien toucher.
 
 1. **Clé ElevenLabs** : GitHub → Settings → Secrets and variables → Actions →
    New repository secret, nom `XI_API_KEY`. Ne jamais la coller dans un chat ou

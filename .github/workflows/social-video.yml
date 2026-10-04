@@ -33,6 +33,11 @@ on:
         type: boolean
         default: false
 
+# contents: write pour publier les shorts en release (lisibles depuis le
+# téléphone, sans dézipper d'artefact).
+permissions:
+  contents: write
+
 concurrency:
   group: social-video
   cancel-in-progress: false
@@ -129,3 +134,18 @@ jobs:
           name: shorts-${{ github.run_number }}
           path: social-video/out/
           if-no-files-found: warn
+
+      # Les shorts finis dans une release (pré-version, pas une version de
+      # l'app) : chaque vidéo s'ouvre et se télécharge depuis le téléphone.
+      - name: Release
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          files=(social-video/out/final/*.mp4 social-video/out/final/*.txt)
+          [ ${#files[@]} -gt 0 ] || { echo "Aucun short à publier"; exit 0; }
+          gh release create "shorts-${{ github.run_number }}" "${files[@]}" \
+            --repo "${{ github.repository }}" --target "${{ github.sha }}" --prerelease \
+            --title "Shorts #${{ github.run_number }}" \
+            --notes "Shorts tournés sur l'app Android par le workflow « Vidéos réseaux sociaux ». Chaque .txt contient le texte à coller sous la vidéo du même nom."
