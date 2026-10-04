@@ -8,7 +8,8 @@ appId: com.paulpousset.geog
       all: deny
 - extendedWaitUntil:
     visible: "Solo|SOLO"
-    timeout: 30000
+    # L'émulateur de la CI rend en logiciel : le premier lancement est lent.
+    timeout: 60000
 - runFlow:
     when:
       true: ${APP_LANG != 'fr'}

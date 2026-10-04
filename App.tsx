@@ -42,6 +42,7 @@ import { DesktopStage } from './src/components/DesktopStage';
 import { UiScaleProvider } from './src/components/UiScaleProvider';
 import { WebHoverStyles } from './src/components/WebHoverStyles';
 import { LaunchIntro, markLaunchIntroDone } from './src/components/LaunchIntro';
+import { RECORDING_MODE } from './src/lib/recordingMode';
 import { SoundToggle } from './src/components/SoundToggle';
 import { initSfx, preloadSfx } from './src/lib/sfx';
 
@@ -383,8 +384,10 @@ function App() {
   // L'intro animée (rose des vents + titre) qui enchaîne sur l'écran natif.
   // Pas sur un lien web direct (`/play`, `?mode=`) : là, chaque seconde avant
   // le jeu compte. Elle se démonte une fois son fondu terminé.
+  // Ni dans le build de tournage : la vidéo commence sur le jeu, et son
+  // animation en boucle gêne la lecture de l'écran par Maestro.
   const [introDone, setIntroDone] = useState(() => {
-    const skip = getInitialWebIntent() != null;
+    const skip = getInitialWebIntent() != null || RECORDING_MODE;
     if (skip) markLaunchIntroDone();
     return skip;
   });
