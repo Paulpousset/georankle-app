@@ -1,0 +1,4 @@
+node_modules/
+# Copiés par render.mjs à chaque rendu (vidéos brutes, icône).
+public/*
+!public/.gitkeep

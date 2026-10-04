@@ -74,6 +74,7 @@ function createSeededRng(seed: number) {
 
 import { isMobileLayout as isMobile } from '../lib/layout';
 import { capitalAnswerNames, capitalName, countryAnswerNames, countryName } from '../lib/geoNames';
+import { recAnswerId } from '../lib/recordingMode';
 
 interface VersusCapitalsProps {
   setGameMode: (mode: GameMode) => void;
@@ -1421,6 +1422,7 @@ export default function VersusCapitals({
                   key={option.id}
                   style={[styles.optionBtn, !isDarkMode && styles.optionBtnLight]}
                   onPress={() => handleAnswer(option, mode)}
+                  testID={recAnswerId(option.id === 'correct')}
                   {...a11yButton(option.name)}
                 >
                   <Text style={[styles.optionText, { color: c.text }]}>

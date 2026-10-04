@@ -1,0 +1,15 @@
+# Lance le build `recording` à froid, sur le menu, dans la langue demandée.
+# Le mode tournage coupe déjà tutoriel, popups de règles, pubs et note.
+appId: com.paulpousset.geog
+---
+- launchApp:
+    clearState: true
+    permissions:
+      all: deny
+- extendedWaitUntil:
+    visible: "Solo|SOLO"
+    timeout: 30000
+- runFlow:
+    when:
+      true: ${APP_LANG != 'fr'}
+    file: set-language.yaml

@@ -18,6 +18,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { GameMode } from '../types';
+import { RECORDING_MODE } from './recordingMode';
 
 // v2: clearer, step-by-step "how to play" copy for every mode — re-show once.
 const MODE_INTRO_VERSION = 2;
@@ -25,6 +26,8 @@ const storageKey = (mode: GameMode) => `modeIntro:seen:v${MODE_INTRO_VERSION}:${
 
 /** Has the player already seen the intro popup for this mode? */
 export async function hasSeenModeIntro(mode: GameMode): Promise<boolean> {
+  // Mode tournage : pas de popup de règles au milieu du plan.
+  if (RECORDING_MODE) return true;
   try {
     return (await AsyncStorage.getItem(storageKey(mode))) === 'true';
   } catch {

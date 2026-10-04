@@ -1,0 +1,10 @@
+# Pause « le joueur réfléchit » : Maestro tape dès que l'élément apparaît, ce
+# qui donne un jeu robotique à l'écran. On attend un élément qui n'existe pas,
+# en optionnel, pendant THINK_MS.
+appId: com.paulpousset.geog
+---
+- extendedWaitUntil:
+    visible:
+      id: "rec-never"
+    timeout: ${THINK_MS || 1200}
+    optional: true

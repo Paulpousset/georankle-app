@@ -16,6 +16,8 @@ module.exports = [
       'public/**',
       // Node-only asset toolchain (Blender/three.js/webp) — never bundled in the app.
       'asset-pipeline/**',
+      // Pipeline vidéo réseaux sociaux (Remotion, Node) : son propre package.json.
+      'social-video/**',
       // Plugins de config Expo : du Node CommonJS exécuté par `expo prebuild`,
       // jamais bundlé. C'était la seule erreur qui faisait échouer la CI sur master.
       'plugins/**',

@@ -1,0 +1,11 @@
+# Menu → Solo → mode MODE_TITLE → COMMENCER.
+appId: com.paulpousset.geog
+---
+- tapOn: "Solo|SOLO"
+- scrollUntilVisible:
+    element: ${MODE_TITLE}
+    direction: DOWN
+- tapOn: ${MODE_TITLE}
+- tapOn:
+    text: "COMMENCER|START|EMPEZAR|COMEÇAR|STARTEN|INIZIA"
+    optional: true

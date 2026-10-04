@@ -73,3 +73,6 @@ coverage/
 # Marketing (vidéos pub, app previews, TTS) : vit dans ~/rankle/videos-pub, hors du dépôt
 store-preview/
 video-pipeline/
+
+# Vidéos réseaux sociaux : brutes, fiches et montages, régénérables (social-video/)
+social-video/out/

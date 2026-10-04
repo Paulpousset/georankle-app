@@ -1,0 +1,39 @@
+# « Plus ou Moins » : STREAK bonnes réponses d'affilée, puis une erreur
+# volontaire (FAIL=1) pour la chute. Format court roi sur TikTok/Shorts.
+#   maestro test -e APP_LANG=en -e APP_LANG_NAME=English -e STREAK=8 higher-lower.yaml
+appId: com.paulpousset.geog
+name: higher-lower
+env:
+  APP_LANG: fr
+  APP_LANG_NAME: Français
+  STREAK: "8"
+  FAIL: "1"
+  THINK_MS: "1300"
+  MODE_TITLE: "Plus ou Moins|Higher or Lower"
+---
+- runFlow: subflows/launch.yaml
+- runFlow: subflows/start-solo.yaml
+- extendedWaitUntil:
+    visible:
+      id: "rec-correct"
+    timeout: 15000
+- startRecording: ${OUTPUT || 'higher-lower'}
+- repeat:
+    times: ${STREAK}
+    commands:
+      - runFlow: subflows/think.yaml
+      - tapOn:
+          id: "rec-correct"
+- runFlow:
+    when:
+      true: ${FAIL == '1'}
+    commands:
+      - runFlow: subflows/think.yaml
+      - tapOn:
+          id: "rec-wrong"
+# Laisse l'écran de fin (récap de la série) à l'image.
+- runFlow:
+    file: subflows/think.yaml
+    env:
+      THINK_MS: "3500"
+- stopRecording

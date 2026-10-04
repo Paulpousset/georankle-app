@@ -1,0 +1,9 @@
+# Change la langue de l'app depuis le bouton du menu. APP_LANG_NAME est le nom
+# natif affiché dans le sélecteur (src/i18n/locales.ts) : English, Español…
+appId: com.paulpousset.geog
+---
+- tapOn: "Changer de langue|Change language"
+- tapOn: ${APP_LANG_NAME}
+- extendedWaitUntil:
+    visible: "Solo|SOLO"
+    timeout: 10000

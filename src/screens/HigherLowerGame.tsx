@@ -54,6 +54,7 @@ import { isMobileLayout as isMobile } from '../lib/layout';
 import { countryName } from '../lib/geoNames';
 import { themeDisplay } from '../lib/themeDisplay';
 import { playSfx } from '../lib/sfx';
+import { recAnswerId } from '../lib/recordingMode';
 
 /** Reveal linger before the next pair (correct) or game over (wrong). */
 const NEXT_DELAY = 1400;
@@ -324,6 +325,7 @@ export default function HigherLowerGame({
         key={side}
         onPress={() => handleChoice(side)}
         disabled={revealed}
+        testID={revealed ? undefined : recAnswerId(isWinner)}
         style={[
           styles.countryBtn,
           { backgroundColor: c.card, borderColor: c.border },
