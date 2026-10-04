@@ -12,6 +12,10 @@ appId: com.paulpousset.geog
 - tapOn:
     text: "Don’t allow|Don't allow|Ne pas autoriser|Allow|Autoriser"
     optional: true
+# Et si une boîte « ne répond pas » passe quand même : attendre.
+- tapOn:
+    text: "Wait|Attendre"
+    optional: true
 - extendedWaitUntil:
     visible: "Solo|SOLO"
     # L'émulateur de la CI rend en logiciel : le premier lancement est lent.

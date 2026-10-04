@@ -43,6 +43,9 @@ case "$PLATFORM" in
       --batteryState charged --batteryLevel 100
     ;;
   android)
+    # Pas de boîte « X ne répond pas » : l'émulateur logiciel de la CI est lent
+    # et le lanceur Pixel finissait par en afficher une par-dessus l'app.
+    adb shell settings put global hide_error_dialogs 1
     adb shell settings put global sysui_demo_allowed 1
     adb shell am broadcast -a com.android.systemui.demo -e command enter
     adb shell am broadcast -a com.android.systemui.demo -e command clock -e hhmm 0941
