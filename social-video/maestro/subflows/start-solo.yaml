@@ -1,11 +1,24 @@
 # Menu → Solo → mode MODE_TITLE → COMMENCER.
+# Le compte à rebours du défi du jour change chaque seconde : l'écran n'est
+# jamais « stable » et Maestro attendrait sans fin. waitToSettleTimeoutMs borne
+# cette attente.
 appId: com.paulpousset.geog
 ---
-- tapOn: "Solo|SOLO"
+- tapOn:
+    text: "Solo|SOLO"
+    waitToSettleTimeoutMs: 500
 - scrollUntilVisible:
-    element: ${MODE_TITLE}
+    element:
+      text: ${MODE_TITLE}
     direction: DOWN
-- tapOn: ${MODE_TITLE}
+    speed: 70
+    timeout: 90000
+    visibilityPercentage: 60
+    waitToSettleTimeoutMs: 500
+- tapOn:
+    text: ${MODE_TITLE}
+    waitToSettleTimeoutMs: 500
 - tapOn:
     text: "COMMENCER|START|EMPEZAR|COMEÇAR|STARTEN|INIZIA"
     optional: true
+    waitToSettleTimeoutMs: 500

@@ -93,8 +93,11 @@ export interface VoiceLine {
 export const endCardSeconds = (p: Pick<ShortProps, 'endCardSeconds'>) =>
   p.endCardSeconds ?? END_CARD_SECONDS;
 
-const PHONE_H = 1180;
-const PHONE_TOP = 470;
+// Le haut de l'écran seulement : les modes filmés tiennent dans les deux tiers
+// supérieurs, le bas restait vide. Cadre plus large, texte de l'app plus lisible.
+const PHONE_H = 1090;
+const PHONE_TOP = 560;
+const SCREEN_RATIO = '9 / 14';
 
 export const Short = (p: ShortProps) => {
   const frame = useCurrentFrame();
@@ -194,8 +197,8 @@ export const Short = (p: ShortProps) => {
           <div
             style={{
               height: PHONE_H,
-              aspectRatio: '9 / 19.5',
-              borderRadius: 64,
+              aspectRatio: SCREEN_RATIO,
+              borderRadius: 52,
               border: `14px solid #05080f`,
               boxShadow: `0 0 0 3px ${C.nightBorder}, 0 40px 90px rgba(0,0,0,0.55)`,
               overflow: 'hidden',
@@ -207,7 +210,7 @@ export const Short = (p: ShortProps) => {
               trimBefore={Math.round(p.trimStart * fps)}
               playbackRate={p.speed}
               muted
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }}
             />
           </div>
         </div>

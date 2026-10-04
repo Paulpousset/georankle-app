@@ -34,6 +34,14 @@ lang_name() {
   esac
 }
 
+# Nom anglais : c'est le libellé d'accessibilité des lignes du sélecteur.
+lang_english() {
+  case "$1" in
+    fr) echo "French" ;; en) echo "English" ;; es) echo "Spanish" ;;
+    pt) echo "Portuguese" ;; de) echo "German" ;; it) echo "Italian" ;;
+  esac
+}
+
 # Barre d'état propre et identique sur toutes les vidéos : 9:41, batterie
 # pleine, réseau plein, pas de notifications.
 case "$PLATFORM" in
@@ -43,6 +51,12 @@ case "$PLATFORM" in
       --batteryState charged --batteryLevel 100
     ;;
   android)
+    # Pas de boîte « X ne répond pas » : l'émulateur logiciel de la CI est lent
+    # et le lanceur Pixel finissait par en afficher une par-dessus l'app.
+    adb shell settings put global hide_error_dialogs 1
+    # Compilation AOT de l'app : le premier lancement ne bloque plus assez
+    # longtemps pour qu'Android la déclare « ne répond pas ».
+    adb shell cmd package compile -m speed -f com.paulpousset.geog >/dev/null 2>&1 || true
     adb shell settings put global sysui_demo_allowed 1
     adb shell am broadcast -a com.android.systemui.demo -e command enter
     adb shell am broadcast -a com.android.systemui.demo -e command clock -e hhmm 0941
@@ -61,13 +75,37 @@ for flow in "${FLOWS[@]}"; do
     out="$flow-$lang"
     echo "▶ $out ($PLATFORM)"
     if maestro test \
-      -e APP_LANG="$lang" -e APP_LANG_NAME="$(lang_name "$lang")" -e OUTPUT="$out" \
+      -e APP_LANG="$lang" -e APP_LANG_NAME="$(lang_name "$lang")" -e APP_LANG_EN="$(lang_english "$lang")" -e OUTPUT="$out" --test-output-dir "$HERE/out/maestro/$out" \
       "$HERE/maestro/$flow.yaml"; then
-      echo "✓ $OUT/$out.mp4"
+      # Maestro range la vidéo dans le dossier de sortie du run (il refuse un
+      # chemin hors de ce dossier) : on la rapatrie dans out/raw.
+      if [ ! -s "$OUT/$out.mp4" ]; then
+        found="$(find "$HERE/out/maestro" "$HERE/maestro" "$HOME/.maestro" "$PWD" -name "$out.mp4" -newer "$HERE/record.sh" 2>/dev/null | head -1)"
+        [ -n "$found" ] && mv "$found" "$OUT/$out.mp4"
+      fi
+      if [ -s "$OUT/$out.mp4" ]; then
+        echo "✓ $OUT/$out.mp4 ($(du -h "$OUT/$out.mp4" | cut -f1))"
+      else
+        echo "✗ $out : flow réussi mais vidéo introuvable" >&2
+        find / -name "$out.mp4" 2>/dev/null | head -5 | sed 's/^/    /' >&2
+        status=1
+      fi
     else
       echo "✗ $out a échoué" >&2
       # Captures et hiérarchie de l'écran au moment de l'échec, pour corriger le
       # flow sans rejouer (le workflow les dépose dans l'artefact).
+      # Ce que l'écran affiche à cet instant, lisible directement dans le log :
+      # textes et libellés d'accessibilité de la hiérarchie.
+      echo "  écran au moment de l'échec :" >&2
+      maestro hierarchy 2>/dev/null \
+        | jq -r '.. | objects | .attributes? // empty
+                 | [.text, .["accessibilityText"], .["resource-id"]]
+                 | map(select(. != null and . != "")) | select(length > 0) | join(" · ")' \
+        | head -60 | sed 's/^/    /' >&2 || true
+      if [ "$PLATFORM" = android ]; then
+        echo "  logcat (JS et plantages) :" >&2
+        adb logcat -d 2>/dev/null | grep -E "ReactNativeJS|FATAL|AndroidRuntime" | tail -30 | sed 's/^/    /' >&2 || true
+      fi
       last="$(ls -td "$HOME"/.maestro/tests/*/ 2>/dev/null | head -1)"
       if [ -n "$last" ]; then
         mkdir -p "$HERE/out/debug"
