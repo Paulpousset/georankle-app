@@ -72,9 +72,21 @@ for flow in "${FLOWS[@]}"; do
     out="$flow-$lang"
     echo "▶ $out ($PLATFORM)"
     if maestro test \
-      -e APP_LANG="$lang" -e APP_LANG_NAME="$(lang_name "$lang")" -e APP_LANG_EN="$(lang_english "$lang")" -e OUTPUT="$out" \
+      -e APP_LANG="$lang" -e APP_LANG_NAME="$(lang_name "$lang")" -e APP_LANG_EN="$(lang_english "$lang")" -e OUTPUT="$OUT/$out" \
       "$HERE/maestro/$flow.yaml"; then
-      echo "✓ $OUT/$out.mp4"
+      # Selon la version, Maestro range la vidéo à côté du flow ou dans son
+      # dossier de tests plutôt qu'au chemin demandé : on la rapatrie.
+      if [ ! -s "$OUT/$out.mp4" ]; then
+        found="$(find "$HERE/maestro" "$HOME/.maestro" "$PWD" -name "$out.mp4" -newer "$HERE/record.sh" 2>/dev/null | head -1)"
+        [ -n "$found" ] && mv "$found" "$OUT/$out.mp4"
+      fi
+      if [ -s "$OUT/$out.mp4" ]; then
+        echo "✓ $OUT/$out.mp4 ($(du -h "$OUT/$out.mp4" | cut -f1))"
+      else
+        echo "✗ $out : flow réussi mais vidéo introuvable" >&2
+        find / -name "$out.mp4" 2>/dev/null | head -5 | sed 's/^/    /' >&2
+        status=1
+      fi
     else
       echo "✗ $out a échoué" >&2
       # Captures et hiérarchie de l'écran au moment de l'échec, pour corriger le
