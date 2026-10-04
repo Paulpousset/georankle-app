@@ -72,12 +72,12 @@ for flow in "${FLOWS[@]}"; do
     out="$flow-$lang"
     echo "▶ $out ($PLATFORM)"
     if maestro test \
-      -e APP_LANG="$lang" -e APP_LANG_NAME="$(lang_name "$lang")" -e APP_LANG_EN="$(lang_english "$lang")" -e OUTPUT="$OUT/$out" \
+      -e APP_LANG="$lang" -e APP_LANG_NAME="$(lang_name "$lang")" -e APP_LANG_EN="$(lang_english "$lang")" -e OUTPUT="$out" --test-output-dir "$HERE/out/maestro/$out" \
       "$HERE/maestro/$flow.yaml"; then
-      # Selon la version, Maestro range la vidéo à côté du flow ou dans son
-      # dossier de tests plutôt qu'au chemin demandé : on la rapatrie.
+      # Maestro range la vidéo dans le dossier de sortie du run (il refuse un
+      # chemin hors de ce dossier) : on la rapatrie dans out/raw.
       if [ ! -s "$OUT/$out.mp4" ]; then
-        found="$(find "$HERE/maestro" "$HOME/.maestro" "$PWD" -name "$out.mp4" -newer "$HERE/record.sh" 2>/dev/null | head -1)"
+        found="$(find "$HERE/out/maestro" "$HERE/maestro" "$HOME/.maestro" "$PWD" -name "$out.mp4" -newer "$HERE/record.sh" 2>/dev/null | head -1)"
         [ -n "$found" ] && mv "$found" "$OUT/$out.mp4"
       fi
       if [ -s "$OUT/$out.mp4" ]; then
