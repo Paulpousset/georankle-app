@@ -15,8 +15,9 @@ appId: com.paulpousset.geog
 - extendedWaitUntil:
     visible: "Solo|SOLO"
     timeout: 15000
-# Le bouton de langue affiche le code (FR, EN…) : la vidéo ne part pas dans la
-# mauvaise langue sans qu'on le voie.
+# Vérification : le libellé du bouton de langue suit la langue de l'app
+# (« Changer de langue » en français, « Change language » sinon). Le code
+# « EN » seul ne suffisait pas : il apparaît aussi ailleurs à l'écran.
 - extendedWaitUntil:
-    visible: ${APP_LANG.toUpperCase()}
+    visible: "${APP_LANG == 'fr' ? 'Changer de langue' : 'Change language'}"
     timeout: 10000

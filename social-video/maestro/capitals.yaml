@@ -2,9 +2,6 @@
 appId: com.paulpousset.geog
 name: capitals
 env:
-  APP_LANG: fr
-  APP_LANG_NAME: Français
-  APP_LANG_EN: French
   ROUNDS: "6"
   FAIL: "0"
   THINK_MS: "1500"
