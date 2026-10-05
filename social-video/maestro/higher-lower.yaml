@@ -1,12 +1,11 @@
 # « Plus ou Moins » : STREAK bonnes réponses d'affilée, puis une erreur
 # volontaire (FAIL=1) pour la chute. Format court roi sur TikTok/Shorts.
-#   maestro test -e APP_LANG=en -e APP_LANG_NAME=English -e STREAK=8 higher-lower.yaml
+#   maestro test -e APP_LANG=en -e APP_LANG_NAME=English -e APP_LANG_EN=English -e STREAK=8 higher-lower.yaml
+# Pas de valeur par défaut pour APP_LANG* ici : le bloc env du flow
+# l'emporte sur les -e de la ligne de commande : les vidéos anglaises sortaient en français.
 appId: com.paulpousset.geog
 name: higher-lower
 env:
-  APP_LANG: fr
-  APP_LANG_NAME: Français
-  APP_LANG_EN: French
   STREAK: "8"
   FAIL: "1"
   THINK_MS: "1300"
