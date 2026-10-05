@@ -673,6 +673,47 @@ export function flagsNotorietyTable(scope, locale) {
 }
 
 /** Le tableau demandé par une directive `{{table:famille:portée}}`. */
+/**
+ * Le classement des N premiers pays selon un champ (`population` ou `area`), avec
+ * la part du total des pays du jeu et la part cumulée. Le total est calculé ici,
+ * sur les pays du jeu : aucune part n'est saisie.
+ */
+function topTable(field, scope, locale) {
+  const limit = Number(scope) || 30;
+  const fr = locale === 'fr';
+  const total = COUNTRIES.reduce((sum, c) => sum + c[field], 0);
+  const list = [...COUNTRIES].sort((a, b) => b[field] - a[field]).slice(0, limit);
+  const pct = (v) => `${(Math.round(v * 1000) / 10).toLocaleString(fr ? 'fr-FR' : 'en-US', { minimumFractionDigits: 1 })} %`;
+  let cumulative = 0;
+  const rows = list.map((c, i) => {
+    cumulative += c[field];
+    const continent = CONTINENTS.find((k) => k.match(c));
+    return (
+      cell(`<strong>${i + 1}</strong>`) +
+      cell(countryName(c, locale)) +
+      cell(fr ? continent.fr : continent.en) +
+      cell(num(Math.round(c[field]), locale)) +
+      cell(pct(c[field] / total)) +
+      cell(pct(cumulative / total))
+    );
+  });
+  const unit = field === 'area' ? (fr ? 'Superficie (km²)' : 'Area (km²)') : fr ? 'Population' : 'Population';
+  return {
+    html: table(
+      ['#', fr ? 'Pays' : 'Country', fr ? 'Continent (jeu)' : 'Continent (game)', unit, fr ? 'Part du total' : 'Share of total', fr ? 'Part cumulée' : 'Cumulative'],
+      rows,
+    ),
+    items: list.map((c) => countryName(c, locale)),
+    name:
+      field === 'area'
+        ? fr ? `Les ${limit} plus vastes pays du monde` : `The ${limit} largest countries in the world`
+        : fr ? `Les ${limit} pays les plus peuplés du monde` : `The ${limit} most populous countries in the world`,
+  };
+}
+
+export const populationTopTable = (scope, locale) => topTable('population', scope, locale);
+export const areaTopTable = (scope, locale) => topTable('area', scope, locale);
+
 export const TABLES = {
   flags: flagsTable,
   capitals: capitalsTable,
@@ -692,4 +733,6 @@ export const TABLES = {
   smallest: smallestTable,
   'capital-blocks': capitalBlocksTable,
   'flags-notoriety': flagsNotorietyTable,
+  'population-top': populationTopTable,
+  'area-top': areaTopTable,
 };

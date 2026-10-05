@@ -164,6 +164,14 @@ const THEMATIC = [
     id: 'guide-hardest-flags',
     paths: { fr: '/guides/drapeaux-les-plus-difficiles/', en: '/en/guides/hardest-flags-in-the-world/' },
   },
+  {
+    id: 'guide-population-ranking',
+    paths: { fr: '/guides/pays-par-population/', en: '/en/guides/countries-by-population/' },
+  },
+  {
+    id: 'guide-area-ranking',
+    paths: { fr: '/guides/pays-par-superficie/', en: '/en/guides/countries-by-area/' },
+  },
 ];
 
 /**
@@ -251,6 +259,16 @@ export const COUNTRY_PAGES = [
   { cca3: 'BGD', fr: 'bangladesh', en: 'bangladesh' },
   { cca3: 'RUS', fr: 'russie', en: 'russia' },
   { cca3: 'ETH', fr: 'ethiopie', en: 'ethiopia' },
+  { cca3: 'MEX', fr: 'mexique', en: 'mexico' },
+  { cca3: 'JPN', fr: 'japon', en: 'japan' },
+  { cca3: 'EGY', fr: 'egypte', en: 'egypt' },
+  { cca3: 'PHL', fr: 'philippines', en: 'philippines' },
+  { cca3: 'COD', fr: 'rd-congo', en: 'dr-congo' },
+  { cca3: 'VNM', fr: 'viet-nam', en: 'vietnam' },
+  { cca3: 'IRN', fr: 'iran', en: 'iran' },
+  { cca3: 'TUR', fr: 'turquie', en: 'turkey' },
+  { cca3: 'DEU', fr: 'allemagne', en: 'germany' },
+  { cca3: 'THA', fr: 'thailande', en: 'thailand' },
 ];
 
 const COUNTRY_ROUTES = COUNTRY_PAGES.map((p) => ({
