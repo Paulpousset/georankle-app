@@ -46,7 +46,9 @@ jobs:
   record-and-render:
     name: Tournage Android + montage
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # Tournage (~25 min pour 6 vidéos) + montage (~2 min par short) : une
+    # fournée complète dépasse l'heure.
+    timeout-minutes: 150
     steps:
       - name: Checkout
         uses: actions/checkout@v4

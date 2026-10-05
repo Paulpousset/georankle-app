@@ -10,6 +10,7 @@
 import { bundle } from '@remotion/bundler';
 import { renderMedia, selectComposition } from '@remotion/renderer';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'fs';
+import { cpus } from 'os';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -57,6 +58,9 @@ for (const n of names) {
     crf: 18,
     outputLocation: out,
     browserExecutable,
+    // Tous les cœurs : par défaut Remotion n'en prend que la moitié, et une
+    // fournée complète (12 vidéos) dépassait l'heure du job.
+    concurrency: cpus().length,
   });
   if (post) writeFileSync(join(FINAL, `${n}.txt`), `${post}\n`);
   console.log(`✓ ${out}`);
