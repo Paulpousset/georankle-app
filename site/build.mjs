@@ -385,7 +385,7 @@ for (const locale of LOCALES) {
     const jsonLd = [...lists];
     if (faq) jsonLd.push(faqPage(faq));
     if (isLanding) jsonLd.push(videoGame({ description: page.meta.description }));
-    if (r.kind === 'guide' || r.kind === 'atlas') {
+    if (r.kind === 'guide' || r.kind === 'atlas' || r.kind === 'country') {
       if (!page.meta.published) fail(`${page.file} : « published » manquant pour un article`);
       jsonLd.push(
         article({
@@ -409,7 +409,7 @@ for (const locale of LOCALES) {
           description: page.meta.description,
           ogTitle: page.meta.ogTitle,
           ogDescription: page.meta.ogDescription,
-          ogType: r.kind === 'guide' || r.kind === 'atlas' ? 'article' : 'website',
+          ogType: r.kind === 'guide' || r.kind === 'atlas' || r.kind === 'country' ? 'article' : 'website',
           image: page.meta.image,
           breadcrumbLabel: page.meta.breadcrumb,
           jsonLd,
@@ -423,6 +423,8 @@ for (const locale of LOCALES) {
       locale,
       path: r.paths[locale],
       title: page.meta.title,
+      kind: r.kind,
+      prose: page.body,
       html,
       lastmod: page.meta.modified,
       changefreq: r.changefreq,

@@ -14,10 +14,10 @@ propre, une FAQ, un bouton « Jouer » vers le mode concerné), puis les coche.
 quasi vides après cinq refus AdSense (commit `aa5e5be`). Une page qui ne peut
 pas être écrite sérieusement n'est pas publiée.
 
-- [ ] Quiz capitales d'Europe — les 44 capitales, pièges (Suisse, Pays-Bas, Australie hors périmètre), méthode de mémorisation par blocs
-- [ ] Les drapeaux les plus difficiles du monde — lesquels, pourquoi (paires, tricolores), comment les distinguer
-- [ ] Classement des pays par population — le top 30 avec les chiffres du jeu, ce qui change d'ici 2050
-- [ ] Classement des pays par superficie — top 30, les surprises (Kazakhstan, Algérie, RDC)
+- [x] Quiz capitales d'Europe (29/09 : 45 pays dans le jeu, pas 44 ; angle « méthode par blocs », la liste existait déjà) — les 44 capitales, pièges (Suisse, Pays-Bas, Australie hors périmètre), méthode de mémorisation par blocs
+- [x] Les drapeaux les plus difficiles du monde (29/09 : angle notoriété, les sosies restent dans le guide existant) — lesquels, pourquoi (paires, tricolores), comment les distinguer
+- [x] Classement des pays par population (05/10 : angle concentration et paliers de mémorisation ; la partie « d'ici 2050 » est SAUTÉE, le dépôt ne contient aucune projection et aucun chiffre n'est inventé) — le top 30 avec les chiffres du jeu, ce qui change d'ici 2050
+- [x] Classement des pays par superficie (05/10 : angle concentration, surprises, projection de Mercator) — top 30, les surprises (Kazakhstan, Algérie, RDC)
 - [ ] Pays les plus petits du monde — micro-États et leur histoire, lien vers le guide micro-États
 - [ ] Capitales d'Afrique — 54 pays, les capitales qui ne sont pas la plus grande ville
 - [ ] Capitales d'Asie — 48 pays, les capitales déplacées (Nur-Sultan/Astana, Naypyidaw, Nusantara)
@@ -32,7 +32,7 @@ pas être écrite sérieusement n'est pas publiée.
 
 ### Fiches pays (195, à raison de 10 à 20 par semaine)
 
-Non commencées. La première semaine construit le gabarit (`site/lib/routes.mjs`
+**Avancement : 20 / 195** (05/10 : Mexique, Japon, Égypte, Philippines, RD Congo, Viêt Nam, Iran, Turquie, Allemagne, Thaïlande, ranks 11 à 20 ; prochaine fournée : le Royaume-Uni, 21ᵉ). Avancement du 29/09 : 10 / 195 (29/09, les 10 pays les plus peuplés : Inde, Chine, États-Unis, Indonésie, Pakistan, Nigéria, Brésil, Bangladesh, Russie, Éthiopie). Gabarit livré : `COUNTRY_PAGES` dans `routes.mjs`, textes dans `site/content/<langue>/country-<cca3>.html`, garde-fou `checkCountryPages` (≥ 200 mots écrits, ≤ 25 % de phrases communes entre fiches). Prochaine fournée : le Mexique (11ᵉ par la population) et suivants. Le gabarit décrit ci-dessous a servi de base (`site/lib/routes.mjs`
 kind `country`, URL `/pays/<slug>/` et `/en/country/<slug>/`, données lues dans
 `assets/countries_stats.json`, tableau des voisins, drapeau, capitale, bouton
 « Jouer » vers Devinez le pays) puis livre les 10 premières, par ordre de
@@ -42,23 +42,19 @@ seuil.
 
 ## Entrées
 
-### 2026-10-02 — rapport hebdo (sans PostHog)
+### 2026-10-05 — Contenu SEO de la semaine
 
-- Pas de `POSTHOG_PERSONAL_API_KEY` dans la session : aucun indicateur produit mesuré. `playgeog.com` est bloqué par le réseau de la session (403 sur CONNECT) : sitemap et PageSpeed non mesurés, pas de nouvel essai.
+- Base : la PR #6 (SEO du 29/09) était encore ouverte ; la branche la fusionne pour réutiliser le gabarit `country` sans le dupliquer. Ses deux sujets (capitales d'Europe, drapeaux difficiles) ne sont pas repris.
+- Pages : `/guides/pays-par-population/`, `/guides/pays-par-superficie/` et leurs versions EN (`/en/guides/countries-by-population/`, `/en/guides/countries-by-area/`) ; nouveaux tableaux `population-top` et `area-top` (parts et parts cumulées calculées depuis `countries_stats.json`).
+- 10 fiches pays de plus (rangs 11 à 20 par la population), FR + EN. Total : 20.
+- Rafraîchissement : aucune page n'a un `modified` de plus de 60 jours (la plus ancienne date du 23/08, soit 43 jours), rien relu.
+- Sauté : la partie « ce qui change d'ici 2050 » du sujet population, faute de projection dans les données du dépôt.
 
-| Mesurable sans clé | Valeur |
-|---|---|
-| Commits sur 7 jours | 10 (dernier : 01/10) |
-| Pages ajoutées dans `site/content` | 0 (116 fichiers au total) |
-| Cases cochées de la file éditoriale | 0 / 15 |
-| Taux partage/complétion, parrainages, rétention | non mesuré |
+### 2026-09-29 — Contenu SEO de la semaine
 
-Faits saillants :
-1. Semaine centrée produit : /hq (tableau de bord privé), classement combiné du Défi du Jour, bouton de langue, notes v5.7.0.
-2. Aucune page SEO publiée : la Routine « Contenu SEO » n'a rien livré depuis le 23/09.
-3. Les indicateurs A1/A2 (`solo_shared`, `referral_shared`, `install_cta_pressed`, `comeback_granted`) restent à zéro information, faute d'accès PostHog.
-
-Décision : poser `POSTHOG_PERSONAL_API_KEY` et autoriser `playgeog.com` dans l'environnement de la Routine ; vérifier pourquoi « Contenu SEO » n'a pas tourné. File éditoriale inchangée (pas de données pour la justifier).
+- Pages : `/guides/quiz-capitales-d-europe/`, `/guides/drapeaux-les-plus-difficiles/` et leurs versions EN.
+- 10 premières fiches pays FR + EN (`/pays/…`, `/en/country/…`), listées dans le sommaire des guides.
+- Rafraîchissement : aucune page n'a un `modified` de plus de 60 jours (la plus ancienne date du 23/08), rien relu cette semaine.
 
 ### 2026-09-23 — première chaîne complète
 
