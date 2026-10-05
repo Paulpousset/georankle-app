@@ -1,0 +1,60 @@
+name: Publication réseaux sociaux
+
+# Publie chaque jour le prochain short des releases `shorts-N` sur TikTok,
+# Instagram et YouTube via Upload-Post (social-video/publish/post.mjs).
+#
+# Tant que la variable de dépôt SOCIAL_POST_ENABLED ne vaut pas `true`, le
+# workflow tourne en simulation : il affiche ce qu'il publierait, rien ne part.
+#
+# Secrets : UPLOAD_POST_API_KEY.
+# Variables : UPLOAD_POST_USER (profil Upload-Post), SOCIAL_POST_ENABLED,
+# optionnelles SOCIAL_POST_PLATFORMS, SOCIAL_POST_LANGS, SOCIAL_POST_MIN_RELEASE.
+on:
+  # 17 h UTC, soit 19 h à Paris en été (18 h en hiver).
+  schedule:
+    - cron: '0 17 * * *'
+  workflow_dispatch:
+    inputs:
+      count:
+        description: Vidéos à publier
+        default: '1'
+        required: true
+      dry_run:
+        description: Simulation (ne rien publier)
+        type: boolean
+        default: true
+
+# contents: write pour tenir à jour posted.json dans la release shorts-state.
+permissions:
+  contents: write
+
+concurrency:
+  group: social-post
+  cancel-in-progress: false
+
+jobs:
+  post:
+    name: Publier le prochain short
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Publier
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UPLOAD_POST_API_KEY: ${{ secrets.UPLOAD_POST_API_KEY }}
+          UPLOAD_POST_USER: ${{ vars.UPLOAD_POST_USER }}
+          PLATFORMS: ${{ vars.SOCIAL_POST_PLATFORMS || 'tiktok,instagram,youtube' }}
+          LANGS: ${{ vars.SOCIAL_POST_LANGS || 'fr' }}
+          MIN_RELEASE: ${{ vars.SOCIAL_POST_MIN_RELEASE || '16' }}
+          COUNT: ${{ github.event.inputs.count || '1' }}
+          # Publication réelle seulement si activée ET (planifié OU case décochée).
+          DRY_RUN: ${{ (vars.SOCIAL_POST_ENABLED == 'true' && github.event.inputs.dry_run != 'true') && '0' || '1' }}
+        run: node social-video/publish/post.mjs

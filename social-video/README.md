@@ -166,11 +166,44 @@ Dans l'ordre. Après ça, une fournée de shorts sort chaque lundi à 5 h UTC da
 
 ## Ce qui reste manuel
 
-- **Publier.** Le workflow s'arrête aux fichiers prêts à poster. Pour aller
-  jusqu'à la publication sans toi, il faut connecter les comptes : YouTube Data
-  API pour les Shorts et Instagram Graph API pour les Reels se branchent sans
-  validation ; l'API TikTok n'autorise la publication publique qu'après un
-  audit de l'app. Un service d'agrégation (type Ayrshare ou Upload-Post, payant)
-  couvre les trois avec une seule clé.
+- **Brancher la publication automatique** (une fois) : voir « Publier tout
+  seul » ci-dessous.
 - **Juger.** Comparer les vues des deux accroches d'une même vidéo, garder les
   gagnantes dans `hooks.json`, retirer les autres.
+
+## Publier tout seul
+
+Le workflow « Publication réseaux sociaux » (`.github/workflows/social-post.yml`)
+prend chaque jour à 17 h UTC le prochain short des releases `shorts-N` et le
+poste sur TikTok, Instagram (Reels) et YouTube (Shorts) via
+[Upload-Post](https://upload-post.com) : une seule clé API pour les trois, et
+pas d'audit d'app TikTok à passer (l'API TikTok officielle limite les comptes
+non audités aux publications privées, YouTube aussi pour les projets non
+vérifiés).
+
+- **Une vidéo ne part jamais deux fois** : la liste de ce qui est publié vit
+  dans `posted.json`, release `shorts-state`.
+- **Une seule accroche par partie** : v1 et v2 montrent la même partie, une
+  seule est postée, en alternant d'une fournée à l'autre pour comparer.
+- **Simulation par défaut** : tant que `SOCIAL_POST_ENABLED` ne vaut pas
+  `true`, le run affiche ce qu'il publierait et ne poste rien.
+
+Mise en route :
+
+1. Compte Upload-Post, plan Basic (TikTok n'est pas dans l'offre gratuite).
+   Créer un profil (ex. `georankle`) et y connecter TikTok, Instagram
+   (compte professionnel ou créateur) et YouTube.
+2. GitHub → Settings → Secrets and variables → Actions :
+   secret `UPLOAD_POST_API_KEY`, variable `UPLOAD_POST_USER` (nom du profil).
+3. Actions → « Publication réseaux sociaux » → Run workflow, simulation
+   cochée : vérifier dans le log la vidéo et le texte choisis.
+4. Variable `SOCIAL_POST_ENABLED` = `true` : les publications partent chaque
+   jour.
+
+Réglages (variables de dépôt) : `SOCIAL_POST_LANGS` (`fr` par défaut, `fr en`
+pour les deux), `SOCIAL_POST_PLATFORMS` (`tiktok,instagram,youtube`, on peut
+ajouter `facebook`, `x`, `threads`…), `SOCIAL_POST_MIN_RELEASE` (16 par
+défaut : les fournées d'avant avaient des vidéos anglaises en français).
+
+En local : `GITHUB_REPOSITORY=Paulpousset/georankle-app node social-video/publish/post.mjs`
+affiche la file d'attente sans rien publier.
