@@ -19,5 +19,5 @@ appId: com.paulpousset.geog
 # (« Changer de langue » en français, « Change language » sinon). Le code
 # « EN » seul ne suffisait pas : il apparaît aussi ailleurs à l'écran.
 - extendedWaitUntil:
-    visible: ${APP_LANG == 'fr' ? 'Changer de langue' : 'Change language'}
+    visible: "${APP_LANG == 'fr' ? 'Changer de langue' : 'Change language'}"
     timeout: 10000
