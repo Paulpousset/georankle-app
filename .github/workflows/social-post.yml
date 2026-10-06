@@ -1,21 +1,30 @@
 name: Publication réseaux sociaux
 
-# Publie chaque jour le prochain short des releases `shorts-N` sur TikTok,
-# Instagram et YouTube via Zernio et/ou Upload-Post
-# (social-video/publish/post.mjs).
+# Publie les shorts des releases `shorts-N` (social-video/publish/post.mjs) :
+# - TikTok + Instagram (Zernio) deux fois par jour, 12 h 30 et 19 h 30 à Paris ;
+# - YouTube (Upload-Post gratuit, 10 envois/mois) tous les 3 jours, 10 fois
+#   par mois.
 #
-# Tant que la variable de dépôt SOCIAL_POST_ENABLED ne vaut pas `true`, le
-# workflow tourne en simulation : il affiche ce qu'il publierait, rien ne part.
+# Pour tout couper : variable de dépôt SOCIAL_POST_ENABLED = false (le
+# workflow tourne alors en simulation, rien ne part).
 #
 # Secrets : ZERNIO_API_KEY et/ou UPLOAD_POST_API_KEY.
 # Variables : UPLOAD_POST_USER (profil Upload-Post), SOCIAL_POST_ENABLED,
 # optionnelles UPLOAD_POST_PLATFORMS, SOCIAL_POST_LANGS, SOCIAL_POST_MIN_RELEASE.
 on:
-  # 17 h UTC, soit 19 h à Paris en été (18 h en hiver).
+  # Heures en UTC, calées sur l'heure d'été de Paris (UTC+2) : en hiver les
+  # publications partent une heure plus tôt (11 h 30 et 18 h 30).
   schedule:
-    - cron: '0 17 * * *'
+    - cron: '30 10 * * *'
+    - cron: '30 17 * * *'
+    - cron: '0 16 1,4,7,10,13,16,19,22,25,28 * *'
   workflow_dispatch:
     inputs:
+      target:
+        description: Où publier
+        type: choice
+        options: [social, youtube, all]
+        default: social
       count:
         description: Vidéos à publier
         default: '1'
@@ -57,6 +66,8 @@ jobs:
           LANGS: ${{ vars.SOCIAL_POST_LANGS || 'fr' }}
           MIN_RELEASE: ${{ vars.SOCIAL_POST_MIN_RELEASE || '16' }}
           COUNT: ${{ github.event.inputs.count || '1' }}
-          # Publication réelle seulement si activée ET (planifié OU case décochée).
-          DRY_RUN: ${{ (vars.SOCIAL_POST_ENABLED == 'true' && github.event.inputs.dry_run != 'true') && '0' || '1' }}
+          TARGET: ${{ github.event.inputs.target || (startsWith(github.event.schedule, '0 16') && 'youtube' || 'social') }}
+          # Publication réelle sauf si coupée (SOCIAL_POST_ENABLED = false) ou
+          # si la case « Simulation » est cochée au lancement manuel.
+          DRY_RUN: ${{ (vars.SOCIAL_POST_ENABLED != 'false' && github.event.inputs.dry_run != 'true') && '0' || '1' }}
         run: node social-video/publish/post.mjs
