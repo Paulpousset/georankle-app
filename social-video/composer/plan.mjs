@@ -96,10 +96,12 @@ for (const file of readdirSync(RAW).filter((f) => f.endsWith('.mp4')).sort()) {
         { at: 0.2, text: null },
         ...(copy.captions ?? []).map((c) => ({ at: c.at ?? null, fromEnd: c.fromEnd ?? null, text: c.say ?? c.text })),
         // Répliques de partie sur les 2e, 4e et 6e questions, pour que la voix
-        // accompagne tout le jeu et pas seulement l'accroche.
-        ...(copy.lines ?? [])
-          .map((text, i) => ({ at: beats[1 + i * 2] ?? null, text }))
-          .filter((l) => l.at != null),
+        // accompagne tout le jeu et pas seulement l'accroche. Si l'écran change
+        // trop peu pour repérer les questions, on les répartit sur la partie.
+        ...(copy.lines ?? []).map((text, i, all) => ({
+          at: beats[1 + i * 2] ?? Math.round((3 + ((clipSeconds - 9) * (i + 1)) / (all.length + 1)) * 100) / 100,
+          text,
+        })),
         common.voiceOutro ? { atEnd: true, text: common.voiceOutro } : null,
       ].filter(Boolean),
       post: `${copy.post}\n\n${common.tags}`,
