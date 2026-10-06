@@ -31,7 +31,8 @@ import { mkdtempSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const env = process.env;
+// Valeurs collées depuis un téléphone : on enlève espaces et retours à la ligne.
+const env = Object.fromEntries(Object.entries(process.env).map(([k, v]) => [k, v?.trim()]));
 const REPO = env.GITHUB_REPOSITORY;
 const ZERNIO = Boolean(env.ZERNIO_API_KEY);
 const UPLOAD_POST = Boolean(env.UPLOAD_POST_API_KEY && env.UPLOAD_POST_USER);
