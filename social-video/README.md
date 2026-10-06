@@ -166,11 +166,55 @@ Dans l'ordre. Après ça, une fournée de shorts sort chaque lundi à 5 h UTC da
 
 ## Ce qui reste manuel
 
-- **Publier.** Le workflow s'arrête aux fichiers prêts à poster. Pour aller
-  jusqu'à la publication sans toi, il faut connecter les comptes : YouTube Data
-  API pour les Shorts et Instagram Graph API pour les Reels se branchent sans
-  validation ; l'API TikTok n'autorise la publication publique qu'après un
-  audit de l'app. Un service d'agrégation (type Ayrshare ou Upload-Post, payant)
-  couvre les trois avec une seule clé.
+- **Brancher la publication automatique** (une fois) : voir « Publier tout
+  seul » ci-dessous.
 - **Juger.** Comparer les vues des deux accroches d'une même vidéo, garder les
   gagnantes dans `hooks.json`, retirer les autres.
+
+## Publier tout seul
+
+Le workflow « Publication réseaux sociaux » (`.github/workflows/social-post.yml`)
+prend chaque jour à 17 h UTC le prochain short des releases `shorts-N` et le
+poste sur TikTok, Instagram (Reels) et YouTube (Shorts). L'API TikTok officielle
+limite les apps non auditées aux vidéos privées (YouTube aussi pour les projets
+non vérifiés) : on passe donc par des services déjà audités.
+
+| Formule | Services | Coût |
+|---|---|---|
+| **Gratuite** (défaut) | [Zernio](https://zernio.com) pour TikTok + Instagram (2 comptes offerts, publications illimitées) et [Upload-Post](https://upload-post.com) gratuit pour YouTube (10 envois par mois) | 0 € |
+| Tout Zernio | TikTok + Instagram + YouTube sur Zernio, le 3e compte est payant | 6 $/mois |
+| Tout Upload-Post | Plan Basic, les trois plateformes | 16 $/mois en annuel |
+
+Le script publie sur **tous les comptes connectés à Zernio**, et sur les
+plateformes de `UPLOAD_POST_PLATFORMS` côté Upload-Post (`youtube` par défaut
+quand Zernio est branché, les trois sinon). Si un service échoue (quota gratuit
+atteint), la vidéo part quand même sur l'autre, le run finit en rouge pour le
+signaler et la vidéo n'est pas republiée le lendemain.
+
+- **Une vidéo ne part jamais deux fois** : la liste de ce qui est publié vit
+  dans `posted.json`, release `shorts-state`.
+- **Une seule accroche par partie** : v1 et v2 montrent la même partie, une
+  seule est postée, en alternant d'une fournée à l'autre pour comparer.
+- **Simulation par défaut** : tant que `SOCIAL_POST_ENABLED` ne vaut pas
+  `true`, le run affiche ce qu'il publierait et ne poste rien.
+
+Mise en route (formule gratuite) :
+
+1. Compte Zernio : connecter TikTok et Instagram (compte professionnel ou
+   créateur), créer une clé API.
+2. Compte Upload-Post gratuit : créer un profil (ex. `georankle`), y connecter
+   YouTube, créer une clé API.
+3. GitHub → Settings → Secrets and variables → Actions : secrets
+   `ZERNIO_API_KEY` et `UPLOAD_POST_API_KEY`, variable `UPLOAD_POST_USER`
+   (nom du profil Upload-Post).
+4. Actions → « Publication réseaux sociaux » → Run workflow, simulation
+   cochée : vérifier dans le log la vidéo, le texte et les comptes visés.
+5. Variable `SOCIAL_POST_ENABLED` = `true` : les publications partent chaque
+   jour.
+
+Réglages (variables de dépôt) : `SOCIAL_POST_LANGS` (`fr` par défaut, `fr en`
+pour les deux), `UPLOAD_POST_PLATFORMS`, `SOCIAL_POST_MIN_RELEASE` (16 par
+défaut : les fournées d'avant avaient des vidéos anglaises en français).
+
+En local : `GITHUB_REPOSITORY=Paulpousset/georankle-app node social-video/publish/post.mjs`
+affiche la file d'attente sans rien publier.
