@@ -151,7 +151,17 @@ jobs:
           shopt -s nullglob
           files=(social-video/out/final/*.mp4 social-video/out/final/*.txt)
           [ ${#files[@]} -gt 0 ] || { echo "Aucun short à publier"; exit 0; }
-          gh release create "shorts-${{ github.run_number }}" "${files[@]}" \
-            --repo "${{ github.repository }}" --target "${{ github.sha }}" --prerelease \
-            --title "Shorts #${{ github.run_number }}" \
-            --notes "Shorts tournés sur l'app Android par le workflow « Vidéos réseaux sociaux ». Chaque .txt contient le texte à coller sous la vidéo du même nom."
+          tag="shorts-${{ github.run_number }}"
+          notes="Shorts tournés sur l'app Android par le workflow « Vidéos réseaux sociaux ». Chaque .txt contient le texte à coller sous la vidéo du même nom."
+          # Le 6/10/2026, deux créations d'affilée ont pris un 403 sur un
+          # commit qui n'était plus la tête de master : on réessaie, puis on
+          # crée la release sur la branche par défaut.
+          for target in "${{ github.sha }}" "${{ github.sha }}" ""; do
+            gh release delete "$tag" --repo "${{ github.repository }}" --yes --cleanup-tag 2>/dev/null || true
+            if gh release create "$tag" "${files[@]}" --repo "${{ github.repository }}" \
+                ${target:+--target "$target"} --prerelease --title "Shorts #${{ github.run_number }}" --notes "$notes"; then
+              exit 0
+            fi
+            sleep 20
+          done
+          exit 1
