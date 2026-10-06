@@ -12,9 +12,10 @@ name: Vidéos réseaux sociaux
 # Secret optionnel : XI_API_KEY (ElevenLabs) pour la voix off ; variables de
 # dépôt optionnelles XI_VOICE, XI_VOICE_FR, XI_VOICE_EN, XI_MODEL.
 on:
-  # Une fournée chaque lundi matin, avec les valeurs par défaut.
+  # Une fournée chaque nuit, avec les valeurs par défaut : 3 parties FR par
+  # jour pour tenir les 2 publications quotidiennes de social-post.yml.
   schedule:
-    - cron: '0 5 * * 1'
+    - cron: '0 3 * * *'
   workflow_dispatch:
     inputs:
       flows:
