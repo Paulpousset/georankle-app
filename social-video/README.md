@@ -34,7 +34,7 @@ build EAS « recording »  →  flows Maestro  →  out/raw/*.mp4
 | `maestro/*.yaml` | Un flow = une vidéo. Il lance l'app, choisit la langue, entre dans le mode, **démarre l'enregistrement sur la première question**, joue une partie écrite d'avance (N bonnes réponses, puis une erreur pour la chute), garde l'écran de fin à l'image. Pause « réflexion » entre deux taps pour que ça ne fasse pas robot. |
 | `record.sh` | Barre d'état propre (9:41, batterie pleine), puis chaque flow dans chaque langue. |
 | `hooks.json` | Accroches, sous-titres, appel à l'action et texte de publication, par flow et par langue. |
-| `composer/` | Projet Remotion. `plan.mjs` fait une fiche de montage par vidéo et par accroche, `voice.mjs` y ajoute la voix off ElevenLabs, `render.mjs` sort un MP4 1080×1920 H.264 et le texte à coller sous la vidéo. |
+| `composer/` | Projet Remotion. `plan.mjs` fait une fiche de montage par vidéo et par accroche, `voice.mjs` y ajoute la voix off ElevenLabs, `render.mjs` sort un MP4 1080×1920 H.264 et le texte à coller sous la vidéo. `sounds.mjs` (lancé par `render.mjs`) synthétise la musique et les bruitages, sans droits ni réseau. |
 | `.github/workflows/social-video.yml` | Tout le circuit Android dans GitHub Actions, chaque lundi ou à la main ; les shorts arrivent dans une release « Shorts #N » (et en artefact du run). |
 
 ## Flows disponibles
@@ -163,6 +163,17 @@ Dans l'ordre. Après ça, une fournée de shorts sort chaque lundi à 5 h UTC da
    corriger le flow.
 5. **Optionnel, sur le Mac** : `claude mcp add maestro -- maestro mcp` pour
    que Claude Code pilote le simulateur iOS (meilleure image, globe 3D).
+
+## Effets du montage
+
+Rythme pensé pour TikTok / Reels, tout dans `composer/src/Short.tsx` :
+
+- **Accroche mot par mot** qui saute en place, dernier mot surligné, flash blanc à la première image.
+- **Téléphone** qui entre en tournant, zoom lent sur toute la partie, petit coup de zoom, halo et « pop » à chaque nouvelle question. Les questions sont repérées automatiquement dans la vidéo brute par `plan.mjs` (changements d'écran, `beats` dans la fiche), avec un badge « Q3 » qui suit.
+- **Sous-titres** au milieu de l'écran avec gerbe d'émojis et flash. Un sous-titre « raté » (😬, « Ah. », « Oh no »…) passe en rouge, avec secousse et boum.
+- **Barre de progression** en haut, fond de nuit avec taches de lumière qui dérivent.
+- **Sortie** : riser, zoom flou, flash. Puis la carte de fin, avec des rayons qui tournent, l'icône qui rebondit, un bouton qui pulse et des confettis.
+- **Son** : boucle 112 BPM et bruitages (whoosh, pop, boum, riser, ding) synthétisés par `sounds.mjs`. La musique baisse sous la voix off quand il y en a une.
 
 ## Ce qui reste manuel
 

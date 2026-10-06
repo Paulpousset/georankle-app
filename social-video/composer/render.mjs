@@ -4,11 +4,12 @@
 //   node render.mjs                    # toutes les fiches
 //   node render.mjs higher-lower-en-v1 # une seule
 //
-// Lancer voice.mjs avant pour la voix off (sinon vidéo muette).
+// Lancer voice.mjs avant pour la voix off (sinon musique et bruitages seuls).
 //
 // CHROME_PATH force le navigateur (sinon Remotion télécharge le sien).
 import { bundle } from '@remotion/bundler';
 import { renderMedia, selectComposition } from '@remotion/renderer';
+import { execFileSync } from 'child_process';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'fs';
 import { cpus } from 'os';
 import { dirname, join } from 'path';
@@ -34,6 +35,8 @@ if (!names.length) {
 }
 
 copyFileSync(join(HERE, '..', '..', 'assets', 'icon.png'), join(PUBLIC, 'icon.png'));
+// Musique et bruitages (public/sfx), synthétisés : une seconde, aucun réseau.
+execFileSync(process.execPath, [join(HERE, 'sounds.mjs')], { stdio: 'inherit' });
 for (const n of names) {
   const { clip } = JSON.parse(readFileSync(join(EPISODES, `${n}.json`), 'utf8'));
   if (!existsSync(join(PUBLIC, clip))) copyFileSync(join(RAW, clip), join(PUBLIC, clip));
