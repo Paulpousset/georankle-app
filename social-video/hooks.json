@@ -1,5 +1,5 @@
 {
-  "_comment": "Accroches par flow et par langue. plan.mjs en tire une par vidéo, en tournant, pour tester plusieurs accroches sur le même jeu. Pas de faux chiffres (« seuls 2 % y arrivent ») : on promet un défi, pas une statistique. captions.fromEnd = secondes avant la fin de la vidéo brute (l'écran de fin dure ~3,5 s). Voix off (voice.mjs) : l'accroche est lue au début, chaque sous-titre est lu avec son champ « say » s'il existe (sinon son texte), et voiceOutro sur la carte de fin. Les emojis sont retirés avant la synthèse.",
+  "_comment": "Accroches par flow et par langue. plan.mjs en tire une par vidéo, en tournant, pour tester plusieurs accroches sur le même jeu. Pas de faux chiffres (« seuls 2 % y arrivent ») : on promet un défi, pas une statistique. captions.fromEnd = secondes avant la fin de la vidéo brute (l'écran de fin dure ~3,5 s). Voix off (voice.mjs) : l'accroche est lue au début, chaque sous-titre est lu avec son champ « say » s'il existe (sinon son texte), et voiceOutro sur la carte de fin. Les emojis sont retirés avant la synthèse. lines = répliques de voix off pendant la partie, posées sur les 2e, 4e et 6e changements de question (beats).",
   "_common": {
     "fr": {
       "cta": "Gratuit sur iOS et Android",
@@ -62,7 +62,12 @@
           "say": "Ah. Non, non, non…"
         }
       ],
-      "post": "Tu aurais tenu combien de manches ? Dis-le en commentaire 👇"
+      "post": "Tu aurais tenu combien de manches ? Dis-le en commentaire 👇",
+      "lines": [
+        "Celle-là, je la sens bien.",
+        "Ça commence à chauffer…",
+        "Attends… je réfléchis."
+      ]
     },
     "en": {
       "hooks": [
@@ -87,7 +92,12 @@
           "say": "Oh no. No no no…"
         }
       ],
-      "post": "How far would you have made it? Tell me below 👇"
+      "post": "How far would you have made it? Tell me below 👇",
+      "lines": [
+        "I've got a good feeling about this one.",
+        "Okay, it's heating up…",
+        "Wait… let me think."
+      ]
     }
   },
   "flags": {
@@ -108,7 +118,12 @@
           "text": "Échauffement"
         }
       ],
-      "post": "Ton score sur 6 ? 👇"
+      "post": "Ton score sur 6 ? 👇",
+      "lines": [
+        "Celui-là, tout le monde le connaît.",
+        "Hmm… pas sûr du tout.",
+        "Allez, on accélère !"
+      ]
     },
     "en": {
       "hooks": [
@@ -127,7 +142,12 @@
           "text": "Warm-up"
         }
       ],
-      "post": "What's your score out of 6? 👇"
+      "post": "What's your score out of 6? 👇",
+      "lines": [
+        "Everyone knows this one.",
+        "Hmm… not sure at all.",
+        "Come on, faster!"
+      ]
     }
   },
   "capitals": {
@@ -148,7 +168,12 @@
           "text": "Go !"
         }
       ],
-      "post": "Combien sur 6 ? Sois honnête 👇"
+      "post": "Combien sur 6 ? Sois honnête 👇",
+      "lines": [
+        "Trop facile, celle-là.",
+        "Ah, celle-là est piège…",
+        "Tu l'avais trouvée, toi ?"
+      ]
     },
     "en": {
       "hooks": [
@@ -167,7 +192,12 @@
           "text": "Go!"
         }
       ],
-      "post": "How many out of 6? Be honest 👇"
+      "post": "How many out of 6? Be honest 👇",
+      "lines": [
+        "Too easy, this one.",
+        "Ooh, this one's a trap…",
+        "Did you get that one?"
+      ]
     }
   }
 }

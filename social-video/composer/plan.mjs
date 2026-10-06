@@ -95,6 +95,11 @@ for (const file of readdirSync(RAW).filter((f) => f.endsWith('.mp4')).sort()) {
       voice: [
         { at: 0.2, text: null },
         ...(copy.captions ?? []).map((c) => ({ at: c.at ?? null, fromEnd: c.fromEnd ?? null, text: c.say ?? c.text })),
+        // Répliques de partie sur les 2e, 4e et 6e questions, pour que la voix
+        // accompagne tout le jeu et pas seulement l'accroche.
+        ...(copy.lines ?? [])
+          .map((text, i) => ({ at: beats[1 + i * 2] ?? null, text }))
+          .filter((l) => l.at != null),
         common.voiceOutro ? { atEnd: true, text: common.voiceOutro } : null,
       ].filter(Boolean),
       post: `${copy.post}\n\n${common.tags}`,
@@ -104,6 +109,9 @@ for (const file of readdirSync(RAW).filter((f) => f.endsWith('.mp4')).sort()) {
       if (line.fromEnd != null) line.at = Math.max(0, clipSeconds - line.fromEnd);
       delete line.fromEnd;
     }
+    // voice.mjs cale les répliques dans l'ordre : on les trie par moment,
+    // la réplique de fin (atEnd) en dernier.
+    episode.voice.sort((x, y) => (x.atEnd ? Infinity : x.at ?? 0) - (y.atEnd ? Infinity : y.at ?? 0));
     const name = `${flow}-${lang}-v${v + 1}`;
     writeFileSync(join(EPISODES, `${name}.json`), JSON.stringify(episode, null, 2) + '\n');
     console.log('•', name, '→', episode.hook);
