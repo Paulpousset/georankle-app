@@ -224,8 +224,8 @@ Mise en route (formule gratuite) :
    jour.
 
 Réglages (variables de dépôt) : `SOCIAL_POST_LANGS` (`fr` par défaut, `fr en`
-pour les deux), `UPLOAD_POST_PLATFORMS`, `SOCIAL_POST_MIN_RELEASE` (16 par
-défaut : les fournées d'avant avaient des vidéos anglaises en français).
+pour les deux), `UPLOAD_POST_PLATFORMS`, `SOCIAL_POST_MIN_RELEASE` (19 par
+défaut : premier tournage avec le montage à effets et la voix Anatole).
 
 En local : `GITHUB_REPOSITORY=Paulpousset/georankle-app node social-video/publish/post.mjs`
 affiche la file d'attente sans rien publier.
