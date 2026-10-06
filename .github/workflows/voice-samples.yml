@@ -11,9 +11,6 @@ on:
         description: Langue
         default: fr
         required: true
-  push:
-    branches: [claude/project-thread-jkusyn]
-    paths: [social-video/composer/voice-samples.mjs]
 
 permissions:
   contents: write

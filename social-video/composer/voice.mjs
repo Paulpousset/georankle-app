@@ -8,7 +8,8 @@
 //   XI_API_KEY            obligatoire ; sans elle les vidéos restent muettes
 //                         (les sous-titres suffisent), rien n'échoue.
 //   XI_VOICE_<LANG>       voix par langue (XI_VOICE_FR, XI_VOICE_EN…), sinon
-//   XI_VOICE              voix commune à toutes les langues.
+//   XI_VOICE              voix commune à toutes les langues, sinon la voix
+//                         choisie pour la langue (LANG_VOICES), sinon Adam.
 //   XI_MODEL              eleven_multilingual_v2 par défaut ; eleven_v3 est plus
 //                         expressif (rires, hésitations) mais moins régulier.
 //
@@ -29,6 +30,9 @@ const MODEL = process.env.XI_MODEL || 'eleven_multilingual_v2';
 // Voix pré-faite (Adam) en dernier recours : une voix choisie dans la Voice
 // Library, ou mieux un clone de ta propre voix, sonne nettement plus humain.
 const DEFAULT_VOICE = process.env.XI_VOICE || 'pNInz6obpgDQGcFmaJgB';
+// Voix choisies par langue (essais : voice-samples.mjs). FR : Anatole, voix
+// française « réseaux sociaux » de la Voice Library, choisie le 6/10/2026.
+const LANG_VOICES = { fr: 'Jrq4GqCKqYpigdQsZRkP' };
 // Plus de variation que les réglages du mode Langues : on veut un ton de
 // créateur, pas un lecteur neutre.
 const SETTINGS = { stability: 0.38, similarity_boost: 0.8, style: 0.35, use_speaker_boost: true };
@@ -40,7 +44,8 @@ if (!KEY) {
 }
 mkdirSync(VOICE_DIR, { recursive: true });
 
-const voiceFor = (lang) => process.env[`XI_VOICE_${lang.toUpperCase()}`] || DEFAULT_VOICE;
+const voiceFor = (lang) =>
+  process.env[`XI_VOICE_${lang.toUpperCase()}`] || process.env.XI_VOICE || LANG_VOICES[lang] || DEFAULT_VOICE;
 // Les emojis se lisent mal (ou pas du tout) : on les retire avant la synthèse.
 const speakable = (text) =>
   text.replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, '').replace(/\s+/g, ' ').trim();
