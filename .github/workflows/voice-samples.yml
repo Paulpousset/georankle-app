@@ -1,0 +1,43 @@
+name: Essais de voix off
+
+# Fait lire la même réplique de short par plusieurs voix ElevenLabs
+# (social-video/composer/voice-samples.mjs) et publie les mp3 dans une release
+# `voice-samples-N`, écoutable depuis un téléphone. On met ensuite l'id de la
+# voix choisie dans la variable de dépôt XI_VOICE_FR (ou XI_VOICE_EN).
+on:
+  workflow_dispatch:
+    inputs:
+      lang:
+        description: Langue
+        default: fr
+        required: true
+  push:
+    branches: [claude/project-thread-jkusyn]
+    paths: [social-video/composer/voice-samples.mjs]
+
+permissions:
+  contents: write
+
+jobs:
+  samples:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Faire lire les voix
+        env:
+          XI_API_KEY: ${{ secrets.XI_API_KEY }}
+          XI_MODEL: ${{ vars.XI_MODEL }}
+          SAMPLE_LANG: ${{ github.event.inputs.lang || 'fr' }}
+        run: node social-video/composer/voice-samples.mjs "$SAMPLE_LANG"
+      - name: Publier les essais
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "voice-samples-${{ github.run_number }}" social-video/out/voice-samples/* \
+            --repo "${{ github.repository }}" --target "${{ github.sha }}" --prerelease \
+            --title "Essais de voix #${{ github.run_number }}" \
+            --notes "Même réplique lue par plusieurs voix ElevenLabs ; index.json donne l'id de chaque voix."
