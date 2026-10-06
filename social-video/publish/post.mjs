@@ -23,6 +23,10 @@
 //                        tiktok,instagram,youtube)
 //   LANGS                langues à publier, ex. "fr" ou "fr en" (défaut fr)
 //   COUNT                vidéos par passage (défaut 1)
+//   TARGET               social (Zernio : TikTok + Instagram), youtube
+//                        (Upload-Post) ou all (défaut). Chaque cible a sa
+//                        propre file : YouTube, moins fréquent, prend la
+//                        vidéo la plus récente qu'il n'a pas encore eue.
 //   MIN_RELEASE          ignorer les releases shorts-N avec N plus petit
 //   DRY_RUN              0 pour publier pour de vrai
 //   GITHUB_REPOSITORY    owner/repo (fourni par Actions)
@@ -31,7 +35,8 @@ import { mkdtempSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const env = process.env;
+// Valeurs collées depuis un téléphone : on enlève espaces et retours à la ligne.
+const env = Object.fromEntries(Object.entries(process.env).map(([k, v]) => [k, v?.trim()]));
 const REPO = env.GITHUB_REPOSITORY;
 const ZERNIO = Boolean(env.ZERNIO_API_KEY);
 const UPLOAD_POST = Boolean(env.UPLOAD_POST_API_KEY && env.UPLOAD_POST_USER);
@@ -41,6 +46,9 @@ const LANGS = (env.LANGS || 'fr').split(/[\s,]+/).filter(Boolean);
 const COUNT = Number(env.COUNT || 1);
 const MIN_RELEASE = Number(env.MIN_RELEASE || 0);
 const DRY_RUN = env.DRY_RUN !== '0';
+const TARGET = env.TARGET || 'all';
+const USE_ZERNIO = ZERNIO && TARGET !== 'youtube';
+const USE_UPLOAD_POST = (UPLOAD_POST || !ZERNIO) && TARGET !== 'social';
 const STATE_TAG = 'shorts-state';
 const STATE_FILE = 'posted.json';
 
@@ -83,16 +91,26 @@ function parse(name) {
   return m && { group: `${m[1]}-${m[2]}`, lang: m[2], variant: m[3] };
 }
 
+// Une publication compte pour la cible du passage si elle est partie sur le
+// service de cette cible.
+function postedFor(p) {
+  if (TARGET === 'social') return Boolean(p.zernio);
+  if (TARGET === 'youtube') return Boolean(p['upload-post']);
+  return true;
+}
+
 function queue(state) {
-  const done = new Set(state.posted.map((p) => p.key));
+  const posted = state.posted.filter(postedFor);
+  const done = new Set(posted.map((p) => p.key));
   const releases = JSON.parse(gh('release', 'list', '--limit', '100', '--json', 'tagName,createdAt'))
     .filter((r) => /^shorts-\d+$/.test(r.tagName) && Number(r.tagName.slice(7)) >= MIN_RELEASE)
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  if (TARGET === 'youtube') releases.reverse();
 
   // Les accroches v1 / v2 d'une même vidéo montrent la même partie : une seule
   // part par release, en alternant d'une release à l'autre pour comparer.
   const variantUses = {};
-  for (const p of state.posted) variantUses[p.variant] = (variantUses[p.variant] || 0) + 1;
+  for (const p of posted) variantUses[p.variant] = (variantUses[p.variant] || 0) + 1;
 
   const out = [];
   for (const { tagName } of releases) {
@@ -104,7 +122,7 @@ function queue(state) {
       (groups[info.group] ||= []).push({ ...info, name, tag: tagName, key: `${tagName}/${name}` });
     }
     for (const [group, variants] of Object.entries(groups).sort()) {
-      if (state.posted.some((p) => p.tag === tagName && p.group === group)) continue;
+      if (posted.some((p) => p.tag === tagName && p.group === group)) continue;
       const pick = variants
         .filter((v) => !done.has(v.key))
         .sort((a, b) => (variantUses[a.variant] || 0) - (variantUses[b.variant] || 0) || a.variant.localeCompare(b.variant))[0];
@@ -202,12 +220,12 @@ async function postZernio(item, { video, caption }, accounts) {
 
 const state = loadState();
 const todo = queue(state);
-console.log(`${todo.length} vidéo(s) en attente (langues ${LANGS.join(', ')}, releases ≥ shorts-${MIN_RELEASE}).`);
+console.log(`[${TARGET}] ${todo.length} vidéo(s) en attente (langues ${LANGS.join(', ')}, releases ≥ shorts-${MIN_RELEASE}).`);
 
-const accounts = ZERNIO ? await zernioAccounts() : [];
+const accounts = USE_ZERNIO ? await zernioAccounts() : [];
 const targets = [
   ...accounts.map((a) => `${a.platform} (Zernio)`),
-  ...(UPLOAD_POST || !ZERNIO ? PLATFORMS.map((p) => `${p} (Upload-Post)`) : []),
+  ...(USE_UPLOAD_POST ? PLATFORMS.map((p) => `${p} (Upload-Post)`) : []),
 ];
 let failed = false;
 
@@ -224,7 +242,7 @@ for (const item of todo.slice(0, COUNT)) {
     try { Object.assign(done, await postZernio(item, files, accounts)); }
     catch (e) { failed = true; console.error(e.message); }
   }
-  if (UPLOAD_POST) {
+  if (USE_UPLOAD_POST && UPLOAD_POST) {
     try { Object.assign(done, await postUploadPost(item, files)); }
     catch (e) { failed = true; console.error(e.message); }
   }
