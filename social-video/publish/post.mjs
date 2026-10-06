@@ -1,6 +1,10 @@
 // Publie les shorts finis sur TikTok, Instagram (Reels) et YouTube (Shorts)
-// via Upload-Post (https://upload-post.com), une seule clé pour toutes les
-// plateformes et pas d'audit d'app TikTok à passer.
+// sans audit d'app TikTok à passer, via deux services au choix, cumulables :
+// - Zernio (https://zernio.com) : 2 comptes gratuits, publications illimitées.
+//   Le script publie sur tous les comptes connectés au profil.
+// - Upload-Post (https://upload-post.com) : 10 envois/mois gratuits sans
+//   TikTok, ou plan payant pour tout.
+// Version gratuite : TikTok + Instagram sur Zernio, YouTube sur Upload-Post.
 //
 // Source : les releases `shorts-N` créées par le workflow « Vidéos réseaux
 // sociaux » (chaque .mp4 a son .txt avec le texte de la publication).
@@ -11,9 +15,12 @@
 // qu'il publierait.
 //
 // Variables :
-//   UPLOAD_POST_API_KEY  clé API Upload-Post (obligatoire hors simulation)
+//   ZERNIO_API_KEY       clé API Zernio (facultative)
+//   UPLOAD_POST_API_KEY  clé API Upload-Post (facultative)
 //   UPLOAD_POST_USER     nom du profil créé dans Upload-Post (ex. georankle)
-//   PLATFORMS            tiktok,instagram,youtube (défaut)
+//   UPLOAD_POST_PLATFORMS  plateformes envoyées à Upload-Post
+//                        (défaut youtube si Zernio est branché, sinon
+//                        tiktok,instagram,youtube)
 //   LANGS                langues à publier, ex. "fr" ou "fr en" (défaut fr)
 //   COUNT                vidéos par passage (défaut 1)
 //   MIN_RELEASE          ignorer les releases shorts-N avec N plus petit
@@ -26,7 +33,10 @@ import { join } from 'node:path';
 
 const env = process.env;
 const REPO = env.GITHUB_REPOSITORY;
-const PLATFORMS = (env.PLATFORMS || 'tiktok,instagram,youtube').split(/[\s,]+/).filter(Boolean);
+const ZERNIO = Boolean(env.ZERNIO_API_KEY);
+const UPLOAD_POST = Boolean(env.UPLOAD_POST_API_KEY && env.UPLOAD_POST_USER);
+const PLATFORMS = (env.UPLOAD_POST_PLATFORMS || (ZERNIO ? 'youtube' : 'tiktok,instagram,youtube'))
+  .split(/[\s,]+/).filter(Boolean);
 const LANGS = (env.LANGS || 'fr').split(/[\s,]+/).filter(Boolean);
 const COUNT = Number(env.COUNT || 1);
 const MIN_RELEASE = Number(env.MIN_RELEASE || 0);
@@ -38,8 +48,8 @@ const gh = (...args) => execFileSync('gh', [...args, '--repo', REPO], { encoding
 const work = mkdtempSync(join(tmpdir(), 'social-post-'));
 
 if (!REPO) throw new Error('GITHUB_REPOSITORY manquant (owner/repo)');
-if (!DRY_RUN && !(env.UPLOAD_POST_API_KEY && env.UPLOAD_POST_USER)) {
-  throw new Error('UPLOAD_POST_API_KEY et UPLOAD_POST_USER sont requis pour publier');
+if (!DRY_RUN && !ZERNIO && !UPLOAD_POST) {
+  throw new Error('Aucun service branché : ZERNIO_API_KEY ou UPLOAD_POST_API_KEY + UPLOAD_POST_USER');
 }
 
 // --- Mémoire de ce qui est déjà publié -------------------------------------
@@ -120,7 +130,7 @@ function youtubeTitle(caption) {
   return `${first.trim()} #shorts`.slice(0, 100);
 }
 
-async function post(item, { video, caption }) {
+async function postUploadPost(item, { video, caption }) {
   const form = new FormData();
   form.append('user', env.UPLOAD_POST_USER);
   for (const p of PLATFORMS) form.append('platform[]', p);
@@ -142,7 +152,50 @@ async function post(item, { video, caption }) {
   if (!res.ok || body.success === false) {
     throw new Error(`Upload-Post ${res.status} : ${JSON.stringify(body).slice(0, 500)}`);
   }
-  return body;
+  return { 'upload-post': PLATFORMS };
+}
+
+const ZERNIO_API = 'https://zernio.com/api/v1';
+
+async function zernio(path, init = {}) {
+  const res = await fetch(`${ZERNIO_API}${path}`, {
+    ...init,
+    headers: { Authorization: `Bearer ${env.ZERNIO_API_KEY}`, 'Content-Type': 'application/json', ...init.headers },
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(`Zernio ${path} ${res.status} : ${JSON.stringify(body).slice(0, 500)}`);
+  return { status: res.status, body };
+}
+
+async function zernioAccounts() {
+  const { body } = await zernio('/accounts');
+  return (body.accounts || []).filter((a) => a.isActive !== false && a.enabled !== false);
+}
+
+async function postZernio(item, { video, caption }, accounts) {
+  const data = readFileSync(video);
+  const { body: up } = await zernio('/media/presign', {
+    method: 'POST',
+    body: JSON.stringify({ filename: item.name, contentType: 'video/mp4', size: data.length }),
+  });
+  const put = await fetch(up.uploadUrl, { method: 'PUT', headers: { 'Content-Type': 'video/mp4' }, body: data });
+  if (!put.ok) throw new Error(`Zernio envoi de la vidéo ${put.status}`);
+
+  const platforms = accounts.map((a) => ({
+    platform: a.platform,
+    accountId: a._id,
+    platformSpecificData:
+      a.platform === 'tiktok' ? { tiktokSettings: { privacy_level: 'PUBLIC_TO_EVERYONE', allow_comment: true } }
+      : a.platform === 'youtube' ? { title: youtubeTitle(caption) }
+      : {},
+  }));
+  const { status, body } = await zernio('/posts', {
+    method: 'POST',
+    body: JSON.stringify({ content: caption, mediaItems: [{ type: 'video', url: up.publicUrl }], platforms, publishNow: true }),
+  });
+  // 207 : publié sur une partie des comptes seulement.
+  if (status === 207) console.warn(`Zernio : publication partielle ${JSON.stringify(body).slice(0, 500)}`);
+  return { zernio: accounts.map((a) => a.platform), zernioPost: body.post?._id ?? null };
 }
 
 // --- Main -------------------------------------------------------------------
@@ -151,20 +204,39 @@ const state = loadState();
 const todo = queue(state);
 console.log(`${todo.length} vidéo(s) en attente (langues ${LANGS.join(', ')}, releases ≥ shorts-${MIN_RELEASE}).`);
 
+const accounts = ZERNIO ? await zernioAccounts() : [];
+const targets = [
+  ...accounts.map((a) => `${a.platform} (Zernio)`),
+  ...(UPLOAD_POST || !ZERNIO ? PLATFORMS.map((p) => `${p} (Upload-Post)`) : []),
+];
+let failed = false;
+
 for (const item of todo.slice(0, COUNT)) {
   const files = download(item);
   if (DRY_RUN) {
-    console.log(`[simulation] ${item.key} → ${PLATFORMS.join(', ')}\n  ${files.caption.replace(/\n/g, '\n  ')}`);
+    console.log(`[simulation] ${item.key} → ${targets.join(', ')}\n  ${files.caption.replace(/\n/g, '\n  ')}`);
     continue;
   }
-  const result = await post(item, files);
-  console.log(`Publié ${item.key} → ${PLATFORMS.join(', ')}`);
+  // Chaque service est indépendant : si l'un échoue (quota gratuit atteint),
+  // la vidéo part quand même sur l'autre et n'est pas republiée demain.
+  const done = {};
+  if (accounts.length) {
+    try { Object.assign(done, await postZernio(item, files, accounts)); }
+    catch (e) { failed = true; console.error(e.message); }
+  }
+  if (UPLOAD_POST) {
+    try { Object.assign(done, await postUploadPost(item, files)); }
+    catch (e) { failed = true; console.error(e.message); }
+  }
+  if (!Object.keys(done).length) break;
+  console.log(`Publié ${item.key} → ${JSON.stringify(done)}`);
   state.posted.push({
     key: item.key, tag: item.tag, group: item.group, variant: item.variant,
-    platforms: PLATFORMS, at: new Date().toISOString(), result: result.results ?? null,
+    at: new Date().toISOString(), ...done,
   });
   // Écrit après chaque vidéo : un échec plus loin ne fait pas republier celle-ci.
   saveState(state);
 }
 
 if (DRY_RUN && todo.length) console.log('Simulation : rien n\'a été publié (DRY_RUN=0 pour publier).');
+if (failed) process.exitCode = 1;

@@ -1,14 +1,15 @@
 name: Publication réseaux sociaux
 
 # Publie chaque jour le prochain short des releases `shorts-N` sur TikTok,
-# Instagram et YouTube via Upload-Post (social-video/publish/post.mjs).
+# Instagram et YouTube via Zernio et/ou Upload-Post
+# (social-video/publish/post.mjs).
 #
 # Tant que la variable de dépôt SOCIAL_POST_ENABLED ne vaut pas `true`, le
 # workflow tourne en simulation : il affiche ce qu'il publierait, rien ne part.
 #
-# Secrets : UPLOAD_POST_API_KEY.
+# Secrets : ZERNIO_API_KEY et/ou UPLOAD_POST_API_KEY.
 # Variables : UPLOAD_POST_USER (profil Upload-Post), SOCIAL_POST_ENABLED,
-# optionnelles SOCIAL_POST_PLATFORMS, SOCIAL_POST_LANGS, SOCIAL_POST_MIN_RELEASE.
+# optionnelles UPLOAD_POST_PLATFORMS, SOCIAL_POST_LANGS, SOCIAL_POST_MIN_RELEASE.
 on:
   # 17 h UTC, soit 19 h à Paris en été (18 h en hiver).
   schedule:
@@ -49,9 +50,10 @@ jobs:
       - name: Publier
         env:
           GH_TOKEN: ${{ github.token }}
+          ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
           UPLOAD_POST_API_KEY: ${{ secrets.UPLOAD_POST_API_KEY }}
           UPLOAD_POST_USER: ${{ vars.UPLOAD_POST_USER }}
-          PLATFORMS: ${{ vars.SOCIAL_POST_PLATFORMS || 'tiktok,instagram,youtube' }}
+          UPLOAD_POST_PLATFORMS: ${{ vars.UPLOAD_POST_PLATFORMS }}
           LANGS: ${{ vars.SOCIAL_POST_LANGS || 'fr' }}
           MIN_RELEASE: ${{ vars.SOCIAL_POST_MIN_RELEASE || '16' }}
           COUNT: ${{ github.event.inputs.count || '1' }}
