@@ -67,6 +67,9 @@ jobs:
           # 19 : premier tournage avec le montage à effets et la voix Anatole.
           MIN_RELEASE: ${{ vars.SOCIAL_POST_MIN_RELEASE || '19' }}
           COUNT: ${{ github.event.inputs.count || '1' }}
+          # Tâche planifiée seulement : si une publication manuelle a déjà
+          # rempli le créneau, ne pas en refaire une.
+          MIN_GAP_HOURS: ${{ github.event_name == 'schedule' && '3' || '0' }}
           TARGET: ${{ github.event.inputs.target || (startsWith(github.event.schedule, '0 16') && 'youtube' || 'social') }}
           # Publication réelle sauf si coupée (SOCIAL_POST_ENABLED = false) ou
           # si la case « Simulation » est cochée au lancement manuel.

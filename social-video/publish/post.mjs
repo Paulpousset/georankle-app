@@ -23,6 +23,8 @@
 //                        tiktok,instagram,youtube)
 //   LANGS                langues à publier, ex. "fr" ou "fr en" (défaut fr)
 //   COUNT                vidéos par passage (défaut 1)
+//   MIN_GAP_HOURS        ne rien publier si la dernière publication de la
+//                        cible date de moins de N heures (0 = désactivé)
 //   TARGET               social (Zernio : TikTok + Instagram), youtube
 //                        (Upload-Post) ou all (défaut). Chaque cible a sa
 //                        propre file : YouTube, moins fréquent, prend la
@@ -219,6 +221,17 @@ async function postZernio(item, { video, caption }, accounts) {
 // --- Main -------------------------------------------------------------------
 
 const state = loadState();
+
+// GitHub lance les tâches planifiées avec jusqu'à une heure de retard : si une
+// publication manuelle a déjà comblé le créneau, la tâche planifiée ne repart
+// pas une 2e fois.
+const MIN_GAP_HOURS = Number(env.MIN_GAP_HOURS || 0);
+const last = state.posted.filter(postedFor).map((p) => Date.parse(p.at)).filter(Boolean).sort().pop();
+if (MIN_GAP_HOURS && last && Date.now() - last < MIN_GAP_HOURS * 3600e3) {
+  console.log(`[${TARGET}] dernière publication il y a moins de ${MIN_GAP_HOURS} h : rien à faire.`);
+  process.exit(0);
+}
+
 const todo = queue(state);
 console.log(`[${TARGET}] ${todo.length} vidéo(s) en attente (langues ${LANGS.join(', ')}, releases ≥ shorts-${MIN_RELEASE}).`);
 
