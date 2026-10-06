@@ -30,6 +30,32 @@ function probeSeconds(file) {
   return Number(String(out).trim());
 }
 
+// Changements de question : l'écran change d'un coup à chaque nouvelle manche.
+// Le montage y cale un petit zoom et un « pop ». Seuil bas (l'interface reste
+// la même, seuls drapeau / pays / textes changent), puis on garde au plus un
+// moment par 1,5 s, rien dans la première seconde ni sur l'écran de fin de
+// partie (~5 dernières secondes).
+function detectBeats(file, clipSeconds) {
+  let out = '';
+  try {
+    out = execFileSync('ffmpeg', [
+      '-v', 'error', '-i', file, '-an',
+      '-vf', "scale=180:-2,select='gt(scene,0.08)',metadata=print:file=-",
+      '-f', 'null', '-',
+    ], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+  } catch {
+    return [];
+  }
+  const beats = [];
+  for (const m of out.matchAll(/pts_time:([\d.]+)/g)) {
+    const t = Number(m[1]);
+    if (t < 1 || t > clipSeconds - 5.5) continue;
+    if (beats.length && t - beats[beats.length - 1] < 1.5) continue;
+    beats.push(Math.round(t * 100) / 100);
+  }
+  return beats;
+}
+
 const day = Math.floor((Date.now() - Date.UTC(new Date().getUTCFullYear(), 0, 0)) / 86400000);
 mkdirSync(EPISODES, { recursive: true });
 
@@ -45,6 +71,7 @@ for (const file of readdirSync(RAW).filter((f) => f.endsWith('.mp4')).sort()) {
     continue;
   }
   const clipSeconds = probeSeconds(join(RAW, file));
+  const beats = detectBeats(join(RAW, file), clipSeconds);
   for (let v = 0; v < variants; v++) {
     const pick = (list) => list[(day + v) % list.length];
     const episode = {
@@ -55,6 +82,7 @@ for (const file of readdirSync(RAW).filter((f) => f.endsWith('.mp4')).sort()) {
       speed: 1,
       hook: pick(copy.hooks),
       subhook: pick(copy.subhooks),
+      beats,
       captions: (copy.captions ?? []).map(({ fromEnd, ...c }) =>
         fromEnd != null ? { ...c, at: Math.max(0, clipSeconds - fromEnd) } : c,
       ),
