@@ -137,6 +137,23 @@ function readAnswers(file, rawSeconds) {
     .filter((m) => m.at > 0 && m.at < rawSeconds);
 }
 
+// Plages gardées autour de chaque bonne réponse (repère posé juste avant le
+// tap) : BEFORE s de réflexion sur les choix, AFTER s de « Bien joué ».
+const BEFORE = 1.8;
+const AFTER = 1.3;
+function answerRanges(start, answers, rawSeconds) {
+  const ranges = [];
+  for (const [i, { at }] of answers.entries()) {
+    const a = Math.max(start, at - BEFORE);
+    // La dernière réponse garde de quoi finir sa phrase avant la carte de fin.
+    const b = Math.min(rawSeconds, at + (i === answers.length - 1 ? AFTER + 1 : AFTER));
+    const last = ranges[ranges.length - 1];
+    if (last && a <= last[1] + 0.05) last[1] = b;
+    else ranges.push([a, b]);
+  }
+  return ranges;
+}
+
 // Monte la vidéo serrée et son fond flouté avec ffmpeg ; renvoie la
 // correspondance temps brut → temps monté (null si coupé) et les sauts.
 function cut(file, ranges, intro, outCut, outBg) {
@@ -177,12 +194,19 @@ for (const file of readdirSync(RAW).filter((f) => f.endsWith('.mp4')).sort()) {
   }
   const rawSeconds = probeSeconds(join(RAW, file));
   const rawBeats = detectBeats(join(RAW, file), rawSeconds);
-  const ranges = keepRanges(detectStart(join(RAW, file)), rawBeats, rawSeconds);
+  const start = detectStart(join(RAW, file));
+  const rawAnswers = readAnswers(join(RAW, `${flow}-${lang}.marks.jsonl`), rawSeconds);
+  // Avec les repères, chaque question est réduite à l'essentiel : les choix
+  // affichés, le tap et le « Bien joué » (l'écran DUO/CARRÉ/CASH et les
+  // attentes sautent). Sinon, découpe aux changements d'écran.
+  const ranges = rawAnswers.length >= 3
+    ? answerRanges(start, rawAnswers, rawSeconds)
+    : keepRanges(start, rawBeats, rawSeconds);
   const clip = `${flow}-${lang}.cut.mp4`;
   const background = `${flow}-${lang}.bg.mp4`;
   const intro = introSeconds(copy.hooks);
   const { map, jumps } = cut(join(RAW, file), ranges, intro, join(RAW, clip), join(RAW, background));
-  const answers = readAnswers(join(RAW, `${flow}-${lang}.marks.jsonl`), rawSeconds)
+  const answers = rawAnswers
     .map((a) => ({ at: map(a.at), text: `${a.text} !`, maxLate: 0.8 }))
     .filter((a) => a.at != null);
   const clipSeconds = probeSeconds(join(RAW, clip));
