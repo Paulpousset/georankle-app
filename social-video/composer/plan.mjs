@@ -157,8 +157,12 @@ function answerRanges(start, answers, rawSeconds) {
 // Monte la vidéo serrée et son fond flouté avec ffmpeg ; renvoie la
 // correspondance temps brut → temps monté (null si coupé) et les sauts.
 function cut(file, ranges, intro, outCut, outBg) {
-  const parts = ranges.map(([a, b], i) => `[0:v]trim=start=${a}:end=${b},setpts=PTS-STARTPTS[p${i}]`);
-  const graph = `${parts.join(';')};${ranges.map((_, i) => `[p${i}]`).join('')}concat=n=${ranges.length}:v=1:a=0,setpts=PTS/${SPEED},fps=30,tpad=start_mode=clone:start_duration=${intro}[v]`;
+  // L'enregistrement Android est à cadence variable : rien n'est écrit tant
+  // que l'écran ne bouge pas, et une plage coupée finirait à sa dernière
+  // image. On repasse d'abord à 30 i/s constants (images dupliquées).
+  const split = `[0:v]fps=30,tpad=stop_mode=clone:stop_duration=2,split=${ranges.length}${ranges.map((_, i) => `[s${i}]`).join('')}`;
+  const parts = ranges.map(([a, b], i) => `[s${i}]trim=start=${a}:end=${b},setpts=PTS-STARTPTS[p${i}]`);
+  const graph = `${split};${parts.join(';')};${ranges.map((_, i) => `[p${i}]`).join('')}concat=n=${ranges.length}:v=1:a=0,setpts=PTS/${SPEED},fps=30,tpad=start_mode=clone:start_duration=${intro}[v]`;
   execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', file, '-filter_complex', graph, '-map', '[v]', '-an',
     '-c:v', 'libx264', '-crf', '16', '-preset', 'veryfast', '-pix_fmt', 'yuv420p', outCut]);
   execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', outCut, '-an',
