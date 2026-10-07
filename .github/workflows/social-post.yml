@@ -70,6 +70,7 @@ jobs:
           # Tâche planifiée seulement : si une publication manuelle a déjà
           # rempli le créneau, ne pas en refaire une.
           MIN_GAP_HOURS: ${{ github.event_name == 'schedule' && '3' || '0' }}
+          SCHEDULE: ${{ github.event.schedule }}
           TARGET: ${{ github.event.inputs.target || (startsWith(github.event.schedule, '0 16') && 'youtube' || 'social') }}
           # Publication réelle sauf si coupée (SOCIAL_POST_ENABLED = false) ou
           # si la case « Simulation » est cochée au lancement manuel.

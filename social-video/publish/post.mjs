@@ -25,6 +25,9 @@
 //   COUNT                vidéos par passage (défaut 1)
 //   MIN_GAP_HOURS        ne rien publier si la dernière publication de la
 //                        cible date de moins de N heures (0 = désactivé)
+//   SCHEDULE             cron de la tâche planifiée (github.event.schedule) :
+//                        rien n'est publié avec plus de MAX_LATE_MINUTES (60)
+//                        de retard sur ce créneau
 //   TARGET               social (Zernio : TikTok + Instagram), youtube
 //                        (Upload-Post) ou all (défaut). Chaque cible a sa
 //                        propre file : YouTube, moins fréquent, prend la
@@ -225,6 +228,20 @@ const state = loadState();
 // GitHub lance les tâches planifiées avec jusqu'à une heure de retard : si une
 // publication manuelle a déjà comblé le créneau, la tâche planifiée ne repart
 // pas une 2e fois.
+// GitHub peut aussi la lancer des heures après le créneau (le 6/10, celle de
+// 19 h 30 est partie à 23 h 48) : au-delà d'une heure de retard, le créneau
+// est passé, on ne publie pas.
+if (env.SCHEDULE) {
+  const [minute, hour] = env.SCHEDULE.trim().split(/\s+/).map(Number);
+  const slot = new Date();
+  slot.setUTCHours(hour, minute, 0, 0);
+  if (slot > Date.now()) slot.setUTCDate(slot.getUTCDate() - 1);
+  const lateMinutes = (Date.now() - slot) / 60e3;
+  if (lateMinutes > Number(env.MAX_LATE_MINUTES || 60)) {
+    console.log(`[${TARGET}] tâche planifiée partie avec ${Math.round(lateMinutes)} min de retard : créneau passé, rien à faire.`);
+    process.exit(0);
+  }
+}
 const MIN_GAP_HOURS = Number(env.MIN_GAP_HOURS || 0);
 const last = state.posted.filter(postedFor).map((p) => Date.parse(p.at)).filter(Boolean).sort().pop();
 if (MIN_GAP_HOURS && last && Date.now() - last < MIN_GAP_HOURS * 3600e3) {
