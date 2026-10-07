@@ -32,6 +32,10 @@
 //                        (Upload-Post) ou all (défaut). Chaque cible a sa
 //                        propre file : YouTube, moins fréquent, prend la
 //                        vidéo la plus récente qu'il n'a pas encore eue.
+//   KIND                 social seulement : globe (quiz globe*), app (vidéos
+//                        de l'app) ou auto (défaut : globe avant 16 h à
+//                        Paris, app après). Si la file de ce format est
+//                        vide, l'autre format part à la place.
 //   MIN_RELEASE          ignorer les releases shorts-N avec N plus petit
 //   DRY_RUN              0 pour publier pour de vrai
 //   GITHUB_REPOSITORY    owner/repo (fourni par Actions)
@@ -52,6 +56,8 @@ const COUNT = Number(env.COUNT || 1);
 const MIN_RELEASE = Number(env.MIN_RELEASE || 0);
 const DRY_RUN = env.DRY_RUN !== '0';
 const TARGET = env.TARGET || 'all';
+const parisHour = Number(new Intl.DateTimeFormat('fr-FR', { hour: 'numeric', hour12: false, timeZone: 'Europe/Paris' }).format(new Date()));
+const KIND = TARGET !== 'social' ? '' : !env.KIND || env.KIND === 'auto' ? (parisHour < 16 ? 'globe' : 'app') : env.KIND;
 const USE_ZERNIO = ZERNIO && TARGET !== 'youtube';
 const USE_UPLOAD_POST = (UPLOAD_POST || !ZERNIO) && TARGET !== 'social';
 const STATE_TAG = 'shorts-state';
@@ -249,8 +255,13 @@ if (MIN_GAP_HOURS && last && Date.now() - last < MIN_GAP_HOURS * 3600e3) {
   process.exit(0);
 }
 
-const todo = queue(state);
-console.log(`[${TARGET}] ${todo.length} vidéo(s) en attente (langues ${LANGS.join(', ')}, releases ≥ shorts-${MIN_RELEASE}).`);
+// Alternance : le quiz globe à midi, une vidéo de l'app le soir, pour
+// comparer les vues des deux formats.
+const isGlobe = (item) => item.group.startsWith('globe');
+const all = queue(state);
+const wanted = all.filter((item) => !KIND || isGlobe(item) === (KIND === 'globe'));
+const todo = [...wanted, ...all.filter((item) => !wanted.includes(item))];
+console.log(`[${TARGET}] ${todo.length} vidéo(s) en attente dont ${wanted.length} au format ${KIND || 'quelconque'} (langues ${LANGS.join(', ')}, releases ≥ shorts-${MIN_RELEASE}).`);
 
 const accounts = USE_ZERNIO ? await zernioAccounts() : [];
 const targets = [

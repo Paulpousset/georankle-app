@@ -35,11 +35,13 @@ if (!names.length) {
 }
 
 copyFileSync(join(HERE, '..', '..', 'assets', 'icon.png'), join(PUBLIC, 'icon.png'));
+copyFileSync(join(HERE, 'assets', 'earth.jpg'), join(PUBLIC, 'earth.jpg'));
 // Musique et bruitages (public/sfx), synthétisés : une seconde, aucun réseau.
 execFileSync(process.execPath, [join(HERE, 'sounds.mjs')], { stdio: 'inherit' });
 for (const n of names) {
   const { clip } = JSON.parse(readFileSync(join(EPISODES, `${n}.json`), 'utf8'));
-  if (!existsSync(join(PUBLIC, clip))) copyFileSync(join(RAW, clip), join(PUBLIC, clip));
+  // Les fiches « globe » (globe.mjs) n'ont pas de vidéo brute.
+  if (clip && !existsSync(join(PUBLIC, clip))) copyFileSync(join(RAW, clip), join(PUBLIC, clip));
 }
 
 // Le bundle est fait APRÈS la copie : Remotion fige le contenu de public/.
@@ -47,8 +49,8 @@ const serveUrl = await bundle({ entryPoint: join(HERE, 'src', 'index.ts') });
 const browserExecutable = process.env.CHROME_PATH || null;
 
 for (const n of names) {
-  const { post, ...props } = JSON.parse(readFileSync(join(EPISODES, `${n}.json`), 'utf8'));
-  const composition = await selectComposition({ serveUrl, id: 'Short', inputProps: props, browserExecutable });
+  const { post, composition: id = 'Short', ...props } = JSON.parse(readFileSync(join(EPISODES, `${n}.json`), 'utf8'));
+  const composition = await selectComposition({ serveUrl, id, inputProps: props, browserExecutable });
   const out = join(FINAL, `${n}.mp4`);
   console.log(`▶ ${n} (${(composition.durationInFrames / composition.fps).toFixed(1)} s)`);
   await renderMedia({
