@@ -70,8 +70,8 @@ jobs:
           UPLOAD_POST_USER: ${{ vars.UPLOAD_POST_USER }}
           UPLOAD_POST_PLATFORMS: ${{ vars.UPLOAD_POST_PLATFORMS }}
           LANGS: ${{ vars.SOCIAL_POST_LANGS || 'fr' }}
-          # 19 : premier tournage avec le montage à effets et la voix Anatole.
-          MIN_RELEASE: ${{ vars.SOCIAL_POST_MIN_RELEASE || '19' }}
+          # 23 : premier tournage avec le quiz globe et le montage serré de l'app.
+          MIN_RELEASE: ${{ vars.SOCIAL_POST_MIN_RELEASE || '23' }}
           COUNT: ${{ github.event.inputs.count || '1' }}
           KIND: ${{ github.event.inputs.kind || 'auto' }}
           # Tâche planifiée seulement : si une publication manuelle a déjà
