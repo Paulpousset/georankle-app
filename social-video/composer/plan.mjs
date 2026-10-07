@@ -137,8 +137,49 @@ function readAnswers(file, rawSeconds) {
     .filter((m) => m.at > 0 && m.at < rawSeconds);
 }
 
-// Plages gardées autour de chaque bonne réponse (repère posé juste avant le
-// tap) : BEFORE s de réflexion sur les choix, AFTER s de « Bien joué ».
+// Moments où l'encadré vert « Bien joué » apparaît, en secondes de la vidéo
+// brute. L'émulateur de la CI affiche le tap 1 à 3 s après la commande
+// Maestro : le repère seul ne suffit pas. Dans la zone des réponses, la
+// teinte rouge (V) baisse nettement sur l'encadré vert (~131) par rapport aux
+// boutons beiges (~135) et à l'écran DUO/CARRÉ/CASH (~133,5).
+function feedbackOnsets(file) {
+  let out = '';
+  try {
+    out = execFileSync('ffmpeg', [
+      '-v', 'error', '-i', file, '-an',
+      '-vf', 'fps=10,crop=iw*0.8:ih*0.3:iw*0.1:ih*0.32,scale=120:-2,signalstats,metadata=print:key=lavfi.signalstats.VAVG:file=-',
+      '-f', 'null', '-',
+    ], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  } catch {
+    return [];
+  }
+  const frames = [...out.matchAll(/pts_time:([\d.]+)[\s\S]*?VAVG=([\d.]+)/g)].map((m) => [Number(m[1]), Number(m[2])]);
+  if (frames.length < 10) return [];
+  const sorted = frames.map(([, v]) => v).sort((a, b) => a - b);
+  const low = sorted[Math.floor(sorted.length * 0.05)];
+  const high = sorted[Math.floor(sorted.length * 0.5)];
+  if (high - low < 2) return [];
+  const thr = (low + high) / 2;
+  const onsets = [];
+  for (let i = 1; i < frames.length; i++) {
+    if (frames[i][1] < thr && frames[i - 1][1] >= thr && !(onsets.length && frames[i][0] - onsets[onsets.length - 1] < 1.5)) {
+      onsets.push(frames[i][0]);
+    }
+  }
+  return onsets;
+}
+
+// Recale chaque réponse sur l'apparition du « Bien joué » qui la suit (au
+// plus 5 s après le repère) ; sans encadré repéré, ~1,5 s après le repère.
+function alignAnswers(answers, onsets) {
+  return answers.map((a) => {
+    const onset = onsets.find((t) => t >= a.at - 0.5 && t <= a.at + 5);
+    return { ...a, at: onset ?? a.at + 1.5 };
+  });
+}
+
+// Plages gardées autour de chaque bonne réponse (calée sur le « Bien joué ») :
+// BEFORE s de réflexion sur les choix, AFTER s de « Bien joué ».
 const BEFORE = 1.8;
 const AFTER = 1.3;
 function answerRanges(start, answers, rawSeconds) {
@@ -199,7 +240,12 @@ for (const file of readdirSync(RAW).filter((f) => f.endsWith('.mp4')).sort()) {
   const rawSeconds = probeSeconds(join(RAW, file));
   const rawBeats = detectBeats(join(RAW, file), rawSeconds);
   const start = detectStart(join(RAW, file));
-  const rawAnswers = readAnswers(join(RAW, `${flow}-${lang}.marks.jsonl`), rawSeconds);
+  const marked = readAnswers(join(RAW, `${flow}-${lang}.marks.jsonl`), rawSeconds);
+  const onsets = marked.length ? feedbackOnsets(join(RAW, file)) : [];
+  const rawAnswers = alignAnswers(marked, onsets);
+  if (marked.length) {
+    console.log(`  repères ${marked.map((a) => a.at.toFixed(1)).join(', ')} → « Bien joué » ${rawAnswers.map((a) => a.at.toFixed(1)).join(', ')} (${onsets.length} encadré(s) vu(s))`);
+  }
   // Avec les repères, chaque question est réduite à l'essentiel : les choix
   // affichés, le tap et le « Bien joué » (l'écran DUO/CARRÉ/CASH et les
   // attentes sautent). Sinon, découpe aux changements d'écran.
