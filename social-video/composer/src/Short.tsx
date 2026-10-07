@@ -33,6 +33,7 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from 'remotion';
+import { ArcadeShort, MemeShort, SuspenseShort } from './formats';
 
 export const FPS = 30;
 export const END_CARD_SECONDS = 2.5;
@@ -90,7 +91,16 @@ export interface ShortProps {
   endCardSeconds?: number;
   /** Musique et bruitages (public/sfx, sounds.mjs). Faux pour un rendu muet. */
   sound?: boolean;
+  /** Style du montage : cinema (défaut), immersif, neon, ou les concepts de formats.tsx (meme, suspense, arcade). */
+  look?: Look;
 }
+
+/**
+ * - cinema : écran qui flotte en 3D sur la partie floutée, tons dorés.
+ * - immersif : l'app plein écran, sous-titres géants façon TikTok.
+ * - neon : écran cerclé de néon sur une grille qui défile, effets arcade.
+ */
+export type Look = 'cinema' | 'immersif' | 'neon' | 'meme' | 'suspense' | 'arcade';
 
 export interface VoiceLine {
   /** Fichier dans public/ ; une réplique sans fichier est ignorée. */
@@ -108,11 +118,14 @@ export const endCardSeconds = (p: Pick<ShortProps, 'endCardSeconds'>) =>
 const RAW_W = 720;
 const RAW_H = 1136;
 const STATUS_BAR = 52;
-// Écran affiché : 864 px de large (×1,2), du haut de l'app au bas de la vidéo.
-const SCREEN_SCALE = 1.2;
-const SCREEN_W = RAW_W * SCREEN_SCALE;
-const SCREEN_H = (RAW_H - STATUS_BAR) * SCREEN_SCALE - 40;
-const SCREEN_TOP = 385;
+// Écran affiché : 864 px de large (×1,2) sous l'accroche, ou toute la
+// largeur (×1,5) en immersif ; du haut de l'app au bas de la vidéo.
+const geometry = (look: 'cinema' | 'immersif' | 'neon') => {
+  const scale = look === 'immersif' ? 1.5 : 1.2;
+  const top = look === 'immersif' ? 330 : 385;
+  return { scale, top, w: RAW_W * scale, h: Math.min((RAW_H - STATUS_BAR) * scale - 40, 1920 - top) };
+};
+const NEON = ['#00e5ff', '#ff2bd6'];
 
 const clamp = { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' } as const;
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
@@ -135,11 +148,20 @@ const goldText = {
 } as const;
 
 export const Short = (p: ShortProps) => {
+  if (p.look === 'meme') return <MemeShort {...p} />;
+  if (p.look === 'suspense') return <SuspenseShort {...p} />;
+  if (p.look === 'arcade') return <ArcadeShort {...p} />;
+  return <ClassicShort {...p} />;
+};
+
+const ClassicShort = (p: ShortProps) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
   const endStart = durationInFrames - Math.round(endCardSeconds(p) * fps);
   const inEnd = frame >= endStart;
   const sound = p.sound !== false;
+  const look = (p.look ?? 'cinema') as 'cinema' | 'immersif' | 'neon';
+  const g = geometry(look);
   const hasVoice = (p.voice ?? []).some((l) => l.file);
 
   // Moments clés en images de la vidéo montée.
@@ -166,8 +188,27 @@ export const Short = (p: ShortProps) => {
   const shakeY = shake * 14 * (random(`sy${frame}`) - 0.5) * 2;
   const glow = beatFrames.reduce((s, b) => s + pulse(frame, b, 14), 0);
   // Écran qui flotte : rotation 3D lente.
-  const tiltY = 3.5 * Math.sin(frame / 38);
-  const tiltX = 2 + 1.5 * Math.sin(frame / 51);
+  const tiltY = look === 'immersif' ? 0 : 3.5 * Math.sin(frame / 38);
+  const tiltX = look === 'immersif' ? 0 : 2 + 1.5 * Math.sin(frame / 51);
+  // Néon : décalage rouge / bleu (aberration chromatique) aux sauts et au raté.
+  const rgb = look === 'neon' ? Math.min(14, jumpFrames.reduce((s, j) => s + 14 * decay(frame, j, 4), 0) + shake * 12) : 0;
+  const neon = NEON[Math.floor(frame / 45) % 2];
+  const frameStyle =
+    look === 'immersif'
+      ? { borderRadius: 0, boxShadow: '0 -30px 60px rgba(0,0,0,0.5)' }
+      : look === 'neon'
+        ? {
+            borderRadius: 36,
+            boxShadow: `0 0 0 4px ${neon}, 0 0 ${30 + 60 * glow}px ${6 + 14 * glow}px ${neon}aa, inset 0 0 30px ${neon}55, 0 50px 120px rgba(0,0,0,0.8)`,
+          }
+        : {
+            borderRadius: 44,
+            boxShadow: `0 0 0 2px rgba(255,255,255,0.25), 0 0 ${40 + 80 * glow}px ${8 + 16 * glow}px rgba(245,185,66,${0.18 + 0.4 * glow}), 0 50px 120px rgba(0,0,0,0.75)`,
+          };
+  const filters = [
+    motionBlur > 0.3 ? `blur(${motionBlur.toFixed(2)}px)` : '',
+    rgb > 0.5 ? `drop-shadow(${rgb.toFixed(1)}px 0 0 rgba(255,0,80,0.75)) drop-shadow(${(-rgb).toFixed(1)}px 0 0 rgba(0,220,255,0.75))` : '',
+  ].join(' ').trim();
 
   // Avant la carte de fin : la partie grossit et part dans un flash.
   const outro = interpolate(frame, [endStart - 10, endStart], [0, 1], clamp);
@@ -187,7 +228,7 @@ export const Short = (p: ShortProps) => {
 
   return (
     <AbsoluteFill style={{ background: C.space, fontFamily: sans, overflow: 'hidden' }}>
-      <Backdrop p={p} frame={frame} />
+      {look === 'neon' ? <NeonBackdrop frame={frame} /> : <Backdrop p={p} frame={frame} />}
 
       {sound ? (
         <>
@@ -233,19 +274,18 @@ export const Short = (p: ShortProps) => {
         }}
       >
         {/* Écran de l'app */}
-        <div style={{ position: 'absolute', top: SCREEN_TOP, left: 0, right: 0, display: 'flex', justifyContent: 'center', perspective: 2200 }}>
+        <div style={{ position: 'absolute', top: g.top, left: 0, right: 0, display: 'flex', justifyContent: 'center', perspective: 2200 }}>
           <div
             style={{
               position: 'relative',
-              width: SCREEN_W,
-              height: SCREEN_H,
-              borderRadius: 44,
+              width: g.w,
+              height: g.h,
               overflow: 'hidden',
               background: '#000',
               transform: `rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale(${zoom})`,
               transformOrigin: '50% 30%',
-              filter: motionBlur > 0.3 ? `blur(${motionBlur.toFixed(2)}px)` : undefined,
-              boxShadow: `0 0 0 2px rgba(255,255,255,0.25), 0 0 ${40 + 80 * glow}px ${8 + 16 * glow}px rgba(245,185,66,${0.18 + 0.4 * glow}), 0 50px 120px rgba(0,0,0,0.75)`,
+              filter: filters || undefined,
+              ...frameStyle,
             }}
           >
             <OffthreadVideo
@@ -253,7 +293,7 @@ export const Short = (p: ShortProps) => {
               trimBefore={Math.round(p.trimStart * fps)}
               playbackRate={p.speed}
               muted
-              style={{ position: 'absolute', left: 0, top: -STATUS_BAR * SCREEN_SCALE, width: SCREEN_W, height: RAW_H * SCREEN_SCALE }}
+              style={{ position: 'absolute', left: 0, top: -STATUS_BAR * g.scale, width: g.w, height: RAW_H * g.scale }}
             />
             {/* Reflet de vitre fixe + reflet qui balaie l'écran au départ */}
             <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(160deg, rgba(255,255,255,0.12) 0%, transparent 28%, transparent 70%, rgba(0,0,0,0.18) 100%)' }} />
@@ -268,20 +308,22 @@ export const Short = (p: ShortProps) => {
           </div>
         </div>
 
-        {caption ? <CaptionChip key={caption.frame} text={caption.text} start={caption.frame} fail={caption.fail} /> : null}
+        {caption ? <CaptionChip key={caption.frame} text={caption.text} start={caption.frame} fail={caption.fail} look={look} top={g.top} /> : null}
         {captionFrames.map((c) =>
-          frame >= c.frame && frame < c.frame + 36 ? <Sparks key={c.frame} start={c.frame} seed={c.frame} color={c.fail ? C.red : C.gold} /> : null,
+          frame >= c.frame && frame < c.frame + 36 ? (
+            <Sparks key={c.frame} start={c.frame} seed={c.frame} top={g.top} color={c.fail ? C.red : look === 'neon' ? neon : C.gold} />
+          ) : null,
         )}
 
         {/* Bandeau sombre derrière l'accroche, puis l'accroche */}
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 520, background: 'linear-gradient(180deg, rgba(3,6,15,0.9) 0%, rgba(3,6,15,0.7) 55%, transparent 100%)' }} />
-        <Hook text={p.hook} />
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: look === 'immersif' ? 470 : 520, background: 'linear-gradient(180deg, rgba(3,6,15,0.92) 0%, rgba(3,6,15,0.75) 55%, transparent 100%)' }} />
+        <Hook text={p.hook} look={look} />
       </AbsoluteFill>
 
       {/* Fuites de lumière aux sauts et à la première image */}
-      {[0, ...jumpFrames].map((j, i) => (
-        <LightLeak key={`l${j}`} p={(frame - j + 4) / 22} seed={i} />
-      ))}
+      {look === 'neon'
+        ? null
+        : [0, ...jumpFrames].map((j, i) => <LightLeak key={`l${j}`} p={(frame - j + 4) / 22} seed={i} />)}
 
       {/* Vignette cinéma + grain */}
       <AbsoluteFill style={{ background: 'radial-gradient(ellipse 80% 65% at 50% 50%, transparent 55%, rgba(0,0,0,0.65) 100%)' }} />
@@ -299,7 +341,7 @@ export const Short = (p: ShortProps) => {
 };
 
 /** Accroche : lisible dès la première image, les mots arrivent en cascade rapide. */
-const Hook = ({ text }: { text: string }) => {
+const Hook = ({ text, look }: { text: string; look: Look }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   // Ponctuation et émojis restent collés au mot d'avant (« dessus ? 🤔 »).
@@ -309,7 +351,7 @@ const Hook = ({ text }: { text: string }) => {
     return acc;
   }, []);
   const breathe = 1 + 0.012 * Math.sin(frame / 9);
-  const size = text.length > 30 ? 72 : 84;
+  const size = (text.length > 30 ? 72 : 84) * (look === 'cinema' ? 1 : 0.92);
   return (
     <div
       style={{
@@ -333,13 +375,19 @@ const Hook = ({ text }: { text: string }) => {
           <span
             key={i}
             style={{
-              fontFamily: display,
+              fontFamily: look === 'cinema' ? display : sans,
               fontWeight: 800,
               fontSize: size,
               lineHeight: 1.12,
               display: 'inline-block',
               margin: '0 9px',
-              ...(accent ? goldText : { color: '#fff' }),
+              ...(look === 'cinema'
+                ? accent
+                  ? goldText
+                  : { color: '#fff' }
+                : look === 'neon'
+                  ? { color: '#fff', textTransform: 'uppercase' as const, textShadow: `0 0 18px ${accent ? NEON[1] : NEON[0]}, 0 0 4px ${accent ? NEON[1] : NEON[0]}` }
+                  : { color: accent ? '#ffe14a' : '#fff', textTransform: 'uppercase' as const, WebkitTextStroke: '3px #000', paintOrder: 'stroke fill' }),
               opacity: Math.min(1, s * 1.6),
               transform: `translateY(${(1 - s) * 40}px) scale(${0.6 + 0.4 * s})`,
               filter: 'drop-shadow(0 6px 22px rgba(0,0,0,0.9))',
@@ -354,17 +402,42 @@ const Hook = ({ text }: { text: string }) => {
   );
 };
 
-const CaptionChip = ({ text, start, fail }: { text: string; start: number; fail: boolean }) => {
+const CaptionChip = ({ text, start, fail, look, top }: { text: string; start: number; fail: boolean; look: Look; top: number }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const pop = spring({ frame: frame - start, fps, config: { damping: 9, mass: 0.5 } });
-  const color = fail ? C.red : C.gold;
+  const color = fail ? C.red : look === 'neon' ? NEON[0] : C.gold;
+  if (look === 'immersif') {
+    // Sous-titre géant, sans cadre, contour noir épais.
+    return (
+      <div style={{ position: 'absolute', top: top + 420, left: 40, right: 40, display: 'flex', justifyContent: 'center' }}>
+        <div
+          style={{
+            fontFamily: sans,
+            fontSize: 150,
+            fontWeight: 800,
+            textTransform: 'uppercase',
+            color: fail ? '#ff3b4a' : '#ffe14a',
+            WebkitTextStroke: '10px #000',
+            paintOrder: 'stroke fill',
+            textAlign: 'center',
+            transform: `scale(${0.3 + 0.75 * pop}) rotate(${(1 - pop) * -10}deg)`,
+            opacity: Math.min(1, pop * 2),
+            filter: 'drop-shadow(0 12px 0 rgba(0,0,0,0.45))',
+          }}
+        >
+          {text}
+        </div>
+      </div>
+    );
+  }
   return (
-    <div style={{ position: 'absolute', top: SCREEN_TOP + 470, left: 0, right: 0, display: 'flex', justifyContent: 'center' }}>
+    <div style={{ position: 'absolute', top: top + 470, left: 0, right: 0, display: 'flex', justifyContent: 'center' }}>
       <div
         style={{
-          fontFamily: display,
+          fontFamily: look === 'neon' ? sans : display,
           fontSize: 92,
+          textTransform: look === 'neon' ? 'uppercase' : undefined,
           fontWeight: 800,
           color: '#fff',
           background: 'rgba(5,10,22,0.78)',
@@ -384,11 +457,11 @@ const CaptionChip = ({ text, start, fail }: { text: string; start: number; fail:
 };
 
 /** Éclats lumineux autour du sous-titre. */
-const Sparks = ({ start, seed, color }: { start: number; seed: number; color: string }) => {
+const Sparks = ({ start, seed, color, top }: { start: number; seed: number; color: string; top: number }) => {
   const frame = useCurrentFrame();
   const t = (frame - start) / 30;
   const cx = 540;
-  const cy = SCREEN_TOP + 540;
+  const cy = top + 540;
   return (
     <>
       <div
@@ -552,6 +625,49 @@ const Backdrop = ({ p, frame }: { p: ShortProps; frame: number }) => {
         />
       ) : null}
       <AbsoluteFill style={{ background: 'linear-gradient(180deg, rgba(5,10,22,0.35), rgba(5,10,22,0.15) 40%, rgba(5,10,22,0.6))' }} />
+    </AbsoluteFill>
+  );
+};
+
+/** Fond néon : grille en perspective qui défile vers le spectateur. */
+const NeonBackdrop = ({ frame }: { frame: number }) => {
+  const shift = (frame * 4) % 80;
+  return (
+    <AbsoluteFill style={{ background: 'radial-gradient(circle at 50% 35%, #1a0b3a, #05020f 75%)', overflow: 'hidden' }}>
+      <div
+        style={{
+          position: 'absolute',
+          left: -540,
+          right: -540,
+          top: 1000,
+          height: 1400,
+          transform: 'perspective(600px) rotateX(62deg)',
+          transformOrigin: '50% 0%',
+          backgroundImage: `linear-gradient(${NEON[1]}88 2px, transparent 2px), linear-gradient(90deg, ${NEON[1]}88 2px, transparent 2px)`,
+          backgroundSize: '80px 80px',
+          backgroundPosition: `0 ${shift}px`,
+          maskImage: 'linear-gradient(180deg, transparent, black 30%)',
+          WebkitMaskImage: 'linear-gradient(180deg, transparent, black 30%)',
+        }}
+      />
+      <div
+        style={{
+          position: 'absolute',
+          left: -540,
+          right: -540,
+          top: -480,
+          height: 1400,
+          transform: 'perspective(600px) rotateX(-62deg)',
+          transformOrigin: '50% 100%',
+          backgroundImage: `linear-gradient(${NEON[0]}66 2px, transparent 2px), linear-gradient(90deg, ${NEON[0]}66 2px, transparent 2px)`,
+          backgroundSize: '80px 80px',
+          backgroundPosition: `0 ${-shift}px`,
+          maskImage: 'linear-gradient(0deg, transparent, black 40%)',
+          WebkitMaskImage: 'linear-gradient(0deg, transparent, black 40%)',
+          opacity: 0.6,
+        }}
+      />
+      <div style={{ position: 'absolute', left: 0, right: 0, top: 960, height: 4, background: NEON[1], boxShadow: `0 0 40px 12px ${NEON[1]}` }} />
     </AbsoluteFill>
   );
 };
