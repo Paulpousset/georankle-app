@@ -31,7 +31,7 @@ on:
         required: true
       globes:
         description: Quiz « globe » à générer (0 = aucun)
-        default: '1'
+        default: '2'
         required: false
       rebuild:
         description: Refaire le build `recording` sur EAS
@@ -127,7 +127,7 @@ jobs:
         working-directory: social-video/composer
         env:
           VARIANTS: ${{ github.event.inputs.variants || '2' }}
-          GLOBES: ${{ github.event.inputs.globes || '1' }}
+          GLOBES: ${{ github.event.inputs.globes || '2' }}
           XI_API_KEY: ${{ secrets.XI_API_KEY }}
           XI_VOICE: ${{ vars.XI_VOICE }}
           XI_VOICE_FR: ${{ vars.XI_VOICE_FR }}
