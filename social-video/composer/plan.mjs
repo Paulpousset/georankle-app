@@ -5,7 +5,12 @@
 //   node plan.mjs --variants 3 # 3 montages par vidéo, pour comparer les accroches
 //
 // L'accroche choisie tourne avec le jour de l'année : deux tournages de suite
-// ne sortent pas la même. Les fiches sont du JSON simple, à retoucher à la main
+// ne sortent pas la même.
+//
+// Montage serré : la partie est accélérée (SPEED) et, si elle reste trop
+// longue, on coupe des questions du milieu (sauts marqués par un flash) pour
+// tenir en ~TARGET secondes, fin de partie comprise. Le résultat est
+// <flow>-<lang>.cut.mp4, plus un fond flouté <flow>-<lang>.bg.mp4. Les fiches sont du JSON simple, à retoucher à la main
 // avant le rendu si besoin.
 import { execFileSync } from 'child_process';
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'fs';
@@ -22,6 +27,8 @@ const arg = (name, fallback) => {
   return i > -1 ? process.argv[i + 1] : fallback;
 };
 const variants = Number(arg('variants', '1'));
+const SPEED = Number(arg('speed', '1.25'));
+const TARGET = Number(arg('target', '24'));
 
 function probeSeconds(file) {
   const out = execFileSync('ffprobe', [
@@ -56,6 +63,75 @@ function detectBeats(file, clipSeconds) {
   return beats;
 }
 
+// L'enregistrement commence sur l'écran sombre de l'app qui apparaît en
+// fondu (~0,6 s) : la vidéo montée démarre sur la première image nette, pour
+// que la toute première image du short soit déjà la partie.
+function detectStart(file) {
+  let out = '';
+  try {
+    out = execFileSync('ffmpeg', [
+      '-v', 'error', '-t', '3', '-i', file, '-an',
+      '-vf', 'scale=90:-2,signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=-',
+      '-f', 'null', '-',
+    ], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+  } catch {
+    return 0;
+  }
+  const frames = [...out.matchAll(/pts_time:([\d.]+)[\s\S]*?YAVG=([\d.]+)/g)].map((m) => [Number(m[1]), Number(m[2])]);
+  const max = Math.max(...frames.map(([, y]) => y));
+  return frames.find(([, y]) => y >= 0.95 * max)?.[0] ?? 0;
+}
+
+// Garde des questions entières (d'un changement de question au suivant) :
+// toujours le début et les deux dernières (la dernière bonne réponse, la
+// question ratée et l'écran de fin), puis le plus de questions du début que
+// le budget permet. Renvoie les plages gardées, en secondes de la vidéo brute.
+function keepRanges(start, beats, clipSeconds) {
+  const bounds = [start, ...beats.filter((b) => b > start + 0.5), clipSeconds];
+  const pieces = bounds.slice(0, -1).map((a, i) => [a, bounds[i + 1]]);
+  const budget = TARGET * SPEED;
+  if (clipSeconds - start <= budget || pieces.length < 4) return [[start, clipSeconds]];
+  const tail = pieces.slice(-2);
+  let used = tail.reduce((s, [a, b]) => s + b - a, 0);
+  const head = [];
+  for (const piece of pieces.slice(0, -2)) {
+    if (head.length && used + piece[1] - piece[0] > budget) break;
+    head.push(piece);
+    used += piece[1] - piece[0];
+  }
+  const ranges = [];
+  for (const [a, b] of [...head, ...tail]) {
+    const last = ranges[ranges.length - 1];
+    if (last && Math.abs(last[1] - a) < 0.01) last[1] = b;
+    else ranges.push([a, b]);
+  }
+  return ranges;
+}
+
+// Monte la vidéo serrée et son fond flouté avec ffmpeg ; renvoie la
+// correspondance temps brut → temps monté (null si coupé) et les sauts.
+function cut(file, ranges, outCut, outBg) {
+  const parts = ranges.map(([a, b], i) => `[0:v]trim=start=${a}:end=${b},setpts=PTS-STARTPTS[p${i}]`);
+  const graph = `${parts.join(';')};${ranges.map((_, i) => `[p${i}]`).join('')}concat=n=${ranges.length}:v=1:a=0,setpts=PTS/${SPEED},fps=30[v]`;
+  execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', file, '-filter_complex', graph, '-map', '[v]', '-an',
+    '-c:v', 'libx264', '-crf', '16', '-preset', 'veryfast', '-pix_fmt', 'yuv420p', outCut]);
+  execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', outCut, '-an',
+    '-vf', 'scale=180:-2,boxblur=12:2,eq=saturation=1.4:brightness=-0.05',
+    '-c:v', 'libx264', '-crf', '28', '-preset', 'veryfast', '-pix_fmt', 'yuv420p', outBg]);
+  const offsets = [];
+  let acc = 0;
+  for (const [a, b] of ranges) {
+    offsets.push(acc);
+    acc += b - a;
+  }
+  const map = (t) => {
+    const i = ranges.findIndex(([a, b]) => t >= a && t <= b);
+    return i < 0 ? null : Math.round(((offsets[i] + t - ranges[i][0]) / SPEED) * 100) / 100;
+  };
+  const jumps = offsets.slice(1).map((o) => Math.round((o / SPEED) * 100) / 100);
+  return { map, jumps };
+}
+
 const day = Math.floor((Date.now() - Date.UTC(new Date().getUTCFullYear(), 0, 0)) / 86400000);
 mkdirSync(EPISODES, { recursive: true });
 
@@ -70,22 +146,33 @@ for (const file of readdirSync(RAW).filter((f) => f.endsWith('.mp4')).sort()) {
     console.warn(`• pas d'accroche pour ${flow} dans hooks.json, ignoré`);
     continue;
   }
-  const clipSeconds = probeSeconds(join(RAW, file));
-  const beats = detectBeats(join(RAW, file), clipSeconds);
+  const rawSeconds = probeSeconds(join(RAW, file));
+  const rawBeats = detectBeats(join(RAW, file), rawSeconds);
+  const ranges = keepRanges(detectStart(join(RAW, file)), rawBeats, rawSeconds);
+  const clip = `${flow}-${lang}.cut.mp4`;
+  const background = `${flow}-${lang}.bg.mp4`;
+  const { map, jumps } = cut(join(RAW, file), ranges, join(RAW, clip), join(RAW, background));
+  const clipSeconds = probeSeconds(join(RAW, clip));
+  const beats = rawBeats.map(map).filter((t) => t != null && !jumps.some((j) => Math.abs(j - t) < 0.3));
+  // Sous-titres et répliques : en temps brut, puis recalés sur le montage.
+  const rawAt = (c) => (c.fromEnd != null ? Math.max(0, rawSeconds - c.fromEnd) : c.at);
+  const captions = (copy.captions ?? [])
+    .map(({ fromEnd, say, ...c }) => ({ ...c, at: map(rawAt({ ...c, fromEnd })) }))
+    .filter((c) => c.at != null);
+  console.log(`• ${file} : ${rawSeconds.toFixed(1)} s → ${clipSeconds.toFixed(1)} s (${ranges.map(([a, b]) => `${a.toFixed(1)}–${b.toFixed(1)}`).join(', ')})`);
   for (let v = 0; v < variants; v++) {
     const pick = (list) => list[(day + v) % list.length];
     const episode = {
-      clip: file,
+      clip,
+      background,
       clipSeconds,
-      // Les flows démarrent l'enregistrement sur la première question : rien à couper.
       trimStart: 0,
       speed: 1,
       hook: pick(copy.hooks),
       subhook: pick(copy.subhooks),
       beats,
-      captions: (copy.captions ?? []).map(({ fromEnd, ...c }) =>
-        fromEnd != null ? { ...c, at: Math.max(0, clipSeconds - fromEnd) } : c,
-      ),
+      jumps,
+      captions,
       cta: common.cta,
       ctaSub: common.ctaSub,
       icon: 'icon.png',
@@ -94,7 +181,9 @@ for (const file of readdirSync(RAW).filter((f) => f.endsWith('.mp4')).sort()) {
       // les répliques pour qu'elles ne se chevauchent pas.
       voice: [
         { at: 0.2, text: null },
-        ...(copy.captions ?? []).map((c) => ({ at: c.at ?? null, fromEnd: c.fromEnd ?? null, text: c.say ?? c.text })),
+        ...(copy.captions ?? [])
+          .map((c) => ({ at: map(rawAt(c)), text: c.say ?? c.text }))
+          .filter((l) => l.at != null),
         // Répliques de partie sur les 2e, 4e et 6e questions, pour que la voix
         // accompagne tout le jeu et pas seulement l'accroche. Si l'écran change
         // trop peu pour repérer les questions, on les répartit sur la partie.
@@ -107,10 +196,6 @@ for (const file of readdirSync(RAW).filter((f) => f.endsWith('.mp4')).sort()) {
       post: `${copy.post}\n\n${common.tags}`,
     };
     episode.voice[0].text = episode.hook;
-    for (const line of episode.voice) {
-      if (line.fromEnd != null) line.at = Math.max(0, clipSeconds - line.fromEnd);
-      delete line.fromEnd;
-    }
     // voice.mjs cale les répliques dans l'ordre : on les trie par moment,
     // la réplique de fin (atEnd) en dernier.
     episode.voice.sort((x, y) => (x.atEnd ? Infinity : x.at ?? 0) - (y.atEnd ? Infinity : y.at ?? 0));
