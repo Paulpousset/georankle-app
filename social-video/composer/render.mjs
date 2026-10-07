@@ -39,9 +39,11 @@ copyFileSync(join(HERE, 'assets', 'earth.jpg'), join(PUBLIC, 'earth.jpg'));
 // Musique et bruitages (public/sfx), synthétisés : une seconde, aucun réseau.
 execFileSync(process.execPath, [join(HERE, 'sounds.mjs')], { stdio: 'inherit' });
 for (const n of names) {
-  const { clip } = JSON.parse(readFileSync(join(EPISODES, `${n}.json`), 'utf8'));
+  const { clip, background } = JSON.parse(readFileSync(join(EPISODES, `${n}.json`), 'utf8'));
   // Les fiches « globe » (globe.mjs) n'ont pas de vidéo brute.
-  if (clip && !existsSync(join(PUBLIC, clip))) copyFileSync(join(RAW, clip), join(PUBLIC, clip));
+  for (const f of [clip, background]) {
+    if (f && !existsSync(join(PUBLIC, f))) copyFileSync(join(RAW, f), join(PUBLIC, f));
+  }
 }
 
 // Le bundle est fait APRÈS la copie : Remotion fige le contenu de public/.

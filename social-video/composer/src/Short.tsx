@@ -1,18 +1,20 @@
 /**
- * Un short 9:16 : accroche en haut, la vraie partie filmée sur l'app native au
- * centre dans un cadre de téléphone, sous-titres ponctuels, carte de fin.
+ * Un short 9:16 : la vraie partie filmée sur l'app native, en grand et
+ * lisible, avec l'accroche en haut, des sous-titres ponctuels et une carte de
+ * fin.
  *
  * Zones sûres TikTok / Reels / Shorts : le haut (onglets) et le bas (légende,
  * boutons) sont recouverts par l'interface des apps, la colonne de droite par
- * les boutons j'aime / commenter. L'accroche commence donc sous 200 px et rien
+ * les boutons j'aime / commenter. L'accroche commence donc sous 190 px et rien
  * d'important ne descend sous 1 650 px.
  *
- * Rythme « TikTok » : accroche mot par mot, téléphone qui zoome et tape à
- * chaque nouvelle question (`beats`, détectés par plan.mjs), confettis et
- * flash sur les sous-titres, montée avant la carte de fin, rayons et
- * confettis sur la carte. Musique et bruitages synthétisés par sounds.mjs
- * (public/sfx), voix off optionnelle (voice.mjs) par-dessus : la musique se
- * baisse quand il y a une voix.
+ * Rendu « pro » : tout est en place dès la première image (accroche lisible,
+ * écran déjà là), fond = la partie elle-même floutée (plan.mjs), écran qui
+ * flotte en 3D, petit travelling à chaque question (`beats`), flash et fuite
+ * de lumière aux sauts du montage serré (`jumps`), grain, vignette, carte de
+ * fin dans le style du quiz globe. Musique et bruitages synthétisés par
+ * sounds.mjs (public/sfx), voix off optionnelle (voice.mjs) par-dessus : la
+ * musique se baisse quand il y a une voix.
  */
 import { loadFont } from '@remotion/fonts';
 import playfair800 from '@fontsource/playfair-display/files/playfair-display-latin-800-normal.woff2';
@@ -43,15 +45,12 @@ loadFont({ family: display, url: playfair800, weight: '800' });
 loadFont({ family: sans, url: montserrat600, weight: '600' });
 loadFont({ family: sans, url: montserrat800, weight: '800' });
 
-// Palette de l'app (src/theme/colors.ts).
 const C = {
-  nightDeep: '#0a1628',
-  nightNavy: '#132040',
-  nightBorder: '#2d4a70',
+  space: '#050a16',
   parchment: '#f2e8d0',
-  sand: '#c4872a',
-  vermilion: '#c04a1a',
-  forestGreen: '#2a6e3f',
+  gold: '#f5b942',
+  red: '#ff3b4a',
+  green: '#2fbf71',
 };
 
 export interface Caption {
@@ -64,19 +63,23 @@ export interface Caption {
 
 export interface ShortProps {
   [key: string]: unknown;
-  /** Vidéo brute dans public/ (copiée par render.mjs). */
+  /** Vidéo de la partie dans public/ (montée par plan.mjs, copiée par render.mjs). */
   clip: string;
-  /** Durée de la vidéo brute, mesurée par render.mjs (ffprobe). */
+  /** Même partie floutée en basse définition pour le fond (plan.mjs). */
+  background?: string;
+  /** Durée de la vidéo, mesurée par plan.mjs (ffprobe). */
   clipSeconds: number;
-  /** Secondes coupées au début de la vidéo brute. */
+  /** Secondes coupées au début de la vidéo. */
   trimStart: number;
-  /** Vitesse de lecture : 1,15 resserre une partie un peu lente. */
+  /** Vitesse de lecture (plan.mjs accélère déjà la partie : 1 par défaut). */
   speed: number;
   hook: string;
   subhook?: string;
   captions?: Caption[];
-  /** Changements de question dans la vidéo brute (secondes), détectés par plan.mjs. */
+  /** Changements de question (secondes), détectés par plan.mjs. */
   beats?: number[];
+  /** Sauts du montage serré (secondes) : questions coupées. */
+  jumps?: number[];
   cta: string;
   ctaSub?: string;
   /** Icône de l'app dans public/, pour la carte de fin. */
@@ -101,13 +104,18 @@ export interface VoiceLine {
 export const endCardSeconds = (p: Pick<ShortProps, 'endCardSeconds'>) =>
   p.endCardSeconds ?? END_CARD_SECONDS;
 
-// Le haut de l'écran seulement : les modes filmés tiennent dans les deux tiers
-// supérieurs, le bas restait vide. Cadre plus large, texte de l'app plus lisible.
-const PHONE_H = 1090;
-const PHONE_TOP = 560;
-const SCREEN_RATIO = '9 / 14';
+// Vidéo brute de l'émulateur : 720×1136, barre d'état en haut (coupée).
+const RAW_W = 720;
+const RAW_H = 1136;
+const STATUS_BAR = 52;
+// Écran affiché : 864 px de large (×1,2), du haut de l'app au bas de la vidéo.
+const SCREEN_SCALE = 1.2;
+const SCREEN_W = RAW_W * SCREEN_SCALE;
+const SCREEN_H = (RAW_H - STATUS_BAR) * SCREEN_SCALE - 40;
+const SCREEN_TOP = 385;
 
 const clamp = { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' } as const;
+const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 
 /** Sous-titre « raté » : on le joue en rouge, avec secousse et boum. */
 const isFail = (text: string) => /😬|💀|❌|😭|oh no|ah\.|raté|perdu/i.test(text);
@@ -115,6 +123,16 @@ const isFail = (text: string) => /😬|💀|❌|😭|oh no|ah\.|raté|perdu/i.te
 /** 0 → 1 → 0 sur `len` images après `start` : impulsion pour zooms et flashs. */
 const pulse = (frame: number, start: number, len: number) =>
   frame < start || frame > start + len ? 0 : Math.sin((Math.PI * (frame - start)) / len);
+
+/** 1 au moment `start`, décroît ensuite (exponentielle). */
+const decay = (frame: number, start: number, rate: number) => (frame < start ? 0 : Math.exp(-(frame - start) / rate));
+
+const goldText = {
+  background: 'linear-gradient(180deg, #fff6dc 10%, #f5b942 90%)',
+  WebkitBackgroundClip: 'text',
+  backgroundClip: 'text',
+  color: 'transparent',
+} as const;
 
 export const Short = (p: ShortProps) => {
   const frame = useCurrentFrame();
@@ -127,55 +145,67 @@ export const Short = (p: ShortProps) => {
   // Moments clés en images de la vidéo montée.
   const toFrame = (gameSeconds: number) => Math.round((gameSeconds / p.speed) * fps);
   const beatFrames = (p.beats ?? []).map(toFrame).filter((f) => f > fps && f < endStart - fps);
+  const jumpFrames = (p.jumps ?? []).map(toFrame).filter((f) => f > 0 && f < endStart);
   const captionFrames = (p.captions ?? []).map((c) => ({ ...c, frame: toFrame(c.at), fail: isFail(c.text) }));
+  const failFrame = captionFrames.find((c) => c.fail)?.frame;
 
-  const phoneIn = spring({ frame: frame - 6, fps, config: { damping: 11, mass: 0.8 } });
-  const endIn = spring({ frame: frame - endStart, fps, config: { damping: 10, mass: 0.7 } });
+  // Caméra : léger recul au départ, travelling lent, petit zoom à chaque
+  // question et coup de zoom aux sauts du montage.
+  const settle = 1 + 0.06 * decay(frame, 0, 6);
+  const slowZoom = interpolate(frame, [0, endStart], [1, 1.04], clamp);
+  const beatZoom = beatFrames.reduce((s, b) => s + 0.035 * pulse(frame, b, 14), 0);
+  const jumpZoom = jumpFrames.reduce((s, j) => s + 0.12 * decay(frame, j, 4), 0);
+  const zoom = settle * slowZoom + beatZoom + jumpZoom;
+  // Flou de mouvement pendant les coups de zoom.
+  const motionBlur = Math.min(6, jumpFrames.reduce((s, j) => s + 8 * decay(frame, j, 3), 0) + beatFrames.reduce((s, b) => s + 1.5 * pulse(frame, b, 6), 0));
 
-  // Zoom lent sur toute la partie + petit coup de zoom à chaque question.
-  const slowZoom = interpolate(frame, [0, endStart], [1, 1.05], clamp);
-  const punch =
-    beatFrames.reduce((s, b) => s + 0.045 * pulse(frame, b, 8), 0) +
-    captionFrames.reduce((s, c) => s + 0.06 * pulse(frame, c.frame, 10), 0);
   const shake = captionFrames
     .filter((c) => c.fail)
-    .reduce((s, c) => s + (frame >= c.frame && frame < c.frame + 14 ? 1 - (frame - c.frame) / 14 : 0), 0);
-  const shakeX = shake * 18 * Math.sin(frame * 2.7);
-  const shakeY = shake * 12 * Math.cos(frame * 3.1);
-  const glow = beatFrames.reduce((s, b) => s + pulse(frame, b, 12), 0);
+    .reduce((s, c) => s + (frame >= c.frame && frame < c.frame + 16 ? 1 - (frame - c.frame) / 16 : 0), 0);
+  const shakeX = shake * 22 * (random(`sx${frame}`) - 0.5) * 2;
+  const shakeY = shake * 14 * (random(`sy${frame}`) - 0.5) * 2;
+  const glow = beatFrames.reduce((s, b) => s + pulse(frame, b, 14), 0);
+  // Écran qui flotte : rotation 3D lente.
+  const tiltY = 3.5 * Math.sin(frame / 38);
+  const tiltX = 2 + 1.5 * Math.sin(frame / 51);
 
   // Avant la carte de fin : la partie grossit et part dans un flash.
   const outro = interpolate(frame, [endStart - 10, endStart], [0, 1], clamp);
   const flash = Math.max(
-    interpolate(frame, [0, 5], [0.9, 0], clamp),
     interpolate(frame, [endStart - 3, endStart, endStart + 6], [0, 1, 0], clamp),
-    ...captionFrames.map((c) => 0.35 * pulse(frame, c.frame, 6)),
+    ...jumpFrames.map((j) => 0.7 * decay(frame, j, 3)),
+    ...captionFrames.map((c) => (c.fail ? 0 : 0.25 * pulse(frame, c.frame, 6))),
   );
+  const redFlash = failFrame == null ? 0 : 0.55 * decay(frame, failFrame, 8);
 
   const gameT = (frame / fps) * p.speed;
   const caption = captionFrames.find((c) => gameT >= c.at && gameT < c.at + (c.seconds ?? 1.6));
-  const question = beatFrames.filter((b) => frame >= b).length + 1;
 
   const musicVolume = (f: number) =>
     (hasVoice ? 0.18 : 0.5) *
-    interpolate(f, [0, 8, durationInFrames - 20, durationInFrames - 1], [0, 1, 1, 0], clamp);
+    interpolate(f, [0, 4, durationInFrames - 20, durationInFrames - 1], [0, 1, 1, 0], clamp);
 
   return (
-    <AbsoluteFill style={{ background: C.nightDeep, fontFamily: sans, overflow: 'hidden' }}>
-      <Backdrop frame={frame} />
+    <AbsoluteFill style={{ background: C.space, fontFamily: sans, overflow: 'hidden' }}>
+      <Backdrop p={p} frame={frame} />
 
       {sound ? (
         <>
           <Audio src={staticFile('sfx/music.wav')} volume={musicVolume} />
-          <Audio src={staticFile('sfx/whoosh.wav')} volume={0.5} />
+          <Audio src={staticFile('sfx/boom.wav')} volume={0.7} />
           {beatFrames.map((b) => (
-            <Sequence key={`b${b}`} from={b} durationInFrames={10}>
-              <Audio src={staticFile('sfx/pop.wav')} volume={0.35} />
+            <Sequence key={`b${b}`} from={b} durationInFrames={30}>
+              <Audio src={staticFile('sfx/whoosh.wav')} volume={0.3} />
+            </Sequence>
+          ))}
+          {jumpFrames.map((j) => (
+            <Sequence key={`j${j}`} from={Math.max(0, j - 4)} durationInFrames={40}>
+              <Audio src={staticFile('sfx/whoosh.wav')} volume={0.7} />
             </Sequence>
           ))}
           {captionFrames.map((c) => (
             <Sequence key={`c${c.frame}`} from={c.frame} durationInFrames={40}>
-              <Audio src={staticFile(c.fail ? 'sfx/boom.wav' : 'sfx/pop.wav')} volume={c.fail ? 0.8 : 0.6} />
+              <Audio src={staticFile(c.fail ? 'sfx/boom.wav' : 'sfx/pop.wav')} volume={c.fail ? 0.9 : 0.6} />
             </Sequence>
           ))}
           <Sequence from={Math.max(0, endStart - 36)} durationInFrames={40}>
@@ -195,8 +225,6 @@ export const Short = (p: ShortProps) => {
         ) : null,
       )}
 
-      <ProgressBar frame={frame} total={durationInFrames} />
-
       <AbsoluteFill
         style={{
           opacity: 1 - outro,
@@ -204,31 +232,20 @@ export const Short = (p: ShortProps) => {
           filter: outro > 0 ? `blur(${outro * 12}px)` : undefined,
         }}
       >
-        <Hook text={p.hook} sub={p.subhook} />
-
-        {/* Téléphone */}
-        <div
-          style={{
-            position: 'absolute',
-            top: PHONE_TOP,
-            left: 0,
-            right: 0,
-            display: 'flex',
-            justifyContent: 'center',
-            transform: `translateY(${(1 - phoneIn) * 500}px) rotate(${(1 - phoneIn) * 8}deg) scale(${slowZoom + punch})`,
-            transformOrigin: '50% 0%',
-          }}
-        >
+        {/* Écran de l'app */}
+        <div style={{ position: 'absolute', top: SCREEN_TOP, left: 0, right: 0, display: 'flex', justifyContent: 'center', perspective: 2200 }}>
           <div
             style={{
               position: 'relative',
-              height: PHONE_H,
-              aspectRatio: SCREEN_RATIO,
-              borderRadius: 52,
-              border: `14px solid #05080f`,
-              boxShadow: `0 0 0 3px ${C.nightBorder}, 0 0 ${30 + 70 * glow}px ${10 + 20 * glow}px rgba(196,135,42,${0.25 + 0.5 * glow}), 0 40px 90px rgba(0,0,0,0.55)`,
+              width: SCREEN_W,
+              height: SCREEN_H,
+              borderRadius: 44,
               overflow: 'hidden',
               background: '#000',
+              transform: `rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale(${zoom})`,
+              transformOrigin: '50% 30%',
+              filter: motionBlur > 0.3 ? `blur(${motionBlur.toFixed(2)}px)` : undefined,
+              boxShadow: `0 0 0 2px rgba(255,255,255,0.25), 0 0 ${40 + 80 * glow}px ${8 + 16 * glow}px rgba(245,185,66,${0.18 + 0.4 * glow}), 0 50px 120px rgba(0,0,0,0.75)`,
             }}
           >
             <OffthreadVideo
@@ -236,41 +253,53 @@ export const Short = (p: ShortProps) => {
               trimBefore={Math.round(p.trimStart * fps)}
               playbackRate={p.speed}
               muted
-              style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }}
+              style={{ position: 'absolute', left: 0, top: -STATUS_BAR * SCREEN_SCALE, width: SCREEN_W, height: RAW_H * SCREEN_SCALE }}
             />
-            {/* Reflet qui balaie l'écran à l'entrée */}
+            {/* Reflet de vitre fixe + reflet qui balaie l'écran au départ */}
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(160deg, rgba(255,255,255,0.12) 0%, transparent 28%, transparent 70%, rgba(0,0,0,0.18) 100%)' }} />
             <div
               style={{
                 position: 'absolute',
                 inset: 0,
                 background: 'linear-gradient(115deg, transparent 40%, rgba(255,255,255,0.35) 50%, transparent 60%)',
-                transform: `translateX(${interpolate(frame, [10, 34], [-120, 120], clamp)}%)`,
+                transform: `translateX(${interpolate(frame, [4, 26], [-120, 120], clamp)}%)`,
               }}
             />
           </div>
         </div>
 
-        {beatFrames.length && phoneIn > 0.9 ? (
-          <QuestionBadge n={question} frame={frame} beat={beatFrames.filter((b) => frame >= b).pop()} />
-        ) : null}
-
         {caption ? <CaptionChip key={caption.frame} text={caption.text} start={caption.frame} fail={caption.fail} /> : null}
         {captionFrames.map((c) =>
-          frame >= c.frame && frame < c.frame + 40 ? (
-            <Burst key={c.frame} start={c.frame} seed={c.frame} emojis={c.fail ? ['😬', '💀', '❌'] : ['✨', '🎉', '🔥']} />
-          ) : null,
+          frame >= c.frame && frame < c.frame + 36 ? <Sparks key={c.frame} start={c.frame} seed={c.frame} color={c.fail ? C.red : C.gold} /> : null,
         )}
+
+        {/* Bandeau sombre derrière l'accroche, puis l'accroche */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 520, background: 'linear-gradient(180deg, rgba(3,6,15,0.9) 0%, rgba(3,6,15,0.7) 55%, transparent 100%)' }} />
+        <Hook text={p.hook} />
       </AbsoluteFill>
 
-      {inEnd ? <EndCard p={p} frame={frame - endStart} endIn={endIn} /> : null}
+      {/* Fuites de lumière aux sauts et à la première image */}
+      {[0, ...jumpFrames].map((j, i) => (
+        <LightLeak key={`l${j}`} p={(frame - j + 4) / 22} seed={i} />
+      ))}
 
-      {flash > 0 ? <AbsoluteFill style={{ background: '#fff', opacity: flash }} /> : null}
+      {/* Vignette cinéma + grain */}
+      <AbsoluteFill style={{ background: 'radial-gradient(ellipse 80% 65% at 50% 50%, transparent 55%, rgba(0,0,0,0.65) 100%)' }} />
+      {redFlash > 0.01 ? (
+        <AbsoluteFill style={{ background: `radial-gradient(ellipse 70% 60% at 50% 50%, transparent 30%, rgba(255,30,50,${redFlash}) 100%)` }} />
+      ) : null}
+      <Grain frame={frame} />
+
+      {inEnd ? <EndCard p={p} frame={frame - endStart} /> : null}
+
+      <ProgressBar frame={frame} total={durationInFrames} />
+      {flash > 0.01 ? <AbsoluteFill style={{ background: '#fff', opacity: flash }} /> : null}
     </AbsoluteFill>
   );
 };
 
-/** Accroche mot par mot, chaque mot saute en place. */
-const Hook = ({ text, sub }: { text: string; sub?: string }) => {
+/** Accroche : lisible dès la première image, les mots arrivent en cascade rapide. */
+const Hook = ({ text }: { text: string }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   // Ponctuation et émojis restent collés au mot d'avant (« dessus ? 🤔 »).
@@ -279,78 +308,48 @@ const Hook = ({ text, sub }: { text: string; sub?: string }) => {
     else acc.push(w);
     return acc;
   }, []);
-  const subIn = spring({ frame: frame - (words.length * 3 + 8), fps, config: { damping: 14 } });
-  // Respiration légère une fois l'accroche posée.
-  const breathe = 1 + 0.015 * Math.sin(frame / 9);
-  return (
-    <div style={{ position: 'absolute', top: 200, left: 60, right: 60, textAlign: 'center', transform: `scale(${breathe})` }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '10px 14px' }}>
-        {words.map((w, i) => {
-          const s = spring({ frame: frame - i * 3, fps, config: { damping: 9, mass: 0.5 } });
-          return (
-            <span
-              key={i}
-              style={{
-                fontFamily: display,
-                fontWeight: 800,
-                fontSize: 76,
-                lineHeight: 1.2,
-                color: C.nightDeep,
-                background: i === words.length - 1 ? C.sand : C.parchment,
-                padding: '4px 18px 10px',
-                borderRadius: 14,
-                display: 'inline-block',
-                opacity: Math.min(1, s * 2),
-                transform: `translateY(${(1 - s) * 60}px) scale(${0.4 + 0.6 * s}) rotate(${(1 - s) * (i % 2 ? 10 : -10)}deg)`,
-                boxShadow: '0 10px 0 rgba(0,0,0,0.25)',
-              }}
-            >
-              {w}
-            </span>
-          );
-        })}
-      </div>
-      {sub ? (
-        <div
-          style={{
-            marginTop: 26,
-            fontSize: 44,
-            fontWeight: 800,
-            color: C.parchment,
-            opacity: subIn,
-            transform: `translateY(${(1 - subIn) * 20}px)`,
-            textShadow: '0 4px 16px rgba(0,0,0,0.6)',
-          }}
-        >
-          {sub}
-        </div>
-      ) : null}
-    </div>
-  );
-};
-
-/** Numéro de question qui saute à chaque nouvelle question. */
-const QuestionBadge = ({ n, frame, beat }: { n: number; frame: number; beat?: number }) => {
-  const { fps } = useVideoConfig();
-  const s = beat == null ? 1 : spring({ frame: frame - beat, fps, config: { damping: 8, mass: 0.4 } });
+  const breathe = 1 + 0.012 * Math.sin(frame / 9);
+  const size = text.length > 30 ? 72 : 84;
   return (
     <div
       style={{
         position: 'absolute',
-        top: PHONE_TOP + 40,
-        right: 150,
-        fontSize: 40,
-        fontWeight: 800,
-        color: '#fff',
-        background: C.vermilion,
-        padding: '10px 26px',
-        borderRadius: 999,
-        border: `3px solid ${C.parchment}`,
-        transform: `scale(${0.7 + 0.3 * s}) rotate(6deg)`,
-        boxShadow: '0 8px 20px rgba(0,0,0,0.4)',
+        top: 190,
+        left: 50,
+        right: 50,
+        height: 180,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transform: `scale(${breathe})`,
       }}
     >
-      Q{n}
+      <div style={{ textAlign: 'center', textWrap: 'balance', maxWidth: 960 }}>
+      {words.map((w, i) => {
+        // Tous les mots sont déjà lisibles à la première image.
+        const s = spring({ frame: frame - i * 1.2 + 12, fps, config: { damping: 11, mass: 0.45 } });
+        const accent = i === words.length - 1;
+        return (
+          <span
+            key={i}
+            style={{
+              fontFamily: display,
+              fontWeight: 800,
+              fontSize: size,
+              lineHeight: 1.12,
+              display: 'inline-block',
+              margin: '0 9px',
+              ...(accent ? goldText : { color: '#fff' }),
+              opacity: Math.min(1, s * 1.6),
+              transform: `translateY(${(1 - s) * 40}px) scale(${0.6 + 0.4 * s})`,
+              filter: 'drop-shadow(0 6px 22px rgba(0,0,0,0.9))',
+            }}
+          >
+            {w}
+          </span>
+        );
+      })}
+      </div>
     </div>
   );
 };
@@ -358,21 +357,24 @@ const QuestionBadge = ({ n, frame, beat }: { n: number; frame: number; beat?: nu
 const CaptionChip = ({ text, start, fail }: { text: string; start: number; fail: boolean }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const pop = spring({ frame: frame - start, fps, config: { damping: 8, mass: 0.5 } });
-  const wobble = Math.sin((frame - start) / 3) * 3 * Math.max(0, 1 - (frame - start) / 30);
+  const pop = spring({ frame: frame - start, fps, config: { damping: 9, mass: 0.5 } });
+  const color = fail ? C.red : C.gold;
   return (
-    <div style={{ position: 'absolute', top: PHONE_TOP + 330, left: 0, right: 0, display: 'flex', justifyContent: 'center' }}>
+    <div style={{ position: 'absolute', top: SCREEN_TOP + 470, left: 0, right: 0, display: 'flex', justifyContent: 'center' }}>
       <div
         style={{
-          fontSize: 72,
+          fontFamily: display,
+          fontSize: 92,
           fontWeight: 800,
           color: '#fff',
-          background: fail ? C.vermilion : C.forestGreen,
-          border: `5px solid ${C.parchment}`,
-          padding: '14px 44px',
-          borderRadius: 28,
-          transform: `scale(${pop * 1.05}) rotate(${(1 - pop) * -14 + wobble}deg)`,
-          boxShadow: '0 14px 0 rgba(0,0,0,0.3), 0 20px 50px rgba(0,0,0,0.45)',
+          background: 'rgba(5,10,22,0.78)',
+          border: `4px solid ${color}`,
+          padding: '12px 56px 20px',
+          borderRadius: 30,
+          transform: `scale(${0.5 + 0.55 * pop}) rotate(${(1 - pop) * -8}deg)`,
+          opacity: Math.min(1, pop * 2),
+          boxShadow: `0 0 60px ${color}88, 0 24px 60px rgba(0,0,0,0.6)`,
+          textShadow: `0 0 30px ${color}`,
         }}
       >
         {text}
@@ -381,142 +383,45 @@ const CaptionChip = ({ text, start, fail }: { text: string; start: number; fail:
   );
 };
 
-/** Gerbe d'émojis qui jaillit autour du sous-titre. */
-const Burst = ({ start, seed, emojis }: { start: number; seed: number; emojis: string[] }) => {
+/** Éclats lumineux autour du sous-titre. */
+const Sparks = ({ start, seed, color }: { start: number; seed: number; color: string }) => {
   const frame = useCurrentFrame();
   const t = (frame - start) / 30;
+  const cx = 540;
+  const cy = SCREEN_TOP + 540;
   return (
     <>
-      {Array.from({ length: 14 }, (_, i) => {
-        const angle = random(`a${seed}-${i}`) * Math.PI * 2;
-        const speed = 500 + random(`s${seed}-${i}`) * 700;
-        const x = 540 + Math.cos(angle) * speed * t;
-        const y = PHONE_TOP + 380 + Math.sin(angle) * speed * t * 0.8 + 900 * t * t;
-        return (
-          <div
-            key={i}
-            style={{
-              position: 'absolute',
-              left: x - 30,
-              top: y - 30,
-              fontSize: 60,
-              opacity: Math.max(0, 1 - t * 1.1),
-              transform: `rotate(${t * 400 * (i % 2 ? 1 : -1)}deg) scale(${Math.min(1, t * 8)})`,
-            }}
-          >
-            {emojis[i % emojis.length]}
-          </div>
-        );
-      })}
-    </>
-  );
-};
-
-const ProgressBar = ({ frame, total }: { frame: number; total: number }) => (
-  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 12, background: 'rgba(255,255,255,0.12)' }}>
-    <div
-      style={{
-        width: `${(frame / (total - 1)) * 100}%`,
-        height: '100%',
-        background: `linear-gradient(90deg, ${C.sand}, ${C.vermilion})`,
-        boxShadow: `0 0 16px ${C.sand}`,
-      }}
-    />
-  </div>
-);
-
-const EndCard = ({ p, frame, endIn }: { p: ShortProps; frame: number; endIn: number }) => {
-  const { fps } = useVideoConfig();
-  const iconIn = spring({ frame, fps, config: { damping: 7, mass: 0.6 } });
-  const btn = 1 + 0.06 * Math.sin(frame / 4);
-  return (
-    <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', gap: 34 }}>
-      {/* Rayons qui tournent derrière l'icône */}
       <div
         style={{
           position: 'absolute',
-          width: 1800,
-          height: 1800,
-          top: 960 - 900 - 240,
-          left: 540 - 900,
-          background: `repeating-conic-gradient(from ${frame * 1.5}deg, rgba(196,135,42,0.22) 0deg 10deg, transparent 10deg 20deg)`,
-          maskImage: 'radial-gradient(circle, black 15%, transparent 60%)',
-          WebkitMaskImage: 'radial-gradient(circle, black 15%, transparent 60%)',
-          opacity: endIn,
+          left: cx - 40,
+          top: cy - 40,
+          width: 80,
+          height: 80,
+          borderRadius: '50%',
+          border: `6px solid ${color}`,
+          transform: `scale(${1 + t * 16})`,
+          opacity: Math.max(0, 0.8 * (1 - t / 0.6)),
         }}
       />
-      <Img
-        src={staticFile(p.icon)}
-        style={{
-          width: 280,
-          height: 280,
-          borderRadius: 62,
-          transform: `scale(${iconIn}) rotate(${(1 - iconIn) * -25}deg)`,
-          boxShadow: `0 0 ${60 + 30 * Math.sin(frame / 5)}px rgba(196,135,42,0.7)`,
-        }}
-      />
-      <div style={{ fontFamily: display, fontWeight: 800, fontSize: 104, color: C.parchment, transform: `scale(${endIn})` }}>
-        GeoG
-      </div>
-      <div
-        style={{
-          fontSize: 52,
-          fontWeight: 800,
-          color: C.parchment,
-          textAlign: 'center',
-          padding: '0 80px',
-          opacity: endIn,
-          transform: `translateY(${(1 - endIn) * 40}px)`,
-        }}
-      >
-        {p.cta}
-      </div>
-      {p.ctaSub ? (
-        <div
-          style={{
-            marginTop: 10,
-            fontSize: 46,
-            fontWeight: 800,
-            color: '#fff',
-            background: C.vermilion,
-            padding: '20px 50px',
-            borderRadius: 999,
-            transform: `scale(${endIn * btn})`,
-            boxShadow: `0 0 0 ${6 + 6 * Math.sin(frame / 4)}px rgba(192,74,26,0.35), 0 12px 30px rgba(0,0,0,0.4)`,
-          }}
-        >
-          {p.ctaSub} 👆
-        </div>
-      ) : null}
-      <Confetti frame={frame} />
-    </AbsoluteFill>
-  );
-};
-
-/** Pluie de confettis aux couleurs de l'app. */
-const Confetti = ({ frame }: { frame: number }) => {
-  const colors = [C.sand, C.vermilion, C.parchment, C.forestGreen, '#4f8fd6'];
-  return (
-    <>
-      {Array.from({ length: 60 }, (_, i) => {
-        const x = random(`cx${i}`) * 1080;
-        const delay = random(`cd${i}`) * 20;
-        const fall = 6 + random(`cf${i}`) * 10;
-        const y = -60 + (frame - delay) * fall;
-        if (y < -60) return null;
-        const sway = Math.sin((frame + i * 7) / 8) * 30;
+      {Array.from({ length: 26 }, (_, i) => {
+        const angle = random(`a${seed}-${i}`) * Math.PI * 2;
+        const speed = 300 + random(`s${seed}-${i}`) * 600;
+        const d = (speed * (1 - Math.exp(-t * 4))) / 1.6;
+        const size = 6 + random(`z${seed}-${i}`) * 10;
         return (
           <div
             key={i}
             style={{
               position: 'absolute',
-              left: x + sway,
-              top: y,
-              width: 18,
-              height: 30,
-              background: colors[i % colors.length],
-              borderRadius: 4,
-              transform: `rotate(${frame * (5 + (i % 7))}deg) scaleX(${Math.cos((frame + i) / 4)})`,
+              left: cx + Math.cos(angle) * d - size / 2,
+              top: cy + Math.sin(angle) * d * 0.8 + 200 * t * t - size / 2,
+              width: size,
+              height: size,
+              borderRadius: '50%',
+              background: i % 4 ? color : '#fff',
+              boxShadow: `0 0 12px ${color}`,
+              opacity: Math.max(0, 1 - t / 1.2),
             }}
           />
         );
@@ -525,38 +430,128 @@ const Confetti = ({ frame }: { frame: number }) => {
   );
 };
 
-/** Fond : dégradé nuit, taches de lumière qui dérivent, méridiens et parallèles. */
-const Backdrop = ({ frame }: { frame: number }) => {
-  const blobs = [
-    { c: 'rgba(196,135,42,0.35)', x: 200, y: 400, r: 520, sx: 0.013, sy: 0.009 },
-    { c: 'rgba(192,74,26,0.28)', x: 900, y: 1300, r: 600, sx: 0.011, sy: 0.015 },
-    { c: 'rgba(79,143,214,0.25)', x: 700, y: 300, r: 480, sx: 0.017, sy: 0.012 },
-  ];
-  const shift = (frame * 0.6) % 120;
+// Fuite de lumière chaude qui balaie l'écran.
+const LightLeak = ({ p, seed }: { p: number; seed: number }) => {
+  if (p <= 0 || p >= 1) return null;
+  const a = Math.sin(Math.PI * p);
+  const x = -20 + 140 * ease(p);
+  const y = 20 + 50 * random(`ly${seed}`);
   return (
-    <AbsoluteFill style={{ background: `radial-gradient(circle at 50% 35%, ${C.nightNavy} 0%, ${C.nightDeep} 75%)` }}>
-      {blobs.map((b, i) => (
+    <AbsoluteFill
+      style={{
+        mixBlendMode: 'screen',
+        opacity: 0.6 * a,
+        background: `radial-gradient(ellipse 55% 35% at ${x}% ${y}%, rgba(255,170,80,0.9), rgba(255,80,60,0.35) 45%, transparent 75%),
+          radial-gradient(ellipse 40% 60% at ${100 - x}% ${100 - y}%, rgba(255,90,170,0.5), transparent 70%)`,
+      }}
+    />
+  );
+};
+
+/** Grain de pellicule, différent à chaque image. */
+const Grain = ({ frame }: { frame: number }) => (
+  <svg width={1080} height={1920} style={{ position: 'absolute', inset: 0, opacity: 0.07, mixBlendMode: 'overlay' }}>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed={frame % 50} />
+    </filter>
+    <rect width="100%" height="100%" filter="url(#grain)" />
+  </svg>
+);
+
+const ProgressBar = ({ frame, total }: { frame: number; total: number }) => (
+  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 10, background: 'rgba(255,255,255,0.1)' }}>
+    <div
+      style={{
+        width: `${(frame / (total - 1)) * 100}%`,
+        height: '100%',
+        background: `linear-gradient(90deg, ${C.gold}, ${C.red})`,
+        boxShadow: `0 0 16px ${C.gold}`,
+      }}
+    />
+  </div>
+);
+
+const EndCard = ({ p, frame }: { p: ShortProps; frame: number }) => {
+  const { fps } = useVideoConfig();
+  const s = spring({ frame, fps, config: { damping: 10, mass: 0.7 } });
+  const s2 = spring({ frame: frame - 8, fps, config: { damping: 12 } });
+  const btn = 1 + 0.05 * Math.sin(frame / 4);
+  return (
+    <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', gap: 34, background: `rgba(3,6,15,${0.6 * s})` }}>
+      {/* Halo qui tourne derrière l'icône */}
+      <div
+        style={{
+          position: 'absolute',
+          width: 1600,
+          height: 1600,
+          top: 960 - 800 - 220,
+          left: 540 - 800,
+          background: `repeating-conic-gradient(from ${frame * 1.2}deg, rgba(245,185,66,0.16) 0deg 8deg, transparent 8deg 16deg)`,
+          maskImage: 'radial-gradient(circle, black 10%, transparent 55%)',
+          WebkitMaskImage: 'radial-gradient(circle, black 10%, transparent 55%)',
+          opacity: s,
+        }}
+      />
+      <Img
+        src={staticFile(p.icon)}
+        style={{
+          width: 260,
+          height: 260,
+          borderRadius: 58,
+          transform: `scale(${s})`,
+          boxShadow: `0 0 ${60 + 30 * Math.sin(frame / 5)}px rgba(245,185,66,0.65), 0 20px 50px rgba(0,0,0,0.6)`,
+        }}
+      />
+      <div style={{ fontFamily: display, fontWeight: 800, fontSize: 112, ...goldText, transform: `scale(${s})`, filter: 'drop-shadow(0 8px 30px rgba(0,0,0,0.8))' }}>
+        GeoG
+      </div>
+      <div style={{ fontSize: 50, fontWeight: 800, color: '#fff', textAlign: 'center', padding: '0 80px', opacity: s2, transform: `translateY(${(1 - s2) * 40}px)` }}>
+        {p.cta}
+      </div>
+      {p.ctaSub ? (
         <div
-          key={i}
+          style={{
+            marginTop: 10,
+            fontSize: 44,
+            fontWeight: 800,
+            color: '#1a1206',
+            background: `linear-gradient(180deg, #ffd98a, ${C.gold})`,
+            padding: '20px 54px',
+            borderRadius: 999,
+            transform: `scale(${s2 * btn})`,
+            boxShadow: `0 0 0 ${6 + 6 * Math.sin(frame / 4)}px rgba(245,185,66,0.3), 0 12px 30px rgba(0,0,0,0.5)`,
+          }}
+        >
+          {p.ctaSub} 👆
+        </div>
+      ) : null}
+    </AbsoluteFill>
+  );
+};
+
+/** Fond : la partie elle-même, floutée et assombrie (plan.mjs), sinon un dégradé. */
+const Backdrop = ({ p, frame }: { p: ShortProps; frame: number }) => {
+  const { fps } = useVideoConfig();
+  return (
+    <AbsoluteFill style={{ background: `radial-gradient(circle at 50% 40%, #13244a, ${C.space} 75%)` }}>
+      {p.background ? (
+        <OffthreadVideo
+          src={staticFile(p.background)}
+          trimBefore={Math.round(p.trimStart * fps)}
+          playbackRate={p.speed}
+          muted
           style={{
             position: 'absolute',
-            left: b.x + Math.sin(frame * b.sx + i) * 160 - b.r / 2,
-            top: b.y + Math.cos(frame * b.sy + i) * 160 - b.r / 2,
-            width: b.r,
-            height: b.r,
-            borderRadius: '50%',
-            background: `radial-gradient(circle, ${b.c} 0%, transparent 70%)`,
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            transform: `scale(${1.25 + 0.03 * Math.sin(frame / 60)})`,
+            filter: 'blur(18px) brightness(0.42) saturate(1.3)',
           }}
         />
-      ))}
-      <svg width={1080} height={1920} style={{ position: 'absolute', opacity: 0.09 }}>
-        {Array.from({ length: 12 }, (_, i) => (
-          <line key={`v${i}`} x1={i * 120 - shift} y1={0} x2={i * 120 - shift} y2={1920} stroke={C.sand} strokeWidth={2} />
-        ))}
-        {Array.from({ length: 17 }, (_, i) => (
-          <line key={`h${i}`} x1={0} y1={i * 120} x2={1080} y2={i * 120} stroke={C.sand} strokeWidth={2} />
-        ))}
-      </svg>
+      ) : null}
+      <AbsoluteFill style={{ background: 'linear-gradient(180deg, rgba(5,10,22,0.35), rgba(5,10,22,0.15) 40%, rgba(5,10,22,0.6))' }} />
     </AbsoluteFill>
   );
 };
