@@ -1,5 +1,6 @@
 import { Composition } from 'remotion';
 
+import { GLOBE_FPS, GlobeQuiz, globeQuizSeconds, type GlobeQuizProps } from './GlobeQuiz';
 import { FPS, Short, endCardSeconds, type ShortProps } from './Short';
 
 const defaultProps: ShortProps = {
@@ -15,7 +16,34 @@ const defaultProps: ShortProps = {
   icon: 'icon.png',
 };
 
+const globeDefaults: GlobeQuizProps = {
+  hook: ['97 % ne trouvent pas ce pays.', 'Et toi ? 5 pays, 3 secondes 🌍'],
+  question: 'Quel est ce pays ?',
+  rounds: [
+    { id: '604', name: 'Pérou', flag: '🇵🇪', level: 'MOYEN' },
+    { id: '764', name: 'Thaïlande', flag: '🇹🇭', level: 'MOYEN' },
+    { id: '398', name: 'Kazakhstan', flag: '🇰🇿', level: 'EXPERT' },
+    { id: '068', name: 'Bolivie', flag: '🇧🇴', level: 'EXPERT' },
+    { id: '646', name: 'Rwanda', flag: '🇷🇼', level: 'IMPOSSIBLE' },
+  ],
+  outro: 'Ton score sur 5 ?',
+  outroSub: 'Dis-le en commentaire 👇',
+  cta: 'GeoG · gratuit',
+  icon: 'icon.png',
+};
+
 export const Root = () => (
+  <>
+  <Composition
+    id="GlobeQuiz"
+    component={GlobeQuiz}
+    width={1080}
+    height={1920}
+    fps={GLOBE_FPS}
+    durationInFrames={Math.ceil(GLOBE_FPS * globeQuizSeconds(globeDefaults))}
+    defaultProps={globeDefaults}
+    calculateMetadata={({ props }) => ({ durationInFrames: Math.ceil(GLOBE_FPS * globeQuizSeconds(props)) })}
+  />
   <Composition
     id="Short"
     component={Short}
@@ -30,4 +58,5 @@ export const Root = () => (
       ),
     })}
   />
+  </>
 );
