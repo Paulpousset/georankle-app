@@ -41,4 +41,10 @@ env:
     file: subflows/think.yaml
     env:
       THINK_MS: "3000"
+# Repère de fin, juste avant l'arrêt : plan.mjs en déduit le début de la vidéo.
+- runScript:
+    file: subflows/mark.js
+    env:
+      KIND: stop
+      OUT: ${OUTPUT || 'flags'}
 - stopRecording

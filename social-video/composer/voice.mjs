@@ -105,6 +105,11 @@ for (const f of readdirSync(EPISODES).filter((n) => n.endsWith('.json')).sort())
         continue;
       }
       const at = Math.max(line.at ?? 0, cursor);
+      // Une bonne réponse dite trop tard tomberait sur la question suivante.
+      if (line.maxLate != null && at - line.at > line.maxLate) {
+        console.log(`  – « ${text} » arriverait trop tard, ignorée`);
+        continue;
+      }
       if (at + audio.seconds > gameSeconds) {
         console.log(`  – « ${text} » ne tient pas avant la fin, ignorée`);
         continue;

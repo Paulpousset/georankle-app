@@ -1,5 +1,5 @@
 {
-  "_comment": "Accroches par flow et par langue. plan.mjs en tire une par vidéo, en tournant, pour tester plusieurs accroches sur le même jeu. Pas de faux chiffres (« seuls 2 % y arrivent ») : on promet un défi, pas une statistique. captions.fromEnd = secondes avant la fin de la vidéo brute (l'écran de fin dure ~3,5 s). Voix off (voice.mjs) : l'accroche est lue au début, chaque sous-titre est lu avec son champ « say » s'il existe (sinon son texte), et voiceOutro sur la carte de fin. Les emojis sont retirés avant la synthèse. lines = répliques de voix off pendant la partie, posées sur les 2e, 4e et 6e changements de question (beats).",
+  "_comment": "Accroches par flow et par langue. plan.mjs en tire une par vidéo, en tournant, pour tester plusieurs accroches sur le même jeu. Pas de faux chiffres (« seuls 2 % y arrivent ») : on promet un défi, pas une statistique. captions.fromEnd = secondes avant la fin de la vidéo brute (l'écran de fin dure ~3,5 s). Voix off (voice.mjs) : l'accroche est lue au début, chaque sous-titre est lu avec son champ « say » s'il existe (sinon son texte), et voiceOutro sur la carte de fin. Les emojis sont retirés avant la synthèse. lines = répliques de voix off, seulement si le tournage n'a pas laissé de repères de bonnes réponses (sinon la voix dit chaque réponse), pendant la partie, posées sur les 2e, 4e et 6e changements de question (beats).",
   "_common": {
     "fr": {
       "cta": "Gratuit sur iOS et Android",
@@ -103,9 +103,9 @@
   "flags": {
     "fr": {
       "hooks": [
-        "6 drapeaux. Tu les as tous ?",
-        "Reconnais ces drapeaux en 2 secondes",
-        "Les drapeaux que tout le monde confond"
+        "Reconnais ces drapeaux avant moi !",
+        "6 drapeaux. Tu en trouves combien ?",
+        "Ces drapeaux, tout le monde les confond."
       ],
       "subhooks": [
         "Réponds avant moi",
@@ -127,9 +127,9 @@
     },
     "en": {
       "hooks": [
-        "6 flags. Can you name them all?",
-        "Name these flags in 2 seconds",
-        "Flags everyone mixes up"
+        "Name these flags before I do!",
+        "6 flags. How many can you get?",
+        "Everyone mixes up these flags."
       ],
       "subhooks": [
         "Answer before I do",
@@ -153,9 +153,9 @@
   "capitals": {
     "fr": {
       "hooks": [
-        "6 capitales. Zéro faute ?",
-        "Tu connais vraiment tes capitales ?",
-        "Capitales : le test rapide"
+        "Trouve la capitale avant que je réponde !",
+        "6 capitales. Si tu fais 6/6, t'es un génie.",
+        "Celle-là, presque personne ne la connaît."
       ],
       "subhooks": [
         "Réponds avant moi",
@@ -177,9 +177,9 @@
     },
     "en": {
       "hooks": [
-        "6 capitals. Zero mistakes?",
-        "Do you really know your capitals?",
-        "Capitals speed test"
+        "Name the capital before I do!",
+        "6 capitals. Get all 6 and you're a genius.",
+        "Most people miss at least one of these."
       ],
       "subhooks": [
         "Answer before I do",

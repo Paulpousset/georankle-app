@@ -12,6 +12,11 @@
 // tenir en ~TARGET secondes, fin de partie comprise. Le résultat est
 // <flow>-<lang>.cut.mp4, plus un fond flouté <flow>-<lang>.bg.mp4. Les fiches sont du JSON simple, à retoucher à la main
 // avant le rendu si besoin.
+//
+// Intro : la première image de la partie est tenue le temps que la voix lise
+// l'accroche, puis la partie démarre. Si le tournage a laissé des repères
+// (<flow>-<lang>.marks.jsonl, voir marks-server.mjs), la voix dit chaque
+// bonne réponse au moment du tap, à la place des répliques « lines ».
 import { execFileSync } from 'child_process';
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
@@ -108,11 +113,35 @@ function keepRanges(start, beats, clipSeconds) {
   return ranges;
 }
 
+// Durée de l'intro : le temps de lire la plus longue accroche (~14 signes par
+// seconde pour la voix), bornée entre 2,2 et 4 s.
+const introSeconds = (hooksList) =>
+  Math.round(Math.min(4, Math.max(2.2, Math.max(...hooksList.map((h) => h.length)) / 14 + 0.4)) * 10) / 10;
+
+// Bonnes réponses signalées pendant le tournage, en secondes de la vidéo
+// brute. Le repère « stop » est posé juste avant la fin de l'enregistrement :
+// la vidéo a commencé rawSeconds plus tôt.
+function readAnswers(file, rawSeconds) {
+  let marks;
+  try {
+    marks = readFileSync(file, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+  } catch {
+    return [];
+  }
+  const stop = marks.find((m) => m.kind === 'stop');
+  if (!stop) return [];
+  const t0 = stop.t - rawSeconds;
+  return marks
+    .filter((m) => m.kind === 'answer' && m.text)
+    .map((m) => ({ at: m.t - t0, text: m.text }))
+    .filter((m) => m.at > 0 && m.at < rawSeconds);
+}
+
 // Monte la vidéo serrée et son fond flouté avec ffmpeg ; renvoie la
 // correspondance temps brut → temps monté (null si coupé) et les sauts.
-function cut(file, ranges, outCut, outBg) {
+function cut(file, ranges, intro, outCut, outBg) {
   const parts = ranges.map(([a, b], i) => `[0:v]trim=start=${a}:end=${b},setpts=PTS-STARTPTS[p${i}]`);
-  const graph = `${parts.join(';')};${ranges.map((_, i) => `[p${i}]`).join('')}concat=n=${ranges.length}:v=1:a=0,setpts=PTS/${SPEED},fps=30[v]`;
+  const graph = `${parts.join(';')};${ranges.map((_, i) => `[p${i}]`).join('')}concat=n=${ranges.length}:v=1:a=0,setpts=PTS/${SPEED},fps=30,tpad=start_mode=clone:start_duration=${intro}[v]`;
   execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', file, '-filter_complex', graph, '-map', '[v]', '-an',
     '-c:v', 'libx264', '-crf', '16', '-preset', 'veryfast', '-pix_fmt', 'yuv420p', outCut]);
   execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', outCut, '-an',
@@ -126,9 +155,9 @@ function cut(file, ranges, outCut, outBg) {
   }
   const map = (t) => {
     const i = ranges.findIndex(([a, b]) => t >= a && t <= b);
-    return i < 0 ? null : Math.round(((offsets[i] + t - ranges[i][0]) / SPEED) * 100) / 100;
+    return i < 0 ? null : Math.round((intro + (offsets[i] + t - ranges[i][0]) / SPEED) * 100) / 100;
   };
-  const jumps = offsets.slice(1).map((o) => Math.round((o / SPEED) * 100) / 100);
+  const jumps = offsets.slice(1).map((o) => Math.round((intro + o / SPEED) * 100) / 100);
   return { map, jumps };
 }
 
@@ -151,7 +180,11 @@ for (const file of readdirSync(RAW).filter((f) => f.endsWith('.mp4')).sort()) {
   const ranges = keepRanges(detectStart(join(RAW, file)), rawBeats, rawSeconds);
   const clip = `${flow}-${lang}.cut.mp4`;
   const background = `${flow}-${lang}.bg.mp4`;
-  const { map, jumps } = cut(join(RAW, file), ranges, join(RAW, clip), join(RAW, background));
+  const intro = introSeconds(copy.hooks);
+  const { map, jumps } = cut(join(RAW, file), ranges, intro, join(RAW, clip), join(RAW, background));
+  const answers = readAnswers(join(RAW, `${flow}-${lang}.marks.jsonl`), rawSeconds)
+    .map((a) => ({ at: map(a.at), text: `${a.text} !`, maxLate: 0.8 }))
+    .filter((a) => a.at != null);
   const clipSeconds = probeSeconds(join(RAW, clip));
   const beats = rawBeats.map(map).filter((t) => t != null && !jumps.some((j) => Math.abs(j - t) < 0.3));
   // Sous-titres et répliques : en temps brut, puis recalés sur le montage.
@@ -159,7 +192,7 @@ for (const file of readdirSync(RAW).filter((f) => f.endsWith('.mp4')).sort()) {
   const captions = (copy.captions ?? [])
     .map(({ fromEnd, say, ...c }) => ({ ...c, at: map(rawAt({ ...c, fromEnd })) }))
     .filter((c) => c.at != null);
-  console.log(`• ${file} : ${rawSeconds.toFixed(1)} s → ${clipSeconds.toFixed(1)} s (${ranges.map(([a, b]) => `${a.toFixed(1)}–${b.toFixed(1)}`).join(', ')})`);
+  console.log(`• ${file} : ${rawSeconds.toFixed(1)} s → ${clipSeconds.toFixed(1)} s (intro ${intro} s ; ${ranges.map(([a, b]) => `${a.toFixed(1)}–${b.toFixed(1)}`).join(', ')}) ; ${answers.length} réponse(s) dite(s)`);
   for (let v = 0; v < variants; v++) {
     const pick = (list) => list[(day + v) % list.length];
     const episode = {
@@ -187,7 +220,8 @@ for (const file of readdirSync(RAW).filter((f) => f.endsWith('.mp4')).sort()) {
         // Répliques de partie sur les 2e, 4e et 6e questions, pour que la voix
         // accompagne tout le jeu et pas seulement l'accroche. Si l'écran change
         // trop peu pour repérer les questions, on les répartit sur la partie.
-        ...(copy.lines ?? []).map((text, i, all) => ({
+        ...answers,
+        ...(answers.length ? [] : copy.lines ?? []).map((text, i, all) => ({
           at: beats[1 + i * 2] ?? Math.round((3 + ((clipSeconds - 9) * (i + 1)) / (all.length + 1)) * 100) / 100,
           text,
         })),
