@@ -56,7 +56,12 @@ const COUNT = Number(env.COUNT || 1);
 const MIN_RELEASE = Number(env.MIN_RELEASE || 0);
 const DRY_RUN = env.DRY_RUN !== '0';
 const TARGET = env.TARGET || 'all';
-const parisHour = Number(new Intl.DateTimeFormat('fr-FR', { hour: 'numeric', hour12: false, timeZone: 'Europe/Paris' }).format(new Date()));
+// Heure à Paris (formatToParts : en fr-FR, format() donne « 12 h », pas un nombre).
+const parisHour = Number(
+  new Intl.DateTimeFormat('en-GB', { hour: 'numeric', hourCycle: 'h23', timeZone: 'Europe/Paris' })
+    .formatToParts(new Date())
+    .find((part) => part.type === 'hour').value,
+);
 const KIND = TARGET !== 'social' ? '' : !env.KIND || env.KIND === 'auto' ? (parisHour < 16 ? 'globe' : 'app') : env.KIND;
 const USE_ZERNIO = ZERNIO && TARGET !== 'youtube';
 const USE_UPLOAD_POST = (UPLOAD_POST || !ZERNIO) && TARGET !== 'social';
