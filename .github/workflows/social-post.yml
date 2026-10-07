@@ -27,7 +27,7 @@ on:
         options: [social, youtube, all]
         default: social
       kind:
-        description: Quel format (auto = globe avant 16 h à Paris, app après)
+        description: Quel format (auto = globe seulement, app en pause)
         type: choice
         options: [auto, globe, app]
         default: auto
