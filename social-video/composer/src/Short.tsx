@@ -33,6 +33,7 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from 'remotion';
+import { ArcadeShort, MemeShort, SuspenseShort } from './formats';
 
 export const FPS = 30;
 export const END_CARD_SECONDS = 2.5;
@@ -90,7 +91,7 @@ export interface ShortProps {
   endCardSeconds?: number;
   /** Musique et bruitages (public/sfx, sounds.mjs). Faux pour un rendu muet. */
   sound?: boolean;
-  /** Style du montage : cinema (défaut), immersif ou neon. */
+  /** Style du montage : cinema (défaut), immersif, neon, ou les concepts de formats.tsx (meme, suspense, arcade). */
   look?: Look;
 }
 
@@ -99,7 +100,7 @@ export interface ShortProps {
  * - immersif : l'app plein écran, sous-titres géants façon TikTok.
  * - neon : écran cerclé de néon sur une grille qui défile, effets arcade.
  */
-export type Look = 'cinema' | 'immersif' | 'neon';
+export type Look = 'cinema' | 'immersif' | 'neon' | 'meme' | 'suspense' | 'arcade';
 
 export interface VoiceLine {
   /** Fichier dans public/ ; une réplique sans fichier est ignorée. */
@@ -119,7 +120,7 @@ const RAW_H = 1136;
 const STATUS_BAR = 52;
 // Écran affiché : 864 px de large (×1,2) sous l'accroche, ou toute la
 // largeur (×1,5) en immersif ; du haut de l'app au bas de la vidéo.
-const geometry = (look: Look) => {
+const geometry = (look: 'cinema' | 'immersif' | 'neon') => {
   const scale = look === 'immersif' ? 1.5 : 1.2;
   const top = look === 'immersif' ? 330 : 385;
   return { scale, top, w: RAW_W * scale, h: Math.min((RAW_H - STATUS_BAR) * scale - 40, 1920 - top) };
@@ -147,12 +148,19 @@ const goldText = {
 } as const;
 
 export const Short = (p: ShortProps) => {
+  if (p.look === 'meme') return <MemeShort {...p} />;
+  if (p.look === 'suspense') return <SuspenseShort {...p} />;
+  if (p.look === 'arcade') return <ArcadeShort {...p} />;
+  return <ClassicShort {...p} />;
+};
+
+const ClassicShort = (p: ShortProps) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
   const endStart = durationInFrames - Math.round(endCardSeconds(p) * fps);
   const inEnd = frame >= endStart;
   const sound = p.sound !== false;
-  const look: Look = p.look ?? 'cinema';
+  const look = (p.look ?? 'cinema') as 'cinema' | 'immersif' | 'neon';
   const g = geometry(look);
   const hasVoice = (p.voice ?? []).some((l) => l.file);
 
