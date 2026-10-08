@@ -93,4 +93,19 @@ describe('buildRematchGameData', () => {
     expect(next.roundCountries![1]).toHaveLength(1);
     expect(next.roundCountries![2]).toHaveLength(2);
   });
+  it('accepte le best-of numérique que Matchmaking écrit dans rounds', () => {
+    // Un duel Globe créé depuis Matchmaking : `rounds` vaut le best-of, pas
+    // une liste de manches.
+    const m = match({
+      game_data: {
+        seed: 42,
+        rounds: 3,
+        roundCountries: { 1: ['FRA'], 2: ['ESP'], 3: ['ITA'] },
+      } as unknown as MatchGameData,
+    });
+    const next = buildRematchGameData(m);
+    expect(next.rounds).toBe(3);
+    expect(Object.keys(next.roundCountries!)).toHaveLength(3);
+    expect(next.roundCountries![1]).toHaveLength(1);
+  });
 });

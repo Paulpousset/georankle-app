@@ -76,10 +76,12 @@ export function buildRematchGameData(match: Match): MatchGameData {
 
   if (previous.roundCountries) {
     // Les modes de la revanche : la séquence d'une partie perso/classée, sinon
-    // le mode du match répété sur chaque manche.
+    // le mode du match répété sur chaque manche. `rounds` n'est un tableau que
+    // pour une partie perso : l'écran Matchmaking y écrit le best-of (un
+    // nombre), et `.map` sur un nombre faisait planter la revanche.
     const modes: MatchMode[] =
       previous.modes ??
-      previous.rounds?.map((r) => r.mode) ??
+      (Array.isArray(previous.rounds) ? previous.rounds.map((r) => r.mode) : undefined) ??
       Array.from({ length: match.best_of }, () => match.game_mode);
     // Longueur par manche : on reprend celle du match précédent, elle est déjà
     // la bonne (1 pour Devine le Pays, roundsPerSet ailleurs).
