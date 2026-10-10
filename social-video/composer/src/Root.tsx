@@ -1,6 +1,7 @@
 import { Composition } from 'remotion';
 
 import { GLOBE_FPS, GlobeQuiz, globeQuizSeconds, type GlobeQuizProps } from './GlobeQuiz';
+import { PLUS_FPS, PlusOuMoins, plusOuMoinsSeconds, type PlusOuMoinsProps } from './PlusOuMoins';
 import { FPS, Short, endCardSeconds, type ShortProps } from './Short';
 
 const defaultProps: ShortProps = {
@@ -32,8 +33,36 @@ const globeDefaults: GlobeQuizProps = {
   icon: 'icon.png',
 };
 
+const plusDefaults: PlusOuMoinsProps = {
+  hook: ['Plus ou moins peuplé ?', 'Tiens 6 manches sans erreur 🔥'],
+  label: 'habitants',
+  more: 'PLUS',
+  less: 'MOINS',
+  streak: 'Série',
+  fail: 'Raté !',
+  cards: [
+    { name: 'France', flag: '🇫🇷', value: 68551653, display: '68,6 M' },
+    { name: 'Thaïlande', flag: '🇹🇭', value: 71668011, display: '71,7 M' },
+  ],
+  rounds: [{ higher: true, pick: true }],
+  outro: 'Tu fais mieux ?',
+  outroSub: 'Ton score en commentaire 👇',
+  cta: 'GeoG · gratuit',
+  icon: 'icon.png',
+};
+
 export const Root = () => (
   <>
+  <Composition
+    id="PlusOuMoins"
+    component={PlusOuMoins}
+    width={1080}
+    height={1920}
+    fps={PLUS_FPS}
+    durationInFrames={Math.ceil(PLUS_FPS * plusOuMoinsSeconds(plusDefaults))}
+    defaultProps={plusDefaults}
+    calculateMetadata={({ props }) => ({ durationInFrames: Math.ceil(PLUS_FPS * plusOuMoinsSeconds(props)) })}
+  />
   <Composition
     id="GlobeQuiz"
     component={GlobeQuiz}
