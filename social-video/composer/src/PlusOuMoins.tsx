@@ -43,9 +43,9 @@ const C = {
 export const PLUS_FPS = 30;
 // Mêmes durées dans plusmoins.mjs (placement de la voix off).
 const HOOK_S = 2.8;
-const ROUND_S = 3.6;
+const ROUND_S = 6.2;
 const SLIDE_S = 0.5;
-const PICK_S = 1.9;
+const PICK_S = 4.0;
 const COUNT_S = 0.9;
 const OUTRO_S = 3.5;
 
@@ -55,6 +55,7 @@ export type PlusRound = { higher: boolean; pick: boolean };
 export type PlusOuMoinsProps = {
   hook: string[];
   label: string;
+  category?: string;
   more: string;
   less: string;
   streak: string;
@@ -142,7 +143,7 @@ const CardView = ({
       <div style={{ fontFamily: display, fontWeight: 800, fontSize: nameSize, color: C.parchment, lineHeight: 1.1 }}>{card.name}</div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, marginTop: 8 }}>
         <span style={{ fontFamily: sans, fontWeight: 800, fontSize: 92, ...goldText, fontVariantNumeric: 'tabular-nums' }}>{value}</span>
-        {value !== '?' ? <span style={{ fontFamily: sans, fontWeight: 600, fontSize: 38, color: 'rgba(242,232,208,0.75)' }}>{label}</span> : null}
+        <span style={{ fontFamily: sans, fontWeight: 700, fontSize: 44, color: 'rgba(242,232,208,0.85)' }}>{label}</span>
       </div>
     </div>
   );
@@ -272,8 +273,22 @@ export const PlusOuMoins = (props: PlusOuMoinsProps) => {
 
       {/* Bandeau : la question et la série. */}
       {t >= HOOK_S - 0.6 && outroT < 0.4 ? (
-        <div style={{ position: 'absolute', top: 210, left: 90, width: 800, display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: intro * (1 - clamp01(outroT / 0.4)) }}>
-          <div style={{ fontFamily: sans, fontWeight: 800, fontSize: 44, color: C.parchment, maxWidth: 560 }}>{props.hook[0]}</div>
+        <div style={{ position: 'absolute', top: 190, left: 90, width: 800, display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: intro * (1 - clamp01(outroT / 0.4)) }}>
+          <div
+            style={{
+              fontFamily: display,
+              fontWeight: 800,
+              fontSize: 62,
+              letterSpacing: 2,
+              padding: '14px 34px',
+              borderRadius: 40,
+              background: C.gold,
+              color: '#0b0f1c',
+              boxShadow: `0 0 50px ${C.gold}66`,
+            }}
+          >
+            {props.category ?? props.hook[0]}
+          </div>
           <div
             style={{
               fontFamily: sans,

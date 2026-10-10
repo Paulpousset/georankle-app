@@ -23,8 +23,8 @@ const LANG = arg('lang', 'fr');
 const ROUNDS = 6;
 // Mêmes durées que src/PlusOuMoins.tsx (placement de la voix off).
 const HOOK_S = 2.8;
-const ROUND_S = 3.6;
-const PICK_S = 1.9;
+const ROUND_S = 6.2;
+const PICK_S = 4.0;
 
 const data = JSON.parse(readFileSync(join(ROOT, 'assets', 'game_data.json'), 'utf8'));
 const cca2 = Object.fromEntries(
@@ -41,12 +41,16 @@ const THEMES = {
       hook: ['Plus ou moins peuplé ?', 'Tiens 6 manches sans erreur 🔥'],
       say: 'Plus ou moins peuplé ? Tiens six manches sans te tromper.',
       label: 'habitants',
+      category: '👥 POPULATION',
+      ask: (a, b) => `${b}, plus ou moins d'habitants que ${a} ?`,
       format: (v) => (v >= 1e9 ? `${(v / 1e9).toFixed(2).replace('.', ',')} Md` : v >= 1e6 ? `${(v / 1e6).toFixed(1).replace('.', ',')} M` : `${Math.round(v / 1e3)} k`),
     },
     en: {
       hook: ['More or less people?', 'Survive 6 rounds 🔥'],
       say: 'More or less people? Survive six rounds.',
       label: 'people',
+      category: '👥 POPULATION',
+      ask: (a, b) => `${b}: more or fewer people than ${a}?`,
       format: (v) => (v >= 1e9 ? `${(v / 1e9).toFixed(2)}B` : v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : `${Math.round(v / 1e3)}k`),
     },
   },
@@ -55,12 +59,16 @@ const THEMES = {
       hook: ['Plus grand ou plus petit ?', 'Tiens 6 manches sans erreur 🔥'],
       say: 'Plus grand ou plus petit ? Tiens six manches sans te tromper.',
       label: 'km²',
+      category: '📏 SUPERFICIE',
+      ask: (a, b) => `${b}, plus grand ou plus petit que ${a} ?`,
       format: (v) => Math.round(v).toLocaleString('fr-FR').replace(/ /g, ' '),
     },
     en: {
       hook: ['Bigger or smaller?', 'Survive 6 rounds 🔥'],
       say: 'Bigger or smaller? Survive six rounds.',
       label: 'km²',
+      category: '📏 AREA',
+      ask: (a, b) => `${b}: bigger or smaller than ${a}?`,
       format: (v) => Math.round(v).toLocaleString('en-US'),
     },
   },
@@ -121,6 +129,7 @@ for (let n = 0; n < COUNT; n++) {
     lang: LANG,
     hook: theme.hook,
     label: theme.label,
+    category: theme.category,
     more: copy.more,
     less: copy.less,
     streak: copy.streak,
@@ -137,10 +146,13 @@ for (let n = 0; n < COUNT; n++) {
     speed: 1,
     voice: [
       { at: 0.1, text: theme.say },
-      ...rounds.map((r, i) => ({
+      ...rounds.flatMap((r, i) => [{
+        at: HOOK_S + i * ROUND_S + 0.6,
+        text: theme.ask(cards[i].name, cards[i + 1].name),
+      }, {
         at: HOOK_S + i * ROUND_S + PICK_S - 0.5,
         text: `${r.pick ? copy.more : copy.less} !`,
-      })),
+      }]),
       { at: HOOK_S + (ROUNDS - 1) * ROUND_S + PICK_S + 1.1, text: copy.failSay },
       { at: total + 0.2, text: copy.outroSay },
     ],

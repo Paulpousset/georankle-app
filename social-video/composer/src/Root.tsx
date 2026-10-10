@@ -36,6 +36,7 @@ const globeDefaults: GlobeQuizProps = {
 const plusDefaults: PlusOuMoinsProps = {
   hook: ['Plus ou moins peuplé ?', 'Tiens 6 manches sans erreur 🔥'],
   label: 'habitants',
+  category: '👥 POPULATION',
   more: 'PLUS',
   less: 'MOINS',
   streak: 'Série',
