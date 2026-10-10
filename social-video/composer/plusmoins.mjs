@@ -22,7 +22,7 @@ const COUNT = Number(arg('count', 1));
 const LANG = arg('lang', 'fr');
 const ROUNDS = 6;
 // Mêmes durées que src/PlusOuMoins.tsx (placement de la voix off).
-const HOOK_S = 2.8;
+const HOOK_S = 0;
 const ROUND_S = 6.2;
 const PICK_S = 4.0;
 
@@ -146,10 +146,11 @@ for (let n = 0; n < COUNT; n++) {
     speed: 1,
     voice: [
       { at: 0.1, text: theme.say },
-      ...rounds.flatMap((r, i) => [{
+      // La manche 1 démarre sous l'accroche : pas de question lue.
+      ...rounds.flatMap((r, i) => [...(i === 0 ? [] : [{
         at: HOOK_S + i * ROUND_S + 0.6,
         text: theme.ask(cards[i].name, cards[i + 1].name),
-      }, {
+      }]), {
         at: HOOK_S + i * ROUND_S + PICK_S - 0.5,
         text: `${r.pick ? copy.more : copy.less} !`,
       }]),

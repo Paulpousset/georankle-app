@@ -42,7 +42,9 @@ const C = {
 
 export const PLUS_FPS = 30;
 // Mêmes durées dans plusmoins.mjs (placement de la voix off).
-const HOOK_S = 2.8;
+// Pas d'écran d'accroche : la première image montre déjà le jeu.
+const HOOK_S = 0;
+const HOOK_SHOW_S = 3;
 const ROUND_S = 6.2;
 const SLIDE_S = 0.5;
 const PICK_S = 4.0;
@@ -198,7 +200,7 @@ export const PlusOuMoins = (props: PlusOuMoinsProps) => {
   const slide = r > 0 ? easeOut(rt / SLIDE_S) : 1;
   const topY = 380;
   const bottomY = 870;
-  const intro = spring({ frame: frame - Math.round((HOOK_S - 0.6) * fps), fps, config: { damping: 14 } });
+  const intro = 1;
   const pickT = rt - PICK_S;
   const countK = (rt - PICK_S - 0.1) / COUNT_S;
   const state: 'idle' | 'ok' | 'ko' = rt >= verdictAt ? (correct ? 'ok' : 'ko') : 'idle';
@@ -210,7 +212,7 @@ export const PlusOuMoins = (props: PlusOuMoinsProps) => {
 
   const outroT = t - roundsEnd;
   const outroIn = outroT >= 0 ? spring({ frame: frame - Math.round(roundsEnd * fps), fps, config: { damping: 13 } }) : 0;
-  const hookOut = clamp01((t - (HOOK_S - 0.5)) / 0.4);
+  const hookOut = clamp01((t - (HOOK_SHOW_S - 0.4)) / 0.4);
   const sfx = (name: string) => staticFile(`sfx/${name}.wav`);
   const roundStart = (i: number) => HOOK_S + i * ROUND_S;
   const bigFlag = cards[Math.min(cards.length - 1, r + 1)].flag;
@@ -244,8 +246,9 @@ export const PlusOuMoins = (props: PlusOuMoinsProps) => {
       />
 
       {/* Accroche. */}
-      {t < HOOK_S ? (
-        <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', opacity: 1 - hookOut, transform: `translateY(${-hookOut * 300}px)` }}>
+      {/* Accroche sous les boutons, le temps de la première manche : le jeu reste visible. */}
+      {t < HOOK_SHOW_S ? (
+        <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 110, zIndex: 5, opacity: 1 - hookOut }}>
           {props.hook.map((line, i) => {
             const s = spring({ frame: frame - i * 8, fps, config: { damping: 12 } });
             return (
@@ -254,13 +257,15 @@ export const PlusOuMoins = (props: PlusOuMoinsProps) => {
                 style={{
                   fontFamily: i === 0 ? display : sans,
                   fontWeight: 800,
-                  fontSize: i === 0 ? 110 : 56,
+                  fontSize: i === 0 ? 84 : 52,
+                  whiteSpace: 'nowrap',
                   textAlign: 'center',
                   maxWidth: 900,
                   lineHeight: 1.1,
-                  marginTop: i === 0 ? 0 : 30,
+                  marginTop: i === 0 ? 0 : 18,
                   ...(i === 0 ? goldText : { color: '#fff' }),
-                  transform: `scale(${s})`,
+                  transform: `scale(${0.85 + 0.15 * s})`,
+                  position: 'relative',
                   filter: 'drop-shadow(0 8px 30px rgba(0,0,0,0.8))',
                 }}
               >
@@ -437,13 +442,10 @@ export const PlusOuMoins = (props: PlusOuMoinsProps) => {
             ) : null,
           )}
           <Audio src={sfx('boom')} volume={0.8} />
-          <Sequence from={Math.round((HOOK_S - 0.6) * fps)} layout="none">
-            <Audio src={sfx('whoosh')} volume={0.6} />
-          </Sequence>
           {rounds.map((x, i) => (
             <Sequence key={i} from={Math.round(roundStart(i) * fps)} layout="none">
               {i > 0 ? <Audio src={sfx('whoosh')} volume={0.5} /> : null}
-              {[0.7, 1.1, 1.5].map((k) => (
+              {[1.4, 2.2, 2.9, 3.5].map((k) => (
                 <Sequence key={k} from={Math.round(k * fps)} layout="none">
                   <Audio src={sfx('tick')} volume={0.8} />
                 </Sequence>
