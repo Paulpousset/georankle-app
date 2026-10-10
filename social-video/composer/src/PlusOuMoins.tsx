@@ -1,15 +1,16 @@
 /**
- * Format « plus ou moins » : deux pays l'un sous l'autre, une statistique
- * (population, superficie…). On parie PLUS ou MOINS, la valeur du second
- * défile jusqu'au vrai chiffre, la série monte… et casse à la dernière
- * manche. Aucune capture de l'app : tout est dessiné ici (plusmoins.mjs
- * fournit les pays et les chiffres).
+ * Format « plus ou moins », écran partagé : chaque pays occupe une moitié de
+ * l'écran, son drapeau en fond. On parie PLUS ou MOINS, la valeur du pays du
+ * bas défile jusqu'au vrai chiffre, la série monte… et casse à la dernière
+ * manche. Entre deux manches, tout l'écran glisse d'une moitié vers le haut.
+ * Aucune capture de l'app : tout est dessiné ici (plusmoins.mjs fournit les
+ * pays et les chiffres ; render.mjs copie les drapeaux dans public/flags).
  *
- * Zones sûres : rien d'important au-dessus de 200 px, sous 1 650 px, ni dans
- * la colonne de droite (boutons des apps).
+ * La première image montre déjà le jeu : l'accroche s'affiche en haut,
+ * par-dessus, le temps de la première manche.
  */
 import { loadFont } from '@remotion/fonts';
-import playfair800 from '@fontsource/playfair-display/files/playfair-display-latin-800-normal.woff2';
+import anton400 from '@fontsource/anton/files/anton-latin-400-normal.woff2';
 import montserrat600 from '@fontsource/montserrat/files/montserrat-latin-600-normal.woff2';
 import montserrat800 from '@fontsource/montserrat/files/montserrat-latin-800-normal.woff2';
 import {
@@ -25,39 +26,39 @@ import {
   useVideoConfig,
 } from 'remotion';
 
-const display = 'Playfair Display';
+const display = 'Anton';
 const sans = 'Montserrat';
-loadFont({ family: display, url: playfair800, weight: '800' });
+loadFont({ family: display, url: anton400, weight: '400' });
 loadFont({ family: sans, url: montserrat600, weight: '600' });
 loadFont({ family: sans, url: montserrat800, weight: '800' });
 
 const C = {
-  night: '#060a18',
-  card: '#101a33',
-  parchment: '#f2e8d0',
-  gold: '#f5b942',
-  red: '#ff3b4a',
-  green: '#3ddc84',
+  yellow: '#ffd84d',
+  red: '#ef4444',
+  green: '#10b981',
+  fire: '#ff5a1f',
 };
 
 export const PLUS_FPS = 30;
 // Mêmes durées dans plusmoins.mjs (placement de la voix off).
-// Pas d'écran d'accroche : la première image montre déjà le jeu.
 const HOOK_S = 0;
 const HOOK_SHOW_S = 3;
 const ROUND_S = 6.2;
-const SLIDE_S = 0.5;
+const SLIDE_S = 0.6;
 const PICK_S = 4.0;
 const COUNT_S = 0.9;
 const OUTRO_S = 3.5;
+const H = 960;
 
-export type Card = { name: string; flag: string; value: number; display: string };
+export type Card = { name: string; flag: string; cc?: string; value: number; display: string };
 export type PlusRound = { higher: boolean; pick: boolean };
 
 export type PlusOuMoinsProps = {
   hook: string[];
   label: string;
   category?: string;
+  has?: string;
+  hasQ?: string;
   more: string;
   less: string;
   streak: string;
@@ -76,11 +77,11 @@ export const plusOuMoinsSeconds = (p: PlusOuMoinsProps) => HOOK_S + p.rounds.len
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 const easeOut = (x: number) => 1 - Math.pow(1 - clamp01(x), 3);
-const goldText = {
-  background: `linear-gradient(180deg, #fff3c4, ${C.gold} 55%, #c9821c)`,
-  WebkitBackgroundClip: 'text',
-  WebkitTextFillColor: 'transparent',
-} as const;
+const easeInOut = (x: number) => {
+  const k = clamp01(x);
+  return k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+};
+const shadow = '0 6px 30px rgba(0,0,0,0.65)';
 
 // Le chiffre qui défile garde le format de display (« 68,5 M », « 643 801 »).
 function rolling(card: Card, k: number) {
@@ -95,57 +96,57 @@ function rolling(card: Card, k: number) {
   const shown = v / scaleOf;
   const grouped = target.includes(' ') || (target.length > 4 && !/[.,]/.test(target));
   let text = decimals ? shown.toFixed(decimals).replace('.', sep) : Math.round(shown).toString();
-  if (grouped) text = Math.round(shown).toLocaleString('fr-FR').replace(/[  ]/g, ' ');
+  if (grouped) text = Math.round(shown).toLocaleString('fr-FR').replace(/[  ]/g, ' ');
   return `${text}${card.display.slice(m[1].trimEnd().length)}`;
 }
 
-const CardView = ({
+// Une moitié d'écran : drapeau plein cadre, nom, chiffre.
+const Half = ({
   card,
-  label,
   y,
-  opacity,
+  t,
   value,
-  state,
-  scale,
+  verb,
+  label,
+  tint,
+  textTop,
 }: {
   card: Card;
-  label: string;
   y: number;
-  opacity: number;
+  t: number;
   value: string;
-  state: 'idle' | 'ok' | 'ko';
-  scale: number;
+  verb: string;
+  label: string;
+  tint: { color: string; k: number } | null;
+  textTop: number;
 }) => {
-  const border = state === 'ok' ? C.green : state === 'ko' ? C.red : 'rgba(245,185,66,0.55)';
-  const glow = state === 'ok' ? `0 0 60px ${C.green}88` : state === 'ko' ? `0 0 60px ${C.red}99` : '0 20px 60px rgba(0,0,0,0.55)';
-  const nameSize = Math.min(80, 1150 / Math.max(8, card.name.length));
+  const nameSize = Math.min(130, 1500 / Math.max(7, card.name.length));
+  const valueSize = value.length > 8 ? 130 : 160;
   return (
-    <div
-      style={{
-        position: 'absolute',
-        left: 90,
-        width: 800,
-        top: y,
-        height: 440,
-        opacity,
-        transform: `scale(${scale})`,
-        borderRadius: 44,
-        background: `linear-gradient(160deg, #18264a, ${C.card} 60%, #0a1124)`,
-        border: `4px solid ${border}`,
-        boxShadow: glow,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 6,
-        overflow: 'hidden',
-      }}
-    >
-      <div style={{ fontSize: 150, lineHeight: 1.05 }}>{card.flag}</div>
-      <div style={{ fontFamily: display, fontWeight: 800, fontSize: nameSize, color: C.parchment, lineHeight: 1.1 }}>{card.name}</div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, marginTop: 8 }}>
-        <span style={{ fontFamily: sans, fontWeight: 800, fontSize: 92, ...goldText, fontVariantNumeric: 'tabular-nums' }}>{value}</span>
-        <span style={{ fontFamily: sans, fontWeight: 700, fontSize: 44, color: 'rgba(242,232,208,0.85)' }}>{label}</span>
+    <div style={{ position: 'absolute', left: 0, top: y, width: 1080, height: H, overflow: 'hidden' }}>
+      {card.cc ? (
+        <Img
+          src={staticFile(`flags/${card.cc}.svg`)}
+          style={{
+            position: 'absolute',
+            left: -60,
+            top: -60,
+            width: 1200,
+            height: H + 120,
+            objectFit: 'cover',
+            transform: `scale(${1.05 + 0.02 * Math.sin(t * 0.6)}) translateX(${Math.sin(t * 0.4) * 14}px)`,
+          }}
+        />
+      ) : (
+        <div style={{ position: 'absolute', inset: 0, background: '#1b2340', fontSize: 700, textAlign: 'center', lineHeight: `${H}px` }}>{card.flag}</div>
+      )}
+      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0.6), rgba(0,0,0,0.3) 45%, rgba(0,0,0,0.72))' }} />
+      {tint ? <div style={{ position: 'absolute', inset: 0, background: tint.color, opacity: 0.55 * tint.k }} /> : null}
+      <div style={{ position: 'absolute', left: 40, right: 40, top: textTop, textAlign: 'center', color: '#fff' }}>
+        <div style={{ fontFamily: display, fontSize: nameSize, lineHeight: 1.05, textTransform: 'uppercase', letterSpacing: 1, textShadow: shadow }}>{card.name}</div>
+        <div style={{ fontFamily: sans, fontWeight: 600, fontSize: 40, opacity: 0.9, marginTop: 4, textShadow: shadow }}>{verb}</div>
+        <div style={{ fontFamily: display, fontSize: valueSize, lineHeight: 1.08, color: C.yellow, textShadow: shadow, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+        {value !== '?' ? <div style={{ fontFamily: sans, fontWeight: 800, fontSize: 44, opacity: 0.95, textShadow: shadow }}>{label}</div> : null}
       </div>
     </div>
   );
@@ -154,22 +155,23 @@ const CardView = ({
 const Button = ({ text, arrow, color, active, dim, pulse }: { text: string; arrow: string; color: string; active: number; dim: boolean; pulse: number }) => (
   <div
     style={{
-      width: 380,
-      height: 140,
-      borderRadius: 70,
-      background: active > 0 ? color : 'rgba(255,255,255,0.06)',
-      border: `4px solid ${color}`,
+      flex: 1,
+      height: 130,
+      borderRadius: 30,
+      background: active > 0 ? color : `${color}d9`,
+      border: active > 0 ? '5px solid #fff' : '5px solid transparent',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 18,
+      gap: 16,
       fontFamily: sans,
       fontWeight: 800,
-      fontSize: 58,
-      color: active > 0 ? '#0b0f1c' : color,
-      opacity: dim ? 0.3 : 1,
-      transform: `scale(${1 + 0.12 * active + 0.03 * pulse})`,
-      boxShadow: active > 0 ? `0 0 70px ${color}` : 'none',
+      fontSize: 54,
+      letterSpacing: 2,
+      color: '#fff',
+      opacity: dim ? 0.35 : 1,
+      transform: `scale(${1 + 0.1 * active + 0.025 * pulse})`,
+      boxShadow: active > 0 ? `0 0 60px ${color}` : '0 14px 40px rgba(0,0,0,0.45)',
     }}
   >
     <span>{arrow}</span>
@@ -189,179 +191,176 @@ export const PlusOuMoins = (props: PlusOuMoinsProps) => {
   const rt = t < HOOK_S ? -1 : t >= roundsEnd ? ROUND_S : t - HOOK_S - r * ROUND_S;
   const round = rounds[r];
   const correct = round.pick === round.higher;
-  const isLast = r === rounds.length - 1;
+  const roundStart = (i: number) => HOOK_S + i * ROUND_S;
 
   // Série affichée : manches gagnées, jusqu'au verdict de la manche en cours.
   const verdictAt = PICK_S + 0.1 + COUNT_S;
   const won = rounds.filter((x, i) => x.pick === x.higher && (i < r || (i === r && rt >= verdictAt))).length;
-  const broken = isLast && !correct && rt >= verdictAt;
+  const broken = r === rounds.length - 1 && !correct && rt >= verdictAt;
 
-  // Cartes : A en haut, B en bas ; au début d'une manche, B monte à la place de A.
-  const slide = r > 0 ? easeOut(rt / SLIDE_S) : 1;
-  const topY = 380;
-  const bottomY = 870;
-  const intro = 1;
+  // Glissement d'une moitié vers le haut au début de chaque manche (sauf la première).
+  const slide = r > 0 ? easeInOut(rt / SLIDE_S) : 1;
+  const offset = (1 - slide) * H;
   const pickT = rt - PICK_S;
   const countK = (rt - PICK_S - 0.1) / COUNT_S;
   const state: 'idle' | 'ok' | 'ko' = rt >= verdictAt ? (correct ? 'ok' : 'ko') : 'idle';
   const verdictT = rt - verdictAt;
-  const bump = verdictT >= 0 ? 1 + 0.06 * Math.exp(-verdictT * 7) * Math.cos(verdictT * 20) : 1;
-  const shake = state === 'ko' && verdictT < 0.6 ? 18 * (1 - verdictT / 0.6) : 0;
+  const bump = verdictT >= 0 ? 1 + 0.12 * Math.exp(-verdictT * 6) * Math.cos(verdictT * 18) : 1;
+  const shake = state === 'ko' && verdictT < 0.6 ? 22 * (1 - verdictT / 0.6) : 0;
   const sx = shake * (random(`sx${frame}`) - 0.5) * 2;
   const sy = shake * (random(`sy${frame}`) - 0.5) * 2;
+  const tint = state === 'idle' ? null : { color: state === 'ok' ? C.green : C.red, k: Math.max(0.35, Math.exp(-verdictT * 3)) };
 
   const outroT = t - roundsEnd;
   const outroIn = outroT >= 0 ? spring({ frame: frame - Math.round(roundsEnd * fps), fps, config: { damping: 13 } }) : 0;
+  const gameOut = clamp01(outroT / 0.5);
   const hookOut = clamp01((t - (HOOK_SHOW_S - 0.4)) / 0.4);
+  const thinking = inRounds && rt < PICK_S ? 1 - clamp01((rt - SLIDE_S) / (PICK_S - SLIDE_S)) : 0;
   const sfx = (name: string) => staticFile(`sfx/${name}.wav`);
-  const roundStart = (i: number) => HOOK_S + i * ROUND_S;
-  const bigFlag = cards[Math.min(cards.length - 1, r + 1)].flag;
+  const has = props.has ?? '';
+  const hasQ = props.hasQ ?? has;
+
+  // Anneau du compte à rebours autour du VS.
+  const RING = 112;
+  const circ = 2 * Math.PI * RING;
 
   return (
-    <AbsoluteFill style={{ background: `radial-gradient(circle at 50% 40%, #13224a, ${C.night} 70%)`, overflow: 'hidden' }}>
-      {/* Grand drapeau flou du pays en jeu, qui tourne lentement. */}
-      <div
-        style={{
-          position: 'absolute',
-          left: -300,
-          top: 300,
-          width: 1680,
-          textAlign: 'center',
-          fontSize: 1100,
-          lineHeight: 1,
-          opacity: 0.1,
-          filter: 'blur(30px)',
-          transform: `rotate(${-8 + t * 2}deg)`,
-        }}
-      >
-        {bigFlag}
+    <AbsoluteFill style={{ background: '#000', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', inset: 0, transform: `translate(${sx}px, ${sy}px) scale(${1 + 0.04 * gameOut})`, filter: gameOut > 0 ? `blur(${18 * gameOut}px) brightness(${1 - 0.55 * gameOut})` : undefined }}>
+        {/* Pays qui sort par le haut (pendant le glissement). */}
+        {r > 0 && slide < 1 ? (
+          <Half card={cards[r - 1]} y={-H + offset} t={t} value={cards[r - 1].display} verb={has} label={props.label} tint={null} textTop={300} />
+        ) : null}
+        <Half card={cards[r]} y={offset} t={t} value={cards[r].display} verb={has} label={props.label} tint={null} textTop={300 - 170 * (1 - slide)} />
+        <Half
+          card={cards[r + 1]}
+          y={H + offset}
+          t={t}
+          value={countK > 0 ? rolling(cards[r + 1], countK) : '?'}
+          verb={hasQ}
+          label={props.label}
+          tint={tint}
+          textTop={130}
+        />
       </div>
-      {/* Balayage de lumière. */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background: `linear-gradient(115deg, transparent ${30 + ((t * 18) % 140) - 40}%, rgba(255,255,255,0.05) ${40 + ((t * 18) % 140) - 40}%, transparent ${50 + ((t * 18) % 140) - 40}%)`,
-        }}
-      />
 
-      {/* Accroche. */}
-      {/* Accroche sous les boutons, le temps de la première manche : le jeu reste visible. */}
-      {t < HOOK_SHOW_S ? (
-        <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 110, zIndex: 5, opacity: 1 - hookOut }}>
-          {props.hook.map((line, i) => {
-            const s = spring({ frame: frame - i * 8, fps, config: { damping: 12 } });
-            return (
-              <div
-                key={i}
-                style={{
-                  fontFamily: i === 0 ? display : sans,
-                  fontWeight: 800,
-                  fontSize: i === 0 ? 84 : 52,
-                  whiteSpace: 'nowrap',
-                  textAlign: 'center',
-                  maxWidth: 900,
-                  lineHeight: 1.1,
-                  marginTop: i === 0 ? 0 : 18,
-                  ...(i === 0 ? goldText : { color: '#fff' }),
-                  transform: `scale(${0.85 + 0.15 * s})`,
-                  position: 'relative',
-                  filter: 'drop-shadow(0 8px 30px rgba(0,0,0,0.8))',
-                }}
-              >
-                {line}
-              </div>
-            );
-          })}
-        </AbsoluteFill>
-      ) : null}
+      {outroT < 0.5 ? (
+        <div style={{ position: 'absolute', inset: 0, opacity: 1 - gameOut }}>
+          {/* VS, avec l'anneau du temps de réflexion. */}
+          <div style={{ position: 'absolute', left: 540 - 130, top: H - 130, width: 260, height: 260, transform: `scale(${bump})` }}>
+            <svg width={260} height={260} style={{ position: 'absolute', inset: 0 }}>
+              <circle cx={130} cy={130} r={RING} fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth={12} />
+              {thinking > 0 ? (
+                <circle
+                  cx={130}
+                  cy={130}
+                  r={RING}
+                  fill="none"
+                  stroke={thinking < 0.3 ? C.red : C.yellow}
+                  strokeWidth={12}
+                  strokeLinecap="round"
+                  strokeDasharray={`${circ * thinking} ${circ}`}
+                  transform="rotate(-90 130 130)"
+                />
+              ) : null}
+            </svg>
+            <div
+              style={{
+                position: 'absolute',
+                left: 30,
+                top: 30,
+                width: 200,
+                height: 200,
+                borderRadius: 100,
+                background: state === 'ok' ? C.green : state === 'ko' ? C.red : '#fff',
+                color: state === 'idle' ? '#111' : '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontFamily: display,
+                fontSize: state === 'idle' ? 80 : 110,
+                boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+              }}
+            >
+              {state === 'ok' ? '✓' : state === 'ko' ? '✗' : 'VS'}
+            </div>
+          </div>
 
-      {/* Bandeau : la question et la série. */}
-      {t >= HOOK_S - 0.6 && outroT < 0.4 ? (
-        <div style={{ position: 'absolute', top: 190, left: 90, width: 800, display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: intro * (1 - clamp01(outroT / 0.4)) }}>
+          {/* En haut : l'accroche (3 premières secondes), puis la catégorie ; la série à droite. */}
+          {t < HOOK_SHOW_S ? (
+            <div style={{ position: 'absolute', top: 120, left: 40, right: 40, textAlign: 'center', opacity: 1 - hookOut }}>
+              {props.hook.map((line, i) => {
+                const s = spring({ frame: frame - i * 6, fps, config: { damping: 12 } });
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      fontFamily: i === 0 ? display : sans,
+                      fontWeight: i === 0 ? 400 : 800,
+                      fontSize: i === 0 ? 92 : 44,
+                      lineHeight: 1.1,
+                      color: i === 0 ? C.yellow : '#fff',
+                      textTransform: i === 0 ? 'uppercase' : 'none',
+                      textShadow: shadow,
+                      transform: `scale(${0.85 + 0.15 * s})`,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {line}
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
           <div
             style={{
-              fontFamily: display,
-              fontWeight: 800,
-              fontSize: 62,
-              letterSpacing: 2,
-              padding: '14px 34px',
-              borderRadius: 40,
-              background: C.gold,
-              color: '#0b0f1c',
-              boxShadow: `0 0 50px ${C.gold}66`,
+              position: 'absolute',
+              top: 150,
+              left: 0,
+              right: 0,
+              textAlign: 'center',
+              opacity: hookOut,
+              transform: `scale(${0.9 + 0.1 * hookOut})`,
             }}
           >
-            {props.category ?? props.hook[0]}
+            <span
+              style={{
+                display: 'inline-block',
+                padding: '16px 40px',
+                borderRadius: 999,
+                background: 'rgba(0,0,0,0.5)',
+                border: '3px solid rgba(255,255,255,0.45)',
+                color: '#fff',
+                fontFamily: sans,
+                fontWeight: 800,
+                fontSize: 44,
+                letterSpacing: 6,
+              }}
+            >
+              {props.category ?? props.label}
+            </span>
           </div>
           <div
             style={{
+              position: 'absolute',
+              top: t < HOOK_SHOW_S ? 40 : 152,
+              right: 50,
+              padding: '12px 26px',
+              borderRadius: 999,
+              background: broken ? '#555' : C.fire,
+              color: '#fff',
               fontFamily: sans,
               fontWeight: 800,
-              fontSize: 52,
-              padding: '14px 30px',
-              borderRadius: 40,
-              background: broken ? C.red : 'rgba(245,185,66,0.15)',
-              border: `3px solid ${broken ? C.red : C.gold}`,
-              color: broken ? '#fff' : C.gold,
-              transform: `scale(${state === 'ok' && verdictT < 0.5 ? 1 + 0.3 * Math.exp(-verdictT * 6) : 1})`,
+              fontSize: 42,
+              boxShadow: '0 10px 30px rgba(0,0,0,0.4)',
+              transform: `scale(${state === 'ok' && verdictT < 0.6 ? 1 + 0.35 * Math.exp(-verdictT * 6) : 1})`,
             }}
           >
             🔥 {won}
           </div>
-        </div>
-      ) : null}
 
-      {/* Les deux cartes. */}
-      {t >= HOOK_S - 0.6 && outroT < 0.5 ? (
-        <div style={{ position: 'absolute', inset: 0, transform: `translate(${sx}px, ${sy}px)`, opacity: 1 - clamp01(outroT / 0.5) }}>
-          {/* Carte qui sort par le haut. */}
-          {r > 0 && slide < 1 ? (
-            <CardView card={cards[r - 1]} label={props.label} y={topY - slide * 520} opacity={1 - slide} value={cards[r - 1].display} state="idle" scale={1} />
-          ) : null}
-          <CardView
-            card={cards[r]}
-            label={props.label}
-            y={(r > 0 ? bottomY + (topY - bottomY) * slide : topY + (1 - intro) * 300)}
-            opacity={r > 0 ? 1 : intro}
-            value={cards[r].display}
-            state="idle"
-            scale={1}
-          />
-          <CardView
-            card={cards[r + 1]}
-            label={props.label}
-            y={bottomY + (1 - (r > 0 ? slide : intro)) * 900}
-            opacity={1}
-            value={countK > 0 ? rolling(cards[r + 1], countK) : '?'}
-            state={state}
-            scale={bump * (rt < PICK_S && rt > SLIDE_S ? 1 + 0.015 * Math.sin(rt * 9) : 1)}
-          />
-          {/* Pastille entre les cartes. */}
-          <div
-            style={{
-              position: 'absolute',
-              left: 490 - 70,
-              top: (topY + 440 + bottomY) / 2 - 70,
-              width: 140,
-              height: 140,
-              borderRadius: 70,
-              background: state === 'ok' ? C.green : state === 'ko' ? C.red : C.gold,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 70,
-              fontFamily: sans,
-              fontWeight: 800,
-              color: '#0b0f1c',
-              boxShadow: '0 10px 40px rgba(0,0,0,0.6)',
-              transform: `scale(${(r > 0 ? 1 : intro) * bump})`,
-            }}
-          >
-            {state === 'ok' ? '✓' : state === 'ko' ? '✗' : 'VS'}
-          </div>
           {/* PLUS / MOINS. */}
-          <div style={{ position: 'absolute', top: 1360, left: 90, width: 800, display: 'flex', justifyContent: 'space-between', opacity: r > 0 ? 1 : intro }}>
+          <div style={{ position: 'absolute', top: 1510, left: 80, right: 80, display: 'flex', gap: 40 }}>
             <Button
               text={props.more}
               arrow="▲"
@@ -379,27 +378,24 @@ export const PlusOuMoins = (props: PlusOuMoinsProps) => {
               pulse={pickT < 0 && rt > SLIDE_S ? Math.sin(rt * 10 + Math.PI) : 0}
             />
           </div>
-          {/* Temps de réflexion : barre qui se vide. */}
-          {inRounds && rt < PICK_S ? (
-            <div style={{ position: 'absolute', top: 1530, left: 190, width: 600, height: 14, borderRadius: 7, background: 'rgba(255,255,255,0.12)' }}>
-              <div style={{ width: `${100 * (1 - clamp01((rt - SLIDE_S) / (PICK_S - SLIDE_S)))}%`, height: '100%', borderRadius: 7, background: C.gold }} />
-            </div>
-          ) : null}
+
           {/* « Raté ! » */}
           {state === 'ko' ? (
             <div
               style={{
                 position: 'absolute',
-                top: 960,
+                top: 655,
                 left: 0,
                 right: 0,
                 textAlign: 'center',
                 fontFamily: display,
-                fontWeight: 800,
-                fontSize: 170,
-                color: C.red,
+                fontSize: 160,
+                lineHeight: 1.1,
+                color: '#fff',
+                textTransform: 'uppercase',
+                WebkitTextStroke: `6px ${C.red}`,
                 transform: `rotate(-8deg) scale(${spring({ frame: frame - Math.round((roundStart(r) + verdictAt) * fps), fps, config: { damping: 9 } })})`,
-                filter: 'drop-shadow(0 10px 30px rgba(0,0,0,0.9))',
+                textShadow: '0 12px 40px rgba(0,0,0,0.8)',
               }}
             >
               {props.fail}
@@ -411,13 +407,13 @@ export const PlusOuMoins = (props: PlusOuMoinsProps) => {
       {/* Fin : la série et l'appel à jouer. */}
       {outroT >= 0 ? (
         <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', gap: 34 }}>
-          <div style={{ fontFamily: sans, fontWeight: 800, fontSize: 64, color: '#fff', transform: `scale(${outroIn})` }}>
+          <div style={{ fontFamily: sans, fontWeight: 800, fontSize: 64, color: '#fff', transform: `scale(${outroIn})`, textShadow: shadow }}>
             {props.streak} : {rounds.filter((x) => x.pick === x.higher).length} 🔥
           </div>
-          <div style={{ fontFamily: display, fontWeight: 800, fontSize: 120, ...goldText, transform: `scale(${outroIn})`, textAlign: 'center', filter: 'drop-shadow(0 8px 30px rgba(0,0,0,0.8))' }}>
+          <div style={{ fontFamily: display, fontSize: 140, color: C.yellow, textTransform: 'uppercase', transform: `scale(${outroIn})`, textAlign: 'center', textShadow: shadow, lineHeight: 1.05 }}>
             {props.outro}
           </div>
-          <div style={{ fontFamily: sans, fontWeight: 800, fontSize: 52, color: '#fff', transform: `scale(${outroIn})` }}>{props.outroSub}</div>
+          <div style={{ fontFamily: sans, fontWeight: 800, fontSize: 52, color: '#fff', transform: `scale(${outroIn})`, textShadow: shadow }}>{props.outroSub}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 24, marginTop: 40, opacity: clamp01((outroT - 0.5) / 0.4) }}>
             <Img src={staticFile(props.icon)} style={{ width: 110, height: 110, borderRadius: 26 }} />
             <div style={{ fontFamily: sans, fontWeight: 800, fontSize: 44, color: '#fff' }}>{props.cta}</div>

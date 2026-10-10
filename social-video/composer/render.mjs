@@ -10,7 +10,7 @@
 import { bundle } from '@remotion/bundler';
 import { renderMedia, selectComposition } from '@remotion/renderer';
 import { execFileSync } from 'child_process';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'fs';
+import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'fs';
 import { cpus } from 'os';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -36,6 +36,8 @@ if (!names.length) {
 
 copyFileSync(join(HERE, '..', '..', 'assets', 'icon.png'), join(PUBLIC, 'icon.png'));
 copyFileSync(join(HERE, 'assets', 'earth.jpg'), join(PUBLIC, 'earth.jpg'));
+// Drapeaux (SVG de flag-icons) pour « plus ou moins ».
+cpSync(join(HERE, 'node_modules', 'flag-icons', 'flags', '4x3'), join(PUBLIC, 'flags'), { recursive: true });
 // Musique et bruitages (public/sfx), synthétisés : une seconde, aucun réseau.
 execFileSync(process.execPath, [join(HERE, 'sounds.mjs')], { stdio: 'inherit' });
 for (const n of names) {

@@ -41,7 +41,8 @@ const THEMES = {
       hook: ['Plus ou moins peuplé ?', 'Tiens 6 manches sans erreur 🔥'],
       say: 'Plus ou moins peuplé ? Tiens six manches sans te tromper.',
       label: 'habitants',
-      category: '👥 POPULATION',
+      category: 'POPULATION',
+      has: 'compte', hasQ: 'en compte',
       ask: (a, b) => `${b}, plus ou moins d'habitants que ${a} ?`,
       format: (v) => (v >= 1e9 ? `${(v / 1e9).toFixed(2).replace('.', ',')} Md` : v >= 1e6 ? `${(v / 1e6).toFixed(1).replace('.', ',')} M` : `${Math.round(v / 1e3)} k`),
     },
@@ -49,7 +50,8 @@ const THEMES = {
       hook: ['More or less people?', 'Survive 6 rounds 🔥'],
       say: 'More or less people? Survive six rounds.',
       label: 'people',
-      category: '👥 POPULATION',
+      category: 'POPULATION',
+      has: 'has', hasQ: 'has',
       ask: (a, b) => `${b}: more or fewer people than ${a}?`,
       format: (v) => (v >= 1e9 ? `${(v / 1e9).toFixed(2)}B` : v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : `${Math.round(v / 1e3)}k`),
     },
@@ -59,7 +61,8 @@ const THEMES = {
       hook: ['Plus grand ou plus petit ?', 'Tiens 6 manches sans erreur 🔥'],
       say: 'Plus grand ou plus petit ? Tiens six manches sans te tromper.',
       label: 'km²',
-      category: '📏 SUPERFICIE',
+      category: 'SUPERFICIE',
+      has: 'mesure', hasQ: 'mesure',
       ask: (a, b) => `${b}, plus grand ou plus petit que ${a} ?`,
       format: (v) => Math.round(v).toLocaleString('fr-FR').replace(/ /g, ' '),
     },
@@ -67,7 +70,8 @@ const THEMES = {
       hook: ['Bigger or smaller?', 'Survive 6 rounds 🔥'],
       say: 'Bigger or smaller? Survive six rounds.',
       label: 'km²',
-      category: '📏 AREA',
+      category: 'AREA',
+      has: 'covers', hasQ: 'covers',
       ask: (a, b) => `${b}: bigger or smaller than ${a}?`,
       format: (v) => Math.round(v).toLocaleString('en-US'),
     },
@@ -116,7 +120,7 @@ for (let n = 0; n < COUNT; n++) {
   }
   if (!chain) throw new Error('aucune chaîne de pays trouvée');
   const name = (c) => (LANG === 'fr' ? c.name : c.name_en);
-  const cards = chain.map((c) => ({ name: name(c), flag: flag(cca2[c.cca3]), value: value(c), display: theme.format(value(c)) }));
+  const cards = chain.map((c) => ({ name: name(c), flag: flag(cca2[c.cca3]), cc: cca2[c.cca3].toLowerCase(), value: value(c), display: theme.format(value(c)) }));
   // Le joueur a juste partout sauf à la dernière manche.
   const rounds = cards.slice(1).map((c, i) => {
     const higher = c.value > cards[i].value;
@@ -130,6 +134,8 @@ for (let n = 0; n < COUNT; n++) {
     hook: theme.hook,
     label: theme.label,
     category: theme.category,
+    has: theme.has,
+    hasQ: theme.hasQ,
     more: copy.more,
     less: copy.less,
     streak: copy.streak,
