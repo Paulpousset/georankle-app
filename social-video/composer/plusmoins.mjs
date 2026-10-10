@@ -153,6 +153,7 @@ for (let n = 0; n < COUNT; n++) {
       }]), {
         at: HOOK_S + i * ROUND_S + PICK_S - 0.5,
         text: `${r.pick ? copy.more : copy.less} !`,
+        maxLate: 0.6,
       }]),
       { at: HOOK_S + (ROUNDS - 1) * ROUND_S + PICK_S + 1.1, text: copy.failSay },
       { at: total + 0.2, text: copy.outroSay },

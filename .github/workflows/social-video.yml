@@ -137,6 +137,8 @@ jobs:
           npm ci --no-audit --no-fund
           if ls ../out/raw/*.mp4 >/dev/null 2>&1; then node plan.mjs --variants "$VARIANTS"; fi
           node globe.mjs --count "$GLOBES" --lang fr
+          # Plus ou moins animé (sans tournage) : un par jour, thème qui alterne.
+          node plusmoins.mjs --count 1 --lang fr
           node voice.mjs
           node render.mjs
 
