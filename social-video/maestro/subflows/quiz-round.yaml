@@ -1,11 +1,23 @@
 # Une question de Capitales/Drapeaux : CARRÉ (4 choix, 3 pts), pause, bonne
 # réponse. Le passage à la question suivante est automatique dans l'app.
+# Le texte de la bonne réponse (libellé d'accessibilité du bouton) est
+# signalé à record.sh juste avant le tap : la voix off le dira au montage.
 appId: com.paulpousset.geog
 ---
 - tapOn:
     text: "CARRÉ.*"
     waitToSettleTimeoutMs: 300
 - runFlow: think.yaml
+- copyTextFrom:
+    id: "rec-correct"
+    optional: true
+# Repère juste AVANT le tap : le tap lui-même ne rend la main qu'après que
+# l'écran s'est posé (~2 s sur l'émulateur de la CI), trop tard pour la voix.
+- runScript:
+    file: mark.js
+    env:
+      KIND: answer
+      OUT: ${OUTPUT || 'quiz'}
 - tapOn:
     id: "rec-correct"
     waitToSettleTimeoutMs: 300

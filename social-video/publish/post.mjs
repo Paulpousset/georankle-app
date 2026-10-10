@@ -32,10 +32,11 @@
 //                        (Upload-Post) ou all (défaut). Chaque cible a sa
 //                        propre file : YouTube, moins fréquent, prend la
 //                        vidéo la plus récente qu'il n'a pas encore eue.
-//   KIND                 globe (quiz globe*), app (vidéos de l'app) ou auto
-//                        (défaut : globe seulement, rien si la file est
-//                        vide). Avec globe ou app explicite, si la file de
-//                        ce format est vide, l'autre format part à la place.
+//   KIND                 social seulement : globe (quiz globe*), app (vidéos
+//                        de l'app) ou auto (défaut : globe avant 16 h à
+//                        Paris, app après). Si la file de ce format est
+//                        vide, l'autre format part à la place.
+//   MIN_RELEASE_APP      vidéos de l'app : ignorer les releases plus anciennes
 //   MIN_RELEASE          ignorer les releases shorts-N avec N plus petit
 //   DRY_RUN              0 pour publier pour de vrai
 //   GITHUB_REPOSITORY    owner/repo (fourni par Actions)
@@ -56,11 +57,19 @@ const COUNT = Number(env.COUNT || 1);
 const MIN_RELEASE = Number(env.MIN_RELEASE || 0);
 const DRY_RUN = env.DRY_RUN !== '0';
 const TARGET = env.TARGET || 'all';
-// Vidéos de l'app en pause (jugées ratées le 7/10) : par défaut, seul le
-// quiz globe part, sur tous les créneaux et toutes les cibles, sans repli
-// sur l'app si la file globe est vide. KIND=app reste possible à la main.
-const KIND = !env.KIND || env.KIND === 'auto' ? 'globe' : env.KIND;
-const STRICT = !env.KIND || env.KIND === 'auto';
+// Vidéos de l'app : seulement à partir de cette release (montage avec les
+// bonnes réponses dites et une vraie accroche, le 10/10) ; les anciennes,
+// jugées ratées le 7/10, ne partent plus.
+const MIN_RELEASE_APP = Number(env.MIN_RELEASE_APP || 34);
+// Heure à Paris (formatToParts : en fr-FR, format() donne « 12 h », pas un nombre).
+const parisHour = Number(
+  new Intl.DateTimeFormat('en-GB', { hour: 'numeric', hourCycle: 'h23', timeZone: 'Europe/Paris' })
+    .formatToParts(new Date())
+    .find((part) => part.type === 'hour').value,
+);
+// Alternance (social) : le quiz globe à midi, une vidéo de l'app le soir. Si
+// la file de ce format est vide, l'autre format part à la place.
+const KIND = TARGET !== 'social' ? '' : !env.KIND || env.KIND === 'auto' ? (parisHour < 16 ? 'globe' : 'app') : env.KIND;
 const USE_ZERNIO = ZERNIO && TARGET !== 'youtube';
 const USE_UPLOAD_POST = (UPLOAD_POST || !ZERNIO) && TARGET !== 'social';
 const STATE_TAG = 'shorts-state';
@@ -259,9 +268,23 @@ if (MIN_GAP_HOURS && last && Date.now() - last < MIN_GAP_HOURS * 3600e3) {
 }
 
 const isGlobe = (item) => item.group.startsWith('globe');
-const all = queue(state);
-const wanted = all.filter((item) => !KIND || isGlobe(item) === (KIND === 'globe'));
-const todo = STRICT ? wanted : [...wanted, ...all.filter((item) => !wanted.includes(item))];
+const releaseNumber = (item) => Number(item.tag.slice(7));
+// Jamais deux fois de suite le même jeu : parmi les vidéos de l'app, le jeu
+// publié il y a le plus longtemps (ou jamais) passe d'abord, puis la release
+// la plus récente.
+const lastPosted = {};
+for (const p of state.posted.filter(postedFor)) {
+  const game = p.group.replace(/-[a-z]{2}$/, '');
+  lastPosted[game] = Math.max(lastPosted[game] || 0, Date.parse(p.at) || 0);
+}
+const gameOf = (item) => item.group.replace(/-[a-z]{2}$/, '');
+const all = queue(state).filter((item) => isGlobe(item) || releaseNumber(item) >= MIN_RELEASE_APP);
+const apps = all
+  .filter((item) => !isGlobe(item))
+  .sort((a, b) => (lastPosted[gameOf(a)] || 0) - (lastPosted[gameOf(b)] || 0) || releaseNumber(b) - releaseNumber(a));
+const globes = all.filter(isGlobe);
+const wanted = !KIND ? all : KIND === 'globe' ? globes : apps;
+const todo = [...wanted, ...(KIND === 'globe' ? apps : globes).filter((item) => !wanted.includes(item))];
 console.log(`[${TARGET}] ${todo.length} vidéo(s) en attente dont ${wanted.length} au format ${KIND || 'quelconque'} (langues ${LANGS.join(', ')}, releases ≥ shorts-${MIN_RELEASE}).`);
 
 const accounts = USE_ZERNIO ? await zernioAccounts() : [];

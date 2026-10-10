@@ -67,6 +67,11 @@ case "$PLATFORM" in
   *) echo "plateforme inconnue : $PLATFORM" >&2; exit 1 ;;
 esac
 
+# Repères horodatés des flows (bonnes réponses…) : <vidéo>.marks.jsonl.
+node "$HERE/marks-server.mjs" "$OUT" 8765 &
+MARKS_PID=$!
+trap 'kill $MARKS_PID 2>/dev/null || true' EXIT
+
 # startRecording écrit le .mp4 dans le dossier courant de maestro.
 cd "$OUT"
 status=0
@@ -74,6 +79,7 @@ for flow in "${FLOWS[@]}"; do
   for lang in $LANGS; do
     out="$flow-$lang"
     echo "▶ $out ($PLATFORM)"
+    rm -f "$OUT/$out.marks.jsonl"
     if maestro test \
       -e APP_LANG="$lang" -e APP_LANG_NAME="$(lang_name "$lang")" -e APP_LANG_EN="$(lang_english "$lang")" -e OUTPUT="$out" --test-output-dir "$HERE/out/maestro/$out" \
       "$HERE/maestro/$flow.yaml"; then
