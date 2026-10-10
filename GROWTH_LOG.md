@@ -42,6 +42,24 @@ seuil.
 
 ## Entrées
 
+### 2026-10-09 — rapport hebdo (sans PostHog)
+
+- Pas de `POSTHOG_PERSONAL_API_KEY` dans la session : aucun indicateur produit mesuré. `playgeog.com` est bloqué par le réseau de la session (403 sur CONNECT) : sitemap et PageSpeed non mesurés, pas de nouvel essai.
+
+| Mesurable sans clé | Valeur (vs 02/10) |
+|---|---|
+| Commits sur 7 jours | 31 (10), dernier : 08/10 |
+| Pages ajoutées dans `site/content` | 0 (116 fichiers, inchangé) |
+| Cases cochées de la file éditoriale | 0 / 15 |
+| Taux partage/complétion, parrainages, rétention | non mesuré |
+
+Faits saillants :
+1. Semaine dominée par l'automatisation des vidéos sociales (tournage, montage, publication TikTok/Instagram/YouTube) ; côté produit : v5.7.0, correctif Globe 3D, corrections Sentry.
+2. Deuxième semaine sans aucune page SEO publiée : la Routine « Contenu SEO » ne livre toujours rien (aucune case cochée, 116 fichiers inchangés).
+3. Les indicateurs A1/A2 (`solo_shared`, `referral_shared`, `install_cta_pressed`, `comeback_granted`) restent sans information, faute d'accès PostHog.
+
+Décision : (a) vérifier que la Routine « Contenu SEO » tourne bien le lundi (clé, droits, échecs silencieux) ; (b) fournir `POSTHOG_PERSONAL_API_KEY` à cette Routine pour mesurer l'effet des vidéos sociales sur les installs ; (c) file éditoriale non réordonnée, aucune donnée ne le justifie.
+
 ### 2026-10-02 — rapport hebdo (sans PostHog)
 
 - Pas de `POSTHOG_PERSONAL_API_KEY` dans la session : aucun indicateur produit mesuré. `playgeog.com` est bloqué par le réseau de la session (403 sur CONNECT) : sitemap et PageSpeed non mesurés, pas de nouvel essai.

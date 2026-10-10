@@ -78,6 +78,25 @@ describe('buildRematchGameData', () => {
     }
   });
 
+  it('accepte le `rounds` numérique (best-of) posé par le matchmaking', () => {
+    // GEOG-2D : un Devine le Pays créé depuis le matchmaking range le best-of
+    // dans `rounds` ; le prendre pour la config par manche plantait la revanche.
+    const m = match({
+      game_mode: 'guess',
+      best_of: 3,
+      game_data: {
+        seed: 42,
+        rounds: 3,
+        roundCountries: { 1: ['FRA'], 2: ['ESP'], 3: ['ITA'] },
+      } as unknown as MatchGameData,
+    });
+    const next = buildRematchGameData(m);
+    expect(Object.keys(next.roundCountries!)).toHaveLength(3);
+    for (const ids of Object.values(next.roundCountries!)) {
+      expect(ids).toHaveLength(1);
+    }
+  });
+
   it("suit la séquence de modes d'une partie perso", () => {
     const m = match({
       best_of: 2,

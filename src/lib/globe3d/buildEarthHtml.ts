@@ -1189,6 +1189,11 @@ function gameInit(){
     size:dotSize()*1.8,sizeAttenuation:false,vertexColors:true,
     transparent:true,opacity:1,map:dotTexture(),alphaTest:0.4,depthWrite:false,depthTest:false}));
   activeDot.renderOrder=9;activeDot.visible=false;globe.add(activeDot);
+  // Their positions change with every pick, but three.js computes a Points'
+  // bounding sphere ONCE and frustum-culls on it forever after: the highlight
+  // stayed glued to the first country ever coloured and every later pick or
+  // answer was culled off-screen — the dot simply never changed colour.
+  activeHalo.frustumCulled=false;activeDot.frustumCulled=false;
   onZoomCb=function(){
     if(dotsObj)dotsObj.material.size=dotSize();
     if(dotHalo)dotHalo.material.size=dotSize()+7;
@@ -1551,6 +1556,9 @@ function gameInit(){
       opacity:1,map:dotTexture(),alphaTest:0.4,depthWrite:false,depthTest:false});
     if(vc)m.vertexColors=true;else m.color=new THREE.Color(SKIN?SKIN.crispLine:(D.isDark?'#0a1221':'#ffffff'));
     var o=new THREE.Points(new THREE.BufferGeometry(),m);
+    // Dynamic positions: no frustum culling on a stale bounding sphere (see the
+    // country globe's activeDot).
+    o.frustumCulled=false;
     o.visible=false;globe.add(o);return o;};
   markHalo=mk(22,false);markHalo.renderOrder=8;
   markDot=mk(14,true);markDot.renderOrder=9;
