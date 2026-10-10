@@ -30,6 +30,17 @@ const data = JSON.parse(readFileSync(join(ROOT, 'assets', 'game_data.json'), 'ut
 const cca2 = Object.fromEntries(
   [...readFileSync(join(ROOT, 'src', 'data', 'countryCodes.ts'), 'utf8').matchAll(/([A-Z]{3}): '([A-Z]{2})'/g)].map((m) => [m[1], m[2]]),
 );
+const stats = Object.fromEntries(JSON.parse(readFileSync(join(ROOT, 'assets', 'countries_stats.json'), 'utf8')).map((c) => [c.cca3, c]));
+const REGION = {
+  fr: { Africa: 'Afrique', Asia: 'Asie', Europe: 'Europe', Oceania: 'Océanie', 'South America': 'Amérique du Sud', 'North America': 'Amérique du Nord', 'Central America': 'Amérique centrale', Caribbean: 'Caraïbes' },
+  en: { 'South America': 'South America', 'North America': 'North America', 'Central America': 'Central America' },
+};
+const regionOf = (cca3, lang) => {
+  const s = stats[cca3];
+  if (!s) return '';
+  const key = s.region === 'Americas' ? s.subregion : s.region;
+  return (REGION[lang]?.[key] ?? key ?? '').toUpperCase();
+};
 const flag = (cc) => String.fromCodePoint(...[...cc].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65));
 
 // Pays que tout le monde situe : le défi est le chiffre, pas le nom.
@@ -41,8 +52,8 @@ const THEMES = {
       hook: ['Plus ou moins peuplé ?', 'Tiens 6 manches sans erreur 🔥'],
       say: 'Plus ou moins peuplé ? Tiens six manches sans te tromper.',
       label: 'habitants',
-      category: 'POPULATION',
-      has: 'compte', hasQ: 'en compte',
+      category: 'Population',
+      has: 'compte', hasQ: 'en compte', categoryIcon: '👥', moreSub: "D'HABITANTS", lessSub: "D'HABITANTS",
       ask: (a, b) => `${b}, plus ou moins d'habitants que ${a} ?`,
       format: (v) => (v >= 1e9 ? `${(v / 1e9).toFixed(2).replace('.', ',')} Md` : v >= 1e6 ? `${(v / 1e6).toFixed(1).replace('.', ',')} M` : `${Math.round(v / 1e3)} k`),
     },
@@ -50,8 +61,8 @@ const THEMES = {
       hook: ['More or less people?', 'Survive 6 rounds 🔥'],
       say: 'More or less people? Survive six rounds.',
       label: 'people',
-      category: 'POPULATION',
-      has: 'has', hasQ: 'has',
+      category: 'Population',
+      has: 'has', hasQ: 'has', categoryIcon: '👥', moreSub: 'PEOPLE', lessSub: 'PEOPLE',
       ask: (a, b) => `${b}: more or fewer people than ${a}?`,
       format: (v) => (v >= 1e9 ? `${(v / 1e9).toFixed(2)}B` : v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : `${Math.round(v / 1e3)}k`),
     },
@@ -61,8 +72,8 @@ const THEMES = {
       hook: ['Plus grand ou plus petit ?', 'Tiens 6 manches sans erreur 🔥'],
       say: 'Plus grand ou plus petit ? Tiens six manches sans te tromper.',
       label: 'km²',
-      category: 'SUPERFICIE',
-      has: 'mesure', hasQ: 'mesure',
+      category: 'Superficie',
+      has: 'mesure', hasQ: 'mesure', categoryIcon: '📏', moreSub: 'GRAND', lessSub: 'PETIT',
       ask: (a, b) => `${b}, plus grand ou plus petit que ${a} ?`,
       format: (v) => Math.round(v).toLocaleString('fr-FR').replace(/ /g, ' '),
     },
@@ -70,8 +81,8 @@ const THEMES = {
       hook: ['Bigger or smaller?', 'Survive 6 rounds 🔥'],
       say: 'Bigger or smaller? Survive six rounds.',
       label: 'km²',
-      category: 'AREA',
-      has: 'covers', hasQ: 'covers',
+      category: 'Area',
+      has: 'covers', hasQ: 'covers', categoryIcon: '📏', moreSub: 'BIGGER', lessSub: 'SMALLER',
       ask: (a, b) => `${b}: bigger or smaller than ${a}?`,
       format: (v) => Math.round(v).toLocaleString('en-US'),
     },
@@ -79,12 +90,12 @@ const THEMES = {
 };
 const COPY = {
   fr: {
-    more: 'PLUS', less: 'MOINS', streak: 'Série', fail: 'Raté !', failSay: 'Ah non… raté.',
+    more: 'PLUS', less: 'MOINS', streak: 'Série', categoryTitle: 'CATÉGORIE', streakTitle: 'SÉRIE', fail: 'Raté !', failSay: 'Ah non… raté.',
     outro: 'Tu fais mieux ?', outroSub: 'Ton score en commentaire 👇', outroSay: 'Tu fais mieux ? GeoG, c\'est gratuit.',
     cta: 'GeoG · gratuit', post: 'Tu aurais tenu combien de manches ? 👇', tags: '#geographie #quiz #plusoumoins #geog #culturegenerale',
   },
   en: {
-    more: 'MORE', less: 'LESS', streak: 'Streak', fail: 'Wrong!', failSay: 'Oh no… wrong.',
+    more: 'MORE', less: 'LESS', streak: 'Streak', categoryTitle: 'CATEGORY', streakTitle: 'STREAK', fail: 'Wrong!', failSay: 'Oh no… wrong.',
     outro: 'Can you beat it?', outroSub: 'Drop your score 👇', outroSay: 'Can you beat it? GeoG is free.',
     cta: 'GeoG · free', post: 'How many rounds would you survive? 👇', tags: '#geography #quiz #higherlower #geog #trivia',
   },
@@ -120,7 +131,7 @@ for (let n = 0; n < COUNT; n++) {
   }
   if (!chain) throw new Error('aucune chaîne de pays trouvée');
   const name = (c) => (LANG === 'fr' ? c.name : c.name_en);
-  const cards = chain.map((c) => ({ name: name(c), flag: flag(cca2[c.cca3]), cc: cca2[c.cca3].toLowerCase(), value: value(c), display: theme.format(value(c)) }));
+  const cards = chain.map((c) => ({ name: name(c), flag: flag(cca2[c.cca3]), cc: cca2[c.cca3].toLowerCase(), region: regionOf(c.cca3, LANG), value: value(c), display: theme.format(value(c)) }));
   // Le joueur a juste partout sauf à la dernière manche.
   const rounds = cards.slice(1).map((c, i) => {
     const higher = c.value > cards[i].value;
@@ -136,6 +147,11 @@ for (let n = 0; n < COUNT; n++) {
     category: theme.category,
     has: theme.has,
     hasQ: theme.hasQ,
+    categoryIcon: theme.categoryIcon,
+    moreSub: theme.moreSub,
+    lessSub: theme.lessSub,
+    categoryTitle: copy.categoryTitle,
+    streakTitle: copy.streakTitle,
     more: copy.more,
     less: copy.less,
     streak: copy.streak,
