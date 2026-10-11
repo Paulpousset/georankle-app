@@ -2,7 +2,7 @@ name: Publication réseaux sociaux
 
 # Publie les shorts des releases `shorts-N` (social-video/publish/post.mjs) :
 # - TikTok + Instagram (Zernio) deux fois par jour, 12 h 30 et 19 h 30 à Paris :
-#   le quiz « globe » à midi, le « plus ou moins » animé le soir (KIND=auto) ;
+#   le quiz « globe » à midi, un mode de jeu animé le soir (KIND=auto) ;
 # - YouTube (Upload-Post gratuit, 10 envois/mois) tous les 3 jours, 10 fois
 #   par mois.
 #
@@ -27,9 +27,9 @@ on:
         options: [social, youtube, all]
         default: social
       kind:
-        description: Quel format (auto = globe avant 16 h à Paris, plus ou moins après)
+        description: Quel format (auto = globe avant 16 h à Paris, mode de jeu animé après)
         type: choice
-        options: [auto, globe, plusmoins, app]
+        options: [auto, globe, jeu, app]
         default: auto
       count:
         description: Vidéos à publier

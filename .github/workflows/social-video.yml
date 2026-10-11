@@ -147,6 +147,8 @@ jobs:
           node globe.mjs --count "$GLOBES" --lang fr
           # Plus ou moins animé (sans tournage) : un par jour, thème qui alterne.
           node plusmoins.mjs --count 1 --lang fr
+          # Quiz animés « plateau TV » : capitales, drapeaux, silhouettes.
+          node quiz.mjs --lang fr
           node voice.mjs
           node render.mjs
 
