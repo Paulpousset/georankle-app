@@ -1,6 +1,6 @@
 /** Source « App Store » : note publique (sans clé) + ventes et avis (clé App Store Connect). */
 import zlib from 'node:zlib';
-import { env, need, http, settle, appleJwt, isoDay, daysAgo } from './lib.mjs';
+import { env, need, http, settle, appleJwt, isoDay, daysAgo, countryOk } from './lib.mjs';
 
 const APP_ID = '6779650018';
 
@@ -58,7 +58,36 @@ export async function appstore({ days }) {
   });
 }
 
-function parseSales(buf) {
+/**
+ * Nouveaux téléchargements App Store par jour (rapport SALES), filtrés par pays
+ * (ISO2) si demandé. 404 = aucune vente ce jour-là ou rapport pas encore publié.
+ */
+export async function appstoreDaily(dates, filter) {
+  need(['ASC_VENDOR_NUMBER'], 'App Store Connect (voir HQ_SETUP.md, étape 6)');
+  const jwt = appleJwt();
+  const out = [];
+  for (let i = 0; i < dates.length; i += 15) {
+    out.push(
+      ...(await Promise.all(
+        dates.slice(i, i + 15).map(async (date) => {
+          try {
+            const buf = await http(
+              `https://api.appstoreconnect.apple.com/v1/salesReports?filter[frequency]=DAILY&filter[reportType]=SALES&filter[reportSubType]=SUMMARY&filter[vendorNumber]=${env('ASC_VENDOR_NUMBER')}&filter[reportDate]=${date}`,
+              { headers: { authorization: `Bearer ${jwt}` }, binary: true },
+            );
+            return { x: date, y: parseSales(buf, filter).downloads };
+          } catch (e) {
+            if (String(e.message).startsWith('404')) return { x: date, y: 0 };
+            return { x: date, y: null };
+          }
+        }),
+      )),
+    );
+  }
+  return out;
+}
+
+function parseSales(buf, filter) {
   if (!buf) return { downloads: 0, redownloads: 0, updates: 0, proceeds: 0 };
   let txt;
   try {
@@ -72,6 +101,7 @@ function parseSales(buf) {
   const out = { downloads: 0, redownloads: 0, updates: 0, proceeds: 0 };
   for (const l of lines) {
     const c = l.split('\t');
+    if (filter && !countryOk(c[idx('Country Code')], filter)) continue;
     const type = c[idx('Product Type Identifier')] ?? '';
     const units = Number(c[idx('Units')] ?? 0);
     if (/^1/.test(type)) out.downloads += units;

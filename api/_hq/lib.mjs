@@ -77,6 +77,83 @@ export function dayRange(n, endOffset = 0) {
   return Array.from({ length: n }, (_, i) => isoDay(daysAgo(n - 1 - i + endOffset)));
 }
 
+const addDays = (iso, k) => isoDay(new Date(Date.parse(`${iso}T00:00:00Z`) + k * 86400000));
+
+/** Le pays (ISO2) passe-t-il le filtre ? */
+export const countryOk = (c, { countries, exclude } = {}) =>
+  !countries?.length || (exclude ? !countries.includes(c) : countries.includes(c));
+
+/**
+ * Fenêtre d'analyse : les N derniers jours (ou 24 h), ou des dates perso
+ * [from..to] incluses. Donne les prédicats HogQL de la période et de la
+ * période précédente de même durée, et les seaux alignés des deux.
+ */
+export function windowOf({ days, from, to }) {
+  if (from && to) {
+    const n = Math.round((Date.parse(to) - Date.parse(from)) / 86400000) + 1;
+    const ts = (iso) => `toDateTime('${iso} 00:00:00', 'UTC')`;
+    return {
+      n, hourly: false, custom: true,
+      first: from, last: to, prevFirst: addDays(from, -n), prevLast: addDays(from, -1),
+      start: ts(from), end: ts(addDays(to, 1)),
+      cur: `timestamp >= ${ts(from)} and timestamp < ${ts(addDays(to, 1))}`,
+      prev: `timestamp >= ${ts(addDays(from, -n))} and timestamp < ${ts(from)}`,
+      bucket: 'toString(toDate(timestamp))',
+      buckets: Array.from({ length: n }, (_, i) => addDays(from, i)),
+      prevBuckets: Array.from({ length: n }, (_, i) => addDays(from, i - n)),
+    };
+  }
+  const h = hourly(days);
+  const list = buckets(days);
+  return {
+    n: list.length, hourly: h, custom: false,
+    first: isoDay(daysAgo(h ? 0 : days - 1)), last: isoDay(new Date()),
+    prevFirst: isoDay(daysAgo(h ? 1 : days * 2 - 1)), prevLast: isoDay(daysAgo(h ? 1 : days)),
+    start: `now() - interval ${days} day`, end: 'now()',
+    cur: `timestamp > now() - interval ${days} day`,
+    prev: `timestamp > now() - interval ${days * 2} day and timestamp <= now() - interval ${days} day`,
+    bucket: h ? `formatDateTime(toStartOfHour(toTimeZone(timestamp, 'UTC')), '%Y-%m-%dT%H')` : 'toString(toDate(timestamp))',
+    buckets: list,
+    prevBuckets: h
+      ? list.map((k) => new Date(Date.parse(`${k}:00:00Z`) - 86400000).toISOString().slice(0, 13))
+      : dayRange(days, days),
+  };
+}
+
+// ─── PostHog ─────────────────────────────────────────────────────────────────
+
+/** App native = lib posthog-react-native ; tout le reste = web (site + /play). */
+export const PLATFORM = `multiIf(properties.$lib = 'posthog-react-native', if(properties.$os = 'Android', 'Android', 'iOS'), 'Web')`;
+const PLATFORM_NAMES = { ios: 'iOS', android: 'Android', web: 'Web' };
+
+/** Filtres pays (ISO2, déjà validés ; `exclude` = tous sauf eux) et plateforme, à ajouter après un WHERE. */
+export function hogFilter({ countries, exclude, platform } = {}) {
+  let f = '';
+  if (countries?.length) {
+    const list = countries.map((c) => `'${c}'`).join(',');
+    f += exclude
+      ? ` and coalesce(properties.$geoip_country_code, '') not in (${list})`
+      : ` and properties.$geoip_country_code in (${list})`;
+  }
+  if (PLATFORM_NAMES[platform]) f += ` and ${PLATFORM} = '${PLATFORM_NAMES[platform]}'`;
+  return f;
+}
+
+export async function hogql(query) {
+  need(['POSTHOG_PERSONAL_API_KEY'], 'Clé perso PostHog (déjà dans .env.secrets)');
+  const host = env('POSTHOG_HOST_API', 'https://eu.posthog.com');
+  const r = await http(`${host}/api/projects/@current/query/`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${env('POSTHOG_PERSONAL_API_KEY')}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ query: { kind: 'HogQLQuery', query } }),
+    timeout: 30000,
+  });
+  return r.results;
+}
+
 // ─── Garde admin ─────────────────────────────────────────────────────────────
 
 const verified = new Map(); // jeton → expiration (ms)
@@ -118,12 +195,13 @@ export const hasGoogleUser = () =>
 
 /**
  * Jeton d'accès Google. `mode` :
- *  - 'user'  : compte Google de Paul (OAuth, jeton de rafraîchissement) — seul
- *              possible pour AdMob / AdSense ;
- *  - 'auto'  : compte utilisateur s'il est configuré, sinon compte de service.
+ *  - 'user'    : compte Google de Paul (OAuth, jeton de rafraîchissement) — seul
+ *                possible pour AdMob / AdSense ;
+ *  - 'auto'    : compte utilisateur s'il est configuré, sinon compte de service ;
+ *  - 'service' : compte de service uniquement (rapports Play dans Cloud Storage).
  */
 export async function googleToken(scopes, mode = 'auto') {
-  const useUser = hasGoogleUser();
+  const useUser = mode !== 'service' && hasGoogleUser();
   const key = `${useUser ? 'u' : 's'}:${scopes.join(' ')}`;
   const hit = tokenCache.get(key);
   if (hit && hit.exp > Date.now() + 60000) return hit.token;
