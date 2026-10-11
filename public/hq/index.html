@@ -123,7 +123,7 @@ h2.section:first-child { margin-top: 4px; }
 .tile .sub { font-size: 12px; color: var(--muted); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .src { font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
 .card { padding: 14px 14px 12px; }
-.card-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.card-h { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
 .card-h h3 { margin: 0; font-size: 15px; font-weight: 650; }
 .delta { font-size: 12px; font-weight: 650; white-space: nowrap; }
 .delta.up { color: var(--good-ink); } .delta.down { color: var(--bad-ink); } .delta.flat { color: var(--muted); }
@@ -153,6 +153,7 @@ h2.section:first-child { margin-top: 4px; }
 .tbl tr:last-child td { border-bottom: 0; }
 .tbl td.r, .tbl th.r { text-align: right; }
 .tbl td.wrap { word-break: break-word; }
+.tbl td.num { white-space: nowrap; }
 .scroll-x { overflow-x: auto; margin: 0 -4px; padding: 0 4px; }
 
 /* Graphiques */
@@ -199,6 +200,68 @@ details.tv .scroll-x { max-height: 240px; overflow-y: auto; }
 .btn.ghost { background: var(--surface-2); color: var(--ink); width: auto; padding: 8px 12px; }
 .muted { color: var(--muted); }
 .hide { display: none !important; }
+/* Filtres (A : barre sur ordinateur, C : boutons + panneau sur téléphone) */
+.filters { max-width: 1240px; margin: 12px auto 0; padding: 0 16px; }
+.fbar { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.frow { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.frow + .frow { border-top: 1px solid var(--border); padding-top: 10px; }
+.flbl { font-size: 11.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.chip { border: 1px solid var(--border); background: var(--surface); border-radius: 99px; padding: 5px 12px; font-size: 13px; font-weight: 600; cursor: pointer; min-height: 32px; color: var(--ink); }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.chip.sel { background: color-mix(in srgb, var(--accent) 12%, var(--surface)); border-color: color-mix(in srgb, var(--accent) 45%, transparent); color: var(--accent); }
+.fbar select, .fbar input[type=date], .sheet select, .sheet input[type=date], .addm input, .addm select { border: 1px solid var(--border); background: var(--page); border-radius: 8px; padding: 5px 8px; font-size: 13px; min-height: 32px; }
+.check { display: inline-flex; gap: 8px; align-items: center; font-size: 13.5px; cursor: pointer; }
+.check input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--accent); margin: 0; }
+.fhint { font-size: 12px; color: var(--muted); margin-left: auto; }
+.fmobile { display: none; }
+@media (max-width: 899px) {
+  .fbar { display: none; }
+  .fmobile { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+  .fmobile .chip { white-space: nowrap; min-height: 38px; }
+}
+.sheet-bg { position: fixed; inset: 0; background: rgba(0,0,0,.38); z-index: 40; border: 0; width: 100%; cursor: pointer; }
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; max-height: 86vh; overflow-y: auto; background: var(--surface); border-radius: 18px 18px 0 0; padding: 10px 16px calc(18px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 16px; box-shadow: 0 -8px 30px rgba(0,0,0,.2); max-width: 640px; margin: 0 auto; }
+.sheet .grab { align-self: center; width: 40px; height: 5px; border-radius: 3px; background: var(--grid); }
+.sheet .opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.sheet .chip { min-height: 40px; }
+.sheet .btn { min-height: 48px; font-size: 16px; }
+
+/* Croissance */
+.tile .spark { display: block; width: 100%; height: 28px; margin-top: 6px; overflow: visible; }
+.map svg { display: block; width: 100%; height: auto; background: var(--surface-2); border-radius: 10px; }
+.map path { cursor: pointer; stroke: var(--surface); stroke-width: .4; }
+.map path.on { stroke: var(--ink); stroke-width: 1.4; }
+.map path:hover { opacity: .78; }
+.scale { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--muted); margin-top: 8px; flex-wrap: wrap; }
+.scale i { width: 22px; height: 9px; border-radius: 3px; display: inline-block; }
+.tbl td.heat { text-align: center; font-weight: 650; border-radius: 6px; border: 0; }
+.tbl.heatt { border-collapse: separate; border-spacing: 3px; }
+.tbl tr.pick { cursor: pointer; } .tbl tr.pick:hover td { background: var(--surface-2); }
+.tbl tr.pick.on td { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.box { display: inline-block; width: 12px; height: 12px; border-radius: 3px; border: 1.5px solid var(--muted); vertical-align: -1px; margin-right: 6px; }
+tr.on .box { background: var(--accent); border-color: var(--accent); }
+.mini { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+.mini > div { background: var(--surface-2); border-radius: 10px; padding: 8px 10px; }
+.mini small { display: block; font-size: 11.5px; color: var(--ink-2); }
+.mini b { font-size: 19px; }
+.fun { display: flex; flex-direction: column; gap: 9px; }
+.fun .top { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+.fun .bar { height: 18px; border-radius: 5px; background: var(--surface-2); overflow: hidden; margin-top: 3px; }
+.fun .bar div { height: 100%; border-radius: 5px; background: var(--s1); }
+.fstep { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+.fstep.low { color: var(--bad-ink); }
+.split { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--surface-2); margin: 6px 0 4px; }
+.mk { font-size: 10.5px; font-weight: 700; color: #fff; padding: 1px 6px; border-radius: 5px; white-space: nowrap; }
+.jrow { display: grid; grid-template-columns: 50px minmax(0, 1fr) auto 28px; gap: 8px; align-items: center; padding: 7px 0; border-top: 1px solid var(--border); font-size: 13px; }
+.jrow .lab { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xbtn { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 17px; width: 28px; height: 28px; border-radius: 6px; }
+.xbtn:hover { background: var(--surface-2); }
+.addm { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.addm input[type=text] { flex: 1 1 150px; }
+.cardbtn { border: 1px solid var(--border); background: var(--surface); border-radius: 8px; padding: 3px 9px; font-size: 12px; cursor: pointer; color: var(--ink-2); }
+.card-h .tools { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.seg.small button { padding: 3px 9px; font-size: 12px; }
+.chart .mkl { font-size: 10px; font-weight: 700; }
 @media (prefers-reduced-motion: reduce) { .skel, .icon-btn.spin svg { animation: none; } }
 </style>
 </head>
@@ -224,8 +287,8 @@ details.tv .scroll-x { max-height: 240px; overflow-y: auto; }
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18"/></svg>
         <span class="name">GeoG HQ</span>
       </div>
-      <div class="seg" role="group" aria-label="Période">
-        <button data-days="1">24 h</button><button data-days="7">7 j</button><button data-days="28">28 j</button><button data-days="90">90 j</button>
+      <div class="seg" id="period" role="group" aria-label="Période">
+        <button data-days="1">24 h</button><button data-days="7">7 j</button><button data-days="28">28 j</button><button data-days="90">90 j</button><button data-days="custom">Dates…</button>
       </div>
       <button class="icon-btn" id="refresh" aria-label="Actualiser" title="Actualiser">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg>
@@ -237,20 +300,33 @@ details.tv .scroll-x { max-height: 240px; overflow-y: auto; }
     <div class="stamp" id="stamp"></div>
   </header>
   <nav class="tabs" role="tablist" id="tabs"></nav>
+  <div class="filters" id="filters"></div>
   <main id="main"></main>
+  <div id="sheet"></div>
 </div>
 
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
 // ─── Réglages ────────────────────────────────────────────────────────────────
-const SOURCES = ['supabase', 'posthog', 'searchconsole', 'admob', 'adsense', 'sentry', 'play', 'appstore', 'deploys'];
+const SOURCES = ['growth', 'supabase', 'posthog', 'searchconsole', 'admob', 'adsense', 'sentry', 'play', 'appstore', 'deploys'];
 const SOURCE_NAMES = {
   supabase: 'Supabase', posthog: 'PostHog', searchconsole: 'Search Console', admob: 'AdMob', adsense: 'AdSense',
-  sentry: 'Sentry', play: 'Google Play', appstore: 'App Store', deploys: 'Vercel · EAS',
+  sentry: 'Sentry', play: 'Google Play', appstore: 'App Store', deploys: 'Vercel · EAS', growth: 'PostHog · stores · pubs',
 };
+/** Sources qui suivent les filtres pays / plateforme / dates perso. */
+const FILTERED = new Set(['growth', 'posthog']);
+const FRANCO = ['FR', 'BE', 'CH', 'CA', 'LU', 'MC', 'MA', 'DZ', 'TN', 'SN', 'CI', 'CM', 'MG', 'ML', 'BF', 'NE', 'TG', 'BJ', 'GA', 'CG', 'CD', 'HT', 'RW', 'BI', 'DJ', 'TD', 'GN', 'CF', 'KM', 'MU'];
+const EUROPE = ['FR', 'BE', 'CH', 'LU', 'DE', 'GB', 'IE', 'ES', 'PT', 'IT', 'NL', 'AT', 'PL', 'SE', 'NO', 'DK', 'FI', 'CZ', 'RO', 'GR', 'HU'];
+const PRESETS = [
+  ['Monde', [], false], ['France', ['FR'], false], ['Francophonie', FRANCO, false], ['Europe', EUROPE, false], ['Hors France', ['FR'], true],
+];
+const PLATFORMS = [['all', 'Toutes'], ['ios', 'iOS'], ['android', 'Android'], ['web', 'Web']];
+const PLAT_COLOR = { iOS: 'var(--s1)', Android: 'var(--s2)', Web: 'var(--s3)' };
+const MARK = { version: ['Version', '#7c5cd6'], push: ['Push', '#a16207'], campagne: ['Campagne', '#c2410c'], autre: ['Repère', '#6b6a65'] };
 const TABS = [
   ['overview', 'Aperçu', '<path d="M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-3H4zM14 7h6V4h-6z"/>'],
+  ['growth', 'Croissance', '<path d="M4 19V9M10 19V5M16 19v-7M3 21h18"/>'],
   ['players', 'Joueurs', '<circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.8-3.3 3-5 5.5-5s4.7 1.7 5.5 5"/><circle cx="17" cy="9" r="2.4"/><path d="M16 14c2.4 0 4 1.5 4.6 4"/>'],
   ['acquisition', 'Acquisition', '<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.4-4.4"/>'],
   ['revenue', 'Revenus', '<path d="M4 18h16M6 14l4-4 3 3 5-6"/>'],
@@ -269,7 +345,17 @@ const S = {
   data: {},
   pending: new Set(),
   token: null,
+  range: json(store('hq.range')), // { from, to } quand « Dates… »
+  platform: store('hq.platform') || 'all',
+  countries: json(store('hq.countries')) ?? [],
+  exclude: store('hq.exclude') === '1',
+  compare: store('hq.compare') !== '0',
+  sheet: false,
+  mapMetric: 'installs',
+  dlSource: store('hq.dlsrc') || 'posthog',
+  world: null,
 };
+function json(t) { try { return JSON.parse(t ?? 'null'); } catch { return null; } }
 
 // ─── Utilitaires ─────────────────────────────────────────────────────────────
 function store(k, v) {
@@ -285,8 +371,8 @@ const dm = (iso) => { const [, m, d] = String(iso).slice(0, 10).split('-'); retu
 /** Étiquette d'un seau : jour « 29/09 » ou heure locale « 14h » (clé UTC 'YYYY-MM-DDTHH'). */
 const fx = (k) => (String(k).length === 13 ? `${new Date(`${k}:00:00Z`).getHours()}h` : dm(k));
 /** Période affichée : « 24 h » ou « 28 j ». */
-const unit = () => (S.days === 1 ? 'heure' : 'jour');
-const per = () => (S.days === 1 ? '24 h' : `${S.days} j`);
+const unit = () => (S.days === 1 && !S.range ? 'heure' : 'jour');
+const per = () => (S.range ? `${dm(S.range.from)} → ${dm(S.range.to)}` : S.days === 1 ? '24 h' : `${S.days} j`);
 const region = (() => { try { return new Intl.DisplayNames(['fr'], { type: 'region' }); } catch { return null; } })();
 const country = (c) => { if (!c || c === '(aucun)') return 'Inconnu'; try { return c.length === 2 ? region?.of(c.toUpperCase()) ?? c : c.toUpperCase(); } catch { return c; } };
 const mode = (m) => MODE_NAMES[m] ?? m;
@@ -315,16 +401,31 @@ async function api(source, fresh = false) {
   // getSession() rafraîchit le jeton s'il a expiré (onglet resté ouvert).
   const { data: { session } } = await client.auth.getSession();
   if (session) S.token = session.access_token;
-  const r = await fetch(`/api/hq?source=${source}&days=${S.days}${fresh ? '&fresh=1' : ''}`, {
+  const r = await fetch(`/api/hq?source=${source}&days=${daysParam()}${FILTERED.has(source) ? filterQuery() : ''}${fresh ? '&fresh=1' : ''}`, {
     headers: { authorization: `Bearer ${S.token}` },
   });
   if (r.status === 403) throw Object.assign(new Error('forbidden'), { forbidden: true });
   return r.json();
 }
 
-async function loadAll(fresh = false) {
+/** Dates perso : les sources sans filtre de dates prennent la période standard qui les couvre. */
+function daysParam() {
+  if (!S.range) return S.days;
+  const n = Math.round((Date.parse(S.range.to) - Date.parse(S.range.from)) / 86400000) + 1;
+  return [7, 28, 90].find((d) => d >= n) ?? 90;
+}
+function filterQuery() {
+  let q = '';
+  if (S.countries.length) q += `&countries=${S.countries.join(',')}${S.exclude ? '&exclude=1' : ''}`;
+  if (S.platform !== 'all') q += `&platform=${S.platform}`;
+  if (S.range) q += `&from=${S.range.from}&to=${S.range.to}`;
+  return q;
+}
+const cacheKey = () => `hq.cache.${S.days}${filterQuery()}`;
+
+async function loadAll(fresh = false, only = SOURCES) {
   $('#refresh').classList.add('spin');
-  await Promise.all(SOURCES.map(async (src) => {
+  await Promise.all(only.map(async (src) => {
     S.pending.add(src);
     try {
       S.data[src] = await api(src, fresh);
@@ -337,12 +438,19 @@ async function loadAll(fresh = false) {
     }
   }));
   $('#refresh').classList.remove('spin');
-  try { localStorage.setItem(`hq.cache.${S.days}`, JSON.stringify(S.data)); } catch {}
+  try {
+    // Une entrée par combinaison de filtres : on ne garde que la courante.
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k?.startsWith('hq.cache.') && k !== cacheKey()) localStorage.removeItem(k);
+    }
+    localStorage.setItem(cacheKey(), JSON.stringify(S.data));
+  } catch {}
 }
 
 function restoreCache() {
   try {
-    const c = JSON.parse(localStorage.getItem(`hq.cache.${S.days}`) ?? 'null');
+    const c = JSON.parse(localStorage.getItem(cacheKey()) ?? 'null');
     if (c) S.data = c;
   } catch {}
 }
@@ -395,8 +503,8 @@ function tile(label, src, key, f) {
   return `<div class="tile"><div class="lbl">${esc(label)}</div>${body}<div class="src">${SOURCE_NAMES[src]}</div></div>`;
 }
 
-function card(title, src, inner, { extra = '' } = {}) {
-  return `<section class="card"><div class="card-h"><h3>${title}</h3><span class="src">${extra || SOURCE_NAMES[src] || src}</span></div>${inner}</section>`;
+function card(title, src, inner, { extra = '', tools = '' } = {}) {
+  return `<section class="card"><div class="card-h"><h3>${title}</h3>${tools ? `<span class="tools">${tools}</span>` : `<span class="src">${extra || SOURCE_NAMES[src] || src}</span>`}</div>${inner}</section>`;
 }
 
 /** Bloc de carte dépendant d'une sous-requête. */
@@ -426,20 +534,45 @@ function table(cols, rows, { limit = 20 } = {}) {
  * Graphique (ligne ou barres). series: [{ name, color, points: [{x, y}] }]
  * Monté après injection du HTML ; tooltip au survol + vue tableau.
  */
-function chart(series, { type = 'line', fmtY = (v) => fmt(v), height = 170, yMax } = {}) {
+/**
+ * Options : stacked (barres empilées), prev ({ name, points } en pointillé :
+ * période précédente, alignée jour à jour), marks ([{ i, label, color }] :
+ * repères verticaux), name (nom du fichier CSV).
+ */
+function chart(series, { type = 'line', fmtY = (v) => fmt(v), height = 170, yMax, stacked = false, prev = null, marks = [], name = 'graphique' } = {}) {
   series = series.filter((s) => s.points?.length);
   if (!series.length) return '<div class="empty">Pas de données.</div>';
   const id = `c${++chartId}`;
-  charts.push({ id, series, type, fmtY, height, yMax });
-  const legend = series.length > 1
-    ? `<div class="legend">${series.map((s) => `<span><i style="background:${s.color}"></i>${esc(s.name)} <b class="num">${fmtY(sum(s.points, (p) => p.y))}</b></span>`).join('')}</div>`
+  if (prev && !(S.compare && prev.points?.length)) prev = null;
+  charts.push({ id, series, type, fmtY, height, yMax, stacked, prev, marks });
+  const all = prev ? [...series, { ...prev, color: 'var(--ink-2)', dashed: true }] : series;
+  const legend = all.length > 1
+    ? `<div class="legend">${all.map((s) => `<span>${s.dashed ? '<i style="background:none;border-top:2px dashed var(--ink-2);height:0;width:14px;border-radius:0"></i>' : `<i style="background:${s.color}"></i>`}${esc(s.name)} <b class="num">${fmtY(sum(s.points, (p) => p.y))}</b></span>`).join('')}</div>`
     : '';
   const xs = series[0].points.map((p) => p.x);
-  const tv = `<details class="tv"><summary>Voir le tableau</summary><div class="scroll-x"><table class="tbl"><thead><tr><th>${S.days === 1 ? 'Heure' : 'Jour'}</th>${series
-    .map((s) => `<th class="r">${esc(s.name)}</th>`).join('')}</tr></thead><tbody>${xs
-    .map((x, i) => `<tr><td>${fx(x)}</td>${series.map((s) => `<td class="r num">${fmtY(s.points[i]?.y)}</td>`).join('')}</tr>`)
+  const head = [S.days === 1 && !S.range ? 'Heure' : 'Jour', ...all.map((s) => s.name)];
+  const rows = xs.map((x, i) => [x, ...all.map((s) => s.points[i]?.y ?? '')]);
+  CSV[id] = { name, head, rows };
+  const tv = `<details class="tv"><summary>Voir le tableau · <button class="cardbtn" type="button" data-act="csv" data-id="${id}">CSV</button></summary><div class="scroll-x"><table class="tbl"><thead><tr>${head
+    .map((h, k) => `<th class="${k ? 'r' : ''}">${esc(h)}</th>`).join('')}</tr></thead><tbody>${xs
+    .map((x, i) => `<tr><td>${fx(x)}</td>${all.map((s) => `<td class="r num">${fmtY(s.points[i]?.y)}</td>`).join('')}</tr>`)
     .reverse().join('')}</tbody></table></div></details>`;
   return `${legend}<div class="chart" id="${id}" style="height:${height}px"></div>${tv}`;
+}
+
+/** Export CSV (séparateur « ; » et virgule décimale : s'ouvre tel quel dans Excel / Numbers en français). */
+const CSV = {};
+function downloadCsv({ name, head, rows }) {
+  const cell = (v) => {
+    const t = typeof v === 'number' ? String(v).replace('.', ',') : String(v ?? '');
+    return /[;"\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
+  };
+  const txt = '\ufeff' + [head, ...rows].map((r) => r.map(cell).join(';')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([txt], { type: 'text/csv;charset=utf-8' }));
+  a.download = `geog-hq-${name}-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
 function niceMax(v) {
@@ -456,14 +589,16 @@ function mountCharts() {
   }
 }
 
-function drawChart(el, { series, type, fmtY, height, yMax }) {
+function drawChart(el, { series, type, fmtY, height, yMax, stacked, prev, marks = [] }) {
   const W = el.clientWidth || 300;
   const H = height;
   const m = { l: 38, r: 6, t: 8, b: 20 };
   const iw = W - m.l - m.r;
   const ih = H - m.t - m.b;
   const n = series[0].points.length;
-  const all = series.flatMap((s) => s.points.map((p) => p.y)).filter((y) => y != null);
+  const stack = type === 'bar' && stacked && series.length > 1;
+  const totals = stack ? series[0].points.map((_, i) => sum(series, (s) => s.points[i]?.y)) : [];
+  const all = [...(stack ? totals : series.flatMap((s) => s.points.map((p) => p.y))), ...(prev ? prev.points.map((p) => p.y) : [])].filter((y) => y != null);
   const max = yMax ?? niceMax(Math.max(...all, 0));
   const X = (i) => m.l + (type === 'bar' ? (i + 0.5) * (iw / n) : n === 1 ? iw / 2 : (i / (n - 1)) * iw);
   const Y = (v) => m.t + ih - (v / max) * ih;
@@ -479,15 +614,21 @@ function drawChart(el, { series, type, fmtY, height, yMax }) {
 
   if (type === 'bar') {
     const bw = Math.max(2, iw / n - 2); // 2 px d'écart entre barres
-    const s = series[0];
-    s.points.forEach((p, i) => {
-      if (!p.y) return;
-      const h = Math.max(1, ih - (Y(p.y) - m.t));
-      const x = X(i) - bw / 2;
-      const y = m.t + ih - h;
-      const r = Math.min(4, bw / 2, h);
-      g += `<path fill="${s.color}" d="M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + bw - r}Q${x + bw},${y} ${x + bw},${y + r}V${y + h}Z"/>`;
-    });
+    const layers = stack ? series : [series[0]];
+    for (let i = 0; i < n; i++) {
+      let base = 0;
+      layers.forEach((s, k) => {
+        const v = s.points[i]?.y;
+        if (!v) return;
+        const h = Math.max(1, (v / max) * ih);
+        const x = X(i) - bw / 2;
+        const y = m.t + ih - (base / max) * ih - h;
+        const isTop = k === layers.length - 1 || !layers.slice(k + 1).some((t) => t.points[i]?.y);
+        const r = isTop ? Math.min(4, bw / 2, h) : 0;
+        g += `<path fill="${s.color}" d="M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + bw - r}Q${x + bw},${y} ${x + bw},${y + r}V${y + h}Z"/>`;
+        base += v;
+      });
+    }
   } else {
     for (const s of series) {
       let d = '';
@@ -500,6 +641,22 @@ function drawChart(el, { series, type, fmtY, height, yMax }) {
       g += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
     }
   }
+  if (prev) {
+    let d = '';
+    let pen = false;
+    prev.points.forEach((p, i) => {
+      if (p.y == null) { pen = false; return; }
+      d += `${pen ? 'L' : 'M'}${X(i).toFixed(1)},${Y(p.y).toFixed(1)}`;
+      pen = true;
+    });
+    g += `<path d="${d}" fill="none" stroke="var(--ink-2)" stroke-width="1.6" stroke-dasharray="5 4" stroke-linejoin="round"/>`;
+  }
+  marks.forEach((mk, k) => {
+    const x = X(mk.i);
+    g += `<line x1="${x}" x2="${x}" y1="${m.t}" y2="${m.t + ih}" stroke="${mk.color}" stroke-width="1.5" stroke-dasharray="3 3"><title>${esc(mk.label)}</title></line>`;
+    const right = x > W * 0.75;
+    g += `<text class="mkl" x="${x + (right ? -4 : 4)}" y="${m.t + 9 + (k % 3) * 12}" fill="${mk.color}" text-anchor="${right ? 'end' : 'start'}">${esc(mk.label.length > 22 ? `${mk.label.slice(0, 21)}…` : mk.label)}</text>`;
+  });
   g += `<g class="hover" style="display:none"><line x1="0" x2="0" y1="${m.t}" y2="${m.t + ih}" stroke="var(--muted)" stroke-dasharray="3 3"/>${
     type === 'line' ? series.map((s) => `<circle r="4" fill="${s.color}" stroke="var(--surface)" stroke-width="2"/>`).join('') : ''}</g>`;
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="${esc(series.map((s) => s.name).join(', '))}">${g}<rect x="${m.l}" y="0" width="${iw}" height="${H}" fill="transparent"/></svg><div class="tip"></div>`;
@@ -522,7 +679,11 @@ function drawChart(el, { series, type, fmtY, height, yMax }) {
       c.style.display = y == null ? 'none' : '';
       if (y != null) { c.setAttribute('cx', x); c.setAttribute('cy', Y(y)); }
     });
-    tip.innerHTML = `<b>${fx(xs[i])}</b><br>${series.map((s) => `${series.length > 1 ? `<i style="background:${s.color}"></i>${esc(s.name)} ` : ''}<b class="num">${fmtY(s.points[i]?.y)}</b>`).join('<br>')}`;
+    const rowsT = series.map((s) => `${series.length > 1 ? `<i style="background:${s.color}"></i>${esc(s.name)} ` : ''}<b class="num">${fmtY(s.points[i]?.y)}</b>`);
+    if (stack) rowsT.push(`Total <b class="num">${fmtY(totals[i])}</b>`);
+    if (prev) rowsT.push(`<span style="opacity:.75">${esc(prev.name)}</span> <b class="num">${fmtY(prev.points[i]?.y)}</b>`);
+    marks.filter((mk) => mk.i === i).forEach((mk) => rowsT.push(`<i style="background:${mk.color}"></i>${esc(mk.label)}`));
+    tip.innerHTML = `<b>${fx(xs[i])}</b><br>${rowsT.join('<br>')}`;
     tip.style.opacity = 1;
     const tx = (x / W) * rect.width;
     tip.style.left = `${Math.min(Math.max(tx - tip.offsetWidth / 2, 0), rect.width - tip.offsetWidth)}px`;
@@ -600,8 +761,8 @@ function overview() {
     ${tile('Site', 'deploys', 'health', (v) => ({ value: v.every((h) => h.ok) ? 'En ligne' : 'Panne', sub: `${Math.round(sum(v, (h) => h.ms) / v.length)} ms en moyenne` }))}
   </div>
   <div class="grid two" style="margin-top:12px">
-    ${card(`Utilisateurs actifs par ${unit()}`, ph, block(ph, 'dauByPlatform', (v) => chart(v.map((s) => ({ ...s, color: s.name === 'iOS' ? 'var(--s1)' : s.name === 'Android' ? 'var(--s2)' : 'var(--s3)' })))))}
-    ${card(`Activité de jeu par ${unit()}`, 'supabase', S.data.supabase ? chart(gamesSeries()) : '<div class="skel"></div>')}
+    ${card(`Utilisateurs actifs par ${unit()}`, ph, block(ph, 'dauByPlatform', (v) => chart(v.map((s) => ({ ...s, color: s.name === 'iOS' ? 'var(--s1)' : s.name === 'Android' ? 'var(--s2)' : 'var(--s3)' })), { marks: markersIn(v[0]?.points.map((p) => p.x)), name: 'actifs' })))}
+    ${card(`Activité de jeu par ${unit()}`, 'supabase', S.data.supabase ? chart(gamesSeries(), { marks: markersIn(gamesSeries()[0]?.points.map((p) => p.x)), name: 'activite' }) : '<div class="skel"></div>')}
   </div>`;
 }
 
@@ -830,7 +991,426 @@ function deploysView() {
   </div>`;
 }
 
-const VIEWS = { overview, players, acquisition, revenue, quality, deploys: deploysView };
+// ─── Filtres (pays, plateforme, dates perso, comparaison) ───────────────────
+const countryName = (c) => country(c);
+const samePick = (list, ex) => ex === S.exclude && list.length === S.countries.length && list.every((c) => S.countries.includes(c));
+const today = () => new Date().toISOString().slice(0, 10);
+const shiftDay = (iso, k) => new Date(Date.parse(`${iso}T00:00:00Z`) + k * 86400000).toISOString().slice(0, 10);
+
+/** Liste de pays proposés : ceux de la carte et ceux vus dans les données, triés par nom. */
+function countryOptions() {
+  const codes = new Set([...Object.keys(S.world ?? {}), ...(val('growth', 'countries', (v) => v.map((r) => r.c)) ?? [])]);
+  return [...codes].filter((c) => /^[A-Z]{2}$/.test(c)).map((c) => [c, countryName(c)]).sort((a, b) => a[1].localeCompare(b[1], 'fr'));
+}
+function scopeLabel() {
+  const p = PRESETS.find(([, list, ex]) => samePick(list, ex));
+  const geo = p ? p[0] : S.countries.length === 1 ? countryName(S.countries[0]) : `${S.countries.length} pays`;
+  return `${geo}${S.platform === 'all' ? '' : ` · ${PLATFORMS.find((x) => x[0] === S.platform)[1]}`}`;
+}
+function filterCount() {
+  return (S.countries.length ? 1 : 0) + (S.platform !== 'all' ? 1 : 0) + (S.range ? 1 : 0);
+}
+
+function setFilters(patch) {
+  Object.assign(S, patch);
+  store('hq.platform', S.platform);
+  store('hq.countries', JSON.stringify(S.countries));
+  store('hq.exclude', S.exclude ? '1' : '0');
+  store('hq.range', JSON.stringify(S.range));
+  store('hq.compare', S.compare ? '1' : '0');
+  if (!('compare' in patch && Object.keys(patch).length === 1)) {
+    const keep = Object.fromEntries(Object.entries(S.data).filter(([k]) => !FILTERED.has(k)));
+    S.data = keep;
+    if ('range' in patch) S.data = {}; // la période change pour toutes les sources
+    restoreCacheMerge();
+    loadAll(false, 'range' in patch ? SOURCES : [...FILTERED]);
+  }
+  render();
+}
+function restoreCacheMerge() {
+  let c = null;
+  try { c = json(localStorage.getItem(cacheKey())); } catch {}
+  if (c) for (const [k, v] of Object.entries(c)) S.data[k] ??= v;
+}
+function toggleCountry(c) {
+  const list = S.exclude ? [] : [...S.countries];
+  const i = list.indexOf(c);
+  if (i >= 0) list.splice(i, 1); else list.push(c);
+  setFilters({ countries: list, exclude: false });
+}
+
+function filtersHtml() {
+  const presets = PRESETS.map(([label, list, ex], k) => `<button class="chip" data-act="preset" data-k="${k}" aria-pressed="${samePick(list, ex)}">${label}</button>`).join('');
+  const isPreset = PRESETS.some(([, list, ex]) => samePick(list, ex) && (list.length > 3 || ex));
+  const chips = isPreset ? '' : S.countries.map((c) => `<button class="chip sel" data-act="rmc" data-c="${c}" aria-label="Retirer ${esc(countryName(c))}">${esc(countryName(c))} ×</button>`).join('');
+  const opts = countryOptions().filter(([c]) => !S.countries.includes(c)).map(([c, n]) => `<option value="${c}">${esc(n)}</option>`).join('');
+  const plat = PLATFORMS.map(([v, l]) => `<button data-act="plat" data-v="${v}" aria-pressed="${S.platform === v}">${l}</button>`).join('');
+  const dates = S.range
+    ? `<label class="check">Du <input type="date" data-act="from" value="${S.range.from}" max="${S.range.to}"></label><label class="check">au <input type="date" data-act="to" value="${S.range.to}" min="${S.range.from}" max="${today()}"></label>`
+    : '';
+  return `
+  <div class="fbar" role="region" aria-label="Filtres">
+    <div class="frow">
+      ${dates}
+      <label class="check"><input type="checkbox" data-act="cmp" ${S.compare ? 'checked' : ''}> Comparer à la période précédente</label>
+      <span class="flbl" style="margin-left:auto">Plateforme</span><div class="seg" role="group" aria-label="Plateforme">${plat}</div>
+    </div>
+    <div class="frow">
+      <span class="flbl">Pays</span>${presets}${chips}
+      <label class="check">Ajouter <select data-act="addc"><option value="">Choisir un pays…</option>${opts}</select></label>
+      <span class="fhint">Filtres appliqués à l’onglet Croissance et aux données PostHog · clique un pays sur la carte</span>
+    </div>
+  </div>
+  <div class="fmobile">
+    <button class="chip sel" data-act="sheet">Filtres${filterCount() ? ` · ${filterCount()}` : ''}</button>
+    <button class="chip" data-act="sheet">${esc(S.countries.length ? scopeLabel().split(' · ')[0] : 'Monde')}</button>
+    <button class="chip" data-act="sheet">${esc(PLATFORMS.find((x) => x[0] === S.platform)[1] === 'Toutes' ? 'Toutes plateformes' : PLATFORMS.find((x) => x[0] === S.platform)[1])}</button>
+    <button class="chip" data-act="sheet">${esc(per())}</button>
+  </div>`;
+}
+
+function sheetHtml() {
+  if (!S.sheet) return '';
+  const pb = (act, v, label, on) => `<button class="chip" data-act="${act}" data-v="${v}" aria-pressed="${on}">${label}</button>`;
+  const top = (val('growth', 'countries', (v) => v.slice(0, 14).map((r) => r.c)) ?? ['FR', 'BE', 'CH', 'CA', 'US', 'GB', 'DE', 'ES', 'IT', 'MA']);
+  const list = [...new Set([...S.countries, ...top])];
+  const opts = countryOptions().filter(([c]) => !list.includes(c)).map(([c, n]) => `<option value="${c}">${esc(n)}</option>`).join('');
+  return `
+  <button class="sheet-bg" data-act="close" aria-label="Fermer les filtres"></button>
+  <div class="sheet" role="dialog" aria-modal="true" aria-label="Filtres" tabindex="-1">
+    <span class="grab"></span>
+    <div style="display:flex;align-items:center"><h2 style="margin:0;font-size:18px;margin-right:auto">Filtres</h2><button class="btn ghost" data-act="reset">Réinitialiser</button></div>
+    <div><div class="flbl" style="margin-bottom:8px">Période</div><div class="opts">
+      ${[[1, '24 h'], [7, '7 j'], [28, '28 j'], [90, '90 j']].map(([d, l]) => pb('days', d, l, !S.range && S.days === d)).join('')}${pb('days', 'custom', 'Dates…', !!S.range)}
+    </div>${S.range ? `<div class="opts" style="margin-top:8px"><label class="check">Du <input type="date" data-act="from" value="${S.range.from}" max="${S.range.to}"></label><label class="check">au <input type="date" data-act="to" value="${S.range.to}" min="${S.range.from}" max="${today()}"></label></div>` : ''}
+    <label class="check" style="margin-top:10px"><input type="checkbox" data-act="cmp" ${S.compare ? 'checked' : ''}> Comparer à la période précédente</label></div>
+    <div><div class="flbl" style="margin-bottom:8px">Plateforme</div><div class="opts">${PLATFORMS.map(([v, l]) => pb('plat', v, l, S.platform === v)).join('')}</div></div>
+    <div><div class="flbl" style="margin-bottom:8px">Pays</div>
+      <div class="opts">${PRESETS.map(([label, l, ex], k) => `<button class="chip" data-act="preset" data-k="${k}" aria-pressed="${samePick(l, ex)}">${label}</button>`).join('')}</div>
+      <div class="opts" style="margin-top:8px">${list.map((c) => `<button class="chip" data-act="tog" data-c="${c}" aria-pressed="${!S.exclude && S.countries.includes(c)}">${esc(countryName(c))}</button>`).join('')}</div>
+      <label class="check" style="margin-top:8px">Autre pays <select data-act="addc"><option value="">Choisir…</option>${opts}</select></label>
+    </div>
+    <button class="btn" data-act="close">Voir les résultats</button>
+  </div>`;
+}
+
+// ─── Croissance ──────────────────────────────────────────────────────────────
+const SCALE = ['#dce8f7', '#b5cfee', '#86b0e3', '#5590d6', '#2f72c4', '#1b55a0'];
+const sumA = (a) => (a ?? []).reduce((s, v) => s + (Number(v) || 0), 0);
+const ratio = (a, b) => (b ? a / b : null);
+
+/** Mini-courbe d'une tuile : période en trait plein, précédente en pointillé. */
+function spark(cur, prev, color = 'var(--s1)') {
+  if (!cur?.length || cur.length < 2) return '';
+  const vals = [...cur, ...(S.compare && prev ? prev : [])].filter((v) => v != null);
+  const mx = Math.max(...vals, 1e-9);
+  const path = (a) => 'M' + a.map((v, i) => `${((i / (a.length - 1)) * 100).toFixed(1)} ${(27 - ((v ?? 0) / mx) * 25).toFixed(1)}`).join(' L');
+  return `<svg class="spark" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true">${S.compare && prev?.length === cur.length ? `<path d="${path(prev)}" fill="none" stroke="var(--muted)" stroke-width="1.2" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/>` : ''}<path d="${path(cur)} L100 28 L0 28 Z" fill="${color}" opacity=".12"/><path d="${path(cur)}" fill="none" stroke="${color}" stroke-width="1.8" vector-effect="non-scaling-stroke"/></svg>`;
+}
+function gtile(label, src, ready, f) {
+  if (!ready) return tile(label, src, '__none__', () => ({}));
+  const { value, sub = '', cur, prev, color } = f();
+  return `<div class="tile"><div class="lbl">${esc(label)}</div><div class="val num">${value}</div><div class="sub">${sub}</div>${spark(cur, prev, color)}</div>`;
+}
+
+/** Téléchargements par seau : séries affichées selon la plateforme et la source choisie. */
+function downloads() {
+  const inst = val('growth', 'installs', (v) => v);
+  const W = val('growth', 'window', (v) => v);
+  if (!inst || !W) return null;
+  const xs = W.buckets;
+  const official = { iOS: val('growth', 'appstore', (v) => v), Android: val('growth', 'play', (v) => v) };
+  const hasOfficial = !W.hourly && (official.iOS?.length || official.Android?.length);
+  const useStores = hasOfficial && S.dlSource === 'stores';
+  const plats = S.platform === 'all' ? ['iOS', 'Android'] : [{ ios: 'iOS', android: 'Android', web: 'Web' }[S.platform]];
+  const notes = [];
+  const series = plats.map((p) => {
+    let ys = inst.cur[p];
+    if (useStores && p !== 'Web') {
+      const o = official[p];
+      if (o?.length) {
+        const m = Object.fromEntries(o.map((r) => [r.x, r.y]));
+        ys = xs.map((x) => m[x] ?? null);
+      } else notes.push(`${p} : chiffres officiels indisponibles, premières ouvertures PostHog`);
+    }
+    return { name: p === 'Web' ? 'Nouveaux visiteurs web' : p, color: PLAT_COLOR[p], points: xs.map((x, i) => ({ x, y: ys[i] })) };
+  });
+  const prevY = xs.map((_, i) => sumA(plats.map((p) => inst.prev[p][i])));
+  const tot = xs.map((_, i) => sumA(series.map((s) => s.points[i].y)));
+  return { xs, series, prev: { name: 'Période précédente', points: xs.map((x, i) => ({ x, y: prevY[i] })) }, tot, prevTot: prevY, hasOfficial, useStores, notes, web: S.platform === 'web' };
+}
+
+function markersIn(xs) {
+  const list = val('growth', 'markers', (v) => v.list) ?? [];
+  if (!xs?.length || String(xs[0]).length !== 10) return [];
+  return list
+    .map((mk) => ({ ...mk, i: xs.indexOf(mk.day), color: (MARK[mk.kind] ?? MARK.autre)[1] }))
+    .filter((mk) => mk.i >= 0);
+}
+
+function growthView() {
+  const g = 'growth';
+  const D = downloads();
+  const ser = val(g, 'series', (v) => v);
+  const eng = val(g, 'engagement', (v) => v);
+  const coh = val(g, 'cohort', (v) => v);
+  const rev = val(g, 'revenue', (v) => v);
+  const W = val(g, 'window', (v) => v);
+  const cohTot = coh && coh.reduce((a, r) => { for (const k of Object.keys(r)) if (typeof r[k] === 'number') a[k] = (a[k] ?? 0) + r[k]; return a; }, {});
+  const personDays = eng?.personDays;
+  const revTotal = rev ? (rev.admob ?? 0) + (rev.adsense ?? 0) : null;
+  const prevPersonDays = ser ? sumA(ser.prev.active) : null;
+  const dlLabel = D?.web ? 'Nouveaux visiteurs web' : 'Téléchargements';
+  const dSub = (cur, prev) => (S.compare ? `${delta(cur, prev)} <span>vs ${fmt(prev)}</span>` : '');
+  const marks = D ? markersIn(D.xs) : [];
+
+  const tiles = `
+  <div class="kpis">
+    ${gtile(dlLabel, g, !!D, () => ({ value: fmt(sumA(D.tot)), sub: dSub(sumA(D.tot), sumA(D.prevTot)), cur: D.tot, prev: D.prevTot }))}
+    ${gtile('Actifs par jour (moy.)', g, !!ser, () => ({ value: fmt(sumA(ser.cur.active) / ser.cur.active.length), sub: dSub(sumA(ser.cur.active), sumA(ser.prev.active)), cur: ser.cur.active, prev: ser.prev.active }))}
+    ${gtile('Inscriptions', g, !!ser, () => ({ value: fmt(sumA(ser.cur.signups)), sub: dSub(sumA(ser.cur.signups), sumA(ser.prev.signups)), cur: ser.cur.signups, prev: ser.prev.signups, color: '#7c5cd6' }))}
+    ${gtile('Rétention J1', g, !!cohTot, () => ({ value: pct(ratio(cohTot.r1, cohTot.e1), 0), sub: `J7 ${pct(ratio(cohTot.r7, cohTot.e7), 0)} · ${fmt(cohTot.n)} nouveaux` }))}
+    ${gtile('Parties par joueur', g, !!(ser && eng), () => ({ value: fmt(ratio(eng.games, personDays), 1), sub: 'par jour actif', cur: ser.cur.games.map((v, i) => ratio(v, ser.cur.active[i]) ?? 0), prev: ser.prev.games.map((v, i) => ratio(v, ser.prev.active[i]) ?? 0), color: '#a16207' }))}
+    ${rev ? gtile('Revenu par actif / jour', g, !!(rev && eng), () => {
+      const cur = revTotal / (personDays || 1);
+      const prevV = prevPersonDays ? rev.prev / prevPersonDays : null;
+      const byDay = Object.fromEntries((rev.byDay ?? []).map((r) => [r.x, r.admob + r.adsense]));
+      return { value: new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 4 }).format(cur), sub: S.compare && prevV ? `${delta(cur, prevV)} ${eur(revTotal)} au total` : `${eur(revTotal)} au total`, cur: ser && W && !W.hourly ? W.buckets.map((x, i) => ratio(byDay[x] ?? 0, ser.cur.active[i]) ?? 0) : null, color: '#0f8a5f' };
+    }) : tile('Revenu par actif / jour', g, 'revenue', () => ({}))}
+  </div>`;
+
+  const srcSeg = D?.hasOfficial
+    ? `<div class="seg small" role="group" aria-label="Mesure">${[['posthog', 'Premières ouvertures'], ['stores', 'Stores officiels']].map(([v, l]) => `<button data-act="dlsrc" data-v="${v}" aria-pressed="${S.dlSource === v}">${l}</button>`).join('')}</div>`
+    : '';
+  const dlCard = card(`${D?.web ? 'Nouveaux visiteurs web' : 'Téléchargements'} par ${unit()}${S.platform === 'all' ? ' et par plateforme' : ''}`, g,
+    D ? `${chart(D.series, { type: 'bar', stacked: true, prev: D.prev, marks, height: 230, name: 'telechargements' })}
+         <p class="muted" style="font-size:12px;margin:6px 0 0">${D.useStores ? 'App Store Connect et Google Play (chiffres officiels, ~1 à 2 jours de retard).' : D.web ? 'Personnes dont la toute première visite du site tombe ce jour-là.' : 'Premières ouvertures de l’app (PostHog), au plus près des téléchargements, sans délai.'} ${esc(scopeLabel())}${D.notes.length ? ` · ${esc(D.notes.join(' · '))}` : ''}</p>`
+      : part(g, 'installs').html ?? '<div class="skel"></div>',
+    { tools: srcSeg });
+
+  return `
+  <h2 class="section">Croissance · ${esc(scopeLabel())} · ${per()}</h2>
+  ${tiles}
+  <div class="grid" style="margin-top:12px">${dlCard}</div>
+  <div class="grid two" style="margin-top:12px;align-items:start">
+    ${mapCard()}
+    ${rankingCard()}
+  </div>
+  <div class="grid two" style="margin-top:12px">
+    ${card('Entonnoir des nouveaux joueurs', g, coh ? funnelHtml(cohTot) : part(g, 'cohort').html, { extra: 'PostHog' })}
+    ${card('Engagement', g, eng && coh ? engagementHtml(eng, coh) : part(g, eng ? 'cohort' : 'engagement').html, { extra: 'PostHog' })}
+  </div>
+  <div class="grid two" style="margin-top:12px">
+    ${card('Revenus par utilisateur', 'growth', rev ? revenueHtml(rev, revTotal, personDays, cohTot) : part(g, 'revenue').html, { extra: 'AdMob · AdSense' })}
+    ${card('Repères et effet', g, journalHtml(D), { extra: 'PostHog · Supabase' })}
+  </div>`;
+}
+
+const METRICS = [['installs', 'Nouveaux'], ['active', 'Actifs'], ['d1', 'Rétention J1'], ['revenue', 'Revenus']];
+function countryStats() {
+  const rows = val('growth', 'countries', (v) => v) ?? [];
+  const coh = val('growth', 'cohort', (v) => v) ?? [];
+  const rev = val('growth', 'revenue', (v) => v.byCountry) ?? [];
+  const m = {};
+  for (const r of rows) m[r.c] = { c: r.c, installs: r.installs, active: r.active };
+  for (const r of coh) if (r.c) { const x = (m[r.c] ??= { c: r.c, installs: 0, active: 0 }); x.e1 = (x.e1 ?? 0) + r.e1; x.r1 = (x.r1 ?? 0) + r.r1; }
+  for (const r of rev) (m[r.c] ??= { c: r.c, installs: 0, active: 0 }).revenue = r.earnings;
+  for (const x of Object.values(m)) x.d1 = x.e1 >= 10 ? x.r1 / x.e1 : null;
+  return m;
+}
+function mapCard() {
+  if (!S.world) return card('Carte du monde', 'growth', '<div class="skel"></div>');
+  const p = part('growth', 'countries');
+  if (!p.ok) return card('Carte du monde', 'growth', p.html);
+  const m = countryStats();
+  const metric = S.mapMetric;
+  const vals = Object.values(m).map((x) => x[metric]).filter((v) => v > 0);
+  const max = Math.max(...vals, 1e-9);
+  const lvl = (v) => (v == null || v <= 0 ? -1 : metric === 'd1' ? Math.min(5, Math.floor((v / 0.4) * 6)) : Math.min(5, Math.floor((Math.log1p(v) / Math.log1p(max)) * 5.999)));
+  const show = (x) => (metric === 'd1' ? pct(x.d1, 0) : metric === 'revenue' ? eur(x.revenue) : fmt(x[metric]));
+  const sel = new Set(S.exclude ? [] : S.countries);
+  const paths = Object.entries(S.world).map(([c, d]) => {
+    const x = m[c];
+    const l = lvl(x?.[metric]);
+    return `<path d="${d}" data-act="tog" data-c="${c}" fill="${l < 0 ? 'var(--grid)' : SCALE[l]}" class="${sel.has(c) ? 'on' : ''}"><title>${esc(countryName(c))}${x ? ` · ${show(x)}` : ''}</title></path>`;
+  }).join('');
+  const seg = `<div class="seg small" role="group" aria-label="Mesure de la carte">${METRICS.map(([v, l]) => `<button data-act="mapm" data-v="${v}" aria-pressed="${metric === v}">${l}</button>`).join('')}</div>`;
+  return card('Carte du monde', 'growth', `<div class="map"><svg viewBox="0 0 576 250" role="img" aria-label="Carte : ${esc(METRICS.find((x) => x[0] === metric)[1])} par pays">${paths}</svg></div>
+    <div class="scale"><span>Moins</span>${SCALE.map((c) => `<i style="background:${c}"></i>`).join('')}<span>Plus</span><span style="margin-left:auto">Clic = filtrer ce pays · contour = pays filtrés</span></div>`, { tools: seg });
+}
+function rankingCard() {
+  const p = part('growth', 'countries');
+  if (!p.ok) return card('Classement des pays', 'growth', p.html);
+  const m = countryStats();
+  const rows = Object.values(m).sort((a, b) => b.installs - a.installs || b.active - a.active).slice(0, 15);
+  const sel = new Set(S.exclude ? [] : S.countries);
+  const id = `t${++chartId}`;
+  CSV[id] = { name: 'pays', head: ['Pays', 'Code', 'Nouveaux joueurs', 'Actifs', 'Rétention J1', 'Revenus €'], rows: Object.values(m).sort((a, b) => b.installs - a.installs).map((x) => [countryName(x.c), x.c, x.installs, x.active, x.d1 ?? '', x.revenue ?? '']) };
+  const maxI = Math.max(...rows.map((r) => r.installs), 1);
+  return card('Classement des pays', 'growth', `<div class="scroll-x"><table class="tbl"><thead><tr><th>Pays</th><th class="r">Nouveaux</th><th class="r">Actifs</th><th class="r">J1</th><th class="r">Revenus</th></tr></thead><tbody>${rows.map((x) => `
+    <tr class="pick ${sel.has(x.c) ? 'on' : ''}" data-act="tog" data-c="${x.c}"><td><span class="box"></span>${esc(countryName(x.c))}</td>
+    <td class="r num">${fmt(x.installs)}<div class="track" style="height:3px;background:var(--surface-2);border-radius:2px;margin-top:3px"><div style="height:100%;width:${(x.installs / maxI) * 100}%;background:var(--s1);border-radius:2px;margin-left:auto"></div></div></td>
+    <td class="r num">${fmt(x.active)}</td><td class="r num">${pct(x.d1, 0)}</td><td class="r num">${x.revenue != null ? eur(x.revenue) : '—'}</td></tr>`).join('')}</tbody></table></div>`,
+  { tools: `<button class="cardbtn" data-act="csv" data-id="${id}">CSV</button>` });
+}
+
+function funnelHtml(t) {
+  if (!t?.n) return '<div class="empty">Aucun nouveau joueur sur la période.</div>';
+  const steps = [['Nouveaux joueurs', t.n, t.n]];
+  if (S.platform !== 'web') steps.push(['App installée (1re ouverture)', t.installed, t.n]);
+  steps.push(['1re partie lancée', t.started, t.n], ['1re partie finie', t.completed, t.n], ['Compte créé', t.signed, t.n]);
+  steps.push(['Revenu à J1', t.r1, t.e1, true], ['Revenu à J7', t.r7, t.e7, true]);
+  const id = `t${++chartId}`;
+  CSV[id] = { name: 'entonnoir', head: ['Étape', 'Joueurs', 'Base', 'Taux'], rows: steps.map(([l, v, b]) => [l, v, b, b ? v / b : '']) };
+  return `<div class="fun">${steps.map(([label, v, base, isRet], i) => {
+    const r = ratio(v, base);
+    const prevR = i ? ratio(steps[i - 1][1], steps[i - 1][2]) : null;
+    const step = i && r != null && prevR ? r / prevR : null;
+    return `<div><div class="top"><span>${label}</span><span class="num"><b>${fmt(v)}</b> <span class="muted">· ${pct(r, 0)}${isRet ? ` de ${fmt(base)}` : ''}</span></span></div>
+      <div class="bar"><div style="width:${Math.max(0, Math.min(1, r ?? 0)) * 100}%;opacity:${1 - i * 0.1}"></div></div>
+      ${step != null && !isRet ? `<div class="fstep ${step < 0.5 ? 'low' : ''}">↳ ${pct(step, 0)} de l’étape précédente</div>` : ''}</div>`;
+  }).join('')}</div>
+  <p class="muted" style="font-size:12px;margin:10px 0 0">Joueurs vus pour la première fois sur la période. J1/J7 : parmi ceux arrivés il y a au moins 1/7 jours. <button class="cardbtn" data-act="csv" data-id="${id}">CSV</button></p>`;
+}
+
+function engagementHtml(e, coh) {
+  const heat = (r, e2) => {
+    if (!e2 || e2 < 5) return '<td class="heat" style="color:var(--muted)">—</td>';
+    const v = r / e2;
+    const t = Math.min(1, v / 0.4);
+    return `<td class="heat num" style="background:color-mix(in srgb, var(--s1) ${Math.round(12 + t * 78)}%, transparent);color:${t > 0.55 ? '#fff' : 'var(--ink)'}">${pct(v, 0)}</td>`;
+  };
+  const byP = {};
+  for (const r of coh) { const x = (byP[r.plat] ??= {}); for (const k of ['e1', 'r1', 'e7', 'r7', 'e30', 'r30']) x[k] = (x[k] ?? 0) + r[k]; }
+  const sess = e.medianSession;
+  return `<div class="mini">
+    <div><small>Parties par joueur actif / jour</small><b class="num">${fmt(ratio(e.games, e.personDays), 1)}</b></div>
+    <div><small>Actifs du jour / de la période</small><b class="num">${pct(ratio(e.personDays / Math.max(e.n, 1), e.users), 0)}</b></div>
+    <div><small>Durée médiane de session</small><b class="num">${sess ? `${Math.floor(sess / 60)} min ${String(Math.round(sess % 60)).padStart(2, '0')}` : '—'}</b></div>
+    <div><small>Joueurs du défi du jour</small><b class="num">${pct(ratio(e.daily, e.users), 0)}</b></div>
+  </div>
+  <table class="tbl heatt"><thead><tr><th>Rétention</th><th class="r">J1</th><th class="r">J7</th><th class="r">J30</th></tr></thead><tbody>
+  ${['iOS', 'Android', 'Web'].filter((p) => byP[p]).map((p) => `<tr><td>${p}</td>${heat(byP[p].r1, byP[p].e1)}${heat(byP[p].r7, byP[p].e7)}${heat(byP[p].r30, byP[p].e30)}</tr>`).join('') || '<tr><td colspan="4" class="muted">Pas encore de cohorte.</td></tr>'}
+  </tbody></table>`;
+}
+
+function revenueHtml(r, total, personDays, cohTot) {
+  const a = r.admob ?? 0;
+  const s = r.adsense ?? 0;
+  const top = (r.byCountry ?? []).slice(0, 6);
+  const W = val('growth', 'window', (v) => v);
+  const byDay = Object.fromEntries((r.byDay ?? []).map((x) => [x.x, x]));
+  const xs = W?.hourly ? [] : W?.buckets ?? [];
+  return `<div class="mini">
+    <div><small>Revenu total · ${per()}</small><b class="num">${eur(total)}</b> ${S.compare ? delta(total, r.prev) : ''}</div>
+    <div><small>Par actif / jour</small><b class="num">${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 4 }).format(total / (personDays || 1))}</b></div>
+    <div><small>Par nouveau joueur</small><b class="num">${eur(ratio(total, cohTot?.n))}</b></div>
+    <div><small>App / site</small><b class="num">${total ? pct(a / total, 0) : '—'}</b> <span class="muted">app</span></div>
+  </div>
+  <div class="split"><div style="width:${total ? (a / total) * 100 : 0}%;background:var(--s1)"></div><div style="width:${total ? (s / total) * 100 : 0}%;background:var(--s3)"></div></div>
+  ${xs.length ? chart([
+    { name: 'AdMob', color: 'var(--s1)', points: xs.map((x) => ({ x, y: byDay[x]?.admob ?? 0 })) },
+    { name: 'AdSense', color: 'var(--s3)', points: xs.map((x) => ({ x, y: byDay[x]?.adsense ?? 0 })) },
+  ], { type: 'bar', stacked: true, height: 120, fmtY: (x) => eur(x), name: 'revenus' }) : ''}
+  <p class="flbl" style="margin:12px 0 6px">Par pays (tous pays)</p>
+  ${hlist(top, { label: (x) => countryName(x.c), value: (x) => x.earnings, show: (x) => eur(x.earnings), color: 'var(--s3)', limit: 6 })}
+  ${r.partial ? `<p class="muted" style="font-size:12px">${esc(r.partial)}</p>` : ''}`;
+}
+
+/** Effet d'un repère : téléchargements des 3 jours qui suivent vs les 3 d'avant. */
+function effectOf(D, day) {
+  if (!D) return null;
+  const i = D.xs.indexOf(day);
+  if (i < 3 || i + 2 >= D.xs.length) return null;
+  const before = sumA(D.tot.slice(i - 3, i));
+  const after = sumA(D.tot.slice(i, i + 3));
+  return before ? (after - before) / before : null;
+}
+function journalHtml(D) {
+  const p = part('growth', 'markers');
+  if (!p.ok) return p.html;
+  const W = val('growth', 'window', (v) => v);
+  const list = p.v.list.filter((mk) => !W || mk.day >= W.buckets[0].slice(0, 10)).slice(0, 14);
+  const rows = list.map((mk) => {
+    const [kind, color] = MARK[mk.kind] ?? MARK.autre;
+    const e = effectOf(D, mk.day);
+    return `<div class="jrow"><span class="muted">${dm(mk.day)}</span><span class="lab" title="${esc(mk.label)}"><span class="mk" style="background:${color}">${kind}</span> ${esc(mk.label)}</span>
+      <span class="num" style="font-weight:650;color:${e == null ? 'var(--muted)' : e >= 0 ? 'var(--good-ink)' : 'var(--bad-ink)'}">${e == null ? '—' : `${e >= 0 ? '+' : '−'}${fmt(Math.abs(e) * 100)} %`}</span>
+      ${mk.manual ? `<button class="xbtn" data-act="mkdel" data-id="${mk.id}" aria-label="Supprimer le repère">×</button>` : '<span></span>'}</div>`;
+  }).join('');
+  const warn = p.v.warnings?.length ? `<p class="muted" style="font-size:12px">${esc(p.v.warnings.some((w) => /hq_markers/.test(w)) ? 'Repères manuels : table hq_markers pas encore créée (migration Supabase).' : p.v.warnings[0])}</p>` : '';
+  return `${rows || '<div class="empty">Aucun repère sur la période.</div>'}
+  <form class="addm" data-act="mkadd">
+    <input type="date" name="day" value="${today()}" max="${today()}" aria-label="Date du repère" required>
+    <select name="kind" aria-label="Type"><option value="campagne">Campagne</option><option value="version">Version</option><option value="push">Push</option><option value="autre">Autre</option></select>
+    <input type="text" name="label" maxlength="120" placeholder="Ex. vidéo TikTok capitales" aria-label="Libellé" required>
+    <button class="btn ghost" type="submit">Ajouter</button>
+  </form>
+  <p class="muted" style="font-size:12px;margin:8px 0 0">Effet = téléchargements des 3 jours à partir du repère vs les 3 jours d’avant. Versions (PostHog) et push (Supabase) ajoutés tout seuls.</p>${warn}`;
+}
+
+async function markerWrite(method, body, id) {
+  const { data: { session } } = await client.auth.getSession();
+  const r = await fetch(`/api/hq?source=markers${id ? `&id=${id}` : ''}`, {
+    method,
+    headers: { authorization: `Bearer ${session?.access_token ?? S.token}`, 'content-type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { alert(`Repère non enregistré : ${j.error ?? r.status}`); return; }
+  await loadAll(true, ['growth']);
+}
+
+// ─── Événements (délégués) ───────────────────────────────────────────────────
+function onAct(e) {
+  const el = e.target.closest('[data-act]');
+  if (!el) return;
+  const act = el.dataset.act;
+  if (e.type === 'click') {
+    if (['cmp', 'from', 'to', 'addc', 'mkadd'].includes(act)) return;
+    if (act === 'csv') { e.preventDefault(); e.stopPropagation(); if (CSV[el.dataset.id]) downloadCsv(CSV[el.dataset.id]); return; }
+    if (act === 'plat') return setFilters({ platform: el.dataset.v });
+    if (act === 'preset') { const [, list, ex] = PRESETS[Number(el.dataset.k)]; return setFilters({ countries: [...list], exclude: ex }); }
+    if (act === 'rmc') return setFilters({ countries: S.countries.filter((c) => c !== el.dataset.c) });
+    if (act === 'tog') return toggleCountry(el.dataset.c);
+    if (act === 'mapm') { S.mapMetric = el.dataset.v; return render(); }
+    if (act === 'dlsrc') { S.dlSource = el.dataset.v; store('hq.dlsrc', S.dlSource); return render(); }
+    if (act === 'sheet') { S.sheet = true; return render(); }
+    if (act === 'close') { S.sheet = false; return render(); }
+    if (act === 'reset') return setFilters({ countries: [], exclude: false, platform: 'all' });
+    if (act === 'days') return pickDays(el.dataset.v);
+    if (act === 'mkdel') { if (confirm('Supprimer ce repère ?')) markerWrite('DELETE', null, el.dataset.id); }
+  } else if (e.type === 'change') {
+    if (act === 'cmp') return setFilters({ compare: el.checked });
+    if (act === 'addc' && el.value) { const c = el.value; el.value = ''; return setFilters({ countries: [...(S.exclude ? [] : S.countries), c], exclude: false }); }
+    if ((act === 'from' || act === 'to') && el.value) {
+      const r = { ...S.range, [act]: el.value };
+      if (r.from > r.to) r[act === 'from' ? 'to' : 'from'] = el.value;
+      return setFilters({ range: r });
+    }
+  } else if (e.type === 'submit' && act === 'mkadd') {
+    e.preventDefault();
+    const f = new FormData(el);
+    markerWrite('POST', { day: f.get('day'), kind: f.get('kind'), label: String(f.get('label') ?? '').trim() });
+  }
+}
+
+function pickDays(v) {
+  if (v === 'custom') {
+    if (!S.range) setFilters({ range: { from: shiftDay(today(), -28), to: shiftDay(today(), -1) } });
+    else render();
+    return;
+  }
+  S.days = Number(v);
+  store('hq.days', S.days);
+  if (S.range) return setFilters({ range: null });
+  S.data = {};
+  restoreCache();
+  render();
+  loadAll();
+}
+
+const VIEWS = { overview, growth: growthView, players, acquisition, revenue, quality, deploys: deploysView };
 
 // ─── Rendu ───────────────────────────────────────────────────────────────────
 let raf = 0;
@@ -840,14 +1420,20 @@ function scheduleRender() {
 }
 function render() {
   charts.length = 0;
-  $('#main').innerHTML = VIEWS[S.tab]();
+  for (const k of Object.keys(CSV)) delete CSV[k];
+  const focusAct = document.activeElement?.dataset?.act;
+  $('#filters').innerHTML = filtersHtml();
+  $('#main').innerHTML = (VIEWS[S.tab] ?? overview)();
+  $('#sheet').innerHTML = sheetHtml();
+  document.body.style.overflow = S.sheet ? 'hidden' : '';
+  if (focusAct === 'close' || (S.sheet && !document.activeElement?.closest?.('.sheet'))) $('#sheet .sheet')?.focus?.();
   mountCharts();
-  document.querySelectorAll('.seg button').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.days) === S.days)));
+  document.querySelectorAll('#period button').forEach((b) => b.setAttribute('aria-pressed', String(S.range ? b.dataset.days === 'custom' : Number(b.dataset.days) === S.days)));
   document.querySelectorAll('#tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === S.tab)));
   const times = Object.values(S.data).map((d) => d?.fetchedAt).filter(Boolean).sort();
   $('#stamp').textContent = S.pending.size
     ? `Chargement… (${SOURCES.length - S.pending.size}/${SOURCES.length} sources)`
-    : times.length ? `Données ${ago(times[0])} · ${S.days === 1 ? '24 dernières heures' : `${S.days} derniers jours`}` : '';
+    : times.length ? `Données ${ago(times[0])} · ${S.range ? `du ${dm(S.range.from)} au ${dm(S.range.to)}` : S.days === 1 ? '24 dernières heures' : `${S.days} derniers jours`}` : '';
 }
 
 function buildTabs() {
@@ -860,14 +1446,9 @@ function buildTabs() {
     render();
     window.scrollTo({ top: 0 });
   });
-  document.querySelectorAll('.seg button').forEach((b) => b.addEventListener('click', () => {
-    S.days = Number(b.dataset.days);
-    store('hq.days', S.days);
-    S.data = {};
-    restoreCache();
-    render();
-    loadAll();
-  }));
+  document.querySelectorAll('#period button').forEach((b) => b.addEventListener('click', () => pickDays(b.dataset.days)));
+  for (const t of ['click', 'change', 'submit']) document.addEventListener(t, onAct);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && S.sheet) { S.sheet = false; render(); } });
   $('#refresh').addEventListener('click', () => loadAll(true));
   $('#theme').addEventListener('click', () => {
     const cur = document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
@@ -914,7 +1495,11 @@ let started = false;
 function showApp() {
   $('#login').classList.add('hide');
   $('#app').classList.remove('hide');
-  if (!started) { buildTabs(); started = true; }
+  if (!started) {
+    buildTabs();
+    started = true;
+    fetch('/hq/world.json').then((r) => r.json()).then((w) => { S.world = w; scheduleRender(); }).catch(() => {});
+  }
   restoreCache();
   render();
   loadAll();
