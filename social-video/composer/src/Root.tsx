@@ -2,6 +2,7 @@ import { Composition } from 'remotion';
 
 import { GLOBE_FPS, GlobeQuiz, globeQuizSeconds, type GlobeQuizProps } from './GlobeQuiz';
 import { PLUS_FPS, PlusOuMoins, plusOuMoinsSeconds, type PlusOuMoinsProps } from './PlusOuMoins';
+import { QUIZ_FPS, QuizTV, quizTVSeconds, type QuizTVProps } from './QuizTV';
 import { FPS, Short, endCardSeconds, type ShortProps } from './Short';
 
 const defaultProps: ShortProps = {
@@ -57,6 +58,23 @@ const plusDefaults: PlusOuMoinsProps = {
   icon: 'icon.png',
 };
 
+const quizDefaults: QuizTVProps = {
+  mode: 'capitals',
+  hook: ['6 capitales, 4 secondes chacune', 'Tu vas plus loin que moi ? 🔥'],
+  category: 'Capitales',
+  categoryIcon: '🏛️',
+  categoryTitle: 'MODE',
+  streakTitle: 'SÉRIE',
+  fail: 'Raté !',
+  rounds: [
+    { country: 'Kenya', cc: 'ke', prompt: 'Quelle est la capitale du Kenya ?', options: ['Mombasa', 'Nairobi', 'Kampala', 'Dodoma'], answer: 1, pick: 1 },
+  ],
+  outro: 'Tu fais mieux ?',
+  outroSub: 'Ton score en commentaire 👇',
+  cta: 'GeoG · gratuit',
+  icon: 'icon.png',
+};
+
 export const Root = () => (
   <>
   <Composition
@@ -68,6 +86,16 @@ export const Root = () => (
     durationInFrames={Math.ceil(PLUS_FPS * plusOuMoinsSeconds(plusDefaults))}
     defaultProps={plusDefaults}
     calculateMetadata={({ props }) => ({ durationInFrames: Math.ceil(PLUS_FPS * plusOuMoinsSeconds(props)) })}
+  />
+  <Composition
+    id="QuizTV"
+    component={QuizTV}
+    width={1080}
+    height={1920}
+    fps={QUIZ_FPS}
+    durationInFrames={Math.ceil(QUIZ_FPS * quizTVSeconds(quizDefaults))}
+    defaultProps={quizDefaults}
+    calculateMetadata={({ props }) => ({ durationInFrames: Math.ceil(QUIZ_FPS * quizTVSeconds(props)) })}
   />
   <Composition
     id="GlobeQuiz"
