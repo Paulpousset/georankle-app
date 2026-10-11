@@ -37,6 +37,10 @@ on:
         description: Refaire le build `recording` sur EAS
         type: boolean
         default: false
+      record:
+        description: Filmer l'app (décoché = seulement les formats animés, globe et plus ou moins)
+        type: boolean
+        default: true
 
 # contents: write pour publier les shorts en release (lisibles depuis le
 # téléphone, sans dézipper d'artefact).
@@ -70,6 +74,7 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Build `recording` (APK)
+        if: github.event.inputs.record != 'false'
         env:
           REBUILD: ${{ github.event.inputs.rebuild || 'false' }}
         run: |
@@ -88,6 +93,7 @@ jobs:
           echo "APK : $url"
           curl -fsSL "$url" -o geog-recording.apk
 
+      # Toujours : le montage a besoin des polices emoji et de ffmpeg.
       - name: Maestro + polices emoji
         run: |
           curl -fsSL https://get.maestro.mobile.dev | bash
@@ -95,12 +101,14 @@ jobs:
           sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-color-emoji ffmpeg
 
       - name: Activer KVM
+        if: github.event.inputs.record != 'false'
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
       - name: Tournage dans l'émulateur
+        if: github.event.inputs.record != 'false'
         uses: reactivecircus/android-emulator-runner@v2
         env:
           LANGS: ${{ github.event.inputs.langs || 'fr en' }}
@@ -137,6 +145,8 @@ jobs:
           npm ci --no-audit --no-fund
           if ls ../out/raw/*.mp4 >/dev/null 2>&1; then node plan.mjs --variants "$VARIANTS"; fi
           node globe.mjs --count "$GLOBES" --lang fr
+          # Plus ou moins animé (sans tournage) : un par jour, thème qui alterne.
+          node plusmoins.mjs --count 1 --lang fr
           node voice.mjs
           node render.mjs
 

@@ -32,10 +32,11 @@
 //                        (Upload-Post) ou all (défaut). Chaque cible a sa
 //                        propre file : YouTube, moins fréquent, prend la
 //                        vidéo la plus récente qu'il n'a pas encore eue.
-//   KIND                 social seulement : globe (quiz globe*), app (vidéos
-//                        de l'app) ou auto (défaut : globe avant 16 h à
-//                        Paris, app après). Si la file de ce format est
-//                        vide, l'autre format part à la place.
+//   KIND                 social seulement : globe (quiz globe*), plusmoins
+//                        (plus ou moins animé), app (vidéos de l'app) ou
+//                        auto (défaut : globe avant 16 h à Paris, plus ou
+//                        moins après). Si la file de ce format est vide, un
+//                        autre format part à la place.
 //   MIN_RELEASE_APP      vidéos de l'app : ignorer les releases plus anciennes
 //   MIN_RELEASE          ignorer les releases shorts-N avec N plus petit
 //   DRY_RUN              0 pour publier pour de vrai
@@ -67,9 +68,10 @@ const parisHour = Number(
     .formatToParts(new Date())
     .find((part) => part.type === 'hour').value,
 );
-// Alternance (social) : le quiz globe à midi, une vidéo de l'app le soir. Si
-// la file de ce format est vide, l'autre format part à la place.
-const KIND = TARGET !== 'social' ? '' : !env.KIND || env.KIND === 'auto' ? (parisHour < 16 ? 'globe' : 'app') : env.KIND;
+// Alternance (social) : le quiz globe à midi, le « plus ou moins » animé le
+// soir (choix de Paul le 11/10). Si la file de ce format est vide, les
+// vidéos de l'app, puis l'autre format, partent à la place.
+const KIND = TARGET !== 'social' ? '' : !env.KIND || env.KIND === 'auto' ? (parisHour < 16 ? 'globe' : 'plusmoins') : env.KIND;
 const USE_ZERNIO = ZERNIO && TARGET !== 'youtube';
 const USE_UPLOAD_POST = (UPLOAD_POST || !ZERNIO) && TARGET !== 'social';
 const STATE_TAG = 'shorts-state';
@@ -260,6 +262,13 @@ if (env.SCHEDULE) {
     process.exit(0);
   }
 }
+// Pause des tâches planifiées demandée par Paul le 11/10 : le plus ou moins
+// part à la main l'après-midi, rien à 19 h 30 ; reprise lundi 12/10.
+const PAUSED_UNTIL = Date.parse('2026-10-12T00:00:00+02:00');
+if (env.SCHEDULE && Date.now() < PAUSED_UNTIL) {
+  console.log(`[${TARGET}] publications planifiées en pause jusqu'au 12/10 : rien à faire.`);
+  process.exit(0);
+}
 const MIN_GAP_HOURS = Number(env.MIN_GAP_HOURS || 0);
 const last = state.posted.filter(postedFor).map((p) => Date.parse(p.at)).filter(Boolean).sort().pop();
 if (MIN_GAP_HOURS && last && Date.now() - last < MIN_GAP_HOURS * 3600e3) {
@@ -268,6 +277,7 @@ if (MIN_GAP_HOURS && last && Date.now() - last < MIN_GAP_HOURS * 3600e3) {
 }
 
 const isGlobe = (item) => item.group.startsWith('globe');
+const isPlusMoins = (item) => item.group.startsWith('plusmoins');
 const releaseNumber = (item) => Number(item.tag.slice(7));
 // Jamais deux fois de suite le même jeu : parmi les vidéos de l'app, le jeu
 // publié il y a le plus longtemps (ou jamais) passe d'abord, puis la release
@@ -280,11 +290,15 @@ for (const p of state.posted.filter(postedFor)) {
 const gameOf = (item) => item.group.replace(/-[a-z]{2}$/, '');
 const all = queue(state).filter((item) => isGlobe(item) || releaseNumber(item) >= MIN_RELEASE_APP);
 const apps = all
-  .filter((item) => !isGlobe(item))
+  .filter((item) => !isGlobe(item) && !isPlusMoins(item))
   .sort((a, b) => (lastPosted[gameOf(a)] || 0) - (lastPosted[gameOf(b)] || 0) || releaseNumber(b) - releaseNumber(a));
 const globes = all.filter(isGlobe);
-const wanted = !KIND ? all : KIND === 'globe' ? globes : apps;
-const todo = [...wanted, ...(KIND === 'globe' ? apps : globes).filter((item) => !wanted.includes(item))];
+// Une nouvelle partie à chaque tournage : la plus récente d'abord.
+const plusMoins = all.filter(isPlusMoins).sort((a, b) => releaseNumber(b) - releaseNumber(a));
+const FALLBACK = { globe: [globes, plusMoins, apps], plusmoins: [plusMoins, apps, globes], app: [apps, plusMoins, globes] };
+const order = FALLBACK[KIND] ?? [all];
+const wanted = order[0];
+const todo = [...new Set(order.flat())];
 console.log(`[${TARGET}] ${todo.length} vidéo(s) en attente dont ${wanted.length} au format ${KIND || 'quelconque'} (langues ${LANGS.join(', ')}, releases ≥ shorts-${MIN_RELEASE}).`);
 
 const accounts = USE_ZERNIO ? await zernioAccounts() : [];
