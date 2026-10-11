@@ -30,6 +30,8 @@ ou en CLI : `vercel env add NOM production`. Il faut **redéployer** après ajou
 | AdMob | revenus, impressions, eCPM, remplissage, par format/pays | `GOOGLE_OAUTH_*` | ⏳ 5 min |
 | AdSense | revenus web, état du compte, alertes | `GOOGLE_OAUTH_*` | ⏳ (même étape) |
 | App Store Connect | téléchargements/jour, avis | `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY`, `ASC_VENDOR_NUMBER` | ⏳ |
+| Croissance (onglet) | téléchargements/jour par plateforme, carte et classement des pays, entonnoir, rétention, engagement, revenus par utilisateur, repères | PostHog (✅) + options ci-dessous | ✅ |
+| Google Play installations | installations officielles/jour par pays (onglet Croissance → « Stores officiels ») | `PLAY_REPORTS_BUCKET` + `GOOGLE_SA_JSON` | ⏳ 1 min |
 
 ## Étapes
 
@@ -74,6 +76,19 @@ Quand ces trois variables existent, Search Console et Play passent aussi par ce 
 2. `ASC_KEY_ID` (ID de la clé), `ASC_ISSUER_ID` (en haut de la page),
    `ASC_PRIVATE_KEY` = contenu du `.p8` (retours à la ligne gardés, ou remplacés par `\n`).
 3. `ASC_VENDOR_NUMBER` : Paiements et rapports financiers, en haut à gauche.
+
+### 7. Installations Google Play officielles
+Play Console → Télécharger les rapports → Statistiques → « Copier l'URI Cloud Storage »
+(`gs://pubsite_prod_rev_…/stats/installs/`) → `PLAY_REPORTS_BUCKET` = `pubsite_prod_rev_…`.
+Le compte de service doit avoir « Afficher les informations de l'application et télécharger les rapports groupés ».
+
+## Onglet Croissance
+- Filtres pays (ou « Hors France »), plateforme, dates perso et comparaison : appliqués à l'onglet Croissance
+  et aux données PostHog (`/api/hq?…&countries=FR,BE&exclude=1&platform=ios&from=…&to=…`).
+- Téléchargements : premières ouvertures de l'app (PostHog, temps réel) ou chiffres officiels
+  App Store Connect / Google Play quand ils sont branchés.
+- Repères : versions (PostHog) et push (Supabase) automatiques ; repères manuels dans la table
+  `hq_markers` (migration `supabase/migrations/20261011_01_hq_markers.sql`, appliquée au merge).
 
 ## Ajouter une source
 Nouveau module `api/_hq/<nom>.mjs` qui exporte `async function <nom>({ days })` et renvoie

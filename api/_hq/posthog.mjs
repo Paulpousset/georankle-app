@@ -1,26 +1,12 @@
 /** Source « Audience » : PostHog (HogQL), app native + web dans le même projet. */
-import { env, need, http, settle, buckets, hourly } from './lib.mjs';
+import { need, settle, PLATFORM, hogql, hogFilter, windowOf } from './lib.mjs';
 
-// App native = lib posthog-react-native ; tout le reste = web (site + /play).
-const PLATFORM = `multiIf(properties.$lib = 'posthog-react-native', if(properties.$os = 'Android', 'Android', 'iOS'), 'Web')`;
-
-export async function posthog({ days }) {
+export async function posthog({ days, from, to, countries, exclude, platform }) {
   need(['POSTHOG_PERSONAL_API_KEY'], 'Clé perso PostHog (déjà dans .env.secrets)');
-  const host = env('POSTHOG_HOST_API', 'https://eu.posthog.com');
-  const hogql = async (query) => {
-    const r = await http(`${host}/api/projects/@current/query/`, {
-      method: 'POST',
-      headers: {
-        authorization: `Bearer ${env('POSTHOG_PERSONAL_API_KEY')}`,
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({ query: { kind: 'HogQLQuery', query } }),
-      timeout: 30000,
-    });
-    return r.results;
-  };
-  const win = `timestamp > now() - interval ${days} day`;
-  const prevWin = `timestamp > now() - interval ${days * 2} day and timestamp <= now() - interval ${days} day`;
+  const W = windowOf({ days, from, to });
+  const F = hogFilter({ countries, exclude, platform });
+  const win = `${W.cur}${F}`;
+  const span = Math.max(W.n, 1);
   const top = (rows) => rows.map(([label, value]) => ({ label: label ?? '(aucun)', value }));
 
   return settle({
@@ -30,18 +16,18 @@ export async function posthog({ days }) {
           uniqIf(person_id, timestamp > now() - interval 1 day),
           uniqIf(person_id, timestamp > now() - interval 7 day),
           uniqIf(person_id, timestamp > now() - interval 30 day),
-          uniqIf(person_id, ${win}),
-          uniqIf(person_id, ${prevWin})
-        from events where timestamp > now() - interval ${Math.max(60, days * 2)} day`);
+          uniqIf(person_id, ${W.cur}),
+          uniqIf(person_id, ${W.prev})
+        from events where (${W.prev} or ${W.cur} or timestamp > now() - interval 30 day)${F}`);
       return { dau, wau, mau, period: cur, periodPrev: prev };
     },
     dauByPlatform: async () => {
       const rows = await hogql(`
-        select ${hourly(days) ? `formatDateTime(toStartOfHour(toTimeZone(timestamp, 'UTC')), '%Y-%m-%dT%H')` : 'toString(toDate(timestamp))'} d, ${PLATFORM} p, uniq(person_id)
+        select ${W.bucket} d, ${PLATFORM} p, uniq(person_id)
         from events where ${win} group by d, p order by d`);
       const series = {};
       for (const [d, p, n] of rows) (series[p] ??= {})[d] = n;
-      const daysList = buckets(days);
+      const daysList = W.buckets;
       return ['iOS', 'Android', 'Web'].map((name) => ({
         name,
         points: daysList.map((x) => ({ x, y: series[name]?.[x] ?? 0 })),
@@ -56,11 +42,11 @@ export async function posthog({ days }) {
                countIf(has(a.ds, f.d0 + 1)) d1,
                countIf(has(a.ds, f.d0 + 7)) d7
         from (select person_id, min(toDate(timestamp)) d0 from events
-              where timestamp > now() - interval 60 day group by person_id) f
+              where timestamp > now() - interval 60 day${F} group by person_id) f
         left join (select person_id, groupUniqArray(toDate(timestamp)) ds from events
-                   where timestamp > now() - interval 60 day group by person_id) a
+                   where timestamp > now() - interval 60 day${F} group by person_id) a
           on a.person_id = f.person_id
-        where f.d0 >= today() - ${Math.max(days, 14)} and f.d0 <= today() - 1
+        where f.d0 >= today() - ${Math.min(Math.max(span, 14), 58)} and f.d0 <= today() - 1
         group by f.d0 order by f.d0`);
       const sum = (i, pred) => rows.filter(pred).reduce((s, r) => s + r[i], 0);
       const d1Base = sum(1, (r) => new Date(r[0]) <= new Date(Date.now() - 2 * 86400000));
@@ -99,7 +85,7 @@ export async function posthog({ days }) {
     countries: async () =>
       top(await hogql(`select properties.$geoip_country_code c, uniq(person_id) n from events where ${win} group by c order by n desc limit 15`)),
     appVersions: async () =>
-      top(await hogql(`select properties.$app_version v, uniq(person_id) n from events where timestamp > now() - interval 7 day and properties.$lib = 'posthog-react-native' group by v order by n desc limit 8`)),
+      top(await hogql(`select properties.$app_version v, uniq(person_id) n from events where timestamp > now() - interval 7 day and properties.$lib = 'posthog-react-native'${F} group by v order by n desc limit 8`)),
     webVitals: async () => {
       const [[lcp, inp, cls, n]] = await hogql(`
         select quantile(0.75)(toFloat(properties.$web_vitals_LCP_value)),

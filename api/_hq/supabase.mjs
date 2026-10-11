@@ -1,7 +1,7 @@
 /** Source « Jeu » : la base Supabase (joueurs, parties, économie, crons). */
 import { SUPABASE_URL, env, need, http, settle, isoDay, daysAgo, buckets, bucketOf, hourly } from './lib.mjs';
 
-function rest() {
+export function rest() {
   need(['SUPABASE_SERVICE_ROLE_KEY']);
   const url = SUPABASE_URL();
   const key = env('SUPABASE_SERVICE_ROLE_KEY');
