@@ -1,7 +1,7 @@
 /**
  * Source « Vidéos » : les prochaines publications automatiques (workflow
  * social-post.yml). On rejoue créneau par créneau le choix de
- * social-video/publish/queue.mjs, le même que le script de publication, à
+ * social-queue.mjs, le même que le script de publication, à
  * partir des releases GitHub et de posted.json : ce qui s'affiche ici est ce
  * qui partira, tant qu'aucun nouveau tournage n'arrive entre-temps.
  *
@@ -12,7 +12,7 @@
 import { env, http } from './lib.mjs';
 import {
   STATE_TAG, STATE_FILE, NEXT_TAG, DEFAULT_MIN_RELEASE_APP, kindFor, parisHourOf, postedFor, upcoming,
-} from '../../social-video/publish/queue.mjs';
+} from './social-queue.mjs';
 
 const REPO = () => env('GITHUB_REPOSITORY', 'Paulpousset/georankle-app');
 const API = () => `https://api.github.com/repos/${REPO()}`;

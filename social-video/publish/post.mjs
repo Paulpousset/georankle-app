@@ -50,7 +50,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   STATE_TAG, STATE_FILE, DEFAULT_MIN_RELEASE_APP, kindFor, parisHourOf, postedFor as postedForTarget, upcoming,
-} from './queue.mjs';
+} from '../../api/_hq/social-queue.mjs';
 
 // Valeurs collées depuis un téléphone : on enlève espaces et retours à la ligne.
 const env = Object.fromEntries(Object.entries(process.env).map(([k, v]) => [k, v?.trim()]));
@@ -64,9 +64,9 @@ const COUNT = Number(env.COUNT || 1);
 const MIN_RELEASE = Number(env.MIN_RELEASE || 0);
 const DRY_RUN = env.DRY_RUN !== '0';
 const TARGET = env.TARGET || 'all';
-// Vidéos de l'app : seulement à partir de cette release (voir queue.mjs).
+// Vidéos de l'app : seulement à partir de cette release (voir social-queue.mjs).
 const MIN_RELEASE_APP = Number(env.MIN_RELEASE_APP || DEFAULT_MIN_RELEASE_APP);
-// Globe à midi, mode de jeu animé le soir (voir queue.mjs).
+// Globe à midi, mode de jeu animé le soir (voir social-queue.mjs).
 const KIND = kindFor(TARGET, env.KIND, parisHourOf(new Date()));
 const USE_ZERNIO = ZERNIO && TARGET !== 'youtube';
 const USE_UPLOAD_POST = (UPLOAD_POST || !ZERNIO) && TARGET !== 'social';
@@ -103,7 +103,8 @@ function saveState(state) {
 }
 
 // --- File d'attente ---------------------------------------------------------
-// Le choix lui-même est dans queue.mjs, partagé avec la page « Vidéos » de /hq.
+// Le choix lui-même est dans api/_hq/social-queue.mjs, partagé avec la page
+// « Vidéos » de /hq (social-video/ n'est pas envoyé à Vercel).
 
 const postedFor = (p) => postedForTarget(p, TARGET);
 

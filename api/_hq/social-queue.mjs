@@ -1,5 +1,5 @@
 // Choix de la prochaine vidéo à publier : partagé par le script de
-// publication (post.mjs) et la page « Vidéos » du tableau de bord /hq, qui
+// publication (social-video/publish/post.mjs) et la page « Vidéos » du tableau de bord /hq, qui
 // rejoue ce même choix créneau après créneau pour montrer ce qui va partir.
 // Aucun accès réseau ici : l'appelant fournit les releases et leurs fichiers.
 
