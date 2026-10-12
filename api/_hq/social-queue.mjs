@@ -6,6 +6,8 @@
 export const STATE_TAG = 'shorts-state';
 export const STATE_FILE = 'posted.json';
 export const NEXT_TAG = 'shorts-next';
+// Ordre choisi à la main depuis /hq (onglet Vidéos), rangé à côté de posted.json.
+export const ORDER_FILE = 'order.json';
 
 // Vidéos de l'app : seulement à partir de cette release (montage avec les
 // bonnes réponses dites et une vraie accroche, le 10/10) ; les anciennes,
@@ -96,9 +98,12 @@ function queue({ posted, releases: all, assetsOf, target, langs, minRelease }) {
  * est vide, les autres formats prennent le relais.
  *   state : contenu de posted.json ({ posted: [...] })
  *   kind  : déjà résolu par kindFor ('' pour YouTube)
+ *   pinned : clés (tag/fichier.mp4) rangées à la main depuis /hq ; sur
+ *            TikTok + Instagram, elles partent avant tout le reste, dans cet
+ *            ordre (YouTube garde sa propre file).
  * Renvoie { todo, wanted } (wanted : la file du format demandé).
  */
-export function upcoming({ state, releases, assetsOf, target, kind, langs, minRelease = 0, minReleaseApp = DEFAULT_MIN_RELEASE_APP }) {
+export function upcoming({ state, releases, assetsOf, target, kind, langs, minRelease = 0, minReleaseApp = DEFAULT_MIN_RELEASE_APP, pinned = [] }) {
   const posted = state.posted.filter((p) => postedFor(p, target));
   const isNext = (item) => item.tag === NEXT_TAG;
   const isGlobe = (item) => !isNext(item) && item.group.startsWith('globe');
@@ -127,5 +132,8 @@ export function upcoming({ state, releases, assetsOf, target, kind, langs, minRe
     .sort((a, b) => (lastPosted[gameOf(a)] || 0) - (lastPosted[gameOf(b)] || 0) || releaseNumber(b) - releaseNumber(a));
   const FALLBACK = { globe: [globes, jeux, apps], jeu: [jeux, apps, globes], plusmoins: [jeux, apps, globes], app: [apps, jeux, globes] };
   const order = [nexts, ...(FALLBACK[kind] ?? [all])];
-  return { todo: [...new Set(order.flat())], wanted: order[1] };
+  const todo = [...new Set(order.flat())];
+  if (target !== 'social' || !pinned.length) return { todo, wanted: order[1] };
+  const first = pinned.map((key) => todo.find((item) => item.key === key)).filter(Boolean);
+  return { todo: [...new Set([...first, ...todo])], wanted: order[1] };
 }

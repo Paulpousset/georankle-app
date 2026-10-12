@@ -42,6 +42,8 @@
 //                        vide, un autre format part à la place.
 //   MIN_RELEASE_APP      vidéos de l'app : ignorer les releases plus anciennes
 //   MIN_RELEASE          ignorer les releases shorts-N avec N plus petit
+//   VIDEO                publier cette vidéo-là (tag/fichier.mp4) au lieu
+//                        de la suivante (bouton « Publier maintenant » de /hq)
 //   DRY_RUN              0 pour publier pour de vrai
 //   GITHUB_REPOSITORY    owner/repo (fourni par Actions)
 import { execFileSync } from 'node:child_process';
@@ -49,7 +51,7 @@ import { mkdtempSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  STATE_TAG, STATE_FILE, DEFAULT_MIN_RELEASE_APP, kindFor, parisHourOf, postedFor as postedForTarget, upcoming,
+  STATE_TAG, STATE_FILE, ORDER_FILE, DEFAULT_MIN_RELEASE_APP, kindFor, parisHourOf, postedFor as postedForTarget, upcoming,
 } from '../../api/_hq/social-queue.mjs';
 
 // Valeurs collées depuis un téléphone : on enlève espaces et retours à la ligne.
@@ -90,6 +92,16 @@ function loadState() {
   return JSON.parse(readFileSync(join(work, STATE_FILE), 'utf8'));
 }
 
+// Ordre rangé à la main depuis /hq (onglet Vidéos) : { pinned: [clés] }.
+function loadPinned() {
+  try {
+    gh('release', 'download', STATE_TAG, '--pattern', ORDER_FILE, '--dir', work, '--clobber');
+    return JSON.parse(readFileSync(join(work, ORDER_FILE), 'utf8')).pinned ?? [];
+  } catch {
+    return [];
+  }
+}
+
 function saveState(state) {
   const path = join(work, STATE_FILE);
   writeFileSync(path, JSON.stringify(state, null, 2) + '\n');
@@ -111,7 +123,10 @@ const postedFor = (p) => postedForTarget(p, TARGET);
 function pending(state) {
   const releases = JSON.parse(gh('release', 'list', '--limit', '100', '--json', 'tagName,createdAt,publishedAt'));
   const assetsOf = (tag) => JSON.parse(gh('release', 'view', tag, '--json', 'assets')).assets.map((a) => a.name);
-  return upcoming({ state, releases, assetsOf, target: TARGET, kind: KIND, langs: LANGS, minRelease: MIN_RELEASE, minReleaseApp: MIN_RELEASE_APP });
+  return upcoming({
+    state, releases, assetsOf, target: TARGET, kind: KIND, langs: LANGS, minRelease: MIN_RELEASE, minReleaseApp: MIN_RELEASE_APP,
+    pinned: loadPinned(),
+  });
 }
 
 // --- Publication ------------------------------------------------------------
@@ -233,7 +248,10 @@ if (MIN_GAP_HOURS && last && Date.now() - last < MIN_GAP_HOURS * 3600e3) {
   process.exit(0);
 }
 
-const { todo, wanted } = pending(state);
+const { todo: queued, wanted } = pending(state);
+// VIDEO : une vidéo précise, lancée depuis /hq (« Publier maintenant »).
+const todo = env.VIDEO ? queued.filter((item) => item.key === env.VIDEO) : queued;
+if (env.VIDEO && !todo.length) throw new Error(`${env.VIDEO} : introuvable dans la file (déjà publiée ?)`);
 console.log(`[${TARGET}] ${todo.length} vidéo(s) en attente dont ${wanted.length} au format ${KIND || 'quelconque'} (langues ${LANGS.join(', ')}, releases ≥ shorts-${MIN_RELEASE}).`);
 
 const accounts = USE_ZERNIO ? await zernioAccounts() : [];

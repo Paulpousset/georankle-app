@@ -35,6 +35,10 @@ on:
         description: Vidéos à publier
         default: '1'
         required: true
+      video:
+        description: Vidéo précise (ex. shorts-39/globe1-fr-v1.mp4), vide = la suivante
+        default: ''
+        required: false
       dry_run:
         description: Simulation (ne rien publier)
         type: boolean
@@ -74,6 +78,7 @@ jobs:
           MIN_RELEASE: ${{ vars.SOCIAL_POST_MIN_RELEASE || '23' }}
           COUNT: ${{ github.event.inputs.count || '1' }}
           KIND: ${{ github.event.inputs.kind || 'auto' }}
+          VIDEO: ${{ github.event.inputs.video }}
           # Tâche planifiée seulement : si une publication manuelle a déjà
           # rempli le créneau, ne pas en refaire une.
           MIN_GAP_HOURS: ${{ github.event_name == 'schedule' && '3' || '0' }}

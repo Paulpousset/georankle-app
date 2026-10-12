@@ -5,7 +5,9 @@
  *   from=YYYY-MM-DD&to=YYYY-MM-DD (dates perso, à la place de days).
  * POST /api/hq?source=markers  { day, kind, label }  → ajoute un repère manuel
  * DELETE /api/hq?source=markers&id=<id>              → le retire
- * GET /api/hq?source=social&preview=<assetId>        → lien temporaire de la vidéo (aperçu)
+ * GET /api/hq?source=video&id&exp&sig                 → aperçu vidéo (lien signé, sans session)
+ * POST /api/hq?source=social-order { pinned: [clés] } → ordre des prochaines vidéos
+ * POST /api/hq?source=social-publish { key }          → publie cette vidéo tout de suite
  * Tableau de bord privé (page /hq). Réservé aux profils is_admin : la page
  * envoie le jeton de session Supabase, on le vérifie avant toute requête.
  */
@@ -17,7 +19,7 @@ import { deploys } from './_hq/deploys.mjs';
 import { searchconsole, play, admob, adsense } from './_hq/google.mjs';
 import { appstore } from './_hq/appstore.mjs';
 import { growth } from './_hq/growth.mjs';
-import { social, socialPreview } from './_hq/social.mjs';
+import { social, videoProxy, setOrder, publishNow } from './_hq/social.mjs';
 
 const SOURCES = { supabase, posthog, sentry, deploys, searchconsole, play, admob, adsense, appstore, growth, social };
 
@@ -62,6 +64,14 @@ export async function GET(request) {
 
   // Config publique de connexion (la clé anon est déjà dans le bundle de l'app).
   if (source === 'config') return json({ supabaseUrl: SUPABASE_URL(), anonKey: SUPABASE_ANON() });
+  // Aperçu vidéo : la balise <video> n'envoie pas le jeton, le lien est signé.
+  if (source === 'video') {
+    try {
+      return await videoProxy(request);
+    } catch (e) {
+      return new Response(e.message, { status: 502 });
+    }
+  }
 
   try {
     if (!(await requireAdmin(request))) return json({ error: 'forbidden' }, 403);
@@ -70,13 +80,6 @@ export async function GET(request) {
   }
 
   if (source === 'list') return json({ sources: Object.keys(SOURCES) });
-  if (source === 'social' && url.searchParams.has('preview')) {
-    try {
-      return json({ url: await socialPreview(url.searchParams.get('preview')) });
-    } catch (e) {
-      return json({ error: e.message }, 400);
-    }
-  }
   const fn = SOURCES[source];
   if (!fn) return json({ error: `source inconnue : ${source}` }, 400);
 
@@ -137,5 +140,29 @@ async function markersWrite(request, method) {
   }
 }
 
-export const POST = (request) => markersWrite(request, 'POST');
+// ─── Vidéos : ordre et publication immédiate (GitHub) ────────────────────────
+
+async function socialWrite(request, source) {
+  try {
+    if (!(await requireAdmin(request))) return json({ error: 'forbidden' }, 403);
+  } catch (e) {
+    return json({ error: e.message }, 500);
+  }
+  const b = await request.json().catch(() => ({}));
+  try {
+    const out = source === 'social-order' ? await setOrder(b.pinned) : await publishNow(b.key);
+    for (const k of cache.keys()) if (k.startsWith('social:')) cache.delete(k);
+    return json({ ok: true, ...out });
+  } catch (e) {
+    if (e instanceof NotConfigured) return json({ error: `Variable Vercel manquante : ${e.missing.join(', ')}` }, 400);
+    const denied = /\b(403|404)\b/.test(e.message);
+    return json({ error: denied ? `GitHub refuse : le jeton GITHUB_TOKEN doit avoir Contents et Actions en lecture et écriture (${e.message})` : e.message }, 400);
+  }
+}
+
+export const POST = (request) => {
+  const source = new URL(request.url).searchParams.get('source');
+  if (source === 'social-order' || source === 'social-publish') return socialWrite(request, source);
+  return markersWrite(request, 'POST');
+};
 export const DELETE = (request) => markersWrite(request, 'DELETE');
