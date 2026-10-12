@@ -19,7 +19,7 @@ export type AppTrailerProps = {
 
 const START = 2.1;
 // Les plans raccourcissent : la fin de la liste défile en rafale.
-const DUR = [1.6, 1.35, 1.25, 1.15, 1.05, 0.95, 0.8, 0.55, 0.5, 0.5, 1.1, 1.4];
+const DUR = [1.5, 1.5, 1.3, 1.15, 1.05, 1.0, 0.95, 0.55, 0.5, 0.5, 0.5, 0.9, 1.1, 1.4];
 const dur = (i: number) => DUR[i] ?? 0.8;
 const starts = (n: number) => Array.from({ length: n }, (_, i) => START + Array.from({ length: i }, (_, j) => dur(j)).reduce((a, b) => a + b, 0));
 const END_S = 4;
@@ -51,7 +51,7 @@ export function AppTrailer(p: AppTrailerProps) {
   // Avant le premier plan, le téléphone arrive avec le premier écran déjà affiché.
   const slide = t < START ? 1 : interpolate(sinceCut, [0, 0.22], [0, 1], { ...clamp, easing: (x) => 1 - (1 - x) ** 3 });
   const labelS = spring({ frame: Math.round(sinceCut * fps), fps, config: { damping: 12, stiffness: 200 } });
-  const rapid = cur >= 7 && cur <= 9;
+  const rapid = cur >= 7 && cur <= 10;
 
   return (
     <AbsoluteFill>
@@ -62,7 +62,7 @@ export function AppTrailer(p: AppTrailerProps) {
         </div>
         {t >= START ? (
           <div style={{ position: 'absolute', top: 70, left: 0, right: 0, textAlign: 'center' }}>
-            <Tag style={{ background: C.parchment }}>{String(cur + 1).padStart(2, '0')}/{String(p.shots.length).padStart(2, '0')}</Tag>
+            <Tag style={{ background: C.parchment }}>GeoG</Tag>
             <div
               style={{
                 fontFamily: serif,
@@ -129,7 +129,8 @@ export function AppTrailer(p: AppTrailerProps) {
       <Audio src={sfx('music')} volume={(f) => interpolate(f / FPS, [0, 0.3, endAt + 3, endAt + 4], [0, 0.55, 0.55, 0], clamp)} />
       <Sfx at={0} src={sfx('boom')} volume={0.6} />
       {st.map((s, i) => (
-        <Sfx key={i} at={s} src={i >= 7 && i <= 9 ? app('tap') : sfx('whoosh')} volume={0.55} />
+        // Un seul souffle discret à l'arrivée du téléphone ; ensuite, un petit tap de l'app par coupe.
+        <Sfx key={i} at={s} src={i === 0 ? sfx('whoosh') : app('tap')} volume={i === 0 ? 0.15 : 0.25} />
       ))}
       <Sfx at={endAt} src={app('win')} volume={0.7} />
     </AbsoluteFill>

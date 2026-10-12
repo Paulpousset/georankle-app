@@ -9,7 +9,7 @@
 // - concept-devine        : « Devine le pays » joué, indices qui se retournent ;
 // - concept-frontieres    : relier deux pays par le moins de frontières ;
 // - concept-rankle        : chaque pays dans sa meilleure catégorie, rang mondial.
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { copyFileSync, cpSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { feature } from 'topojson-client';
@@ -29,9 +29,9 @@ const cca2 = Object.fromEntries(
 );
 const fr = (c) => stats[c].name;
 
-// Captures des stores et bruitages de l'app, copiés dans public/ avant le bundle.
-const SHOTS = ['01-menu-home', '02-modes', '03-rankle', '04-globe', '05-capitales', '06-devine', '07-silhouette', '08-frontieres', '09-plusoumoins', '10-drapeaux', '11-defis-pays', '12-defi-du-jour'];
-for (const s of SHOTS) copyFileSync(join(ROOT, 'store-screenshots', `${s}.png`), join(PUBLIC, 'shots', `${s}.png`));
+// Captures de l'app actuelle (build web, viewport iPhone, assets/captures) et
+// bruitages de l'app, copiés dans public/ avant le bundle.
+cpSync(join(HERE, 'assets', 'captures'), join(PUBLIC, 'shots'), { recursive: true });
 for (const s of ['correct', 'wrong', 'tap', 'tick', 'win', 'stamp', 'found', 'go', 'star', 'draw', 'lose', 'levelup']) {
   copyFileSync(join(ROOT, 'assets', 'sounds', `${s}.mp3`), join(PUBLIC, 'app-sfx', `${s}.mp3`));
 }
@@ -48,18 +48,20 @@ write('concept-bande-annonce', {
   composition: 'AppTrailer',
   hook: ['12 jeux de géo.', 'Une seule app.'],
   shots: [
-    { file: 'shots/02-modes.png', title: '12 modes de jeu', sub: 'Choisis ton terrain' },
-    { file: 'shots/04-globe.png', title: 'Globe', sub: 'Trouve le pays sur la Terre' },
-    { file: 'shots/07-silhouette.png', title: 'Silhouette', sub: 'Devine le pays à sa forme' },
-    { file: 'shots/09-plusoumoins.png', title: 'Plus ou Moins', sub: 'Lequel est au-dessus ?' },
-    { file: 'shots/06-devine.png', title: 'Devine le Pays', sub: 'Six indices, un pays' },
-    { file: 'shots/08-frontieres.png', title: 'Frontières', sub: 'Relie deux pays' },
-    { file: 'shots/03-rankle.png', title: 'Rankle', sub: 'Chaque pays à sa place' },
-    { file: 'shots/05-capitales.png', title: 'Capitales', sub: '' },
-    { file: 'shots/10-drapeaux.png', title: 'Drapeaux', sub: '' },
-    { file: 'shots/11-defis-pays.png', title: 'Défis Pays', sub: '' },
-    { file: 'shots/12-defi-du-jour.png', title: 'Défi du jour', sub: 'Un nouveau puzzle chaque jour' },
-    { file: 'shots/01-menu-home.png', title: 'Solo · Local · En ligne', sub: 'Affronte le monde entier' },
+    { file: 'shots/01-home.jpg', title: 'GeoGames', sub: 'Toute la géo dans ta poche' },
+    { file: 'shots/02-histoire.jpg', title: 'Mode Histoire', sub: '500 niveaux, de plus en plus durs' },
+    { file: 'shots/03-globe.jpg', title: 'Globe Géo', sub: 'Trouve le pays sur le globe 3D' },
+    { file: 'shots/04-pinpoint.jpg', title: 'Point sur le Globe', sub: 'Un point, quel pays ?' },
+    { file: 'shots/05-silhouette.jpg', title: 'Silhouette', sub: 'Devine le pays à sa forme' },
+    { file: 'shots/06-devine.jpg', title: 'Devine le Pays', sub: 'Neuf indices, un pays' },
+    { file: 'shots/07-frontieres.jpg', title: 'Frontières', sub: 'Relie deux pays' },
+    { file: 'shots/08-plusoumoins.jpg', title: 'Plus ou Moins', sub: '' },
+    { file: 'shots/09-rankle.jpg', title: 'Rankle', sub: '' },
+    { file: 'shots/10-capitales.jpg', title: 'Capitales', sub: '' },
+    { file: 'shots/11-drapeaux.jpg', title: 'Drapeaux', sub: '' },
+    { file: 'shots/12-defispays.jpg', title: 'Défis Pays', sub: 'Joue région par région' },
+    { file: 'shots/13-defi.jpg', title: 'Défi du Jour', sub: 'Un puzzle par mode, chaque jour' },
+    { file: 'shots/14-enligne.jpg', title: 'En ligne', sub: 'Affronte le monde entier' },
   ],
   outro: 'GeoG',
   cta: 'Gratuit sur iOS et Android',
