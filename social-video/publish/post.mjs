@@ -48,6 +48,9 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import {
+  STATE_TAG, STATE_FILE, DEFAULT_MIN_RELEASE_APP, kindFor, parisHourOf, postedFor as postedForTarget, upcoming,
+} from './queue.mjs';
 
 // Valeurs collées depuis un téléphone : on enlève espaces et retours à la ligne.
 const env = Object.fromEntries(Object.entries(process.env).map(([k, v]) => [k, v?.trim()]));
@@ -61,26 +64,12 @@ const COUNT = Number(env.COUNT || 1);
 const MIN_RELEASE = Number(env.MIN_RELEASE || 0);
 const DRY_RUN = env.DRY_RUN !== '0';
 const TARGET = env.TARGET || 'all';
-// Vidéos de l'app : seulement à partir de cette release (montage avec les
-// bonnes réponses dites et une vraie accroche, le 10/10) ; les anciennes,
-// jugées ratées le 7/10, ne partent plus.
-const MIN_RELEASE_APP = Number(env.MIN_RELEASE_APP || 34);
-// Heure à Paris (formatToParts : en fr-FR, format() donne « 12 h », pas un nombre).
-const parisHour = Number(
-  new Intl.DateTimeFormat('en-GB', { hour: 'numeric', hourCycle: 'h23', timeZone: 'Europe/Paris' })
-    .formatToParts(new Date())
-    .find((part) => part.type === 'hour').value,
-);
-// Alternance (social) : le quiz globe à midi, un mode de jeu animé le soir,
-// différent d'un soir à l'autre (choix de Paul le 11/10). Si la file de ce
-// format est vide, les vidéos de l'app, puis l'autre format, partent à la
-// place.
-const KIND = TARGET !== 'social' ? '' : !env.KIND || env.KIND === 'auto' ? (parisHour < 16 ? 'globe' : 'jeu') : env.KIND;
+// Vidéos de l'app : seulement à partir de cette release (voir queue.mjs).
+const MIN_RELEASE_APP = Number(env.MIN_RELEASE_APP || DEFAULT_MIN_RELEASE_APP);
+// Globe à midi, mode de jeu animé le soir (voir queue.mjs).
+const KIND = kindFor(TARGET, env.KIND, parisHourOf(new Date()));
 const USE_ZERNIO = ZERNIO && TARGET !== 'youtube';
 const USE_UPLOAD_POST = (UPLOAD_POST || !ZERNIO) && TARGET !== 'social';
-const STATE_TAG = 'shorts-state';
-const STATE_FILE = 'posted.json';
-const NEXT_TAG = 'shorts-next';
 
 const gh = (...args) => execFileSync('gh', [...args, '--repo', REPO], { encoding: 'utf8' });
 const work = mkdtempSync(join(tmpdir(), 'social-post-'));
@@ -114,62 +103,14 @@ function saveState(state) {
 }
 
 // --- File d'attente ---------------------------------------------------------
+// Le choix lui-même est dans queue.mjs, partagé avec la page « Vidéos » de /hq.
 
-// higher-lower-fr-v2.mp4 → { group: higher-lower-fr, lang: fr, variant: v2 }
-function parse(name) {
-  const m = name.match(/^(.+)-([a-z]{2})-(v\d+)\.mp4$/);
-  return m && { group: `${m[1]}-${m[2]}`, lang: m[2], variant: m[3] };
-}
+const postedFor = (p) => postedForTarget(p, TARGET);
 
-// Une publication compte pour la cible du passage si elle est partie sur le
-// service de cette cible.
-function postedFor(p) {
-  if (TARGET === 'social') return Boolean(p.zernio);
-  if (TARGET === 'youtube') return Boolean(p['upload-post']);
-  return true;
-}
-
-function queue(state) {
-  const posted = state.posted.filter(postedFor);
-  const done = new Set(posted.map((p) => p.key));
-  const all = JSON.parse(gh('release', 'list', '--limit', '100', '--json', 'tagName,createdAt,publishedAt'));
-  // Formats générés (globe, plus ou moins, quiz) : jusqu'au 12/10, la partie
-  // ne dépendait que de la date, donc deux tournages du même jour avaient la
-  // même. Une partie déjà publiée depuis une release du même jour est un
-  // doublon.
-  const dayOf = Object.fromEntries(all.map((r) => [r.tagName, (r.publishedAt || r.createdAt || '').slice(0, 10)]));
-  const generated = (group) => /^(globe|plusmoins|quiz-)/.test(group);
-  const postedDays = new Set(posted.filter((p) => generated(p.group)).map((p) => `${dayOf[p.tag]}|${p.group}`));
-  const releases = all
-    .filter((r) => /^shorts-\d+$/.test(r.tagName) && Number(r.tagName.slice(7)) >= MIN_RELEASE)
-    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  if (TARGET === 'youtube') releases.reverse();
-  if (all.some((r) => r.tagName === NEXT_TAG)) releases.unshift({ tagName: NEXT_TAG });
-
-  // Les accroches v1 / v2 d'une même vidéo montrent la même partie : une seule
-  // part par release, en alternant d'une release à l'autre pour comparer.
-  const variantUses = {};
-  for (const p of posted) variantUses[p.variant] = (variantUses[p.variant] || 0) + 1;
-
-  const out = [];
-  for (const { tagName } of releases) {
-    const assets = JSON.parse(gh('release', 'view', tagName, '--json', 'assets')).assets.map((a) => a.name);
-    const groups = {};
-    for (const name of assets) {
-      const info = parse(name);
-      if (!info || !LANGS.includes(info.lang)) continue;
-      (groups[info.group] ||= []).push({ ...info, name, tag: tagName, key: `${tagName}/${name}` });
-    }
-    for (const [group, variants] of Object.entries(groups).sort()) {
-      if (posted.some((p) => p.tag === tagName && p.group === group)) continue;
-      if (generated(group) && postedDays.has(`${dayOf[tagName]}|${group}`)) continue;
-      const pick = variants
-        .filter((v) => !done.has(v.key))
-        .sort((a, b) => (variantUses[a.variant] || 0) - (variantUses[b.variant] || 0) || a.variant.localeCompare(b.variant))[0];
-      if (pick) out.push({ ...pick, hasCaption: assets.includes(pick.name.replace(/\.mp4$/, '.txt')) });
-    }
-  }
-  return out;
+function pending(state) {
+  const releases = JSON.parse(gh('release', 'list', '--limit', '100', '--json', 'tagName,createdAt,publishedAt'));
+  const assetsOf = (tag) => JSON.parse(gh('release', 'view', tag, '--json', 'assets')).assets.map((a) => a.name);
+  return upcoming({ state, releases, assetsOf, target: TARGET, kind: KIND, langs: LANGS, minRelease: MIN_RELEASE, minReleaseApp: MIN_RELEASE_APP });
 }
 
 // --- Publication ------------------------------------------------------------
@@ -291,34 +232,7 @@ if (MIN_GAP_HOURS && last && Date.now() - last < MIN_GAP_HOURS * 3600e3) {
   process.exit(0);
 }
 
-const isNext = (item) => item.tag === NEXT_TAG;
-const isGlobe = (item) => !isNext(item) && item.group.startsWith('globe');
-// Modes de jeu animés (style plateau TV) : plus ou moins, quiz-capitals…
-const isJeu = (item) => !isNext(item) && /^(plusmoins|quiz-)/.test(item.group);
-const releaseNumber = (item) => Number(item.tag.slice(7));
-// Jamais deux fois de suite le même jeu : parmi les vidéos de l'app, le jeu
-// publié il y a le plus longtemps (ou jamais) passe d'abord, puis la release
-// la plus récente.
-const lastPosted = {};
-for (const p of state.posted.filter(postedFor)) {
-  const game = p.group.replace(/-[a-z]{2}$/, '');
-  lastPosted[game] = Math.max(lastPosted[game] || 0, Date.parse(p.at) || 0);
-}
-const gameOf = (item) => item.group.replace(/-[a-z]{2}$/, '');
-const all = queue(state).filter((item) => isNext(item) || isGlobe(item) || releaseNumber(item) >= MIN_RELEASE_APP);
-const nexts = all.filter(isNext);
-const apps = all
-  .filter((item) => !isNext(item) && !isGlobe(item) && !isJeu(item))
-  .sort((a, b) => (lastPosted[gameOf(a)] || 0) - (lastPosted[gameOf(b)] || 0) || releaseNumber(b) - releaseNumber(a));
-const globes = all.filter(isGlobe);
-// Le mode publié il y a le plus longtemps d'abord, dans sa partie la plus récente.
-const jeux = all
-  .filter(isJeu)
-  .sort((a, b) => (lastPosted[gameOf(a)] || 0) - (lastPosted[gameOf(b)] || 0) || releaseNumber(b) - releaseNumber(a));
-const FALLBACK = { globe: [globes, jeux, apps], jeu: [jeux, apps, globes], plusmoins: [jeux, apps, globes], app: [apps, jeux, globes] };
-const order = [nexts, ...(FALLBACK[KIND] ?? [all])];
-const wanted = order[1];
-const todo = [...new Set(order.flat())];
+const { todo, wanted } = pending(state);
 console.log(`[${TARGET}] ${todo.length} vidéo(s) en attente dont ${wanted.length} au format ${KIND || 'quelconque'} (langues ${LANGS.join(', ')}, releases ≥ shorts-${MIN_RELEASE}).`);
 
 const accounts = USE_ZERNIO ? await zernioAccounts() : [];
