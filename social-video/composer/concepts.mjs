@@ -37,6 +37,8 @@ const cca2 = Object.fromEntries(
   [...readFileSync(join(ROOT, 'src', 'data', 'countryCodes.ts'), 'utf8').matchAll(/([A-Z]{3}): '([A-Z]{2})'/g)].map((m) => [m[1], m[2].toLowerCase()]),
 );
 const fr = (c) => stats[c].name;
+// Nom à dire à voix haute (« Congo (Rép. dém.) » se lit mal).
+const say = (name) => name.replace('Congo (Rép. dém.)', 'RDC');
 
 // Captures de l'app actuelle (build web, viewport iPhone, assets/captures) et
 // bruitages de l'app, copiés dans public/ avant le bundle.
@@ -165,12 +167,12 @@ function devine(name, target, guesses) {
   const voice = [{ text: 'Trouve ce pays avant moi.', at: 0 }];
   guesses.forEach((g, i) => {
     if (i === n - 1) return;
-    voice.push({ text: `${fr(g)} ?`, at: guessAt(i) + 0.1, maxLate: 0.7 });
+    voice.push({ text: `${say(fr(g))} ?`, at: guessAt(i) + 0.1, maxLate: i === 0 ? 1.3 : 0.7 });
     voice.push({ text: reaction(g, target), at: guessAt(i) + DV.TYPE + 6 * DV.FLIP + 0.1, maxLate: 0.8 });
   });
   voice.push({ text: 'Tu l’as ? Trois, deux, un…', at: pauseStart + 0.1, maxLate: 0.5 });
-  voice.push({ text: `Réponse : ${fr(target)} !`, at: revealAt, maxLate: 0.6 });
-  voice.push({ text: 'Trouvé en combien d’essais ? Dis-le en commentaire.', at: revealAt + 1.8, maxLate: 1 });
+  voice.push({ text: `Réponse : ${say(fr(target))} !`, at: revealAt, maxLate: 0.6 });
+  voice.push({ text: 'Trouvé en combien d’essais ?', at: revealAt + 1.8, maxLate: 1 });
   voice.push({ text: END_LINE, at: end + 0.4, maxLate: 1 });
   write(name, {
     composition: 'DevineConcept',
@@ -272,20 +274,22 @@ function frontierRound(from, to, level, view) {
 }
 function frontieres(name, rounds) {
   const roundSeconds = (r) => FR.INTRO + FR.THINK + r.path.length * FR.step(r.path.length) + FR.HOLD;
+  // Une réplique par moment fort, jamais en rafale : voice.mjs abandonne une
+  // réplique qui arriverait trop tard derrière la précédente.
   const voice = [{ text: 'Combien de frontières, minimum ?', at: 0 }];
   let s0 = 0.4;
-  for (const r of rounds) {
+  rounds.forEach((r, ri) => {
     const a = r.path[0].name;
     const b = r.path[r.path.length - 1].name;
     const step = FR.step(r.path.length);
     const draw = s0 + FR.INTRO + FR.THINK;
-    voice.push({ text: `Départ : ${a}. Arrivée : ${b}.`, at: s0 + 0.3, maxLate: 1.4 });
-    voice.push({ text: 'Combien de pays entre les deux ? Cinq secondes.', at: s0 + FR.INTRO + 0.3, maxLate: 1 });
-    if (step >= 0.9) r.path.slice(1, -1).forEach((c, j) => voice.push({ text: c.name, at: draw + (j + 1) * step, maxLate: 0.35 }));
+    voice.push({ text: `${say(a)}, ${say(b)}. Combien de pays entre les deux ?`, at: ri === 0 ? 2.1 : s0 + 0.3, maxLate: 1.5 });
+    // Les pays traversés ne sont dits que sur les chemins courts (le rythme le permet).
+    if (step >= 0.9 && r.path.length <= 6) r.path.slice(1, -1).forEach((c, j) => c.name.length <= 12 && voice.push({ text: say(c.name), at: draw + (j + 1) * step, maxLate: 0.3 }));
     const k = r.path.length - 2;
-    voice.push({ text: `${cap(NUM[k] ?? String(k))} pays !`, at: draw + r.path.length * step + 0.15, maxLate: 0.6 });
+    voice.push({ text: `${cap(NUM[k] ?? String(k))} pays !`, at: draw + r.path.length * step + 0.15, maxLate: 1.2 });
     s0 += roundSeconds(r);
-  }
+  });
   voice.push({ text: 'Tu avais trouvé ? Dis-le en commentaire.', at: s0 + 0.1, maxLate: 0.8 });
   voice.push({ text: END_LINE, at: s0 + 2.6 + 0.4, maxLate: 1 });
   for (const r of rounds) console.log('  ', r.path.map((p) => p.name).join(' → '));
@@ -344,16 +348,14 @@ function rankle(name, themes, play) {
   const end = turnAt(n - 1) + RK.TURN + 3.4;
   const label = (t) => game.themes[t].label.fr;
   const voice = [{ text: 'Chaque pays dans sa meilleure catégorie.', at: 0 }];
-  play.forEach(([, t], i) => {
-    const tr = turns[i];
+  // Le pays et le thème se lisent à l'écran : la voix ne dit que le verdict.
+  turns.forEach((tr, i) => {
     if (i === n - 1) {
-      voice.push({ text: 'Dernier pays, dernière case…', at: turnAt(n - 2) + RK.TURN + 0.1, maxLate: 0.6 });
-      voice.push({ text: `${tr.name}… ${label(t)}.`, at: turnAt(i) + 0.15, maxLate: 0.5 });
-      voice.push({ text: `Aïe. ${rankWord(tr.rank)}`, at: turnAt(i) + RK.TAP + RK.COUNT + 0.1, maxLate: 0.6 });
+      voice.push({ text: `Dernier pays, dernière case… ${say(tr.name)}.`, at: turnAt(n - 2) + RK.TURN + 0.1, maxLate: 0.6 });
+      voice.push({ text: `Aïe. ${rankWord(tr.rank)}`, at: turnAt(i) + RK.TAP + RK.COUNT + 0.1, maxLate: 0.8 });
       return;
     }
-    voice.push({ text: `${tr.name} : ${label(t)}.`, at: turnAt(i) + 0.15, maxLate: 0.5 });
-    voice.push({ text: rankWord(tr.rank), at: turnAt(i) + RK.TAP + RK.COUNT + 0.05, maxLate: 0.5 });
+    voice.push({ text: rankWord(tr.rank), at: turnAt(i) + RK.TAP + RK.COUNT + 0.05, maxLate: 0.6 });
   });
   voice.push({ text: `Total : ${total}. Tu fais mieux ?`, at: turnAt(n - 1) + RK.TURN + 0.5, maxLate: 1 });
   voice.push({ text: END_LINE, at: end + 0.4, maxLate: 1 });
