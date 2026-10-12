@@ -614,6 +614,16 @@ const SUBREGION_LABELS = {
   'Western Europe': { fr: 'Europe de l’Ouest', en: 'Western Europe' },
   'Eastern Europe': { fr: 'Europe de l’Est', en: 'Eastern Europe' },
   'Northern Europe': { fr: 'Europe du Nord', en: 'Northern Europe' },
+  'Western Africa': { fr: 'Afrique de l’Ouest', en: 'Western Africa' },
+  'Eastern Africa': { fr: 'Afrique de l’Est', en: 'Eastern Africa' },
+  'Middle Africa': { fr: 'Afrique centrale', en: 'Middle Africa' },
+  'Southern Africa': { fr: 'Afrique australe', en: 'Southern Africa' },
+  'Northern Africa': { fr: 'Afrique du Nord', en: 'Northern Africa' },
+  'Western Asia': { fr: 'Asie occidentale', en: 'Western Asia' },
+  'South-Eastern Asia': { fr: 'Asie du Sud-Est', en: 'South-Eastern Asia' },
+  'Southern Asia': { fr: 'Asie du Sud', en: 'Southern Asia' },
+  'Eastern Asia': { fr: 'Asie de l’Est', en: 'Eastern Asia' },
+  'Central Asia': { fr: 'Asie centrale', en: 'Central Asia' },
 };
 
 /** Les capitales d'un continent regroupées par sous-région : les « blocs » de révision. */
@@ -714,6 +724,45 @@ function topTable(field, scope, locale) {
 export const populationTopTable = (scope, locale) => topTable('population', scope, locale);
 export const areaTopTable = (scope, locale) => topTable('area', scope, locale);
 
+
+/** Les ensembles de pays dont les capitales font l'objet d'un guide dédié (cca3, dans l'ordre d'affichage). */
+const CAPITAL_SETS = {
+  'africa-namesakes': {
+    codes: ['GIN', 'GNB', 'GNQ', 'COG', 'COD', 'SDN', 'SSD', 'NER', 'NGA'],
+    name: { fr: 'Les pays africains aux noms jumeaux et leurs capitales', en: 'African countries with twin names and their capitals' },
+  },
+  'asia-status': {
+    codes: ['ISR', 'PSE', 'LKA', 'MYS', 'IDN', 'MMR', 'KAZ', 'ARE', 'TUR', 'IND', 'PAK'],
+    name: { fr: 'Capitales d’Asie à statut particulier', en: 'Asian capitals with a special status' },
+  },
+};
+
+/** Pays → capitale → population → superficie pour un ensemble de pays choisi (voir CAPITAL_SETS). */
+export function capitalSetTable(scope, locale) {
+  const set = CAPITAL_SETS[scope];
+  if (!set) throw new Error(`capital-set : ensemble inconnu « ${scope} »`);
+  const list = set.codes.map((code) => {
+    const c = COUNTRIES.find((x) => x.cca3 === code);
+    if (!c) throw new Error(`capital-set : ${code} absent des données du jeu`);
+    return c;
+  });
+  const rows = list.map(
+    (c) =>
+      cell(`<strong>${countryName(c, locale)}</strong>`) +
+      cell(capitalName(c, locale)) +
+      cell(num(c.population, locale)) +
+      cell(num(Math.round(c.area), locale)),
+  );
+  return {
+    html: table(
+      locale === 'fr' ? ['Pays', 'Capitale du jeu', 'Population', 'Superficie (km²)'] : ['Country', 'Capital in the game', 'Population', 'Area (km²)'],
+      rows,
+    ),
+    items: list.map((c) => `${countryName(c, locale)} — ${capitalName(c, locale)}`),
+    name: set.name[locale],
+  };
+}
+
 export const TABLES = {
   flags: flagsTable,
   capitals: capitalsTable,
@@ -732,6 +781,7 @@ export const TABLES = {
   landlocked: landlockedTable,
   smallest: smallestTable,
   'capital-blocks': capitalBlocksTable,
+  'capital-set': capitalSetTable,
   'flags-notoriety': flagsNotorietyTable,
   'population-top': populationTopTable,
   'area-top': areaTopTable,

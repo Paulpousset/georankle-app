@@ -18,9 +18,9 @@ pas être écrite sérieusement n'est pas publiée.
 - [x] Les drapeaux les plus difficiles du monde (29/09 : angle notoriété, les sosies restent dans le guide existant) — lesquels, pourquoi (paires, tricolores), comment les distinguer
 - [x] Classement des pays par population (05/10 : angle concentration et paliers de mémorisation ; la partie « d'ici 2050 » est SAUTÉE, le dépôt ne contient aucune projection et aucun chiffre n'est inventé) — le top 30 avec les chiffres du jeu, ce qui change d'ici 2050
 - [x] Classement des pays par superficie (05/10 : angle concentration, surprises, projection de Mercator) — top 30, les surprises (Kazakhstan, Algérie, RDC)
-- [ ] Pays les plus petits du monde — micro-États et leur histoire, lien vers le guide micro-États
-- [ ] Capitales d'Afrique — 54 pays, les capitales qui ne sont pas la plus grande ville
-- [ ] Capitales d'Asie — 48 pays, les capitales déplacées (Nur-Sultan/Astana, Naypyidaw, Nusantara)
+- [ ] Pays les plus petits du monde (12/10 : SAUTÉ — le guide micro-États contient déjà le tableau des 15 plus petits pays et leur histoire ; une page de plus ne ferait que le paraphraser, à rouvrir avec un angle propre, par ex. écart entre classement par superficie et par population) — micro-États et leur histoire, lien vers le guide micro-États
+- [x] Capitales d'Afrique (12/10 : la liste et les capitales déplacées existaient déjà dans l'atlas ; angle « blocs de révision + neuf pays aux noms jumeaux ») — 54 pays, les capitales qui ne sont pas la plus grande ville
+- [x] Capitales d'Asie (12/10 : angle « blocs + onze capitales à statut particulier », tableau `capital-set` ; Nusantara non retenue, le jeu garde Jakarta) — 48 pays, les capitales déplacées (Nur-Sultan/Astana, Naypyidaw, Nusantara)
 - [ ] Capitales d'Amérique du Sud — 12 pays, Sucre/La Paz, Brasília
 - [ ] Drapeaux d'Afrique — couleurs panafricaines, comment reconnaître les familles
 - [ ] Drapeaux nordiques — la croix scandinave et ses variantes
@@ -32,7 +32,7 @@ pas être écrite sérieusement n'est pas publiée.
 
 ### Fiches pays (195, à raison de 10 à 20 par semaine)
 
-**Avancement : 20 / 195** (05/10 : Mexique, Japon, Égypte, Philippines, RD Congo, Viêt Nam, Iran, Turquie, Allemagne, Thaïlande, ranks 11 à 20 ; prochaine fournée : le Royaume-Uni, 21ᵉ). Avancement du 29/09 : 10 / 195 (29/09, les 10 pays les plus peuplés : Inde, Chine, États-Unis, Indonésie, Pakistan, Nigéria, Brésil, Bangladesh, Russie, Éthiopie). Gabarit livré : `COUNTRY_PAGES` dans `routes.mjs`, textes dans `site/content/<langue>/country-<cca3>.html`, garde-fou `checkCountryPages` (≥ 200 mots écrits, ≤ 25 % de phrases communes entre fiches). Prochaine fournée : le Mexique (11ᵉ par la population) et suivants. Le gabarit décrit ci-dessous a servi de base (`site/lib/routes.mjs`
+**Avancement : 30 / 195** (12/10 : Royaume-Uni, Tanzanie, France, Afrique du Sud, Italie, Kenya, Birmanie, Colombie, Corée du Sud, Soudan, rangs 21 à 30 ; prochaine fournée : l'Ouganda, 31ᵉ). Avant : 20 / 195 (05/10 : Mexique, Japon, Égypte, Philippines, RD Congo, Viêt Nam, Iran, Turquie, Allemagne, Thaïlande, ranks 11 à 20 ; prochaine fournée : le Royaume-Uni, 21ᵉ). Avancement du 29/09 : 10 / 195 (29/09, les 10 pays les plus peuplés : Inde, Chine, États-Unis, Indonésie, Pakistan, Nigéria, Brésil, Bangladesh, Russie, Éthiopie). Gabarit livré : `COUNTRY_PAGES` dans `routes.mjs`, textes dans `site/content/<langue>/country-<cca3>.html`, garde-fou `checkCountryPages` (≥ 200 mots écrits, ≤ 25 % de phrases communes entre fiches). Prochaine fournée : le Mexique (11ᵉ par la population) et suivants. Le gabarit décrit ci-dessous a servi de base (`site/lib/routes.mjs`
 kind `country`, URL `/pays/<slug>/` et `/en/country/<slug>/`, données lues dans
 `assets/countries_stats.json`, tableau des voisins, drapeau, capitale, bouton
 « Jouer » vers Devinez le pays) puis livre les 10 premières, par ordre de
@@ -41,6 +41,14 @@ langue ; un garde-fou dans `site/lib/validate.mjs` refuse toute fiche sous le
 seuil.
 
 ## Entrées
+
+### 2026-10-12 — Contenu SEO de la semaine
+
+- Base : les PR #6 (29/09) et #15 (05/10) sont encore ouvertes, #15 contient #6 ; la branche part de #15 pour réutiliser le gabarit `country` et ne reprend aucun de leurs sujets. À fusionner dans l'ordre #15 puis celle-ci.
+- Pages : `/guides/quiz-capitales-d-afrique/` et `/guides/quiz-capitales-d-asie/` + EN (`/en/guides/africa-capitals-quiz/`, `/en/guides/asia-capitals-quiz/`) ; nouveau tableau `capital-set` et libellés de sous-régions africaines et asiatiques pour `capital-blocks`.
+- Sauté : « Pays les plus petits du monde » (redite du guide micro-États, voir la file).
+- 10 fiches pays de plus (rangs 21 à 30 par la population), FR + EN. Total : 30.
+- Rafraîchissement : aucune page n'a un `modified` de plus de 60 jours (la plus ancienne date du 23/08, soit 50 jours), rien relu ni redaté.
 
 ### 2026-10-05 — Contenu SEO de la semaine
 

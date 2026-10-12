@@ -169,6 +169,14 @@ const THEMATIC = [
     paths: { fr: '/guides/pays-par-population/', en: '/en/guides/countries-by-population/' },
   },
   {
+    id: 'guide-africa-capitals-quiz',
+    paths: { fr: '/guides/quiz-capitales-d-afrique/', en: '/en/guides/africa-capitals-quiz/' },
+  },
+  {
+    id: 'guide-asia-capitals-quiz',
+    paths: { fr: '/guides/quiz-capitales-d-asie/', en: '/en/guides/asia-capitals-quiz/' },
+  },
+  {
     id: 'guide-area-ranking',
     paths: { fr: '/guides/pays-par-superficie/', en: '/en/guides/countries-by-area/' },
   },
@@ -269,6 +277,16 @@ export const COUNTRY_PAGES = [
   { cca3: 'TUR', fr: 'turquie', en: 'turkey' },
   { cca3: 'DEU', fr: 'allemagne', en: 'germany' },
   { cca3: 'THA', fr: 'thailande', en: 'thailand' },
+  { cca3: 'GBR', fr: 'royaume-uni', en: 'united-kingdom' },
+  { cca3: 'TZA', fr: 'tanzanie', en: 'tanzania' },
+  { cca3: 'FRA', fr: 'france', en: 'france' },
+  { cca3: 'ZAF', fr: 'afrique-du-sud', en: 'south-africa' },
+  { cca3: 'ITA', fr: 'italie', en: 'italy' },
+  { cca3: 'KEN', fr: 'kenya', en: 'kenya' },
+  { cca3: 'MMR', fr: 'birmanie', en: 'myanmar' },
+  { cca3: 'COL', fr: 'colombie', en: 'colombia' },
+  { cca3: 'KOR', fr: 'coree-du-sud', en: 'south-korea' },
+  { cca3: 'SDN', fr: 'soudan', en: 'sudan' },
 ];
 
 const COUNTRY_ROUTES = COUNTRY_PAGES.map((p) => ({
