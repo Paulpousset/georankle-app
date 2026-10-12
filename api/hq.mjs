@@ -5,6 +5,7 @@
  *   from=YYYY-MM-DD&to=YYYY-MM-DD (dates perso, à la place de days).
  * POST /api/hq?source=markers  { day, kind, label }  → ajoute un repère manuel
  * DELETE /api/hq?source=markers&id=<id>              → le retire
+ * GET /api/hq?source=social&preview=<assetId>        → lien temporaire de la vidéo (aperçu)
  * Tableau de bord privé (page /hq). Réservé aux profils is_admin : la page
  * envoie le jeton de session Supabase, on le vérifie avant toute requête.
  */
@@ -16,8 +17,9 @@ import { deploys } from './_hq/deploys.mjs';
 import { searchconsole, play, admob, adsense } from './_hq/google.mjs';
 import { appstore } from './_hq/appstore.mjs';
 import { growth } from './_hq/growth.mjs';
+import { social, socialPreview } from './_hq/social.mjs';
 
-const SOURCES = { supabase, posthog, sentry, deploys, searchconsole, play, admob, adsense, appstore, growth };
+const SOURCES = { supabase, posthog, sentry, deploys, searchconsole, play, admob, adsense, appstore, growth, social };
 
 const cache = new Map(); // `${source}:${days}:${filtres}` → { at, body }
 const TTL = 5 * 60000;
@@ -68,6 +70,13 @@ export async function GET(request) {
   }
 
   if (source === 'list') return json({ sources: Object.keys(SOURCES) });
+  if (source === 'social' && url.searchParams.has('preview')) {
+    try {
+      return json({ url: await socialPreview(url.searchParams.get('preview')) });
+    } catch (e) {
+      return json({ error: e.message }, 400);
+    }
+  }
   const fn = SOURCES[source];
   if (!fn) return json({ error: `source inconnue : ${source}` }, 400);
 
