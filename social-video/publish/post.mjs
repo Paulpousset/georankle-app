@@ -128,7 +128,15 @@ function postedFor(p) {
 function queue(state) {
   const posted = state.posted.filter(postedFor);
   const done = new Set(posted.map((p) => p.key));
-  const releases = JSON.parse(gh('release', 'list', '--limit', '100', '--json', 'tagName,createdAt'))
+  const all = JSON.parse(gh('release', 'list', '--limit', '100', '--json', 'tagName,createdAt,publishedAt'));
+  // Formats générés (globe, plus ou moins, quiz) : jusqu'au 12/10, la partie
+  // ne dépendait que de la date, donc deux tournages du même jour avaient la
+  // même. Une partie déjà publiée depuis une release du même jour est un
+  // doublon.
+  const dayOf = Object.fromEntries(all.map((r) => [r.tagName, (r.publishedAt || r.createdAt || '').slice(0, 10)]));
+  const generated = (group) => /^(globe|plusmoins|quiz-)/.test(group);
+  const postedDays = new Set(posted.filter((p) => generated(p.group)).map((p) => `${dayOf[p.tag]}|${p.group}`));
+  const releases = all
     .filter((r) => /^shorts-\d+$/.test(r.tagName) && Number(r.tagName.slice(7)) >= MIN_RELEASE)
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   if (TARGET === 'youtube') releases.reverse();
@@ -149,6 +157,7 @@ function queue(state) {
     }
     for (const [group, variants] of Object.entries(groups).sort()) {
       if (posted.some((p) => p.tag === tagName && p.group === group)) continue;
+      if (generated(group) && postedDays.has(`${dayOf[tagName]}|${group}`)) continue;
       const pick = variants
         .filter((v) => !done.has(v.key))
         .sort((a, b) => (variantUses[a.variant] || 0) - (variantUses[b.variant] || 0) || a.variant.localeCompare(b.variant))[0];
