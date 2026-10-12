@@ -252,6 +252,19 @@ details.tv .scroll-x { max-height: 240px; overflow-y: auto; }
 .vslot .vact .btn.ghost { font-size: 13px; padding: 6px 12px; min-height: 34px; }
 .vslot .vact .btn.pub { background: var(--accent); color: #fff; }
 .vslot .vact .btn:disabled { opacity: .5; cursor: default; }
+.vseg { margin: 0 0 12px; }
+.vseg button { font-size: 14px; padding: 7px 14px; }
+details.bank { margin-bottom: 10px; }
+details.bank summary { cursor: pointer; font-size: 14px; padding: 2px 0 6px; }
+.brow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); font-size: 13.5px; }
+.brow .file { font-size: 11.5px; color: var(--muted); word-break: break-all; }
+.brow .vact { margin: 0; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.brow .vact .btn.ghost { font-size: 13px; padding: 6px 10px; min-height: 34px; }
+.brow .vact .btn.pub { background: var(--accent); color: #fff; }
+.brow video { grid-column: 1 / -1; width: 100%; max-width: 240px; aspect-ratio: 9 / 16; border-radius: 12px; background: #000; }
+.genf { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.genf select { border: 1px solid var(--border); background: var(--page); border-radius: 8px; padding: 5px 8px; }
+@media (max-width: 560px) { .brow { grid-template-columns: minmax(0, 1fr); } .brow .vact { justify-content: flex-start; } }
 .linkbtn { border: 0; background: none; padding: 0; color: var(--accent); cursor: pointer; font-size: 12px; }
 @media (max-width: 560px) { .vslot { grid-template-columns: minmax(0, 1fr); } }
 .tbl tr.pick { cursor: pointer; } .tbl tr.pick:hover td { background: var(--surface-2); }
@@ -376,6 +389,7 @@ const S = {
   previews: {}, // clé de la vidéo → true quand l'aperçu est ouvert
   vbusy: null, // action en cours sur l'onglet Vidéos (ordre, publication)
   vmsg: null, // { kind, text } : retour de la dernière action
+  vtab: store('hq.vtab') || 'next', // onglet Vidéos : next | bank | gen
 };
 function json(t) { try { return JSON.parse(t ?? 'null'); } catch { return null; } }
 
@@ -1056,6 +1070,7 @@ function slotHtml(x) {
       <button class="btn ghost" type="button" data-act="vmove" data-dir="-1" data-key="${esc(it.key)}" aria-label="Avancer" ${busy}>↑</button>
       <button class="btn ghost" type="button" data-act="vmove" data-dir="1" data-key="${esc(it.key)}" aria-label="Reculer" ${busy}>↓</button>
       <button class="btn ghost pub" type="button" data-act="vpub" data-key="${esc(it.key)}" ${busy}>Publier maintenant</button>` : ''}
+      <button class="btn ghost" type="button" data-act="vskip" data-key="${esc(it.key)}" ${busy}>Retirer</button>
     </div>
     ${previewHtml(it)}
   </div></section>`;
@@ -1090,13 +1105,73 @@ function videosView() {
     { h: 'Où', f: (r) => esc(r.platforms.map(platformName).join(', ')) },
     { h: 'Légende', wrap: 1, f: (r) => esc((r.caption ?? '').split('\n')[0]) },
   ], v)));
-  return `
+  const seg = `<div class="seg vseg" role="group" aria-label="Vidéos">${[['next', 'À venir'], ['bank', 'Banque'], ['gen', 'Tournage']]
+    .map(([k, l]) => `<button type="button" data-act="vtab" data-v="${k}" aria-pressed="${S.vtab === k}">${l}</button>`).join('')}</div>`;
+  const top = `${seg}${notes ? `<div class="alerts" style="margin-bottom:10px">${notes}</div>` : ''}`;
+  if (S.vtab === 'bank') return `${top}${bankView()}`;
+  if (S.vtab === 'gen') return `${top}${genView()}`;
+  return `${top}
   <h2 class="section">Prochaines vidéos publiées</h2>
   ${head}
-  ${notes ? `<div class="alerts" style="margin-bottom:10px">${notes}</div>` : ''}
   ${slots}
   <h2 class="section">Déjà publié</h2>
   ${hist}`;
+}
+
+// Banque : toutes les vidéos tournées, ce qu'elles deviennent, et les actions possibles.
+const BANK_STATUS = {
+  posted: ['good', 'Publiée'], planned: ['warn', 'Prévue'], waiting: ['', 'En file'], removed: ['bad', 'Retirée'], unused: ['', 'Non retenue'],
+};
+function bankRow(v) {
+  const [cls, label] = BANK_STATUS[v.status];
+  const when = v.status === 'posted' ? ` ${dm(parisDay(new Date(v.postedAt)))} · ${esc(v.platforms.map(platformName).join(', '))}`
+    : v.status === 'planned' ? ` ${dm(parisDay(new Date(v.plannedAt)))} ${parisTime(new Date(v.plannedAt))}` : '';
+  const busy = S.vbusy ? 'disabled' : '';
+  return `<div class="brow">
+    <div class="bmain"><b>${esc(v.format.label)}</b> <span class="pill ${cls}">${label}${when}</span>
+      <div class="file">${esc(v.name)} · ${fmt(v.size / 1e6, 1)} Mo</div></div>
+    <div class="vact">
+      <button class="btn ghost" type="button" data-act="vprev" data-key="${esc(v.key)}">${S.previews[v.key] ? '✕' : '▶'}</button>
+      ${v.status !== 'posted' ? `<button class="btn ghost pub" type="button" data-act="vpub" data-key="${esc(v.key)}" ${busy}>Publier</button>` : ''}
+      ${v.status === 'removed' ? `<button class="btn ghost" type="button" data-act="vunskip" data-key="${esc(v.key)}" ${busy}>Remettre</button>`
+        : v.status !== 'posted' ? `<button class="btn ghost" type="button" data-act="vskip" data-key="${esc(v.key)}" ${busy}>Retirer</button>` : ''}
+    </div>
+    ${S.previews[v.key] ? `<video controls playsinline preload="metadata" src="${esc(v.previewUrl)}"></video>` : ''}
+  </div>`;
+}
+function bankView() {
+  return block('social', 'bank', (rels) => {
+    const all = rels.flatMap((r) => r.videos);
+    const count = (st) => all.filter((v) => v.status === st).length;
+    const sum = `<p class="muted" style="font-size:13px;margin:4px 2px 10px">${all.length} vidéos · ${count('posted')} publiées · ${count('planned')} prévues cette semaine · ${count('waiting')} en file · ${count('removed')} retirées. « Non retenue » : autre accroche d'une vidéo déjà choisie, autre langue, ou tournage trop ancien.</p>`;
+    return sum + rels.map((r, i) => `<details class="card bank" ${i < 2 ? 'open' : ''}><summary><b>${esc(r.tag === 'shorts-next' ? 'Prioritaires (shorts-next)' : r.tag)}</b> <span class="muted">${dm(parisDay(new Date(r.at)))} · ${r.videos.length} vidéo(s)</span></summary>
+      ${r.videos.map(bankRow).join('')}</details>`).join('');
+  });
+}
+// Tournage : lance social-video.yml et montre les derniers passages.
+function genView() {
+  const runs = S.data.social?.data?.generation;
+  const busy = S.vbusy ? 'disabled' : '';
+  const state = (w) => (w.running ? '<span class="pill warn">… en cours</span>' : w.conclusion === 'success' ? '<span class="pill good">✓ fini</span>' : `<span class="pill bad">✕ ${esc(w.conclusion ?? 'échec')}</span>`);
+  const list = runs == null
+    ? '<div class="setup">Historique illisible : ajoute <code>GITHUB_TOKEN</code> dans Vercel (Actions en lecture).</div>'
+    : runs.length ? table([
+      { h: 'État', f: (w) => state(w) },
+      { h: 'Lancé', f: (w) => `${dm(parisDay(new Date(w.at)))} ${parisTime(new Date(w.at))} <span class="muted">${w.event === 'schedule' ? 'auto' : 'à la main'}</span>` },
+      { h: '', f: (w) => `<a href="${esc(w.url)}" target="_blank" rel="noopener">Voir ↗</a>` },
+    ], runs) : '<div class="empty">Aucun tournage récent.</div>';
+  return `
+  <h2 class="section">Lancer un tournage</h2>
+  <section class="card"><p style="margin:0 0 10px;font-size:14px">Le tournage automatique passe chaque nuit à 5 h. Les nouvelles vidéos arrivent dans la banque à la fin, puis entrent dans la file.</p>
+    <form class="genf" data-act="vgen">
+      <label class="check"><input type="radio" name="record" value="false" checked> Formats animés seulement : globe, plus ou moins, quiz <span class="muted">(environ 20 min)</span></label>
+      <label class="check"><input type="radio" name="record" value="true"> Complet, avec l'app filmée <span class="muted">(environ 1 h 30)</span></label>
+      <label class="check">Quiz globe : <select name="globes">${[0, 1, 2, 3, 4].map((n) => `<option ${n === 2 ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+      <button class="btn" type="submit" ${busy} style="width:auto;padding:10px 16px">Lancer le tournage</button>
+    </form>
+  </section>
+  <h2 class="section">Derniers tournages</h2>
+  ${card('Tournages', 'social', list)}`;
 }
 /** Écritures de l'onglet Vidéos (ordre, publication) : POST /api/hq, puis on recharge la file. */
 async function videoWrite(source, body, okText) {
@@ -1127,6 +1202,11 @@ function moveVideo(key, dir) {
   if (i < 0 || k < 0 || k >= list.length) return;
   [list[i], list[k]] = [list[k], list[i]];
   videoWrite('social-order', { pinned: list.slice(0, Math.max(i, k) + 1) }, 'Ordre enregistré : le script de publication le suit dès le prochain créneau.');
+}
+function skipVideo(key) {
+  if (confirm(`Retirer cette vidéo ? Elle ne sera publiée nulle part.\n\n${key}\n\nTu pourras la remettre depuis la banque.`)) {
+    videoWrite('social-order', { skip: key }, 'Vidéo retirée : la suivante prend sa place.');
+  }
 }
 function publishVideo(key) {
   const ok = confirm(`Publier maintenant sur TikTok et Instagram ?\n\n${key}\n\nElle part dans 1 à 2 minutes. Le créneau automatique suivant est sauté s'il tombe dans les 3 h.`);
@@ -1524,6 +1604,9 @@ function onAct(e) {
     if (act === 'vprev') { S.previews[el.dataset.key] = !S.previews[el.dataset.key]; return render(); }
     if (act === 'vmove') return moveVideo(el.dataset.key, Number(el.dataset.dir));
     if (act === 'vpub') return publishVideo(el.dataset.key);
+    if (act === 'vskip') return skipVideo(el.dataset.key);
+    if (act === 'vunskip') return videoWrite('social-order', { unskip: el.dataset.key }, 'Vidéo remise dans la file.');
+    if (act === 'vtab') { S.vtab = el.dataset.v; store('hq.vtab', S.vtab); return render(); }
     if (act === 'vreset') { if (confirm('Revenir à l’ordre automatique ?')) videoWrite('social-order', { pinned: [] }, 'Ordre automatique rétabli.'); return; }
     if (act === 'mkdel') { if (confirm('Supprimer ce repère ?')) markerWrite('DELETE', null, el.dataset.id); }
   } else if (e.type === 'change') {
@@ -1533,6 +1616,13 @@ function onAct(e) {
       const r = { ...S.range, [act]: el.value };
       if (r.from > r.to) r[act === 'from' ? 'to' : 'from'] = el.value;
       return setFilters({ range: r });
+    }
+  } else if (e.type === 'submit' && act === 'vgen') {
+    e.preventDefault();
+    const f = new FormData(el);
+    const record = f.get('record') === 'true';
+    if (confirm(`Lancer un tournage ${record ? 'complet (avec l’app filmée)' : 'des formats animés'} ?`)) {
+      videoWrite('social-generate', { record, globes: Number(f.get('globes')) }, 'Tournage lancé : les vidéos arrivent dans la banque à la fin.');
     }
   } else if (e.type === 'submit' && act === 'mkadd') {
     e.preventDefault();

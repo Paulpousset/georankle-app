@@ -92,13 +92,14 @@ function loadState() {
   return JSON.parse(readFileSync(join(work, STATE_FILE), 'utf8'));
 }
 
-// Ordre rangé à la main depuis /hq (onglet Vidéos) : { pinned: [clés] }.
-function loadPinned() {
+// Choix faits à la main depuis /hq (onglet Vidéos) : { pinned: [clés], skipped: [clés] }.
+function loadOrder() {
   try {
     gh('release', 'download', STATE_TAG, '--pattern', ORDER_FILE, '--dir', work, '--clobber');
-    return JSON.parse(readFileSync(join(work, ORDER_FILE), 'utf8')).pinned ?? [];
+    const order = JSON.parse(readFileSync(join(work, ORDER_FILE), 'utf8'));
+    return { pinned: order.pinned ?? [], skipped: order.skipped ?? [] };
   } catch {
-    return [];
+    return { pinned: [], skipped: [] };
   }
 }
 
@@ -121,11 +122,13 @@ function saveState(state) {
 const postedFor = (p) => postedForTarget(p, TARGET);
 
 function pending(state) {
+  const order = loadOrder();
   const releases = JSON.parse(gh('release', 'list', '--limit', '100', '--json', 'tagName,createdAt,publishedAt'));
   const assetsOf = (tag) => JSON.parse(gh('release', 'view', tag, '--json', 'assets')).assets.map((a) => a.name);
   return upcoming({
     state, releases, assetsOf, target: TARGET, kind: KIND, langs: LANGS, minRelease: MIN_RELEASE, minReleaseApp: MIN_RELEASE_APP,
-    pinned: loadPinned(),
+    // Une vidéo retirée puis publiée à la main (VIDEO) part quand même.
+    pinned: order.pinned, skipped: order.skipped.filter((key) => key !== env.VIDEO),
   });
 }
 

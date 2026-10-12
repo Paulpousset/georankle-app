@@ -103,12 +103,14 @@ export async function social() {
 
   const stateAsset = assetOf(STATE_TAG, STATE_FILE);
   const orderAsset = assetOf(STATE_TAG, ORDER_FILE);
-  const [state, order, running] = await Promise.all([
+  const [state, order, postRuns, videoRuns] = await Promise.all([
     stateAsset ? assetText(stateAsset).then(JSON.parse) : { posted: [] },
     orderAsset ? assetText(orderAsset).then(JSON.parse).catch(() => ({})) : {},
-    runningPosts(),
+    workflowRuns('social-post.yml'),
+    workflowRuns('social-video.yml'),
   ]);
   const pinned = Array.isArray(order.pinned) ? order.pinned : [];
+  const skipped = Array.isArray(order.skipped) ? order.skipped : [];
 
   // Réglages de social-post.yml (valeurs par défaut si les variables ne sont pas lisibles).
   const langs = (vars?.SOCIAL_POST_LANGS || 'fr').split(/[\s,]+/).filter(Boolean);
@@ -130,7 +132,7 @@ export async function social() {
       out.push({ at: slot.at.toISOString(), target, kind, skipped: 'Publication manuelle récente : ce créneau ne publiera rien.' });
       continue;
     }
-    const { todo, wanted } = upcoming({ state: sim, releases, assetsOf, target, kind, langs, minRelease, minReleaseApp: DEFAULT_MIN_RELEASE_APP, pinned });
+    const { todo, wanted } = upcoming({ state: sim, releases, assetsOf, target, kind, langs, minRelease, minReleaseApp: DEFAULT_MIN_RELEASE_APP, pinned, skipped });
     const item = todo[0];
     const row = { at: slot.at.toISOString(), target, kind, platforms: target === 'social' ? socialPlatforms : youtubePlatforms, left: todo.length };
     if (!item) {
@@ -185,11 +187,42 @@ export async function social() {
     r.warnings = w;
   }
 
+  // Banque : toutes les vidéos des releases, avec ce qu'elles deviennent.
+  const postedBy = new Map();
+  for (const p of state.posted) postedBy.set(p.key, [...(postedBy.get(p.key) ?? []), p]);
+  const planned = new Map();
+  for (const r of out) if (r.item && !planned.has(r.item.key)) planned.set(r.item.key, r.at);
+  const waiting = new Set(upcoming({ state, releases, assetsOf, target: 'social', kind: 'globe', langs, minRelease, pinned, skipped }).todo.map((i) => i.key));
+  const removed = new Set(skipped);
+  const bank = list
+    .filter((r) => /^shorts-/.test(r.tag_name) && r.tag_name !== STATE_TAG)
+    .sort((a, b) => (a.tag_name === NEXT_TAG ? -1 : b.tag_name === NEXT_TAG ? 1 : b.created_at.localeCompare(a.created_at)))
+    .map((r) => ({
+      tag: r.tag_name,
+      at: r.created_at,
+      videos: r.assets.filter((a) => a.name.endsWith('.mp4')).map((a) => {
+        const key = `${r.tag_name}/${a.name}`;
+        const posts = postedBy.get(key) ?? [];
+        const status = posts.length ? 'posted' : removed.has(key) ? 'removed' : planned.has(key) ? 'planned' : waiting.has(key) ? 'waiting' : 'unused';
+        return {
+          key, name: a.name, size: a.size, status, previewUrl: previewUrl(a.id),
+          format: formatOf({ tag: r.tag_name, group: a.name.replace(/-v\d+\.mp4$/, '') }),
+          postedAt: posts[0]?.at ?? null,
+          platforms: [...new Set(posts.flatMap((p) => [...(p.zernio ?? []), ...(p['upload-post'] ?? [])]))],
+          plannedAt: planned.get(key) ?? null,
+        };
+      }),
+    }))
+    .filter((r) => r.videos.length);
+
   return {
     repo: REPO(),
     settings: { enabled, langs, minRelease, varsRead: Boolean(vars), zernioRead: Boolean(zernio), canWrite: Boolean(env('GITHUB_TOKEN')) },
     pinned,
-    running,
+    skipped,
+    running: postRuns?.filter((w) => w.running) ?? null,
+    generation: videoRuns,
+    bank,
     slots: out,
     history: history.map((p) => ({
       at: p.at, key: p.key, tag: p.tag, platforms: [...(p.zernio ?? []), ...(p['upload-post'] ?? [])], caption: p.caption ?? null,
@@ -198,14 +231,15 @@ export async function social() {
   };
 }
 
-/** Publications en cours (social-post.yml lancé et pas encore fini). */
-async function runningPosts() {
+/** Derniers passages d'un workflow (publication, tournage) : en cours ou fini, et comment. */
+async function workflowRuns(file) {
   if (!env('GITHUB_TOKEN')) return null;
   try {
-    const r = await http(`${API()}/actions/workflows/social-post.yml/runs?per_page=5`, { headers: ghHeaders() });
-    return r.workflow_runs
-      .filter((w) => ['queued', 'in_progress', 'waiting', 'pending', 'requested'].includes(w.status))
-      .map((w) => ({ at: w.created_at, event: w.event, url: w.html_url }));
+    const r = await http(`${API()}/actions/workflows/${file}/runs?per_page=5`, { headers: ghHeaders() });
+    return r.workflow_runs.map((w) => ({
+      at: w.created_at, updated: w.updated_at, event: w.event, url: w.html_url,
+      running: ['queued', 'in_progress', 'waiting', 'pending', 'requested'].includes(w.status), conclusion: w.conclusion,
+    }));
   } catch {
     return null;
   }
@@ -278,22 +312,41 @@ function needWrite() {
 }
 const KEY = /^shorts-[\w-]+\/[\w.-]+\.mp4$/;
 
-/** Range l'ordre choisi à la main : order.json dans la release shorts-state. */
-export async function setOrder(pinned) {
+const keyList = (v, max) => Array.isArray(v) && v.length <= max && v.every((k) => typeof k === 'string' && KEY.test(k));
+
+/**
+ * Choix faits à la main, rangés dans order.json (release shorts-state) :
+ * pinned (ordre des prochaines vidéos) et skipped (vidéos retirées).
+ * patch : { pinned } pour l'ordre, { skip: clé } ou { unskip: clé }.
+ */
+export async function setOrder(patch) {
   needWrite();
-  if (!Array.isArray(pinned) || pinned.length > 60 || !pinned.every((k) => typeof k === 'string' && KEY.test(k))) {
-    throw new Error('ordre invalide');
-  }
   const release = await http(`${API()}/releases/tags/${STATE_TAG}`, { headers: ghHeaders() });
   const old = release.assets.find((a) => a.name === ORDER_FILE);
+  const cur = old ? JSON.parse(await assetText(old).catch(() => '{}')) : {};
+  let pinned = Array.isArray(cur.pinned) ? cur.pinned : [];
+  let skipped = Array.isArray(cur.skipped) ? cur.skipped : [];
+  if ('pinned' in patch) {
+    if (!keyList(patch.pinned, 60)) throw new Error('ordre invalide');
+    pinned = patch.pinned;
+  } else if (typeof patch.skip === 'string' && KEY.test(patch.skip)) {
+    skipped = [...skipped, patch.skip];
+    pinned = pinned.filter((k) => k !== patch.skip);
+  } else if (typeof patch.unskip === 'string' && KEY.test(patch.unskip)) {
+    skipped = skipped.filter((k) => k !== patch.unskip);
+  } else {
+    throw new Error('modification invalide');
+  }
   if (old) await http(`${API()}/releases/assets/${old.id}`, { method: 'DELETE', headers: ghHeaders() });
-  const body = JSON.stringify({ pinned: [...new Set(pinned)], at: new Date().toISOString() }, null, 2) + '\n';
+  pinned = [...new Set(pinned)];
+  skipped = [...new Set(skipped)].slice(-500);
+  const body = JSON.stringify({ pinned, skipped, at: new Date().toISOString() }, null, 2) + '\n';
   await http(`https://uploads.github.com/repos/${REPO()}/releases/${release.id}/assets?name=${ORDER_FILE}`, {
     method: 'POST',
     headers: { ...ghHeaders(), 'content-type': 'application/json' },
     body,
   });
-  return { pinned };
+  return { pinned, skipped };
 }
 
 /** Lance social-post.yml sur TikTok + Instagram pour cette vidéo-là. */
@@ -311,6 +364,20 @@ export async function publishNow(key) {
       ref: repo.default_branch,
       inputs: { target: 'social', kind: 'auto', count: '1', video: key, dry_run: 'false' },
     }),
+  });
+  return { ok: true };
+}
+
+/** Lance un tournage (social-video.yml) : formats animés seuls, ou avec l'app filmée. */
+export async function generate({ record, globes }) {
+  needWrite();
+  const n = Number(globes);
+  if (!Number.isInteger(n) || n < 0 || n > 6) throw new Error('nombre de globes invalide');
+  const repo = await http(API(), { headers: ghHeaders() });
+  await http(`${API()}/actions/workflows/social-video.yml/dispatches`, {
+    method: 'POST',
+    headers: { ...ghHeaders(), 'content-type': 'application/json' },
+    body: JSON.stringify({ ref: repo.default_branch, inputs: { record: String(Boolean(record)), globes: String(n) } }),
   });
   return { ok: true };
 }

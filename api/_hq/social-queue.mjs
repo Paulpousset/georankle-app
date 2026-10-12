@@ -101,9 +101,10 @@ function queue({ posted, releases: all, assetsOf, target, langs, minRelease }) {
  *   pinned : clés (tag/fichier.mp4) rangées à la main depuis /hq ; sur
  *            TikTok + Instagram, elles partent avant tout le reste, dans cet
  *            ordre (YouTube garde sa propre file).
+ *   skipped : clés retirées à la main depuis /hq : elles ne partent nulle part.
  * Renvoie { todo, wanted } (wanted : la file du format demandé).
  */
-export function upcoming({ state, releases, assetsOf, target, kind, langs, minRelease = 0, minReleaseApp = DEFAULT_MIN_RELEASE_APP, pinned = [] }) {
+export function upcoming({ state, releases, assetsOf, target, kind, langs, minRelease = 0, minReleaseApp = DEFAULT_MIN_RELEASE_APP, pinned = [], skipped = [] }) {
   const posted = state.posted.filter((p) => postedFor(p, target));
   const isNext = (item) => item.tag === NEXT_TAG;
   const isGlobe = (item) => !isNext(item) && item.group.startsWith('globe');
@@ -132,7 +133,8 @@ export function upcoming({ state, releases, assetsOf, target, kind, langs, minRe
     .sort((a, b) => (lastPosted[gameOf(a)] || 0) - (lastPosted[gameOf(b)] || 0) || releaseNumber(b) - releaseNumber(a));
   const FALLBACK = { globe: [globes, jeux, apps], jeu: [jeux, apps, globes], plusmoins: [jeux, apps, globes], app: [apps, jeux, globes] };
   const order = [nexts, ...(FALLBACK[kind] ?? [all])];
-  const todo = [...new Set(order.flat())];
+  const removed = new Set(skipped);
+  const todo = [...new Set(order.flat())].filter((item) => !removed.has(item.key));
   if (target !== 'social' || !pinned.length) return { todo, wanted: order[1] };
   const first = pinned.map((key) => todo.find((item) => item.key === key)).filter(Boolean);
   return { todo: [...new Set([...first, ...todo])], wanted: order[1] };
