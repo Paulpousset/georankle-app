@@ -164,6 +164,23 @@ Dans l'ordre. Après ça, une fournée de shorts sort chaque lundi à 5 h UTC da
 5. **Optionnel, sur le Mac** : `claude mcp add maestro -- maestro mcp` pour
    que Claude Code pilote le simulateur iOS (meilleure image, globe 3D).
 
+## Concepts « atlas » (sans tournage)
+
+`composer/concepts.mjs` écrit quatre fiches dessinées dans la charte de l'app
+(parchemin, Playfair Display, Space Mono, bruitages de l'app), sans simulateur :
+
+| Fiche | Composition | Ce qu'on voit |
+|---|---|---|
+| `concept-bande-annonce` | `AppTrailer` | Les 12 captures des stores dans un téléphone, un mode par plan, en accélérant |
+| `concept-devine` | `DevineConcept` | « Devine le pays » joué : six indices qui se retournent par essai, compte à rebours, révélation |
+| `concept-frontieres` | `FrontieresConcept` | Relier deux pays par le moins de frontières (chemin calculé sur `src/data/borders.ts`) |
+| `concept-rankle` | `RankleConcept` | Six pays posés dans six thèmes, rang mondial qui défile, le dernier tombe mal |
+
+```bash
+cd social-video/composer
+node concepts.mjs && node render.mjs   # → social-video/out/final/concept-*.mp4
+```
+
 ## Effets du montage
 
 Rythme pensé pour TikTok / Reels, tout dans `composer/src/Short.tsx` :
