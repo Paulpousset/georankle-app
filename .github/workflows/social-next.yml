@@ -1,0 +1,35 @@
+name: Vidéos prioritaires
+
+# Range les vidéos de social-video/next/ (une .mp4 et son .txt par vidéo,
+# nommées 01-devine-fr-v1.mp4…) dans la release `shorts-next`. post.mjs les
+# publie avant tout le reste, dans l'ordre de leur nom.
+#
+# Les vidéos ne passent jamais par master : on les pousse sur une branche de
+# travail et on lance ce workflow sur cette branche (--ref).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  upload:
+    name: Ajouter à la file prioritaire
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Envoyer dans shorts-next
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          files=(social-video/next/*.mp4 social-video/next/*.txt)
+          if [ ${#files[@]} -eq 0 ]; then echo "Rien dans social-video/next/"; exit 1; fi
+          gh release view shorts-next >/dev/null 2>&1 || gh release create shorts-next --prerelease \
+            --target master --title "Shorts prioritaires" \
+            --notes "Publiés avant tout le reste (post.mjs), dans l'ordre de leur nom."
+          gh release upload shorts-next "${files[@]}" --clobber
+          gh release view shorts-next --json assets --jq '.assets[].name'

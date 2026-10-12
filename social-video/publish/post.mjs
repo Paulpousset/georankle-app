@@ -8,6 +8,9 @@
 //
 // Source : les releases `shorts-N` créées par le workflow « Vidéos réseaux
 // sociaux » (chaque .mp4 a son .txt avec le texte de la publication).
+// Release `shorts-next` : vidéos montées à part (ex. concepts de l'atlas),
+// publiées avant tout le reste, quel que soit le créneau, dans l'ordre de
+// leur nom (01-…, 02-…). Demande de Paul le 12/10.
 // Mémoire : posted.json, rangé dans la release `shorts-state`, liste ce qui
 // est déjà parti. Une vidéo n'est jamais publiée deux fois.
 //
@@ -77,6 +80,7 @@ const USE_ZERNIO = ZERNIO && TARGET !== 'youtube';
 const USE_UPLOAD_POST = (UPLOAD_POST || !ZERNIO) && TARGET !== 'social';
 const STATE_TAG = 'shorts-state';
 const STATE_FILE = 'posted.json';
+const NEXT_TAG = 'shorts-next';
 
 const gh = (...args) => execFileSync('gh', [...args, '--repo', REPO], { encoding: 'utf8' });
 const work = mkdtempSync(join(tmpdir(), 'social-post-'));
@@ -140,6 +144,7 @@ function queue(state) {
     .filter((r) => /^shorts-\d+$/.test(r.tagName) && Number(r.tagName.slice(7)) >= MIN_RELEASE)
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   if (TARGET === 'youtube') releases.reverse();
+  if (all.some((r) => r.tagName === NEXT_TAG)) releases.unshift({ tagName: NEXT_TAG });
 
   // Les accroches v1 / v2 d'une même vidéo montrent la même partie : une seule
   // part par release, en alternant d'une release à l'autre pour comparer.
@@ -286,9 +291,10 @@ if (MIN_GAP_HOURS && last && Date.now() - last < MIN_GAP_HOURS * 3600e3) {
   process.exit(0);
 }
 
-const isGlobe = (item) => item.group.startsWith('globe');
+const isNext = (item) => item.tag === NEXT_TAG;
+const isGlobe = (item) => !isNext(item) && item.group.startsWith('globe');
 // Modes de jeu animés (style plateau TV) : plus ou moins, quiz-capitals…
-const isJeu = (item) => /^(plusmoins|quiz-)/.test(item.group);
+const isJeu = (item) => !isNext(item) && /^(plusmoins|quiz-)/.test(item.group);
 const releaseNumber = (item) => Number(item.tag.slice(7));
 // Jamais deux fois de suite le même jeu : parmi les vidéos de l'app, le jeu
 // publié il y a le plus longtemps (ou jamais) passe d'abord, puis la release
@@ -299,9 +305,10 @@ for (const p of state.posted.filter(postedFor)) {
   lastPosted[game] = Math.max(lastPosted[game] || 0, Date.parse(p.at) || 0);
 }
 const gameOf = (item) => item.group.replace(/-[a-z]{2}$/, '');
-const all = queue(state).filter((item) => isGlobe(item) || releaseNumber(item) >= MIN_RELEASE_APP);
+const all = queue(state).filter((item) => isNext(item) || isGlobe(item) || releaseNumber(item) >= MIN_RELEASE_APP);
+const nexts = all.filter(isNext);
 const apps = all
-  .filter((item) => !isGlobe(item) && !isJeu(item))
+  .filter((item) => !isNext(item) && !isGlobe(item) && !isJeu(item))
   .sort((a, b) => (lastPosted[gameOf(a)] || 0) - (lastPosted[gameOf(b)] || 0) || releaseNumber(b) - releaseNumber(a));
 const globes = all.filter(isGlobe);
 // Le mode publié il y a le plus longtemps d'abord, dans sa partie la plus récente.
@@ -309,8 +316,8 @@ const jeux = all
   .filter(isJeu)
   .sort((a, b) => (lastPosted[gameOf(a)] || 0) - (lastPosted[gameOf(b)] || 0) || releaseNumber(b) - releaseNumber(a));
 const FALLBACK = { globe: [globes, jeux, apps], jeu: [jeux, apps, globes], plusmoins: [jeux, apps, globes], app: [apps, jeux, globes] };
-const order = FALLBACK[KIND] ?? [all];
-const wanted = order[0];
+const order = [nexts, ...(FALLBACK[KIND] ?? [all])];
+const wanted = order[1];
 const todo = [...new Set(order.flat())];
 console.log(`[${TARGET}] ${todo.length} vidéo(s) en attente dont ${wanted.length} au format ${KIND || 'quelconque'} (langues ${LANGS.join(', ')}, releases ≥ shorts-${MIN_RELEASE}).`);
 
