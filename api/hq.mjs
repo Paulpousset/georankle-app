@@ -6,7 +6,8 @@
  * POST /api/hq?source=markers  { day, kind, label }  → ajoute un repère manuel
  * DELETE /api/hq?source=markers&id=<id>              → le retire
  * GET /api/hq?source=video&id&exp&sig                 → aperçu vidéo (lien signé, sans session)
- * POST /api/hq?source=social-order { pinned: [clés] } → ordre des prochaines vidéos
+ * POST /api/hq?source=social-order { pinned: [clés] } | { skip } | { unskip } → ordre, vidéos retirées
+ * POST /api/hq?source=social-generate { record, globes } → lance un tournage (social-video.yml)
  * POST /api/hq?source=social-publish { key }          → publie cette vidéo tout de suite
  * Tableau de bord privé (page /hq). Réservé aux profils is_admin : la page
  * envoie le jeton de session Supabase, on le vérifie avant toute requête.
@@ -19,7 +20,7 @@ import { deploys } from './_hq/deploys.mjs';
 import { searchconsole, play, admob, adsense } from './_hq/google.mjs';
 import { appstore } from './_hq/appstore.mjs';
 import { growth } from './_hq/growth.mjs';
-import { social, videoProxy, setOrder, publishNow } from './_hq/social.mjs';
+import { social, videoProxy, setOrder, publishNow, generate } from './_hq/social.mjs';
 
 const SOURCES = { supabase, posthog, sentry, deploys, searchconsole, play, admob, adsense, appstore, growth, social };
 
@@ -150,7 +151,7 @@ async function socialWrite(request, source) {
   }
   const b = await request.json().catch(() => ({}));
   try {
-    const out = source === 'social-order' ? await setOrder(b.pinned) : await publishNow(b.key);
+    const out = source === 'social-order' ? await setOrder(b) : source === 'social-generate' ? await generate(b) : await publishNow(b.key);
     for (const k of cache.keys()) if (k.startsWith('social:')) cache.delete(k);
     return json({ ok: true, ...out });
   } catch (e) {
@@ -162,7 +163,7 @@ async function socialWrite(request, source) {
 
 export const POST = (request) => {
   const source = new URL(request.url).searchParams.get('source');
-  if (source === 'social-order' || source === 'social-publish') return socialWrite(request, source);
+  if (['social-order', 'social-publish', 'social-generate'].includes(source)) return socialWrite(request, source);
   return markersWrite(request, 'POST');
 };
 export const DELETE = (request) => markersWrite(request, 'DELETE');
