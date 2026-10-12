@@ -141,7 +141,9 @@ function rng(seed) {
   return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 2 ** 32);
 }
 
-const day = Math.floor(Date.now() / 86400000);
+// Tirage par tournage (numéro du run GitHub), pas par jour : deux tournages
+// le même jour donnaient la même partie, publiée deux fois (12/10).
+const day = Number(process.env.GITHUB_RUN_NUMBER) || Math.floor(Date.now() / 86400000);
 const modeIds = arg('mode') ? [arg('mode')] : Object.keys(MODES);
 mkdirSync(EPISODES, { recursive: true });
 for (const modeId of modeIds) {

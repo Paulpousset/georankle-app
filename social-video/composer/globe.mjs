@@ -87,7 +87,9 @@ const tiers = Object.fromEntries(
   Object.entries(TIERS).map(([k, v], i) => [k, shuffled(v.split(' ').map((c) => ({ cc: c.slice(0, 2), id: c.slice(2) })), 97 + i)]),
 );
 
-const day = Math.floor(Date.now() / 86400000);
+// Tirage par tournage (numéro du run GitHub), pas par jour : deux tournages
+// le même jour donnaient la même partie, publiée deux fois (12/10).
+const day = Number(process.env.GITHUB_RUN_NUMBER) || Math.floor(Date.now() / 86400000);
 mkdirSync(EPISODES, { recursive: true });
 for (let n = 0; n < COUNT; n++) {
   const slot = day * COUNT + n;
