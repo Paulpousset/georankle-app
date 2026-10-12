@@ -248,7 +248,11 @@ details.tv .scroll-x { max-height: 240px; overflow-y: auto; }
 .vslot .alert { padding: 7px 10px; font-size: 13px; }
 .vslot.off { opacity: .7; }
 .vslot video { display: block; margin-top: 10px; width: 100%; max-width: 240px; aspect-ratio: 9 / 16; border-radius: 12px; background: #000; }
-.vslot .btn.ghost { margin-top: 8px; font-size: 13px; padding: 6px 12px; }
+.vslot .vact { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.vslot .vact .btn.ghost { font-size: 13px; padding: 6px 12px; min-height: 34px; }
+.vslot .vact .btn.pub { background: var(--accent); color: #fff; }
+.vslot .vact .btn:disabled { opacity: .5; cursor: default; }
+.linkbtn { border: 0; background: none; padding: 0; color: var(--accent); cursor: pointer; font-size: 12px; }
 @media (max-width: 560px) { .vslot { grid-template-columns: minmax(0, 1fr); } }
 .tbl tr.pick { cursor: pointer; } .tbl tr.pick:hover td { background: var(--surface-2); }
 .tbl tr.pick.on td { background: color-mix(in srgb, var(--accent) 10%, transparent); }
@@ -369,7 +373,9 @@ const S = {
   mapMetric: 'installs',
   dlSource: store('hq.dlsrc') || 'posthog',
   world: null,
-  previews: {}, // id de la vidéo → lien temporaire, 'loading' ou { error }
+  previews: {}, // clé de la vidéo → true quand l'aperçu est ouvert
+  vbusy: null, // action en cours sur l'onglet Vidéos (ordre, publication)
+  vmsg: null, // { kind, text } : retour de la dernière action
 };
 function json(t) { try { return JSON.parse(t ?? 'null'); } catch { return null; } }
 
@@ -1021,13 +1027,11 @@ function slotWhen(iso) {
   const label = day === 0 ? 'Aujourd’hui' : day === 1 ? 'Demain' : d.toLocaleDateString('fr-FR', { weekday: 'long', timeZone: 'Europe/Paris' }).replace(/^./, (c) => c.toUpperCase());
   return `${parisTime(d)}<small>${label} ${dm(parisDay(d))}</small>`;
 }
-function previewHtml(id) {
-  if (!id) return '';
-  const p = S.previews[id];
-  if (!p) return `<button class="btn ghost" type="button" data-act="vprev" data-id="${id}">▶ Voir la vidéo</button>`;
-  if (p === 'loading') return '<div class="skel" style="height:40px;max-width:240px;margin-top:10px"></div>';
-  if (p.error) return `<div class="err" style="margin-top:8px">${esc(p.error)}</div>`;
-  return `<video controls playsinline preload="metadata" src="${esc(p)}"></video>`;
+function previewHtml(it) {
+  if (!it.previewUrl) return '';
+  if (!S.previews[it.key]) return '';
+  // Relayé par /api/hq en video/mp4 : Safari (iPhone) refuse le lien GitHub direct.
+  return `<video controls playsinline preload="metadata" src="${esc(it.previewUrl)}"></video>`;
 }
 function slotHtml(x) {
   const where = (x.platforms ?? (x.target === 'youtube' ? ['youtube'] : [])).map((p) => `<span class="pill">${esc(platformName(p))}</span>`).join('');
@@ -1036,16 +1040,24 @@ function slotHtml(x) {
       <div class="alerts"><div class="alert warn"><span class="dot">!</span><div>${esc(x.skipped)}</div></div></div></div></section>`;
   }
   const it = x.item;
+  const busy = S.vbusy ? 'disabled' : '';
   const fmtPill = `<span class="pill ${it.format.kind === 'next' ? 'good' : ''}">${esc(it.format.label)}</span>`;
   const warns = x.warnings?.length
     ? `<div class="alerts">${x.warnings.map((w) => `<div class="alert warn"><span class="dot">!</span><div>${esc(w)}</div></div>`).join('')}</div>`
     : '';
   return `<section class="card vslot"><div class="when">${slotWhen(x.at)}</div><div>
-    <div class="meta">${where}${fmtPill}</div>
+    <div class="meta">${where}${fmtPill}${it.pinned ? '<span class="pill">📌 ordre manuel</span>' : ''}</div>
     <div class="file">${esc(it.key)}${it.size ? ` · ${fmt(it.size / 1e6, 1)} Mo` : ''}</div>
     ${it.caption ? `<p class="cap">${esc(it.caption)}</p>` : '<p class="cap muted">(pas de légende)</p>'}
     ${warns}
-    ${previewHtml(it.assetId)}
+    <div class="vact">
+      ${it.previewUrl ? `<button class="btn ghost" type="button" data-act="vprev" data-key="${esc(it.key)}">${S.previews[it.key] ? '✕ Fermer' : '▶ Voir'}</button>` : ''}
+      ${x.target === 'social' ? `
+      <button class="btn ghost" type="button" data-act="vmove" data-dir="-1" data-key="${esc(it.key)}" aria-label="Avancer" ${busy}>↑</button>
+      <button class="btn ghost" type="button" data-act="vmove" data-dir="1" data-key="${esc(it.key)}" aria-label="Reculer" ${busy}>↓</button>
+      <button class="btn ghost pub" type="button" data-act="vpub" data-key="${esc(it.key)}" ${busy}>Publier maintenant</button>` : ''}
+    </div>
+    ${previewHtml(it)}
   </div></section>`;
 }
 function videosView() {
@@ -1058,6 +1070,12 @@ function videosView() {
     ].filter(Boolean);
     return `<p class="muted" style="font-size:13px;margin:0 2px 10px">${bits.join(' · ')}<br>Simulation du choix du script de publication, à partir des vidéos déjà tournées. Le tournage de 5 h ajoute chaque jour de nouvelles vidéos : les créneaux lointains peuvent encore changer.${v.varsRead ? '' : ' Réglages du dépôt non lus : valeurs par défaut.'}</p>`;
   });
+  const res = S.data[src]?.data;
+  const notes = [
+    S.vmsg ? `<div class="alert ${S.vmsg.kind}"><span class="dot">${S.vmsg.kind === 'good' ? '✓' : '!'}</span><div>${esc(S.vmsg.text)}</div></div>` : '',
+    res?.running?.length ? `<div class="alert warn"><span class="dot">…</span><div>Publication en cours sur GitHub<small><a href="${esc(res.running[0].url)}" target="_blank" rel="noopener">Suivre ↗</a></small></div></div>` : '',
+    res?.pinned?.length ? `<div class="alert"><span class="dot" style="background:var(--muted)">📌</span><div>Ordre choisi à la main pour ${res.pinned.length} vidéo(s)<small><button class="linkbtn" type="button" data-act="vreset" ${S.vbusy ? 'disabled' : ''}>Revenir à l'ordre automatique</button></small></div></div>` : '',
+  ].join('');
   const slots = block(src, 'slots', (v) => {
     if (!v.length) return '<div class="empty">Aucun créneau sur les 7 prochains jours.</div>';
     const n = v.filter((x) => x.warnings?.length || x.skipped).length;
@@ -1075,23 +1093,44 @@ function videosView() {
   return `
   <h2 class="section">Prochaines vidéos publiées</h2>
   ${head}
+  ${notes ? `<div class="alerts" style="margin-bottom:10px">${notes}</div>` : ''}
   ${slots}
   <h2 class="section">Déjà publié</h2>
   ${hist}`;
 }
-async function loadPreview(id) {
-  S.previews[id] = 'loading';
+/** Écritures de l'onglet Vidéos (ordre, publication) : POST /api/hq, puis on recharge la file. */
+async function videoWrite(source, body, okText) {
+  S.vbusy = source;
+  S.vmsg = null;
   render();
   try {
     const { data: { session } } = await client.auth.getSession();
     if (session) S.token = session.access_token;
-    const r = await fetch(`/api/hq?source=social&preview=${encodeURIComponent(id)}`, { headers: { authorization: `Bearer ${S.token}` } });
-    const j = await r.json();
-    S.previews[id] = j.url ?? { error: j.error ?? `HTTP ${r.status}` };
+    const r = await fetch(`/api/hq?source=${source}`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${S.token}`, 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const j = await r.json().catch(() => ({}));
+    S.vmsg = r.ok && j.ok ? { kind: 'good', text: okText } : { kind: 'bad', text: j.error ?? `Erreur ${r.status}` };
   } catch (e) {
-    S.previews[id] = { error: e.message };
+    S.vmsg = { kind: 'bad', text: e.message };
   }
-  render();
+  S.vbusy = null;
+  await loadAll(true, ['social']);
+}
+/** ↑ / ↓ : on échange avec la voisine, et l'ordre affiché jusque-là devient l'ordre manuel. */
+function moveVideo(key, dir) {
+  const list = (S.data.social?.data?.slots ?? []).filter((x) => x.target === 'social' && x.item).map((x) => x.item.key);
+  const i = list.indexOf(key);
+  const k = i + dir;
+  if (i < 0 || k < 0 || k >= list.length) return;
+  [list[i], list[k]] = [list[k], list[i]];
+  videoWrite('social-order', { pinned: list.slice(0, Math.max(i, k) + 1) }, 'Ordre enregistré : le script de publication le suit dès le prochain créneau.');
+}
+function publishVideo(key) {
+  const ok = confirm(`Publier maintenant sur TikTok et Instagram ?\n\n${key}\n\nElle part dans 1 à 2 minutes. Le créneau automatique suivant est sauté s'il tombe dans les 3 h.`);
+  if (ok) videoWrite('social-publish', { key }, 'Publication lancée : la vidéo part dans 1 à 2 minutes.');
 }
 
 // ─── Filtres (pays, plateforme, dates perso, comparaison) ───────────────────
@@ -1482,7 +1521,10 @@ function onAct(e) {
     if (act === 'close') { S.sheet = false; return render(); }
     if (act === 'reset') return setFilters({ countries: [], exclude: false, platform: 'all' });
     if (act === 'days') return pickDays(el.dataset.v);
-    if (act === 'vprev') return loadPreview(el.dataset.id);
+    if (act === 'vprev') { S.previews[el.dataset.key] = !S.previews[el.dataset.key]; return render(); }
+    if (act === 'vmove') return moveVideo(el.dataset.key, Number(el.dataset.dir));
+    if (act === 'vpub') return publishVideo(el.dataset.key);
+    if (act === 'vreset') { if (confirm('Revenir à l’ordre automatique ?')) videoWrite('social-order', { pinned: [] }, 'Ordre automatique rétabli.'); return; }
     if (act === 'mkdel') { if (confirm('Supprimer ce repère ?')) markerWrite('DELETE', null, el.dataset.id); }
   } else if (e.type === 'change') {
     if (act === 'cmp') return setFilters({ compare: el.checked });

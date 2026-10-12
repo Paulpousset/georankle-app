@@ -5,13 +5,15 @@
  * partir des releases GitHub et de posted.json : ce qui s'affiche ici est ce
  * qui partira, tant qu'aucun nouveau tournage n'arrive entre-temps.
  *
- * Dépôt public : marche sans jeton. GITHUB_TOKEN (lecture du dépôt) est
- * facultatif : il relève la limite de l'API GitHub et donne accès aux
- * variables du dépôt (SOCIAL_POST_ENABLED, SOCIAL_POST_LANGS…).
+ * Dépôt public : la lecture marche sans jeton. GITHUB_TOKEN relève la limite
+ * de l'API GitHub, donne accès aux variables du dépôt (SOCIAL_POST_ENABLED…)
+ * et, avec Contents + Actions en écriture, permet de changer l'ordre
+ * (order.json) et de publier une vidéo tout de suite (social-post.yml).
  */
-import { env, http } from './lib.mjs';
+import crypto from 'node:crypto';
+import { env, http, NotConfigured } from './lib.mjs';
 import {
-  STATE_TAG, STATE_FILE, NEXT_TAG, DEFAULT_MIN_RELEASE_APP, kindFor, parisHourOf, postedFor, upcoming,
+  STATE_TAG, STATE_FILE, ORDER_FILE, NEXT_TAG, DEFAULT_MIN_RELEASE_APP, kindFor, parisHourOf, postedFor, upcoming,
 } from './social-queue.mjs';
 
 const REPO = () => env('GITHUB_REPOSITORY', 'Paulpousset/georankle-app');
@@ -100,7 +102,13 @@ export async function social() {
   const assetOf = (tag, name) => byTag[tag]?.assets.find((a) => a.name === name);
 
   const stateAsset = assetOf(STATE_TAG, STATE_FILE);
-  const state = stateAsset ? JSON.parse(await assetText(stateAsset)) : { posted: [] };
+  const orderAsset = assetOf(STATE_TAG, ORDER_FILE);
+  const [state, order, running] = await Promise.all([
+    stateAsset ? assetText(stateAsset).then(JSON.parse) : { posted: [] },
+    orderAsset ? assetText(orderAsset).then(JSON.parse).catch(() => ({})) : {},
+    runningPosts(),
+  ]);
+  const pinned = Array.isArray(order.pinned) ? order.pinned : [];
 
   // Réglages de social-post.yml (valeurs par défaut si les variables ne sont pas lisibles).
   const langs = (vars?.SOCIAL_POST_LANGS || 'fr').split(/[\s,]+/).filter(Boolean);
@@ -122,7 +130,7 @@ export async function social() {
       out.push({ at: slot.at.toISOString(), target, kind, skipped: 'Publication manuelle récente : ce créneau ne publiera rien.' });
       continue;
     }
-    const { todo, wanted } = upcoming({ state: sim, releases, assetsOf, target, kind, langs, minRelease, minReleaseApp: DEFAULT_MIN_RELEASE_APP });
+    const { todo, wanted } = upcoming({ state: sim, releases, assetsOf, target, kind, langs, minRelease, minReleaseApp: DEFAULT_MIN_RELEASE_APP, pinned });
     const item = todo[0];
     const row = { at: slot.at.toISOString(), target, kind, platforms: target === 'social' ? socialPlatforms : youtubePlatforms, left: todo.length };
     if (!item) {
@@ -134,8 +142,10 @@ export async function social() {
       key: item.key, tag: item.tag, name: item.name, group: item.group, variant: item.variant,
       format: formatOf(item), hasCaption: item.hasCaption, assetId: video?.id ?? null, size: video?.size ?? null,
       releaseAt: byTag[item.tag]?.created_at ?? null,
+      previewUrl: video ? previewUrl(video.id) : null,
+      pinned: target === 'social' && pinned.includes(item.key),
     };
-    row.fallback = item.tag !== NEXT_TAG && kind && !wanted.includes(item) ? true : undefined;
+    row.fallback = item.tag !== NEXT_TAG && kind && !row.item.pinned && !wanted.includes(item) ? true : undefined;
     out.push(row);
     sim.posted.push({
       key: item.key, tag: item.tag, group: item.group, variant: item.variant, at: slot.at.toISOString(),
@@ -177,7 +187,9 @@ export async function social() {
 
   return {
     repo: REPO(),
-    settings: { enabled, langs, minRelease, varsRead: Boolean(vars), zernioRead: Boolean(zernio) },
+    settings: { enabled, langs, minRelease, varsRead: Boolean(vars), zernioRead: Boolean(zernio), canWrite: Boolean(env('GITHUB_TOKEN')) },
+    pinned,
+    running,
     slots: out,
     history: history.map((p) => ({
       at: p.at, key: p.key, tag: p.tag, platforms: [...(p.zernio ?? []), ...(p['upload-post'] ?? [])], caption: p.caption ?? null,
@@ -186,12 +198,37 @@ export async function social() {
   };
 }
 
-/** Lien temporaire (quelques minutes) vers la vidéo, pour l'aperçu dans la page. */
-export async function socialPreview(id) {
-  if (!/^\d{1,12}$/.test(String(id))) throw new Error('id invalide');
-  const asset = await http(`${API()}/releases/assets/${id}`, { headers: ghHeaders() });
-  if (!asset.name.endsWith('.mp4')) throw new Error('pas une vidéo');
-  if (!env('GITHUB_TOKEN')) return asset.browser_download_url;
+/** Publications en cours (social-post.yml lancé et pas encore fini). */
+async function runningPosts() {
+  if (!env('GITHUB_TOKEN')) return null;
+  try {
+    const r = await http(`${API()}/actions/workflows/social-post.yml/runs?per_page=5`, { headers: ghHeaders() });
+    return r.workflow_runs
+      .filter((w) => ['queued', 'in_progress', 'waiting', 'pending', 'requested'].includes(w.status))
+      .map((w) => ({ at: w.created_at, event: w.event, url: w.html_url }));
+  } catch {
+    return null;
+  }
+}
+
+// ─── Aperçu vidéo ────────────────────────────────────────────────────────────
+// GitHub sert les vidéos des releases en application/octet-stream : Safari
+// (iPhone) refuse de les lire. On les relaie par morceaux en video/mp4, avec
+// un lien signé (la balise <video> ne peut pas envoyer le jeton de session).
+const PREVIEW_TTL = 12 * 3600;
+const CHUNK = 2 * 1024 * 1024; // sous la limite de 4,5 Mo d'une réponse Vercel
+const secret = () => env('HQ_VIDEO_SECRET') ?? env('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+const sign = (id, exp) => crypto.createHmac('sha256', secret()).update(`video:${id}:${exp}`).digest('base64url');
+
+function previewUrl(id) {
+  const exp = Math.floor(Date.now() / 1000) + PREVIEW_TTL;
+  return `/api/hq?source=video&id=${id}&exp=${exp}&sig=${sign(id, exp)}`;
+}
+
+const signedUrls = new Map(); // id → { url, at } (liens GitHub valables 5 à 30 min)
+async function githubUrl(id) {
+  const hit = signedUrls.get(id);
+  if (hit && Date.now() - hit.at < 4 * 60000) return hit.url;
   const res = await fetch(`${API()}/releases/assets/${id}`, {
     headers: ghHeaders('application/octet-stream'),
     redirect: 'manual',
@@ -199,5 +236,81 @@ export async function socialPreview(id) {
   });
   const url = res.headers.get('location');
   if (!url) throw new Error(`GitHub ${res.status}`);
+  signedUrls.set(id, { url, at: Date.now() });
   return url;
+}
+
+/** GET /api/hq?source=video&id&exp&sig : un morceau de la vidéo (Range). */
+export async function videoProxy(request) {
+  const url = new URL(request.url);
+  const id = url.searchParams.get('id') ?? '';
+  const exp = Number(url.searchParams.get('exp'));
+  const sig = url.searchParams.get('sig') ?? '';
+  const good = sign(id, exp);
+  if (!secret() || !/^\d{1,12}$/.test(id) || !(exp > Date.now() / 1000) || sig.length !== good.length
+    || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(good))) {
+    return new Response('lien expiré', { status: 403 });
+  }
+  const m = /^bytes=(\d+)-(\d*)$/.exec(request.headers.get('range') ?? '') ?? [null, '0', ''];
+  const start = Number(m[1]);
+  const end = Math.min(m[2] ? Number(m[2]) : Infinity, start + CHUNK - 1);
+  const up = await fetch(await githubUrl(id), { headers: { range: `bytes=${start}-${end}` }, signal: AbortSignal.timeout(20000) });
+  if (!up.ok) {
+    signedUrls.delete(id);
+    return new Response(`GitHub ${up.status}`, { status: up.status === 416 ? 416 : 502 });
+  }
+  const body = await up.arrayBuffer();
+  const headers = {
+    'content-type': 'video/mp4',
+    'accept-ranges': 'bytes',
+    'content-length': String(body.byteLength),
+    'cache-control': 'private, max-age=3600',
+    'x-robots-tag': 'noindex',
+  };
+  const range = up.headers.get('content-range');
+  if (range) headers['content-range'] = range;
+  return new Response(body, { status: range ? 206 : 200, headers });
+}
+
+// ─── Actions depuis /hq ──────────────────────────────────────────────────────
+function needWrite() {
+  if (!env('GITHUB_TOKEN')) throw new NotConfigured(['GITHUB_TOKEN'], 'Jeton GitHub avec Contents et Actions en lecture et écriture');
+}
+const KEY = /^shorts-[\w-]+\/[\w.-]+\.mp4$/;
+
+/** Range l'ordre choisi à la main : order.json dans la release shorts-state. */
+export async function setOrder(pinned) {
+  needWrite();
+  if (!Array.isArray(pinned) || pinned.length > 60 || !pinned.every((k) => typeof k === 'string' && KEY.test(k))) {
+    throw new Error('ordre invalide');
+  }
+  const release = await http(`${API()}/releases/tags/${STATE_TAG}`, { headers: ghHeaders() });
+  const old = release.assets.find((a) => a.name === ORDER_FILE);
+  if (old) await http(`${API()}/releases/assets/${old.id}`, { method: 'DELETE', headers: ghHeaders() });
+  const body = JSON.stringify({ pinned: [...new Set(pinned)], at: new Date().toISOString() }, null, 2) + '\n';
+  await http(`https://uploads.github.com/repos/${REPO()}/releases/${release.id}/assets?name=${ORDER_FILE}`, {
+    method: 'POST',
+    headers: { ...ghHeaders(), 'content-type': 'application/json' },
+    body,
+  });
+  return { pinned };
+}
+
+/** Lance social-post.yml sur TikTok + Instagram pour cette vidéo-là. */
+export async function publishNow(key) {
+  needWrite();
+  if (typeof key !== 'string' || !KEY.test(key)) throw new Error('vidéo invalide');
+  const [tag, name] = key.split('/');
+  const release = await http(`${API()}/releases/tags/${tag}`, { headers: ghHeaders() });
+  if (!release.assets.some((a) => a.name === name)) throw new Error(`${key} introuvable`);
+  const repo = await http(API(), { headers: ghHeaders() });
+  await http(`${API()}/actions/workflows/social-post.yml/dispatches`, {
+    method: 'POST',
+    headers: { ...ghHeaders(), 'content-type': 'application/json' },
+    body: JSON.stringify({
+      ref: repo.default_branch,
+      inputs: { target: 'social', kind: 'auto', count: '1', video: key, dry_run: 'false' },
+    }),
+  });
+  return { ok: true };
 }
