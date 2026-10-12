@@ -6,7 +6,7 @@
  */
 import { AbsoluteFill, Audio, Img, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 
-import { C, EndCard, FPS, Hook, Paper, Progress, Sfx, Stamp, Tag, app, clamp, flag, mono, serif, sfx } from './kit';
+import { C, EndCard, FPS, Hook, Paper, Progress, Sfx, Stamp, Tag, VoiceTrack, app, clamp, flag, mono, musicVolume, serif, sfx, type VoiceLine } from './kit';
 
 export type RankleTheme = { emoji: string; label: string };
 export type RankleTurn = { cc: string; name: string; theme: number; rank: number };
@@ -19,6 +19,7 @@ export type RankleProps = {
   outroSub: string;
   cta: string;
   icon: string;
+  voice?: VoiceLine[];
 };
 
 const FIRST = 2.2;
@@ -183,8 +184,9 @@ export function RankleConcept(p: RankleProps) {
       <Audio src={sfx('music')} volume={(f) => {
         const s = f / FPS;
         if (s >= turnAt(lastTurn - 1, n) + TURN_S && s < turnAt(lastTurn, n) + TAP_S + COUNT_S) return 0.1;
-        return interpolate(s, [0, 0.3, end + 3, end + 4], [0, 0.5, 0.5, 0], clamp);
+        return musicVolume(p.voice, s, 0.5, end);
       }} />
+      <VoiceTrack voice={p.voice} />
       <Sfx at={0} src={sfx('boom')} volume={0.5} />
       {p.turns.map((tr, i) => {
         const at = turnAt(i, n);

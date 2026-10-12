@@ -8,7 +8,7 @@
  */
 import { AbsoluteFill, Audio, Img, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 
-import { C, EndCard, FPS, Hook, Paper, Progress, Sfx, Stamp, Tag, app, clamp, flag, mono, serif, sfx } from './kit';
+import { C, EndCard, FPS, Hook, Paper, Progress, Sfx, Stamp, Tag, VoiceTrack, app, clamp, flag, mono, musicVolume, serif, sfx, type VoiceLine } from './kit';
 
 export type DevineTile = { label: string; value: string; state: 'ok' | 'ko' | 'near' | 'info'; arrow?: number | null; dir?: number };
 export type DevineRow = { cc: string; name: string; tiles: DevineTile[] };
@@ -22,6 +22,7 @@ export type DevineProps = {
   outroSub: string;
   cta: string;
   icon: string;
+  voice?: VoiceLine[];
 };
 
 const FIRST = 1.0;
@@ -214,8 +215,9 @@ export function DevineConcept(p: DevineProps) {
       <Audio src={sfx('music')} volume={(f) => {
         const s = f / FPS;
         if (s >= pauseStart && s < guessAt(last, n)) return 0.12;
-        return interpolate(s, [0, 0.3, end + 3, end + 4], [0, 0.45, 0.45, 0], clamp);
+        return musicVolume(p.voice, s, 0.45, end);
       }} />
+      <VoiceTrack voice={p.voice} />
       <Sfx at={0} src={sfx('boom')} volume={0.5} />
       {p.rows.map((r, i) => {
         const at = guessAt(i, n);

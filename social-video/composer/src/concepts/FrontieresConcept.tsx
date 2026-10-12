@@ -11,7 +11,7 @@ import { AbsoluteFill, Audio, Img, interpolate, spring, useCurrentFrame, useVide
 import { feature } from 'topojson-client';
 import world from 'world-atlas/countries-50m.json';
 
-import { C, EndCard, FPS, Hook, Paper, Progress, Sfx, Stamp, Tag, app, clamp, flag, mono, serif, sfx } from './kit';
+import { C, EndCard, FPS, Hook, Paper, Progress, Sfx, Stamp, Tag, VoiceTrack, app, clamp, flag, mono, musicVolume, serif, sfx, type VoiceLine } from './kit';
 
 export type FrontierStep = { id: string; cc: string; name: string };
 export type FrontierRound = { level: string; view: [number, number, number, number]; path: FrontierStep[] };
@@ -23,6 +23,7 @@ export type FrontieresProps = {
   outroSub: string;
   cta: string;
   icon: string;
+  voice?: VoiceLine[];
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -30,10 +31,11 @@ const topo = world as any;
 const countries = (feature(topo, topo.objects.countries) as unknown as FeatureCollection<Geometry>).features;
 const byId = new Map(countries.map((f) => [String(f.id), f]));
 
-const INTRO_S = 1.2;
-const THINK_S = 3.2;
-const HOLD_S = 2.2;
-const stepS = (r: FrontierRound) => (r.path.length > 6 ? 0.36 : 0.55);
+// Plus de temps que les autres jeux : on laisse chercher le chemin, puis le suivre.
+export const INTRO_S = 1.8;
+export const THINK_S = 5.2;
+const HOLD_S = 3.2;
+export const stepS = (r: FrontierRound) => (r.path.length > 7 ? 0.6 : 0.9);
 const roundSeconds = (r: FrontierRound) => INTRO_S + THINK_S + r.path.length * stepS(r) + HOLD_S;
 const roundStart = (p: FrontieresProps, i: number) => p.rounds.slice(0, i).reduce((a, r) => a + roundSeconds(r), 0.4);
 const endAt = (p: FrontieresProps) => roundStart(p, p.rounds.length) + 2.6;
@@ -75,6 +77,9 @@ function Round({ r, idx, total, local, ask }: { r: FrontierRound; idx: number; t
   const k = Math.floor(lineLen);
   if (k < centers.length - 1 && frac > 0) pts.push([centers[k][0] + (centers[k + 1][0] - centers[k][0]) * frac, centers[k][1] + (centers[k + 1][1] - centers[k][1]) * frac]);
   const intro = spring({ frame: Math.round(local * fps), fps, config: { damping: 12 } });
+  // Titres longs (« Thaïlande → Arabie Saoudite ») : plus petit, sur une ligne.
+  const chars = first.name.length + last.name.length;
+  const titleSize = chars > 22 ? 50 : chars > 17 ? 58 : 70;
   const thinking = local >= INTRO_S && local < drawStart;
   const countdown = Math.ceil(drawStart - local);
   const zoom = interpolate(local, [0, drawStart], [1.08, 1], clamp);
@@ -93,7 +98,7 @@ function Round({ r, idx, total, local, ask }: { r: FrontierRound; idx: number; t
         <Tag>
           Manche {idx + 1}/{total} · {r.level}
         </Tag>
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 22, marginTop: 24, fontFamily: serif, fontWeight: 900, fontSize: 70, color: C.sepia }}>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 18, marginTop: 24, fontFamily: serif, fontWeight: 900, fontSize: titleSize, color: C.sepia, whiteSpace: 'nowrap' }}>
           <Img src={flag(first.cc)} style={{ width: 84, height: 63, borderRadius: 8, objectFit: 'cover' }} />
           <span style={{ color: C.vermilion }}>{first.name}</span>
           <span style={{ fontFamily: mono, fontSize: 56 }}>→</span>
@@ -186,7 +191,7 @@ export function FrontieresConcept(p: FrontieresProps) {
         {p.rounds.map((round, i) => {
           const at = roundStart(p, i) + INTRO_S + THINK_S + round.path.length * stepS(round) + 0.1;
           return t < roundStart(p, i + 1) ? (
-            <Stamp key={i} text={`${round.path.length - 2} pays`} at={at} top={MAP_TOP + 320} size={130} color={C.green} rotate={-6} />
+            <Stamp key={i} text={`${round.path.length - 2} pays`} at={at} top={MAP_TOP + MAP_H - 190} size={110} color={C.green} rotate={-6} />
           ) : null;
         })}
         {allDone ? (
@@ -199,14 +204,15 @@ export function FrontieresConcept(p: FrontieresProps) {
       </Paper>
       <EndCard title="Relie le monde, frontière par frontière" cta={p.cta} ctaSub="Lien dans la bio" icon={p.icon} start={end} />
 
-      <Audio src={sfx('tension')} volume={(f) => interpolate(f / FPS, [0, 0.4, end + 3, end + 4], [0, 0.6, 0.6, 0], clamp)} />
+      <Audio src={sfx('tension')} volume={(f) => musicVolume(p.voice, f / FPS, 0.6, end)} />
+      <VoiceTrack voice={p.voice} />
       <Sfx at={0} src={sfx('hit')} volume={0.6} />
       {p.rounds.map((round, i) => {
         const s0 = roundStart(p, i);
         const draw = s0 + INTRO_S + THINK_S;
         return [
           <Sfx key={`w${i}`} at={s0} src={sfx('whoosh')} volume={0.6} />,
-          ...[0, 1, 2].map((k) => <Sfx key={`k${i}${k}`} at={s0 + INTRO_S + 0.2 + k * 1} src={app('tick')} volume={0.9} />),
+          ...[0, 1, 2, 3, 4].map((k) => <Sfx key={`k${i}${k}`} at={s0 + INTRO_S + 0.2 + k} src={app('tick')} volume={0.7} />),
           ...round.path.slice(1, -1).map((_, j) => <Sfx key={`s${i}${j}`} at={draw + (j + 1) * stepS(round)} src={app('draw')} volume={0.55} />),
           <Sfx key={`f${i}`} at={draw + round.path.length * stepS(round)} src={app('found')} volume={0.8} />,
           <Sfx key={`st${i}`} at={draw + round.path.length * stepS(round) + 0.1} src={app('stamp')} volume={0.8} />,

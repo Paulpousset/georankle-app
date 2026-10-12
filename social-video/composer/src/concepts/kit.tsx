@@ -226,6 +226,25 @@ export const EndCard = ({ title, sub, cta, ctaSub, icon, start }: { title: strin
   );
 };
 
+export type VoiceLine = { file?: string; at?: number | null; seconds?: number };
+
+/** Voix off (fichiers posés par voice.mjs). */
+export const VoiceTrack = ({ voice }: { voice?: VoiceLine[] }) => (
+  <>
+    {(voice ?? []).map((v, i) => (v.file && v.at != null ? <Sfx key={`v${i}`} at={v.at} src={staticFile(v.file)} volume={1} /> : null))}
+  </>
+);
+
+/** Vrai pendant une réplique de voix off : la musique baisse dessous. */
+export const speaking = (voice: VoiceLine[] | undefined, s: number) =>
+  (voice ?? []).some((v) => v.file && v.at != null && s >= v.at - 0.1 && s <= v.at + (v.seconds ?? 1.5) + 0.1);
+
+/** Volume de musique : fondu d'entrée/sortie, plus bas sous la voix. */
+export const musicVolume = (voice: VoiceLine[] | undefined, s: number, base: number, end: number) => {
+  const v = interpolate(s, [0, 0.3, end + 3, end + 4], [0, base, base, 0], clamp);
+  return speaking(voice, s) ? v * 0.35 : v;
+};
+
 /** Barre de progression fine en haut, couleur vermillon. */
 export const Progress = ({ total }: { total: number }) => {
   const frame = useCurrentFrame();
