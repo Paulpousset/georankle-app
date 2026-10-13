@@ -1,12 +1,15 @@
 /** Source « Erreurs » : Sentry (org tita-30). */
-import { env, need, http, settle, hourly } from './lib.mjs';
+import { env, need, http, settle, periodOf } from './lib.mjs';
 
-export async function sentry({ days }) {
+export async function sentry({ days, from, to }) {
   need(['SENTRY_AUTH_TOKEN'], 'Jeton Sentry (org:read, project:read, event:read)');
   const org = env('SENTRY_ORG', 'tita-30');
-  const period = hourly(days) ? '24h' : `${Math.min(days, 90)}d`;
-  const interval = hourly(days) ? '1h' : '1d';
-  const cut = hourly(days) ? 13 : 10;
+  // Mêmes jours civils que les autres sources (dates perso comprises).
+  const P = periodOf({ days, from, to });
+  const end = new Date(Math.min(Date.parse(P.end), Date.now())).toISOString();
+  const period = P.hourly ? 'statsPeriod=24h' : `start=${encodeURIComponent(P.start)}&end=${encodeURIComponent(end)}`;
+  const interval = P.hourly ? '1h' : '1d';
+  const cut = P.hourly ? 13 : 10;
   const api = (p) =>
     http(`https://sentry.io/api/0/organizations/${org}/${p}`, {
       headers: { authorization: `Bearer ${env('SENTRY_AUTH_TOKEN')}` },
@@ -26,7 +29,7 @@ export async function sentry({ days }) {
 
   return settle({
     top: async () =>
-      (await api(`issues/?query=is:unresolved&statsPeriod=${period}&sort=freq&limit=12`)).map(issue),
+      (await api(`issues/?query=is:unresolved&${period}&sort=freq&limit=12`)).map(issue),
     fresh: async () =>
       (await api(`issues/?query=is:unresolved firstSeen:-7d&statsPeriod=14d&sort=new&limit=10`)).map(issue),
     unresolved: async () => {
@@ -38,7 +41,7 @@ export async function sentry({ days }) {
     },
     crashFree: async () => {
       const r = await api(
-        `sessions/?field=crash_free_rate(session)&field=crash_free_rate(user)&field=sum(session)&statsPeriod=${period}&interval=${interval}&project=-1`,
+        `sessions/?field=crash_free_rate(session)&field=crash_free_rate(user)&field=sum(session)&${period}&interval=${interval}&project=-1`,
       );
       const g = r.groups?.[0];
       return {
@@ -53,7 +56,7 @@ export async function sentry({ days }) {
     },
     errorsByDay: async () => {
       const r = await api(
-        `stats_v2/?field=sum(quantity)&category=error&interval=${interval}&statsPeriod=${period}&groupBy=outcome`,
+        `stats_v2/?field=sum(quantity)&category=error&interval=${interval}&${period}&groupBy=outcome`,
       );
       const accepted = r.groups?.find((g) => g.by?.outcome === 'accepted');
       return (r.intervals ?? []).map((x, i) => ({ x: x.slice(0, cut), y: accepted?.series?.['sum(quantity)']?.[i] ?? 0 }));

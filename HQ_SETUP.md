@@ -93,7 +93,7 @@ Le compte de service doit avoir « Afficher les informations de l'application et
 
 ## Onglet Vidéos
 
-Montre ce que le workflow `social-post.yml` publiera sur les 7 prochains jours (12 h 30, 19 h 30, YouTube tous les 3 jours) : la page rejoue le choix du script de publication (`api/_hq/social-queue.mjs`, le même code) à partir des releases GitHub et de `posted.json`. Les vidéos tournées après le chargement de la page peuvent encore changer les créneaux lointains.
+Montre ce que le workflow `social-post.yml` publiera sur les 7 prochains jours (12 h 25 et 19 h 25 à Paris, heures des routines « Filet publication » qui publient vraiment, les tâches planifiées GitHub arrivant trop tard ; YouTube juste après 19 h 25 les 1, 4, 7… 28 du mois) : la page rejoue le choix du script de publication (`api/_hq/social-queue.mjs`, le même code) à partir des releases GitHub et de `posted.json`. Les vidéos tournées après le chargement de la page peuvent encore changer les créneaux lointains.
 
 Le dépôt étant public, l'onglet marche sans rien brancher, mais l'API GitHub sans jeton est vite limitée sur Vercel (adresses partagées). Ajouter dans Vercel `GITHUB_TOKEN` : jeton *fine-grained* sur le seul dépôt `georankle-app`, droits **Contents : read and write** (lecture des vidéos, et `order.json` quand on change l'ordre), **Actions : read and write** (bouton « Publier maintenant », qui lance `social-post.yml`) et **Variables : read** (pour afficher `SOCIAL_POST_ENABLED`, `SOCIAL_POST_LANGS`… au lieu des valeurs par défaut). Redéployer après l'ajout.
 

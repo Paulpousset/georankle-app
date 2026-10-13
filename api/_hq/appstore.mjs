@@ -1,10 +1,10 @@
 /** Source « App Store » : note publique (sans clé) + ventes et avis (clé App Store Connect). */
 import zlib from 'node:zlib';
-import { env, need, http, settle, appleJwt, isoDay, daysAgo, countryOk } from './lib.mjs';
+import { env, need, http, settle, appleJwt, isoDay, countryOk, periodOf } from './lib.mjs';
 
 const APP_ID = '6779650018';
 
-export async function appstore({ days }) {
+export async function appstore({ days, from, to }) {
   const asc = (p) =>
     http(`https://api.appstoreconnect.apple.com/v1/${p}`, { headers: { authorization: `Bearer ${appleJwt()}` } });
 
@@ -35,11 +35,13 @@ export async function appstore({ days }) {
     // Rapport SALES quotidien (J-1 disponible vers midi UTC) : téléchargements et revenus.
     sales: async () => {
       need(['ASC_VENDOR_NUMBER']);
-      const n = Math.min(days, 30);
-      const dates = Array.from({ length: n }, (_, i) => isoDay(daysAgo(n - i)));
+      // Les jours de la période, sauf aujourd'hui (rapport publié le lendemain).
+      const today = isoDay(new Date());
+      const dates = periodOf({ days, from, to }).buckets.map((b) => b.slice(0, 10)).filter((d, i, a) => d < today && a.indexOf(d) === i);
       const jwt = appleJwt();
-      const rows = await Promise.all(
-        dates.map(async (date) => {
+      const rows = [];
+      for (let i = 0; i < dates.length; i += 15) rows.push(...await Promise.all(
+        dates.slice(i, i + 15).map(async (date) => {
           try {
             const buf = await http(
               `https://api.appstoreconnect.apple.com/v1/salesReports?filter[frequency]=DAILY&filter[reportType]=SALES&filter[reportSubType]=SUMMARY&filter[vendorNumber]=${env('ASC_VENDOR_NUMBER')}&filter[reportDate]=${date}`,
@@ -52,7 +54,7 @@ export async function appstore({ days }) {
             return { x: date, downloads: null, error: e.message };
           }
         }),
-      );
+      ));
       return rows;
     },
   });

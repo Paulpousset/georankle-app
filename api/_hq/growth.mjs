@@ -57,7 +57,8 @@ export async function growth({ days, from, to, countries, exclude, platform }) {
       return { cur, prev };
     },
 
-    // Cohorte : personnes vues pour la première fois sur la période.
+    // Cohorte : personnes vues pour la première fois sur la période. Jn compté
+    // une fois le jour n entièrement passé (même règle que la source PostHog).
     cohort: async () => {
       const rows = await hogql(`
         select plat, c, count(),
@@ -65,9 +66,9 @@ export async function growth({ days, from, to, countries, exclude, platform }) {
           countIf(has(evs, 'game_started')),
           countIf(has(evs, 'game_completed')),
           countIf(has(evs, 'signed_up')),
-          countIf(d0 <= today() - 1), countIf(d0 <= today() - 1 and has(ds, d0 + 1)),
-          countIf(d0 <= today() - 7), countIf(d0 <= today() - 7 and has(ds, d0 + 7)),
-          countIf(d0 <= today() - 30), countIf(d0 <= today() - 30 and has(ds, d0 + 30))
+          countIf(d0 <= today() - 2), countIf(d0 <= today() - 2 and has(ds, d0 + 1)),
+          countIf(d0 <= today() - 8), countIf(d0 <= today() - 8 and has(ds, d0 + 7)),
+          countIf(d0 <= today() - 31), countIf(d0 <= today() - 31 and has(ds, d0 + 30))
         from (
           select person_id,
             toDate(any(person.created_at)) d0,
