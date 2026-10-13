@@ -180,7 +180,7 @@ export default function HigherLowerGame({
         track('game_completed', { mode: 'higherlower', score: finalScore, scope: scope ?? 'world' });
       }
       if (user) {
-        void saveSoloScore(user, 'higherlower', finalScore, { scope, training }, () =>
+        void saveSoloScore(user, 'higherlower', finalScore, { scope, training, match: !!matchData }, () =>
           showAlert(
             tr(language, 'Erreur', 'Error'),
             tr(language, "Impossible d'enregistrer ton score.", 'Could not save your score.'),
