@@ -543,7 +543,12 @@ export function renderInvite(locale) {
   <!-- Page personnelle (un code de parrainage par URL) : rien à indexer. -->
   <meta name="robots" content="noindex, follow" />
   <title>${attr(t.title)}</title>
-  <link rel="icon" href="/favicon.ico" />
+  <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/favicon-96.png" type="image/png" sizes="96x96" />
+  <link rel="icon" href="/favicon-192.png" type="image/png" sizes="192x192" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
   <meta name="theme-color" content="#1c3a5e" />
 
   <!-- Open Graph / Twitter : un lien collé montre une vraie carte, dans la langue du parrain. -->

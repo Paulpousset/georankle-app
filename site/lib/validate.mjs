@@ -57,7 +57,7 @@ function checkInternalLinks(pages) {
     const hrefs = [...page.html.matchAll(/href="(\/[^"#?]*)/g)].map(([, h]) => h);
     for (const link of new Set(hrefs)) {
       if (link.startsWith('/fonts/') || link.startsWith('/shots/') || link.startsWith('/assets/')) continue;
-      if (/\.(png|jpg|webp|css|js|xml|txt|ico|json)$/.test(link)) continue;
+      if (/\.(png|jpg|webp|svg|css|js|xml|txt|ico|json|webmanifest)$/.test(link)) continue;
       if (!known.has(link)) errors.push(`${page.path} → lien mort « ${link} »`);
     }
   }

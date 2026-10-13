@@ -278,7 +278,12 @@ export function renderPage({
   <meta name="description" content="${attr(description)}" />
   <link rel="canonical" href="${canonical}" />
 ${hreflangBlock(routeId)}
-  <link rel="icon" href="/favicon.ico" />
+  <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/favicon-96.png" type="image/png" sizes="96x96" />
+  <link rel="icon" href="/favicon-192.png" type="image/png" sizes="192x192" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
   <meta name="theme-color" content="#f2e8d0" />
   <meta property="og:type" content="${ogType}" />
   <meta property="og:site_name" content="GeoG" />
