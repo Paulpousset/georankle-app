@@ -1,7 +1,11 @@
 /** Sources Google : Search Console, Google Play (avis + vitals), AdMob, AdSense. */
-import { env, need, http, settle, googleToken, isoDay, daysAgo, countryOk } from './lib.mjs';
+import { env, need, http, settle, googleToken, isoDay, daysAgo, countryOk, periodOf } from './lib.mjs';
 
 const PKG = 'com.paulpousset.geog';
+const ymd = (iso) => {
+  const [year, month, day] = iso.split('-').map(Number);
+  return { year, month, day };
+};
 const PUB = () => env('ADMOB_PUBLISHER_ID', 'pub-2429865520138981');
 
 const gget = async (url, scopes, mode, opts = {}) =>
@@ -18,16 +22,20 @@ const gget = async (url, scopes, mode, opts = {}) =>
 
 const GSC = ['https://www.googleapis.com/auth/webmasters.readonly'];
 
-export async function searchconsole({ days }) {
+export async function searchconsole({ days, from, to }) {
   const sites = await gget('https://www.googleapis.com/webmasters/v3/sites', GSC);
   const list = (sites.siteEntry ?? []).map((s) => s.siteUrl);
   const site =
     env('GSC_SITE') ?? list.find((s) => s === 'sc-domain:playgeog.com') ?? list.find((s) => s.includes('playgeog'));
   if (!site) throw new Error(`Aucune propriété playgeog.com visible (vues : ${list.join(', ') || 'aucune'})`);
   const enc = encodeURIComponent(site);
-  // Les données Search Console ont ~2-3 jours de retard.
-  const endDate = isoDay(daysAgo(2));
-  const startDate = isoDay(daysAgo(days + 1));
+  // Les données Search Console ont ~2-3 jours de retard : la fenêtre glisse de
+  // 2 jours (dates perso : coupées à J-2), et la période précédente a la même durée.
+  const lag = isoDay(daysAgo(2));
+  const endDate = to ? (to < lag ? to : lag) : lag;
+  const startDate = [from ?? isoDay(daysAgo(days + 1)), endDate].sort()[0];
+  const n = Math.max(1, Math.round((Date.parse(endDate) - Date.parse(startDate)) / 86400000) + 1);
+  const shift = (iso, k) => isoDay(new Date(Date.parse(`${iso}T00:00:00Z`) + k * 86400000));
   const q = (body) =>
     gget(`https://www.googleapis.com/webmasters/v3/sites/${enc}/searchAnalytics/query`, GSC, 'auto', {
       method: 'POST',
@@ -36,7 +44,7 @@ export async function searchconsole({ days }) {
   const prevQ = (body) =>
     gget(`https://www.googleapis.com/webmasters/v3/sites/${enc}/searchAnalytics/query`, GSC, 'auto', {
       method: 'POST',
-      body: JSON.stringify({ startDate: isoDay(daysAgo(days * 2 + 1)), endDate: isoDay(daysAgo(days + 2)), ...body }),
+      body: JSON.stringify({ startDate: shift(startDate, -n), endDate: shift(startDate, -1), dataState: 'all', ...body }),
     });
   const rowsOf = (r) =>
     (r.rows ?? []).map((x) => ({
@@ -124,14 +132,16 @@ export async function play({ days }) {
 
 const ADMOB = ['https://www.googleapis.com/auth/admob.readonly'];
 
-export async function admob({ days }) {
-  const d = (x) => ({ year: x.getUTCFullYear(), month: x.getUTCMonth() + 1, day: x.getUTCDate() });
+export async function admob({ days, from, to }) {
+  // Jours civils de la période (28 j = 28 jours dont aujourd'hui ; 24 h = aujourd'hui).
+  const P = periodOf({ days, from, to });
+  const first = P.hourly ? P.last : P.first;
   const report = async (dimensions) => {
     const r = await gget(`https://admob.googleapis.com/v1/accounts/${PUB()}/networkReport:generate`, ADMOB, 'user', {
       method: 'POST',
       body: JSON.stringify({
         reportSpec: {
-          dateRange: { startDate: d(daysAgo(days === 1 ? 0 : days)), endDate: d(daysAgo(0)) }, // 24 h = aujourd'hui
+          dateRange: { startDate: ymd(first), endDate: ymd(P.last) },
           dimensions,
           metrics: ['ESTIMATED_EARNINGS', 'IMPRESSIONS', 'AD_REQUESTS', 'MATCH_RATE', 'CLICKS', 'IMPRESSION_RPM'],
           localizationSettings: { currencyCode: 'EUR' },
@@ -169,13 +179,15 @@ export async function admob({ days }) {
 
 const ADSENSE = ['https://www.googleapis.com/auth/adsense.readonly'];
 
-export async function adsense({ days }) {
+export async function adsense({ days, from, to }) {
   const base = `https://adsense.googleapis.com/v2/accounts/${PUB()}`;
-  const s = daysAgo(days === 1 ? 0 : days); // 24 h = aujourd'hui
-  const e = daysAgo(0);
+  // Mêmes jours que AdMob et l'onglet Croissance (24 h = aujourd'hui).
+  const P = periodOf({ days, from, to });
+  const s = ymd(P.hourly ? P.last : P.first);
+  const e = ymd(P.last);
   const range =
-    `dateRange=CUSTOM&startDate.year=${s.getUTCFullYear()}&startDate.month=${s.getUTCMonth() + 1}&startDate.day=${s.getUTCDate()}` +
-    `&endDate.year=${e.getUTCFullYear()}&endDate.month=${e.getUTCMonth() + 1}&endDate.day=${e.getUTCDate()}`;
+    `dateRange=CUSTOM&startDate.year=${s.year}&startDate.month=${s.month}&startDate.day=${s.day}` +
+    `&endDate.year=${e.year}&endDate.month=${e.month}&endDate.day=${e.day}`;
   const metrics = ['ESTIMATED_EARNINGS', 'PAGE_VIEWS', 'IMPRESSIONS', 'CLICKS', 'PAGE_VIEWS_RPM'];
   const report = async (dim) => {
     const r = await gget(
@@ -213,11 +225,6 @@ export async function adsense({ days }) {
 }
 
 // ─── Croissance : revenus filtrables par pays, installations Play officielles ─
-
-const ymd = (iso) => {
-  const [year, month, day] = iso.split('-').map(Number);
-  return { year, month, day };
-};
 
 /**
  * Revenus AdMob sur [first..last] par DATE ou COUNTRY (clé ISO2), filtrables par

@@ -19,6 +19,7 @@ import {
 const REPO = () => env('GITHUB_REPOSITORY', 'Paulpousset/georankle-app');
 const API = () => `https://api.github.com/repos/${REPO()}`;
 const DAYS_AHEAD = 7;
+const relDate = (r) => r.published_at ?? r.created_at;
 const HISTORY = 15;
 
 const ghHeaders = (accept = 'application/vnd.github+json') => {
@@ -58,22 +59,32 @@ async function zernioPlatforms() {
   }
 }
 
+/** Instant UTC d'une heure de Paris (y, mo 0-11, d), heure d'été comme d'hiver. */
+function parisInstant(y, mo, d, h, mi) {
+  const guess = Date.UTC(y, mo, d, h, mi);
+  return new Date(guess - (parisHourOf(new Date(guess)) - h) * 3600000);
+}
+
 /**
- * Créneaux des tâches planifiées de social-post.yml (heures UTC) :
- * social à 10:30 et 17:30, YouTube à 16:00 les 1, 4, 7… 28 du mois.
+ * Créneaux réels de publication. Les tâches planifiées de social-post.yml
+ * (10:30 et 17:30 UTC, YouTube 16:00 UTC) partent souvent avec plusieurs
+ * heures de retard, et post.mjs abandonne au-delà d'une heure : ce sont les
+ * routines « Filet publication » qui publient, à 12 h 25 et 19 h 25 heure de
+ * Paris (toute l'année), et YouTube juste après celle de 19 h 25 les 1, 4,
+ * 7… 28 du mois (vu dans posted.json et les passages du workflow, 13/10).
  */
 function slots(now) {
   const out = [];
-  const day0 = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const [y, mo, d0] = now.toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' }).split('-').map(Number);
   for (let d = 0; d <= DAYS_AHEAD; d++) {
-    const base = day0 + d * 86400000;
-    out.push({ at: new Date(base + 10.5 * 3600000), target: 'social' });
-    if ((new Date(base).getUTCDate() - 1) % 3 === 0 && new Date(base).getUTCDate() <= 28) {
-      out.push({ at: new Date(base + 16 * 3600000), target: 'youtube' });
-    }
-    out.push({ at: new Date(base + 17.5 * 3600000), target: 'social' });
+    const date = new Date(Date.UTC(y, mo - 1, d0 + d)); // jour de Paris
+    const at = (h, mi) => parisInstant(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), h, mi);
+    out.push({ at: at(12, 25), target: 'social' });
+    out.push({ at: at(19, 25), target: 'social' });
+    const day = date.getUTCDate();
+    if ((day - 1) % 3 === 0 && day <= 28) out.push({ at: at(19, 26), target: 'youtube' });
   }
-  // Un créneau passé depuis moins d'une heure peut encore partir (retard GitHub).
+  // Un créneau passé depuis moins d'une heure peut encore partir (routine en cours).
   return out.filter((s) => s.at.getTime() + 3600000 > now.getTime() && s.at.getTime() < now.getTime() + DAYS_AHEAD * 86400000);
 }
 
@@ -143,7 +154,7 @@ export async function social() {
     row.item = {
       key: item.key, tag: item.tag, name: item.name, group: item.group, variant: item.variant,
       format: formatOf(item), hasCaption: item.hasCaption, assetId: video?.id ?? null, size: video?.size ?? null,
-      releaseAt: byTag[item.tag]?.created_at ?? null,
+      releaseAt: byTag[item.tag] ? relDate(byTag[item.tag]) : null,
       previewUrl: video ? previewUrl(video.id) : null,
       pinned: target === 'social' && pinned.includes(item.key),
     };
@@ -196,10 +207,12 @@ export async function social() {
   const removed = new Set(skipped);
   const bank = list
     .filter((r) => /^shorts-/.test(r.tag_name) && r.tag_name !== STATE_TAG)
-    .sort((a, b) => (a.tag_name === NEXT_TAG ? -1 : b.tag_name === NEXT_TAG ? 1 : b.created_at.localeCompare(a.created_at)))
+    // published_at = fin du tournage ; created_at est la date du commit du tag
+    // (shorts-41, tourné le 13/10, y portait le 12/10).
+    .sort((a, b) => (a.tag_name === NEXT_TAG ? -1 : b.tag_name === NEXT_TAG ? 1 : relDate(b).localeCompare(relDate(a))))
     .map((r) => ({
       tag: r.tag_name,
-      at: r.created_at,
+      at: relDate(r),
       videos: r.assets.filter((a) => a.name.endsWith('.mp4')).map((a) => {
         const key = `${r.tag_name}/${a.name}`;
         const posts = postedBy.get(key) ?? [];

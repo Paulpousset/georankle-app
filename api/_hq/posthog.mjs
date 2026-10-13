@@ -36,24 +36,29 @@ export async function posthog({ days, from, to, countries, exclude, platform }) 
     platforms: async () =>
       top(await hogql(`select ${PLATFORM} p, uniq(person_id) n from events where ${win} group by p order by n desc`)),
     retention: async () => {
-      // Cohortes par jour de première apparition (fenêtre 60 j : approximation).
+      // Cohortes par jour de création de la personne : même définition que
+      // l'onglet Croissance (avant : 1re apparition dans une fenêtre de 60 j,
+      // qui comptait d'anciens joueurs comme nouveaux). J1 compté quand le
+      // lendemain est fini (d0 ≤ J-2), J7 quand d0 ≤ J-8.
+      const back = Math.min(Math.max(span, 14), 58);
       const rows = await hogql(`
-        select f.d0, count() cohort,
-               countIf(has(a.ds, f.d0 + 1)) d1,
-               countIf(has(a.ds, f.d0 + 7)) d7
-        from (select person_id, min(toDate(timestamp)) d0 from events
-              where timestamp > now() - interval 60 day${F} group by person_id) f
-        left join (select person_id, groupUniqArray(toDate(timestamp)) ds from events
-                   where timestamp > now() - interval 60 day${F} group by person_id) a
-          on a.person_id = f.person_id
-        where f.d0 >= today() - ${Math.min(Math.max(span, 14), 58)} and f.d0 <= today() - 1
-        group by f.d0 order by f.d0`);
-      const sum = (i, pred) => rows.filter(pred).reduce((s, r) => s + r[i], 0);
-      const d1Base = sum(1, (r) => new Date(r[0]) <= new Date(Date.now() - 2 * 86400000));
-      const d7Base = sum(1, (r) => new Date(r[0]) <= new Date(Date.now() - 8 * 86400000));
+        select d0, count() cohort,
+               countIf(has(ds, d0 + 1)) d1,
+               countIf(has(ds, d0 + 7)) d7
+        from (select person_id, toDate(any(person.created_at)) d0, groupUniqArray(toDate(timestamp)) ds
+              from events
+              where timestamp >= today() - ${back} and person.created_at >= today() - ${back}${F}
+              group by person_id)
+        where d0 >= today() - ${back} and d0 <= today() - 1
+        group by d0 order by d0`);
+      const done = (r, k) => new Date(r[0]) <= new Date(Date.now() - (k + 1) * 86400000);
+      const sum = (i, k) => rows.filter((r) => done(r, k)).reduce((s, r) => s + r[i], 0);
+      const d1Base = sum(1, 1);
+      const d7Base = sum(1, 7);
       return {
-        d1: d1Base ? sum(2, (r) => new Date(r[0]) <= new Date(Date.now() - 2 * 86400000)) / d1Base : null,
-        d7: d7Base ? sum(3, (r) => new Date(r[0]) <= new Date(Date.now() - 8 * 86400000)) / d7Base : null,
+        d1: d1Base ? sum(2, 1) / d1Base : null,
+        d7: d7Base ? sum(3, 7) / d7Base : null,
+        days: back,
         cohorts: rows.map(([x, n, d1, d7]) => ({ x, n, d1, d7 })),
       };
     },

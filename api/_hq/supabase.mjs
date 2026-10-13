@@ -1,5 +1,5 @@
 /** Source « Jeu » : la base Supabase (joueurs, parties, économie, crons). */
-import { SUPABASE_URL, env, need, http, settle, isoDay, daysAgo, buckets, bucketOf, hourly } from './lib.mjs';
+import { SUPABASE_URL, env, need, http, settle, isoDay, daysAgo, periodOf } from './lib.mjs';
 
 export function rest() {
   need(['SUPABASE_SERVICE_ROLE_KEY']);
@@ -42,14 +42,19 @@ export function rest() {
   return { all, count, authUsers };
 }
 
-const byDay = (rows, field, days, pred = () => true) => {
-  const m = Object.fromEntries(buckets(days).map((d) => [d, 0]));
+/** Une ligne par seau de la période (jour UTC, ou heure en mode 24 h). */
+const byDay = (rows, field, P, pred = () => true) => {
+  const m = Object.fromEntries(P.buckets.map((d) => [d, 0]));
   for (const r of rows) {
-    const d = bucketOf(r[field], days);
+    const d = String(r[field]).slice(0, P.hourly ? 13 : 10);
     if (d in m && pred(r)) m[d]++;
   }
   return Object.entries(m).map(([x, y]) => ({ x, y }));
 };
+
+const CRON_OK = ['ok', 'success'];
+/** Horodatage Supabase / GoTrue → ISO UTC comparable en texte. */
+const isoOf = (t) => (t ? new Date(t).toISOString() : '');
 
 const tally = (rows, key) => {
   const m = {};
@@ -62,22 +67,25 @@ const tally = (rows, key) => {
     .sort((a, b) => b.value - a.value);
 };
 
-export async function supabase({ days }) {
+export async function supabase({ days, from, to }) {
   const db = rest();
-  const since = daysAgo(days).toISOString();
-  const since2 = daysAgo(days * 2).toISOString();
+  // Même période que les graphiques : le total d'une tuile = la somme de ses barres.
+  const P = periodOf({ days, from, to });
+  const win = (col) => `${col}=gte.${P.start}&${col}=lt.${P.end}`;
+  const dayWin = (col) => (P.hourly ? `${col}=gte.${isoDay(new Date())}` : `${col}=gte.${P.first}&${col}=lte.${P.last}`);
 
   return settle({
     users: async () => {
       const users = await db.authUsers();
       const real = users.filter((u) => !u.is_anonymous);
-      const inWin = (u, a, b) => u.created_at >= a && u.created_at < b;
+      // created_at arrive en « 2026-10-13T08:00:00.123456Z » : comparable en texte à P.start.
+      const inWin = (u, a, b) => isoOf(u.created_at) >= a && isoOf(u.created_at) < b;
       return {
         total: real.length,
         anonymous: users.length - real.length,
-        signups: real.filter((u) => u.created_at >= since).length,
-        signupsPrev: real.filter((u) => inWin(u, since2, since)).length,
-        signupsByDay: byDay(real, 'created_at', days),
+        signups: real.filter((u) => inWin(u, P.start, P.end)).length,
+        signupsPrev: real.filter((u) => inWin(u, P.prevStart, P.start)).length,
+        signupsByDay: byDay(real, 'created_at', P),
         providers: tally(real, (u) => u.app_metadata?.provider ?? 'email'),
         activeSignIn7d: real.filter((u) => (u.last_sign_in_at ?? '') >= daysAgo(7).toISOString()).length,
       };
@@ -94,36 +102,45 @@ export async function supabase({ days }) {
       return { d1, d7, d30, pushTokens: push, activeStreaks3: streak3 };
     },
     solo: async () => {
-      const rows = await db.all(`scores?select=game_mode,created_at,user_id&created_at=gte.${since}`);
+      const rows = await db.all(`scores?select=game_mode,created_at,user_id&${win('created_at')}`, 200000);
       return {
         games: rows.length,
         players: new Set(rows.map((r) => r.user_id)).size,
-        byDay: byDay(rows, 'created_at', days),
+        byDay: byDay(rows, 'created_at', P),
         byMode: tally(rows, 'game_mode'),
       };
     },
     daily: async () => {
+      // Jour du puzzle (date de la partie), ou heure de jeu en mode 24 h.
       const rows = await db.all(
-        hourly(days)
-          ? `daily_results?select=game_mode,created_at,user_id&created_at=gte.${daysAgo(1).toISOString()}`
-          : `daily_results?select=game_mode,puzzle_date,user_id&puzzle_date=gte.${isoDay(daysAgo(days))}`,
+        P.hourly
+          ? `daily_results?select=game_mode,created_at,user_id&${win('created_at')}`
+          : `daily_results?select=game_mode,puzzle_date,user_id&${dayWin('puzzle_date')}`,
+        200000,
       );
-      // Joueurs distincts par seau (jour du puzzle, ou heure de jeu en mode 24 h).
+      const keyOf = (r) => (P.hourly ? String(r.created_at).slice(0, 13) : r.puzzle_date);
       const players = {};
-      for (const r of rows) (players[hourly(days) ? bucketOf(r.created_at, days) : r.puzzle_date] ??= new Set()).add(r.user_id);
+      const plays = {};
+      for (const r of rows) {
+        (players[keyOf(r)] ??= new Set()).add(r.user_id);
+        plays[keyOf(r)] = (plays[keyOf(r)] ?? 0) + 1;
+      }
       return {
         plays: rows.length,
-        playersByDay: buckets(days).map((x) => ({ x, y: players[x]?.size ?? 0 })),
+        players: new Set(rows.map((r) => r.user_id)).size,
+        playsByDay: P.buckets.map((x) => ({ x, y: plays[x] ?? 0 })),
+        playersByDay: P.buckets.map((x) => ({ x, y: players[x]?.size ?? 0 })),
         byMode: tally(rows, 'game_mode'),
       };
     },
     online: async () => {
       const rows = await db.all(
-        `matches?select=game_mode,status,is_ranked,max_players,created_at&created_at=gte.${since}`,
+        `matches?select=game_mode,status,is_ranked,max_players,created_at&${win('created_at')}`,
+        200000,
       );
       return {
         matches: rows.length,
-        byDay: byDay(rows, 'created_at', days),
+        byDay: byDay(rows, 'created_at', P),
         byMode: tally(rows, 'game_mode'),
         byStatus: tally(rows, 'status'),
         ranked: rows.filter((r) => r.is_ranked).length,
@@ -140,7 +157,7 @@ export async function supabase({ days }) {
         [101, 200],
         [201, 300],
       ];
-      const recent = await db.count(`story_progress?select=level&completed_at=gte.${since}`);
+      const recent = await db.count(`story_progress?select=level&${win('completed_at')}`);
       return {
         players: rows.length,
         levelsCompleted: recent,
@@ -154,9 +171,9 @@ export async function supabase({ days }) {
     economy: async () => {
       const [wallets, ads, iap, cosmetics] = await Promise.all([
         db.all('coin_wallets?select=balance'),
-        db.all(`ad_claims?select=count,day&day=gte.${isoDay(daysAgo(days))}`),
-        db.all(`iap_grants?select=product_id,coins,created_at&created_at=gte.${since}`),
-        db.count(`user_cosmetics?select=item_id&acquired_at=gte.${since}`),
+        db.all(`ad_claims?select=count,day&${dayWin('day')}`),
+        db.all(`iap_grants?select=product_id,coins,created_at&${win('created_at')}`),
+        db.count(`user_cosmetics?select=item_id&${win('acquired_at')}`),
       ]);
       return {
         coinsInCirculation: wallets.reduce((s, w) => s + (w.balance ?? 0), 0),
@@ -183,7 +200,7 @@ export async function supabase({ days }) {
       for (const c of cron) jobs[c.job] ??= c; // dernière exécution par job
       return {
         cronLatest: Object.values(jobs),
-        cronFailures: cron.filter((c) => c.status !== 'ok' && c.status !== 'success').slice(0, 10),
+        cronFailures: cron.filter((c) => !CRON_OK.includes(c.status)).slice(0, 10),
         flags,
         recentPushes: pushes,
       };

@@ -79,6 +79,43 @@ export function dayRange(n, endOffset = 0) {
 
 const addDays = (iso, k) => isoDay(new Date(Date.parse(`${iso}T00:00:00Z`) + k * 86400000));
 
+/**
+ * Période commune aux sources hors PostHog (Supabase, AdMob, AdSense, Sentry,
+ * stores) : « 28 j » = les 28 jours civils (UTC) dont aujourd'hui, exactement
+ * les seaux des graphiques ; « 24 h » = les 24 dernières heures ; dates perso
+ * = [from..to] inclus. Ainsi un total vaut toujours la somme de ses barres,
+ * et toutes les tuiles d'une même page parlent de la même période.
+ *   first / last : jours ISO inclus ; start / end : instants ISO (end exclu) ;
+ *   prevStart : début de la période précédente de même durée.
+ */
+export function periodOf({ days, from, to }) {
+  if (from && to) {
+    const n = Math.round((Date.parse(to) - Date.parse(from)) / 86400000) + 1;
+    return {
+      n, hourly: false, first: from, last: to,
+      start: `${from}T00:00:00.000Z`, end: `${addDays(to, 1)}T00:00:00.000Z`,
+      prevStart: `${addDays(from, -n)}T00:00:00.000Z`,
+      buckets: Array.from({ length: n }, (_, i) => addDays(from, i)),
+    };
+  }
+  if (hourly(days)) {
+    const now = Date.now();
+    return {
+      n: 1, hourly: true, first: isoDay(daysAgo(1)), last: isoDay(new Date()),
+      start: new Date(now - 86400000).toISOString(), end: new Date(now + 60000).toISOString(),
+      prevStart: new Date(now - 2 * 86400000).toISOString(),
+      buckets: buckets(1),
+    };
+  }
+  const first = isoDay(daysAgo(days - 1));
+  return {
+    n: days, hourly: false, first, last: isoDay(new Date()),
+    start: `${first}T00:00:00.000Z`, end: new Date(Date.now() + 60000).toISOString(),
+    prevStart: `${addDays(first, -days)}T00:00:00.000Z`,
+    buckets: dayRange(days),
+  };
+}
+
 /** Le pays (ISO2) passe-t-il le filtre ? */
 export const countryOk = (c, { countries, exclude } = {}) =>
   !countries?.length || (exclude ? !countries.includes(c) : countries.includes(c));
