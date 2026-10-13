@@ -291,7 +291,7 @@ export default function StreakGame({
         if (!matchData) track('game_completed', { mode: 'streak', score, scope: scope ?? 'world' });
 
         if (user) {
-          void saveSoloScore(user, 'streak', score, { scope, training }, () =>
+          void saveSoloScore(user, 'streak', score, { scope, training, match: !!matchData }, () =>
             showAlert(
               tr(language, 'Erreur', 'Error'),
               tr(language, 'Impossible d\'enregistrer ton score.', 'Could not save your score.'),

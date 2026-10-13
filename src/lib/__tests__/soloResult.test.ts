@@ -36,6 +36,10 @@ describe('countsForLeaderboard', () => {
     expect(countsForLeaderboard({ training: true })).toBe(false);
     expect(countsForLeaderboard({ review: true })).toBe(false);
   });
+
+  it('rejects a round played inside an online match', () => {
+    expect(countsForLeaderboard({ match: true })).toBe(false);
+  });
 });
 
 describe('earnsCoins', () => {
@@ -68,6 +72,11 @@ describe('saveSoloScore', () => {
     expect(sb.from).not.toHaveBeenCalled();
   });
 
+  it('skips the insert for a match round (the match is recorded on its own)', async () => {
+    await saveSoloScore(USER, 'higherlower', 14, { match: true });
+    expect(sb.from).not.toHaveBeenCalled();
+  });
+
   it('does nothing without a logged-in user', async () => {
     await saveSoloScore(null, 'guess', 900);
     expect(sb.from).not.toHaveBeenCalled();
@@ -82,8 +91,9 @@ describe('saveSoloScore', () => {
 });
 
 describe('offLeaderboardNotice', () => {
-  it('stays silent for a run that counts', () => {
+  it('stays silent for a run that counts, and in a match', () => {
     expect(offLeaderboardNotice({}, 'fr')).toBeNull();
+    expect(offLeaderboardNotice({ match: true }, 'fr')).toBeNull();
   });
 
   it('names the continent, and prefers the stronger reason', () => {

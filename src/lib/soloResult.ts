@@ -29,11 +29,13 @@ export interface SoloRunContext {
   training?: boolean;
   /** Révision: the pool is stacked with the player's past mistakes. */
   review?: boolean;
+  /** Round of an online match: the match is recorded on its own, not as a solo run. */
+  match?: boolean;
 }
 
-/** True when the run drew from the standard worldwide pool under normal rules. */
+/** True when the run drew from the standard worldwide pool under normal rules, outside a match. */
 export function countsForLeaderboard(ctx: SoloRunContext = {}): boolean {
-  return !ctx.scope && !ctx.training && !ctx.review;
+  return !ctx.scope && !ctx.training && !ctx.review && !ctx.match;
 }
 
 /** True when the run may still earn coins (everything except Entraînement). */
@@ -70,7 +72,8 @@ export async function saveSoloScore(
  * when the run counts normally.
  */
 export function offLeaderboardNotice(ctx: SoloRunContext, language: Language): string | null {
-  if (countsForLeaderboard(ctx)) return null;
+  // A match has its own results screen: no solo-leaderboard line there.
+  if (countsForLeaderboard(ctx) || ctx.match) return null;
   if (ctx.training) {
     return tr(language, 'Entraînement — ni pièces ni classement', 'Training — no coins, no leaderboard');
   }

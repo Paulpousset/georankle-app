@@ -420,7 +420,7 @@ export function ClassicGame({
         }
 
         if (user) {
-          void saveSoloScore(user, 'classic', gameEfficiency, { scope, training }, () =>
+          void saveSoloScore(user, 'classic', gameEfficiency, { scope, training, match: !!matchData }, () =>
             showAlert(tr(language, 'Erreur', 'Error'), tr(language, "Impossible d'enregistrer ton score.", 'Could not save your score.')),
           );
           // Solo coins (server-side daily cap; reward scales with performance).
