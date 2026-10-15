@@ -29,6 +29,10 @@ const arg = (name, fallback) => {
   return i > -1 ? process.argv[i + 1] : fallback;
 };
 const BATCH = Number(arg('batch', 0));
+// --short : lot de vidéos d'environ 20 s (stats du 15/10 : on décroche avant la
+// moitié des vidéos de 26 à 42 s). Frontières en une manche, Devine en trois
+// essais, deux Frontières pour un Devine (Frontières est le plus regardé).
+const SHORT = process.argv.includes('--short');
 let seed = Number(arg('seed', Date.now() % 100000));
 
 const stats = Object.fromEntries(JSON.parse(readFileSync(join(ROOT, 'assets', 'countries_stats.json'), 'utf8')).map((c) => [c.cca3, c]));
@@ -196,7 +200,8 @@ function devineGuesses(target) {
     return ok.length ? pick(ok) : null;
   };
   const used = [];
-  for (const [lo, hi, same] of [[7000, 20000, false], [3500, 7000, false], [1200, 3500, true], [0, 1500, false]]) {
+  const bands = SHORT ? [[3500, 9000, false], [0, 1500, false]] : [[7000, 20000, false], [3500, 7000, false], [1200, 3500, true], [0, 1500, false]];
+  for (const [lo, hi, same] of bands) {
     const c = band(lo, hi, used, same) ?? band(lo * 0.6, hi * 1.4, used, false);
     if (!c) return null;
     used.push(c);
@@ -416,25 +421,26 @@ if (!BATCH) {
   ]);
 } else {
   // Un lot remplace le précédent dans out/episodes (les vitrines restent).
-  for (const f of readdirSync(EPISODES)) if (f.startsWith('lot-')) rmSync(join(EPISODES, f));
+  const prefix = SHORT ? 'court' : 'lot';
+  for (const f of readdirSync(EPISODES)) if (f.startsWith(`${prefix}-`)) rmSync(join(EPISODES, f));
   const targets = shuffle(KNOWN.filter((c) => c !== 'MNG'));
   const usedPairs = new Set(['FRACHN', 'CANARG']);
   let ti = 0;
   for (let i = 0; i < BATCH; i++) {
     const num = String(i + 1).padStart(2, '0');
-    const kind = ['devine', 'frontieres', 'rankle'][i % 3];
+    const kind = (SHORT ? ['frontieres', 'devine', 'frontieres'] : ['devine', 'frontieres', 'rankle'])[i % 3];
     if (kind === 'devine') {
       let g = null;
       while (!g) g = devineGuesses(targets[ti++ % targets.length]);
       console.log('  ', g.map(fr).join(' → '));
-      devine(`lot-${num}-devine-${slug(fr(g[g.length - 1]))}`, g[g.length - 1], g);
+      devine(`${prefix}-${num}-devine-${slug(fr(g[g.length - 1]))}`, g[g.length - 1], g);
     } else if (kind === 'frontieres') {
       const r1 = randomFrontier(4, 6, 'MOYEN', usedPairs);
-      const r2 = randomFrontier(7, 10, 'EXPERT', usedPairs);
-      frontieres(`lot-${num}-frontieres-${slug(r1.path[0].name)}`, [r1, r2]);
+      const r2 = SHORT ? null : randomFrontier(7, 10, 'EXPERT', usedPairs);
+      frontieres(`${prefix}-${num}-frontieres-${slug(r1.path[0].name)}`, r2 ? [r1, r2] : [r1]);
     } else {
       const { themes, play } = randomRankle();
-      rankle(`lot-${num}-rankle-${slug(fr(play[5][0]))}`, themes, play);
+      rankle(`${prefix}-${num}-rankle-${slug(fr(play[5][0]))}`, themes, play);
     }
   }
 }

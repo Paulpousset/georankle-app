@@ -19,8 +19,12 @@ on:
         description: Graine (même graine = même lot)
         default: '7'
         required: true
+      short:
+        description: Vidéos courtes (~20 s, Frontières en 1 manche, Devine en 3 essais)
+        type: boolean
+        default: true
   push:
-    branches: [claude/project-thread-2sqpxp]
+    branches: [claude/project-thread-2sqpxp, claude/project-thread-thyjdt]
     paths:
       - .github/workflows/social-concepts.yml
       - social-video/composer/concepts.mjs
@@ -34,8 +38,9 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  COUNT: ${{ github.event.inputs.count || '24' }}
-  SEED: ${{ github.event.inputs.seed || '7' }}
+  COUNT: ${{ github.event.inputs.count || '18' }}
+  SEED: ${{ github.event.inputs.seed || '15' }}
+  SHORT: ${{ github.event.inputs.short || 'true' }}
   SHARDS: '4'
 
 jobs:
@@ -57,7 +62,7 @@ jobs:
           XI_MODEL: ${{ vars.XI_MODEL }}
         run: |
           npm ci --no-audit --no-fund
-          node concepts.mjs --batch "$COUNT" --seed "$SEED"
+          node concepts.mjs --batch "$COUNT" --seed "$SEED" $([ "$SHORT" = true ] && echo --short)
           node voice.mjs
           mkdir -p public/voice
       - uses: actions/upload-artifact@v4

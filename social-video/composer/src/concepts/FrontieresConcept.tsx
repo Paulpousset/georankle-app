@@ -96,7 +96,7 @@ function Round({ r, idx, total, local, ask }: { r: FrontierRound; idx: number; t
       {/* Titre de la manche */}
       <div style={{ position: 'absolute', top: 240, left: 0, right: 0, textAlign: 'center', transform: `scale(${0.8 + 0.2 * intro})`, opacity: intro }}>
         <Tag>
-          Manche {idx + 1}/{total} · {r.level}
+          {total > 1 ? `Manche ${idx + 1}/${total} · ` : ''}{r.level}
         </Tag>
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 18, marginTop: 24, fontFamily: serif, fontWeight: 900, fontSize: titleSize, color: C.sepia, whiteSpace: 'nowrap' }}>
           <Img src={flag(first.cc)} style={{ width: 84, height: 63, borderRadius: 8, objectFit: 'cover' }} />
