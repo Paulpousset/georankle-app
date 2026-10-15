@@ -1,6 +1,6 @@
 /**
- * « Frontières » : deux pays sur une carte ancienne, une question (« combien
- * de pays à traverser au minimum ? »), trois secondes pour répondre, puis le
+ * « Frontières » : deux pays sur une carte ancienne, une question (« quels pays
+ * faut-il traverser ? »), trois secondes pour répondre, puis le
  * chemin le plus court se dessine pays par pays, avec la chaîne de drapeaux
  * en dessous comme dans l'app, et le tampon de la réponse. Deux manches, la
  * deuxième plus longue.
@@ -191,7 +191,7 @@ export function FrontieresConcept(p: FrontieresProps) {
         {p.rounds.map((round, i) => {
           const at = roundStart(p, i) + INTRO_S + THINK_S + round.path.length * stepS(round) + 0.1;
           return t < roundStart(p, i + 1) ? (
-            <Stamp key={i} text={`${round.path.length - 2} pays`} at={at} top={MAP_TOP + MAP_H - 190} size={110} color={C.green} rotate={-6} />
+            <Stamp key={i} text="Le chemin !" at={at} top={MAP_TOP + MAP_H - 190} size={96} color={C.green} rotate={-6} />
           ) : null;
         })}
         {allDone ? (

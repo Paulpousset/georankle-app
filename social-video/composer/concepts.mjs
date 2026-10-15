@@ -281,18 +281,22 @@ function frontieres(name, rounds) {
   const roundSeconds = (r) => FR.INTRO + FR.THINK + r.path.length * FR.step(r.path.length) + FR.HOLD;
   // Une réplique par moment fort, jamais en rafale : voice.mjs abandonne une
   // réplique qui arriverait trop tard derrière la précédente.
-  const voice = [{ text: 'Combien de frontières, minimum ?', at: 0 }];
+  // Demande de Paul (15/10) : on demande quels pays traverser, pas combien.
+  const voice = [{ text: 'Quels pays faut-il traverser ?', at: 0 }];
   let s0 = 0.4;
   rounds.forEach((r, ri) => {
     const a = r.path[0].name;
     const b = r.path[r.path.length - 1].name;
     const step = FR.step(r.path.length);
     const draw = s0 + FR.INTRO + FR.THINK;
-    voice.push({ text: `${say(a)}, ${say(b)}. Combien de pays entre les deux ?`, at: ri === 0 ? 2.1 : s0 + 0.3, maxLate: 1.5 });
+    voice.push({ text: `Départ, ${say(a)}. Arrivée, ${say(b)}. Quels pays traverser ?`, at: ri === 0 ? 2.1 : s0 + 0.3, maxLate: 1.5 });
     // Les pays traversés ne sont dits que sur les chemins courts (le rythme le permet).
-    if (step >= 0.9 && r.path.length <= 6) r.path.slice(1, -1).forEach((c, j) => c.name.length <= 12 && voice.push({ text: say(c.name), at: draw + (j + 1) * step, maxLate: 0.3 }));
-    const k = r.path.length - 2;
-    voice.push({ text: `${cap(NUM[k] ?? String(k))} pays !`, at: draw + r.path.length * step + 0.15, maxLate: 1.2 });
+    // Chemins courts : chaque pays est dit quand il se pose. Sinon, la liste
+    // tombe d'un coup une fois le chemin dessiné.
+    const mid = r.path.slice(1, -1).map((c) => say(c.name));
+    const list = mid.length > 1 ? `${mid.slice(0, -1).join(', ')} et ${mid[mid.length - 1]}` : mid[0];
+    if (step >= 0.9 && r.path.length <= 6) mid.forEach((n, j) => n.length <= 12 && voice.push({ text: n, at: draw + (j + 1) * step, maxLate: 0.3 }));
+    else voice.push({ text: `Par ${list} !`, at: draw + r.path.length * step + 0.15, maxLate: 1.2 });
     s0 += roundSeconds(r);
   });
   voice.push({ text: 'Tu avais trouvé ? Dis-le en commentaire.', at: s0 + 0.1, maxLate: 0.8 });
@@ -301,14 +305,14 @@ function frontieres(name, rounds) {
   const first = rounds[0].path;
   write(name, {
     composition: 'FrontieresConcept',
-    hook: ['Combien de frontières', 'minimum ? 🧭'],
+    hook: ['Quels pays', 'traverser ? 🧭'],
     rounds,
-    ask: 'Combien de pays à traverser ?',
+    ask: 'Quels pays traverser ?',
     outro: rounds.length > 1 ? 'Tu avais trouvé les deux ?' : 'Tu avais trouvé ?',
     outroSub: 'Ton score en commentaire 👇',
     ...COMMON,
     voice,
-    post: `${first[0].name} → ${first[first.length - 1].name} sans avion : combien de pays minimum ? 🧭\n\n${POST_TAGS}`,
+    post: `${first[0].name} → ${first[first.length - 1].name} sans avion : quels pays faut-il traverser ? 🧭\n\n${POST_TAGS}`,
   });
 }
 // Pays déjà traversés dans le lot : on évite de repasser toujours par la Russie et l'Allemagne (on tolère un pays déjà vu de plus tous les 1000 essais).
@@ -407,7 +411,17 @@ function randomRankle() {
 }
 
 // ───────────────────────────── Vitrine ou lot ─────────────────────────────
-if (!BATCH) {
+// --redo fichier : refaire des Frontières déjà en file, une ligne
+// « nom|Départ|Arrivée » (noms français), en une manche.
+const REDO = arg('redo');
+if (REDO) {
+  const byFr = Object.fromEntries(Object.values(stats).map((c) => [c.name, c.cca3]));
+  for (const line of readFileSync(REDO, 'utf8').split('\n').filter(Boolean)) {
+    const [name, a, b] = line.split('|');
+    if (!byFr[a] || !byFr[b]) throw new Error(`pays inconnu : ${a} / ${b}`);
+    frontieres(name, [frontierRound(byFr[a], byFr[b], 'MOYEN')]);
+  }
+} else if (!BATCH) {
   trailer();
   devine('concept-devine', 'MNG', ['FRA', 'IND', 'KAZ', 'RUS', 'MNG']);
   frontieres('concept-frontieres', [frontierRound('FRA', 'CHN', 'MOYEN', [-12, 12, 138, 72]), frontierRound('CAN', 'ARG', 'EXPERT', [-135, -56, -30, 62])]);
