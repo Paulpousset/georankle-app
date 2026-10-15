@@ -4,7 +4,7 @@
 //
 // Écrit social-stats.json (toutes les lignes) et affiche un tableau TSV.
 // Variables : ZERNIO_API_KEY, DAYS (défaut 60).
-import { writeFileSync } from 'node:fs';
+import { appendFileSync, writeFileSync } from 'node:fs';
 
 const KEY = process.env.ZERNIO_API_KEY;
 if (!KEY) throw new Error('ZERNIO_API_KEY manquante');
@@ -51,3 +51,13 @@ writeFileSync('social-stats.json', JSON.stringify(rows, null, 1));
 const cols = ['platform', 'at', 'views', 'reach', 'likes', 'comments', 'shares', 'saves', 'follows', 'completionRate', 'avgWatch', 'latePostId', 'content'];
 console.log(`\n${rows.length} lignes\n${cols.join('\t')}`);
 for (const r of rows) console.log(cols.map((c) => r[c] ?? '').join('\t'));
+
+// Résumé lisible dans l'onglet Actions de GitHub.
+if (process.env.GITHUB_STEP_SUMMARY) {
+  const md = ['| Plateforme | Date | Vues | Likes | Com. | Partages | Durée vue moy. | Légende |', '|---|---|---|---|---|---|---|---|'];
+  for (const r of rows) {
+    const watch = r.avgWatch == null ? '' : `${(r.avgWatch / 1000).toFixed(1)} s`;
+    md.push(`| ${r.platform} | ${String(r.at).slice(0, 10)} | ${r.views ?? ''} | ${r.likes ?? ''} | ${r.comments ?? ''} | ${r.shares ?? ''} | ${watch} | ${r.content.replace(/\|/g, '/').slice(0, 60)} |`);
+  }
+  appendFileSync(process.env.GITHUB_STEP_SUMMARY, `## Stats des ${DAYS} derniers jours\n\n${md.join('\n')}\n`);
+}

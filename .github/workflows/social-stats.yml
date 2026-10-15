@@ -8,9 +8,9 @@ on:
       days:
         description: Jours en arrière
         default: '60'
-  push:
-    branches: [claude/project-thread-thyjdt]
-    paths: [social-video/publish/stats.mjs, .github/workflows/social-stats.yml]
+  # Chaque lundi à 8 h (Paris, heure d'été), résumé dans l'onglet Actions.
+  schedule:
+    - cron: '0 6 * * 1'
 
 permissions:
   contents: read
