@@ -508,7 +508,7 @@ function pickAt(tx,ty){
   var poly=coords?hitTest(coords):null;
   var near=dotInFootprint(tx,ty);
   // A tap on a country's own centre belongs to that country even when a dot's
-  // footprint covers it — our ISR ring is a coarse 9-point sliver whose middle
+  // footprint covers it — our ISR ring includes the West Bank, whose middle
   // sits under the Palestine dot, and Israel must stay selectable there.
   if(near&&poly&&centreDist(poly,tx,ty)<near.d)return poly;
   if(near)return near.c.cca3;
