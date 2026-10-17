@@ -86,9 +86,22 @@ export function AdBreakNotice() {
         >
           {tr(
             language,
-            'Environ 5 secondes de pub pour soutenir le jeu ;)',
-            'About 5 seconds of ads to support the game ;)',
+            'Une courte pub pour soutenir le jeu ;)',
+            'A short ad to support the game ;)',
           )}
+        </Text>
+        {/* AdMob picks the creative: images close at once, most videos can be
+            skipped after 5 s, some run 15–30 s unskippable — so no fixed figure. */}
+        <Text
+          style={{
+            color: c.textFaint,
+            fontFamily: FONTS.mono,
+            fontSize: 12,
+            textAlign: 'center',
+            marginTop: 10,
+          }}
+        >
+          {tr(language, 'Souvent passable après 5 secondes', 'Often skippable after 5 seconds')}
         </Text>
       </View>
     </Modal>
