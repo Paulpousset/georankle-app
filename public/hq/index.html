@@ -389,8 +389,17 @@ const S = {
   previews: {}, // clé de la vidéo → true quand l'aperçu est ouvert
   vbusy: null, // action en cours sur l'onglet Vidéos (ordre, publication)
   vmsg: null, // { kind, text } : retour de la dernière action
-  vtab: store('hq.vtab') || 'next', // onglet Vidéos : next | bank | gen
+  vtab: store('hq.vtab') || 'next', // onglet Vidéos : next | bank | gen | acc
 };
+// Retour du branchement d'un compte (api/oauth.mjs) : on ouvre Vidéos › Comptes.
+{
+  const q = new URLSearchParams(location.search);
+  if (q.has('connected') || q.has('connect_error')) {
+    Object.assign(S, { tab: 'videos', vtab: 'acc' });
+    S.vmsg = q.has('connected') ? { kind: 'good', text: `Compte branché : ${q.get('connected')}. Il recevra les prochaines vidéos.` } : { kind: 'bad', text: q.get('connect_error') };
+    history.replaceState(null, '', location.pathname);
+  }
+}
 function json(t) { try { return JSON.parse(t ?? 'null'); } catch { return null; } }
 
 // ─── Utilitaires ─────────────────────────────────────────────────────────────
@@ -1119,11 +1128,12 @@ function videosView() {
     { h: 'Où', f: (r) => esc(r.platforms.map(platformName).join(', ')) },
     { h: 'Légende', wrap: 1, f: (r) => esc((r.caption ?? '').split('\n')[0]) },
   ], v)));
-  const seg = `<div class="seg vseg" role="group" aria-label="Vidéos">${[['next', 'À venir'], ['bank', 'Banque'], ['gen', 'Tournage']]
+  const seg = `<div class="seg vseg" role="group" aria-label="Vidéos">${[['next', 'À venir'], ['bank', 'Banque'], ['gen', 'Tournage'], ['acc', 'Comptes']]
     .map(([k, l]) => `<button type="button" data-act="vtab" data-v="${k}" aria-pressed="${S.vtab === k}">${l}</button>`).join('')}</div>`;
   const top = `${seg}${notes ? `<div class="alerts" style="margin-bottom:10px">${notes}</div>` : ''}`;
   if (S.vtab === 'bank') return `${top}${bankView()}`;
   if (S.vtab === 'gen') return `${top}${genView()}`;
+  if (S.vtab === 'acc') return `${top}${accountsView()}`;
   return `${top}
   <h2 class="section">Prochaines vidéos publiées</h2>
   ${head}
@@ -1186,6 +1196,46 @@ function genView() {
   </section>
   <h2 class="section">Derniers tournages</h2>
   ${card('Tournages', 'social', list)}`;
+}
+// Comptes Instagram et TikTok branchés en direct (api/_hq/direct.mjs), en plus de Zernio.
+function accountsView() {
+  const v = S.data.social?.data?.settings;
+  const busy = S.vbusy ? 'disabled' : '';
+  const list = !v ? '<div class="empty">Chargement…</div>'
+    : v.direct == null ? '<div class="setup">Ajoute <code>SOCIAL_ACCOUNTS_KEY</code> dans Vercel et dans les secrets GitHub (la même valeur) pour ranger les comptes.</div>'
+    : v.direct.length ? table([
+      { h: 'Réseau', f: (a) => esc(platformName(a.platform)) },
+      { h: 'Compte', f: (a) => esc(a.name) },
+    ], v.direct) : '<div class="empty">Aucun compte branché en direct.</div>';
+  const btn = (p, label) => v?.directApps?.includes(p)
+    ? `<button class="btn" type="button" data-act="vconnect" data-v="${p}" ${busy} style="width:auto;padding:10px 16px">${label}</button>`
+    : `<span class="muted" style="font-size:13px">${label} : identifiants de l'appli manquants dans Vercel.</span>`;
+  return `
+  <h2 class="section">Comptes en direct</h2>
+  <section class="card"><p style="margin:0 0 10px;font-size:14px">Ces comptes reçoivent la même vidéo que TikTok et Instagram (Zernio), à 12 h 30 et 19 h 30. Connecte-toi avec le compte à ajouter (déconnecte d'abord l'autre compte dans le navigateur si besoin). TikTok : tant que l'appli n'est pas auditée, la vidéo arrive dans la boîte de réception TikTok du compte, il reste à appuyer sur Publier.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">${btn('instagram', 'Brancher un compte Instagram')} ${btn('tiktok', 'Brancher un compte TikTok')}</div>
+  </section>
+  ${card('Comptes branchés', 'social', list)}`;
+}
+async function connectAccount(platform) {
+  S.vbusy = 'social-connect';
+  render();
+  try {
+    const { data: { session } } = await client.auth.getSession();
+    if (session) S.token = session.access_token;
+    const r = await fetch('/api/hq?source=social-connect', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${S.token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ platform }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (r.ok && j.url) return void (location.href = j.url);
+    S.vmsg = { kind: 'bad', text: j.error ?? `Erreur ${r.status}` };
+  } catch (e) {
+    S.vmsg = { kind: 'bad', text: e.message };
+  }
+  S.vbusy = null;
+  render();
 }
 /** Écritures de l'onglet Vidéos (ordre, publication) : POST /api/hq, puis on recharge la file. */
 async function videoWrite(source, body, okText) {
@@ -1620,6 +1670,7 @@ function onAct(e) {
     if (act === 'vpub') return publishVideo(el.dataset.key);
     if (act === 'vskip') return skipVideo(el.dataset.key);
     if (act === 'vunskip') return videoWrite('social-order', { unskip: el.dataset.key }, 'Vidéo remise dans la file.');
+    if (act === 'vconnect') return connectAccount(el.dataset.v);
     if (act === 'vtab') { S.vtab = el.dataset.v; store('hq.vtab', S.vtab); return render(); }
     if (act === 'vreset') { if (confirm('Revenir à l’ordre automatique ?')) videoWrite('social-order', { pinned: [] }, 'Ordre automatique rétabli.'); return; }
     if (act === 'mkdel') { if (confirm('Supprimer ce repère ?')) markerWrite('DELETE', null, el.dataset.id); }

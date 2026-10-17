@@ -15,6 +15,7 @@ import { env, http, NotConfigured } from './lib.mjs';
 import {
   STATE_TAG, STATE_FILE, ORDER_FILE, NEXT_TAG, DEFAULT_MIN_RELEASE_APP, kindFor, parisHourOf, postedFor, upcoming,
 } from './social-queue.mjs';
+import { ACCOUNTS_FILE, APP_KEYS, PLATFORMS as DIRECT, authorizeUrl, exchange, open, seal, upsert, publicView } from './direct.mjs';
 
 const REPO = () => env('GITHUB_REPOSITORY', 'Paulpousset/georankle-app');
 const API = () => `https://api.github.com/repos/${REPO()}`;
@@ -114,11 +115,14 @@ export async function social() {
 
   const stateAsset = assetOf(STATE_TAG, STATE_FILE);
   const orderAsset = assetOf(STATE_TAG, ORDER_FILE);
-  const [state, order, postRuns, videoRuns] = await Promise.all([
+  const accountsAsset = assetOf(STATE_TAG, ACCOUNTS_FILE);
+  const [state, order, postRuns, videoRuns, direct] = await Promise.all([
     stateAsset ? assetText(stateAsset).then(JSON.parse) : { posted: [] },
     orderAsset ? assetText(orderAsset).then(JSON.parse).catch(() => ({})) : {},
     workflowRuns('social-post.yml'),
     workflowRuns('social-video.yml'),
+    !env('SOCIAL_ACCOUNTS_KEY') ? null
+      : accountsAsset ? assetText(accountsAsset).then((t) => publicView(open(t, env('SOCIAL_ACCOUNTS_KEY')))).catch(() => null) : [],
   ]);
   const pinned = Array.isArray(order.pinned) ? order.pinned : [];
   const skipped = Array.isArray(order.skipped) ? order.skipped : [];
@@ -221,7 +225,7 @@ export async function social() {
           key, name: a.name, size: a.size, status, previewUrl: previewUrl(a.id),
           format: formatOf({ tag: r.tag_name, group: a.name.replace(/-v\d+\.mp4$/, '') }),
           postedAt: posts[0]?.at ?? null,
-          platforms: [...new Set(posts.flatMap((p) => [...(p.zernio ?? []), ...(p['upload-post'] ?? [])]))],
+          platforms: [...new Set(posts.flatMap((p) => [...(p.zernio ?? []), ...(p.direct ?? []), ...(p['upload-post'] ?? [])]))],
           plannedAt: planned.get(key) ?? null,
         };
       }),
@@ -230,7 +234,8 @@ export async function social() {
 
   return {
     repo: REPO(),
-    settings: { enabled, langs, minRelease, varsRead: Boolean(vars), zernioRead: Boolean(zernio), canWrite: Boolean(env('GITHUB_TOKEN')) },
+    settings: { enabled, langs, minRelease, varsRead: Boolean(vars), zernioRead: Boolean(zernio), canWrite: Boolean(env('GITHUB_TOKEN')),
+      direct, directApps: DIRECT.filter((p) => APP_KEYS[p].every((k) => env(k))) },
     pinned,
     skipped,
     running: postRuns?.filter((w) => w.running) ?? null,
@@ -238,7 +243,7 @@ export async function social() {
     bank,
     slots: out,
     history: history.map((p) => ({
-      at: p.at, key: p.key, tag: p.tag, platforms: [...(p.zernio ?? []), ...(p['upload-post'] ?? [])], caption: p.caption ?? null,
+      at: p.at, key: p.key, tag: p.tag, platforms: [...(p.zernio ?? []), ...(p.direct ?? []), ...(p['upload-post'] ?? [])], caption: p.caption ?? null,
       format: formatOf(p),
     })),
   };
@@ -350,16 +355,21 @@ export async function setOrder(patch) {
   } else {
     throw new Error('modification invalide');
   }
-  if (old) await http(`${API()}/releases/assets/${old.id}`, { method: 'DELETE', headers: ghHeaders() });
   pinned = [...new Set(pinned)];
   skipped = [...new Set(skipped)].slice(-500);
-  const body = JSON.stringify({ pinned, skipped, at: new Date().toISOString() }, null, 2) + '\n';
-  await http(`https://uploads.github.com/repos/${REPO()}/releases/${release.id}/assets?name=${ORDER_FILE}`, {
+  await putStateFile(release, ORDER_FILE, JSON.stringify({ pinned, skipped, at: new Date().toISOString() }, null, 2) + '\n', 'application/json');
+  return { pinned, skipped };
+}
+
+/** Remplace un fichier de la release shorts-state (GitHub n'écrase pas : on supprime puis on envoie). */
+async function putStateFile(release, name, body, type) {
+  const old = release.assets.find((a) => a.name === name);
+  if (old) await http(`${API()}/releases/assets/${old.id}`, { method: 'DELETE', headers: ghHeaders() });
+  await http(`https://uploads.github.com/repos/${REPO()}/releases/${release.id}/assets?name=${name}`, {
     method: 'POST',
-    headers: { ...ghHeaders(), 'content-type': 'application/json' },
+    headers: { ...ghHeaders(), 'content-type': type },
     body,
   });
-  return { pinned, skipped };
 }
 
 /** Lance social-post.yml sur TikTok + Instagram pour cette vidéo-là. */
@@ -393,4 +403,48 @@ export async function generate({ record, globes }) {
     body: JSON.stringify({ ref: repo.default_branch, inputs: { record: String(Boolean(record)), globes: String(n) } }),
   });
   return { ok: true };
+}
+
+// ─── Comptes en direct (Instagram, TikTok) ───────────────────────────────────
+// /hq demande un lien de connexion (connectStart), le réseau renvoie sur
+// /api/oauth avec un code (connectFinish) : on l'échange contre un jeton,
+// rangé chiffré dans accounts.enc, que social-post.yml lit à chaque passage.
+const STATE_TTL = 15 * 60;
+const signState = (platform, exp) => crypto.createHmac('sha256', secret()).update(`oauth:${platform}:${exp}`).digest('base64url');
+const redirectOf = (origin) => `${origin}/api/oauth`;
+
+function needDirect(platform) {
+  needWrite();
+  if (!DIRECT.includes(platform)) throw new Error('réseau inconnu');
+  const missing = ['SOCIAL_ACCOUNTS_KEY', ...APP_KEYS[platform]].filter((k) => !env(k));
+  if (!secret()) missing.push('HQ_VIDEO_SECRET');
+  if (missing.length) throw new NotConfigured(missing, 'Identifiants de l\'appli et clé du coffre des comptes');
+}
+
+/** POST /api/hq?source=social-connect { platform } → lien de connexion du réseau. */
+export async function connectStart({ platform }, origin) {
+  needDirect(platform);
+  const exp = Math.floor(Date.now() / 1000) + STATE_TTL;
+  const state = `${platform}.${exp}.${signState(platform, exp)}`;
+  return { url: authorizeUrl(platform, { env: process.env, redirect: redirectOf(origin), state }) };
+}
+
+/** GET /api/oauth?code&state : retour du réseau, sans session (state signé). */
+export async function connectFinish(url) {
+  const [platform, exp, sig] = (url.searchParams.get('state') ?? '').split('.');
+  const good = DIRECT.includes(platform) && secret() ? signState(platform, exp) : '';
+  if (!good || !(Number(exp) > Date.now() / 1000) || (sig ?? '').length !== good.length
+    || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(good))) {
+    throw new Error('lien expiré : relance le branchement depuis /hq');
+  }
+  const code = url.searchParams.get('code');
+  if (!code) throw new Error(url.searchParams.get('error_description') ?? url.searchParams.get('error') ?? 'connexion refusée');
+  needDirect(platform);
+  const acc = await exchange(platform, code, { env: process.env, redirect: redirectOf(url.origin) });
+  const release = await http(`${API()}/releases/tags/${STATE_TAG}`, { headers: ghHeaders() });
+  const asset = release.assets.find((a) => a.name === ACCOUNTS_FILE);
+  const key = env('SOCIAL_ACCOUNTS_KEY');
+  const accounts = upsert(asset ? open(await assetText(asset), key) : [], { ...acc, at: new Date().toISOString() });
+  await putStateFile(release, ACCOUNTS_FILE, seal(accounts, key), 'application/octet-stream');
+  return { platform, name: acc.name };
 }

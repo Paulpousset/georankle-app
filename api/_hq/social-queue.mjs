@@ -24,9 +24,9 @@ export function parse(name) {
 export const generated = (group) => /^(globe|plusmoins|quiz-)/.test(group);
 
 // Une publication compte pour la cible du passage si elle est partie sur le
-// service de cette cible.
+// service de cette cible (social : Zernio ou comptes en direct).
 export function postedFor(p, target) {
-  if (target === 'social') return Boolean(p.zernio);
+  if (target === 'social') return Boolean(p.zernio || p.direct);
   if (target === 'youtube') return Boolean(p['upload-post']);
   return true;
 }
