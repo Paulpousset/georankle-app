@@ -56,3 +56,25 @@ describe('computeView', () => {
     expect(v.maxAng).toBeGreaterThan(20);
   });
 });
+
+describe('coreRegions / far-flung territories', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const load = (f: string) => require(`../../../assets/regions/${f}.json`).regions;
+
+  it('frames mainland Norway, not Bouvet Island in the South Atlantic', () => {
+    const v = computeView(load('NOR'));
+    expect(v.outliers).toEqual(expect.arrayContaining(['NO-X01~']));
+    expect(v.maxAng).toBeLessThan(15);
+    expect(v.clat).toBeGreaterThan(55);
+  });
+
+  it('leaves the Caribbean out of the Netherlands framing', () => {
+    expect(computeView(load('NLD')).maxAng).toBeLessThan(5);
+  });
+
+  it('keeps long, contiguous countries whole', () => {
+    for (const f of ['CHL', 'RUS', 'FRA', 'IDN']) {
+      expect(computeView(load(f)).outliers).toBeUndefined();
+    }
+  });
+});
