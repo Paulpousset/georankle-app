@@ -47,6 +47,7 @@ import { initWebAds, showWebInterstitial, showWebRewardedAd, webAdsSupported } f
 import { supabase } from './supabase';
 import { isFeatureEnabled } from './featureFlags';
 import { shouldShowAtBreak } from './interstitialGate';
+import { announceAdBreak } from './adBreak';
 import { track } from './analytics';
 import { log } from './log';
 import { RECORDING_MODE } from './recordingMode';
@@ -330,7 +331,8 @@ function loadAndShowInterstitial(sdk: AdsSdk): Promise<void> {
     subs.push(
       ad.addAdEventListener(sdk.AdEventType.LOADED, () => {
         clearTimeout(timer);
-        ad.show().catch((e) => settle(() => reject(e)));
+        // Only once an ad is actually in hand: warn the player (3-2-1), then show.
+        void announceAdBreak().then(() => ad.show().catch((e) => settle(() => reject(e))));
       }),
       ad.addAdEventListener(sdk.AdEventType.CLOSED, () => settle(() => resolve())),
       ad.addAdEventListener(sdk.AdEventType.ERROR, (e) => settle(() => reject(e))),
