@@ -390,7 +390,7 @@ const S = {
   vbusy: null, // action en cours sur l'onglet Vidéos (ordre, publication)
   vmsg: null, // { kind, text } : retour de la dernière action
   vtab: store('hq.vtab') || 'next', // onglet Vidéos : next | bank | gen
-  adFormat: store('hq.adformat') || 'all', // onglet Revenus : type de pub AdMob
+  adFormat: (store('hq.adformat') || 'all').toLowerCase(), // onglet Revenus : type de pub AdMob
 };
 function json(t) { try { return JSON.parse(t ?? 'null'); } catch { return null; } }
 
@@ -942,16 +942,19 @@ function reviews(v) {
   return v.slice(0, 10).map((r) => `<div class="review"><span class="stars" aria-label="${r.rating} sur 5">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span> ${r.title ? `<b>${esc(r.title)}</b>` : ''}<div>${esc(r.text ?? '')}</div><div class="meta">${esc(r.author ?? '')} · ${esc(r.territory ?? r.lang ?? '')} · ${r.version ? `v${esc(r.version)} · ` : ''}${ago(r.date)}</div></div>`).join('');
 }
 
-// Types de pub AdMob (valeur brute FORMAT de l'API) pour le filtre de l'onglet Revenus.
+// Types de pub AdMob pour le filtre de l'onglet Revenus. L'API renvoie la valeur brute
+// FORMAT en minuscules (« interstitial », « banner »…) : on compare sans tenir compte de la casse.
 const AD_FORMATS = [
   ['all', 'Toutes'],
-  ['INTERSTITIAL', 'Interstitiel'],
-  ['BANNER', 'Bannière'],
-  ['REWARDED', 'Récompensée'],
+  ['interstitial', 'Interstitiel'],
+  ['banner', 'Bannière'],
+  ['rewarded', 'Récompensée'],
 ];
+const adFmt = (r) => String(r.FORMAT_ID ?? r.FORMAT ?? '').toLowerCase();
 /** byDayFormat filtré sur S.adFormat puis remis à une ligne par jour. */
 function adDays(v) {
-  const rows = S.adFormat === 'all' ? v : v.filter((r) => r.FORMAT_ID === S.adFormat);
+  const want = S.adFormat.toLowerCase();
+  const rows = want === 'all' ? v : v.filter((r) => adFmt(r) === want);
   const days = {};
   for (const r of rows) {
     const d = (days[r.x] ??= { x: r.x, earnings: 0, impressions: 0, requests: 0, clicks: 0 });
