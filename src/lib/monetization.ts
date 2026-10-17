@@ -93,11 +93,10 @@ const REWARDED_AD_UNIT_IDS: Record<string, string> = {
   ios: 'ca-app-pub-2429865520138981/2431633897',
 };
 
-// Interstitial ad-unit ids. ⚠️ Paul must create an INTERSTITIAL unit per platform
-// in the AdMob console and paste the ids here; until then we fall back to Google
-// TEST ids so the flow is exercisable without serving real (policy-violating) ads.
+// Real AdMob interstitial ad-unit ids (2026-10-17). An empty id falls back to
+// Google TEST ids.
 const INTERSTITIAL_AD_UNIT_IDS: Record<string, string> = {
-  android: '',
+  android: 'ca-app-pub-2429865520138981/3126283756',
   ios: 'ca-app-pub-2429865520138981/6631423650',
 };
 
