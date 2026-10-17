@@ -3,6 +3,7 @@
 //
 //   node render.mjs                    # toutes les fiches
 //   node render.mjs higher-lower-en-v1 # une seule
+//   SHARD=0/4 node render.mjs          # une fiche sur quatre
 //
 // Lancer voice.mjs avant pour la voix off (sinon musique et bruitages seuls).
 //
@@ -28,7 +29,9 @@ const names = readdirSync(EPISODES)
   .filter((f) => f.endsWith('.json'))
   .map((f) => f.replace(/\.json$/, ''))
   .filter((n) => !only || n === only)
-  .sort();
+  .sort()
+  // SHARD=« i/n » : seulement une fiche sur n (rendu en parallèle dans GitHub Actions).
+  .filter((_, i) => !process.env.SHARD || i % Number(process.env.SHARD.split('/')[1]) === Number(process.env.SHARD.split('/')[0]));
 if (!names.length) {
   console.error(`Aucune fiche dans ${EPISODES} : lance d'abord « node plan.mjs ».`);
   process.exit(1);
