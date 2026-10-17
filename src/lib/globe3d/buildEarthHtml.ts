@@ -398,7 +398,7 @@ function paintOverlay(){
     // just as fast, so they thin with it. They never fade, though: a pick the
     // player cannot see is worse than a thick one.
     var k=D.regionCoat?1:coatK;
-    drawPoly(POLYGONS[idx].r,null,'rgba(255,255,255,0.85)',((s.lw||2.6)+5)*k);
+    drawPoly(POLYGONS[idx].r,null,'rgba(255,255,255,0.85)',((s.lw||2.6)+(D.regionCoat?2:5))*k);
     drawPoly(POLYGONS[idx].r,s.fill,s.stroke,(s.lw||2.6)*k);});
   if(overlayTex)overlayTex.needsUpdate=true;
   needsRender=true;}
@@ -1409,7 +1409,7 @@ export function buildRegionEarthHtml(opts: {
   polygons: WorldPolygon[];
   dots: RegionDot[];
   /** Auto-framing from lib/regionView (spherical mean + angular spread). */
-  view: { clat: number; clng: number; maxAng: number };
+  view: { clat: number; clng: number; maxAng: number; outliers?: string[] };
   maxDpr?: number;
   skin?: GameGlobeSkin | null;
 }): string {
@@ -1420,6 +1420,12 @@ var VIEW=${JSON.stringify({
     clng: +opts.view.clng.toFixed(4),
     maxAng: +opts.view.maxAng.toFixed(4),
   })};
+// Far-flung regions left out of the framing (Bouvet, Hawaii…) are left out of
+// the overlay box too, or its 2048 px would be stretched over half the planet
+// and every region drawn as a blurry smear. Off the box they have no fill, so
+// they always wear the tiny-region marker instead.
+var OUTSIDE={};
+${JSON.stringify(opts.view.outliers ?? [])}.forEach(function(id){OUTSIDE[id]=true;});
 D.drawBaseLand=true;   // the planet keeps its texture: it is the point of the mode
 D.regionCoat=true;     // …and the country's regions are drawn on top of it
 var sel=null,hov=null,locked=false,resultMode=false,resultCorrect=null,resultPicked=null;
@@ -1444,7 +1450,7 @@ function updateTiny(){
   for(var i=0;i<DOTS.length;i++){var d=DOTS[i];
     if(regionSpan[d.id]===undefined)regionSpan[d.id]=shapeSpan(d.id,d.lat,d.lng);
     var s=regionSpan[d.id];
-    if(s!==null&&projRadius(s*Math.PI/180,zoom)<TINY_PX)list.push(d.id);}
+    if(OUTSIDE[d.id]||(s!==null&&projRadius(s*Math.PI/180,zoom)<TINY_PX))list.push(d.id);}
   tinyIds=list;paintTiny();}
 function paintTiny(){
   if(!tinyDot)return;
@@ -1481,14 +1487,19 @@ function pickAt(tx,ty){
     var d=angDist(coords.lat,coords.lng,DOTS[i].lat,DOTS[i].lng);
     if(d<bestD){bestD=d;best=DOTS[i].id;}}
   return best;}
+// State outlines are texture pixels of the boxed overlay. At 8-10 px (+5 of
+// white under-stroke) a selected region read as a thick blurry band eating into
+// its neighbours (Paul, 17/10/2026); the crisp 3D lines already draw the border
+// itself, so the state only needs a thin rim on top of its fill.
+var STATE_LW=3;
 function repaintStates(){
   var list=[];
   if(resultMode){
-    if(resultCorrect)list.push({id:resultCorrect,fill:PAL.okF,stroke:PAL.okS,lw:9});
-    if(resultPicked&&resultPicked!==resultCorrect)list.push({id:resultPicked,fill:PAL.badF,stroke:PAL.badS,lw:9});
+    if(resultCorrect)list.push({id:resultCorrect,fill:PAL.okF,stroke:PAL.okS,lw:STATE_LW});
+    if(resultPicked&&resultPicked!==resultCorrect)list.push({id:resultPicked,fill:PAL.badF,stroke:PAL.badS,lw:STATE_LW});
   } else {
-    if(hov&&!locked&&hov!==sel)list.push({id:hov,fill:PAL.hovF,stroke:PAL.hovS,lw:8});
-    if(sel)list.push({id:sel,fill:PAL.selF,stroke:PAL.selS,lw:10});
+    if(hov&&!locked&&hov!==sel)list.push({id:hov,fill:PAL.hovF,stroke:PAL.hovS,lw:STATE_LW});
+    if(sel)list.push({id:sel,fill:PAL.selF,stroke:PAL.selS,lw:STATE_LW});
   }
   setOverlayStates(list);
   paintTiny();
@@ -1603,7 +1614,10 @@ window.showResult=function(correct,picked){
       interactive: true,
       resetAlways: true,
       initial: { rotLat: opts.view.clat, rotLon: opts.view.clng, fit: 0.9 },
-      overlayBox: regionOverlayBox(opts.view, opts.polygons),
+      overlayBox: regionOverlayBox(
+        opts.view,
+        opts.polygons.filter((p) => !opts.view.outliers?.includes(p.id)),
+      ),
       regionCoat: true,
       skin: opts.skin,
       bloom: !!opts.skin,
