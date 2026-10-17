@@ -46,7 +46,11 @@ export function open(text, secret) {
 export const upsert = (accounts, acc) => [...accounts.filter((a) => !(a.platform === acc.platform && a.id === acc.id)), acc];
 
 /** Ce qu'on peut montrer sans les jetons. */
-export const publicView = (accounts) => accounts.map((a) => ({ platform: a.platform, name: a.name, expires: a.expires ?? null }));
+export const publicView = (accounts) => accounts.map((a) => ({ platform: a.platform, name: a.name, lang: langOf(a), expires: a.expires ?? null }));
+
+// Langue des vidéos que reçoit le compte (choisie au branchement).
+export const LANGS = ['fr', 'en'];
+export const langOf = (a) => (LANGS.includes(a.lang) ? a.lang : 'fr');
 
 // ─── Petits outils HTTP ──────────────────────────────────────────────────────
 

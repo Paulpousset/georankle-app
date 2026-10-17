@@ -15,7 +15,7 @@ import { env, http, NotConfigured } from './lib.mjs';
 import {
   STATE_TAG, STATE_FILE, ORDER_FILE, NEXT_TAG, DEFAULT_MIN_RELEASE_APP, kindFor, parisHourOf, postedFor, upcoming,
 } from './social-queue.mjs';
-import { ACCOUNTS_FILE, APP_KEYS, PLATFORMS as DIRECT, authorizeUrl, exchange, open, seal, upsert, publicView } from './direct.mjs';
+import { ACCOUNTS_FILE, APP_KEYS, PLATFORMS as DIRECT, LANGS as DIRECT_LANGS, authorizeUrl, exchange, open, seal, upsert, publicView } from './direct.mjs';
 
 const REPO = () => env('GITHUB_REPOSITORY', 'Paulpousset/georankle-app');
 const API = () => `https://api.github.com/repos/${REPO()}`;
@@ -410,7 +410,7 @@ export async function generate({ record, globes }) {
 // /api/oauth avec un code (connectFinish) : on l'échange contre un jeton,
 // rangé chiffré dans accounts.enc, que social-post.yml lit à chaque passage.
 const STATE_TTL = 15 * 60;
-const signState = (platform, exp) => crypto.createHmac('sha256', secret()).update(`oauth:${platform}:${exp}`).digest('base64url');
+const signState = (platform, lang, exp) => crypto.createHmac('sha256', secret()).update(`oauth:${platform}:${lang}:${exp}`).digest('base64url');
 const redirectOf = (origin) => `${origin}/api/oauth`;
 
 function needDirect(platform) {
@@ -421,18 +421,19 @@ function needDirect(platform) {
   if (missing.length) throw new NotConfigured(missing, 'Identifiants de l\'appli et clé du coffre des comptes');
 }
 
-/** POST /api/hq?source=social-connect { platform } → lien de connexion du réseau. */
-export async function connectStart({ platform }, origin) {
+/** POST /api/hq?source=social-connect { platform, lang } → lien de connexion du réseau. */
+export async function connectStart({ platform, lang = 'fr' }, origin) {
   needDirect(platform);
+  if (!DIRECT_LANGS.includes(lang)) throw new Error('langue inconnue');
   const exp = Math.floor(Date.now() / 1000) + STATE_TTL;
-  const state = `${platform}.${exp}.${signState(platform, exp)}`;
+  const state = `${platform}.${lang}.${exp}.${signState(platform, lang, exp)}`;
   return { url: authorizeUrl(platform, { env: process.env, redirect: redirectOf(origin), state }) };
 }
 
 /** GET /api/oauth?code&state : retour du réseau, sans session (state signé). */
 export async function connectFinish(url) {
-  const [platform, exp, sig] = (url.searchParams.get('state') ?? '').split('.');
-  const good = DIRECT.includes(platform) && secret() ? signState(platform, exp) : '';
+  const [platform, lang, exp, sig] = (url.searchParams.get('state') ?? '').split('.');
+  const good = DIRECT.includes(platform) && DIRECT_LANGS.includes(lang) && secret() ? signState(platform, lang, exp) : '';
   if (!good || !(Number(exp) > Date.now() / 1000) || (sig ?? '').length !== good.length
     || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(good))) {
     throw new Error('lien expiré : relance le branchement depuis /hq');
@@ -444,7 +445,7 @@ export async function connectFinish(url) {
   const release = await http(`${API()}/releases/tags/${STATE_TAG}`, { headers: ghHeaders() });
   const asset = release.assets.find((a) => a.name === ACCOUNTS_FILE);
   const key = env('SOCIAL_ACCOUNTS_KEY');
-  const accounts = upsert(asset ? open(await assetText(asset), key) : [], { ...acc, at: new Date().toISOString() });
+  const accounts = upsert(asset ? open(await assetText(asset), key) : [], { ...acc, lang, at: new Date().toISOString() });
   await putStateFile(release, ACCOUNTS_FILE, seal(accounts, key), 'application/octet-stream');
-  return { platform, name: acc.name };
+  return { platform, name: `${acc.name} (${lang})` };
 }

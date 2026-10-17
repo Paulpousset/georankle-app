@@ -1206,18 +1206,19 @@ function accountsView() {
     : v.direct.length ? table([
       { h: 'Réseau', f: (a) => esc(platformName(a.platform)) },
       { h: 'Compte', f: (a) => esc(a.name) },
+      { h: 'Vidéos', f: (a) => (a.lang === 'en' ? 'anglais' : 'français') },
     ], v.direct) : '<div class="empty">Aucun compte branché en direct.</div>';
   const btn = (p, label) => v?.directApps?.includes(p)
-    ? `<button class="btn" type="button" data-act="vconnect" data-v="${p}" ${busy} style="width:auto;padding:10px 16px">${label}</button>`
+    ? [['fr', 'vidéos en français'], ['en', 'vidéos en anglais']].map(([l, t]) => `<button class="btn" type="button" data-act="vconnect" data-v="${p}" data-lang="${l}" ${busy} style="width:auto;padding:10px 16px">${label} · ${t}</button>`).join(' ')
     : `<span class="muted" style="font-size:13px">${label} : identifiants de l'appli manquants dans Vercel.</span>`;
   return `
   <h2 class="section">Comptes en direct</h2>
-  <section class="card"><p style="margin:0 0 10px;font-size:14px">Ces comptes reçoivent la même vidéo que TikTok et Instagram (Zernio), à 12 h 30 et 19 h 30. Connecte-toi avec le compte à ajouter (déconnecte d'abord l'autre compte dans le navigateur si besoin). TikTok : tant que l'appli n'est pas auditée, la vidéo arrive dans la boîte de réception TikTok du compte, il reste à appuyer sur Publier.</p>
+  <section class="card"><p style="margin:0 0 10px;font-size:14px">Ces comptes publient à 12 h 30 et 19 h 30 : en français la même vidéo que TikTok et Instagram (Zernio), en anglais la version anglaise d'une vidéo de l'app. Connecte-toi avec le compte à ajouter (déconnecte d'abord l'autre compte dans le navigateur si besoin). TikTok : tant que l'appli n'est pas auditée, la vidéo arrive dans la boîte de réception TikTok du compte, il reste à appuyer sur Publier.</p>
     <div style="display:flex;gap:10px;flex-wrap:wrap">${btn('instagram', 'Brancher un compte Instagram')} ${btn('tiktok', 'Brancher un compte TikTok')}</div>
   </section>
   ${card('Comptes branchés', 'social', list)}`;
 }
-async function connectAccount(platform) {
+async function connectAccount(platform, lang) {
   S.vbusy = 'social-connect';
   render();
   try {
@@ -1226,7 +1227,7 @@ async function connectAccount(platform) {
     const r = await fetch('/api/hq?source=social-connect', {
       method: 'POST',
       headers: { authorization: `Bearer ${S.token}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ platform }),
+      body: JSON.stringify({ platform, lang }),
     });
     const j = await r.json().catch(() => ({}));
     if (r.ok && j.url) return void (location.href = j.url);
@@ -1670,7 +1671,7 @@ function onAct(e) {
     if (act === 'vpub') return publishVideo(el.dataset.key);
     if (act === 'vskip') return skipVideo(el.dataset.key);
     if (act === 'vunskip') return videoWrite('social-order', { unskip: el.dataset.key }, 'Vidéo remise dans la file.');
-    if (act === 'vconnect') return connectAccount(el.dataset.v);
+    if (act === 'vconnect') return connectAccount(el.dataset.v, el.dataset.lang);
     if (act === 'vtab') { S.vtab = el.dataset.v; store('hq.vtab', S.vtab); return render(); }
     if (act === 'vreset') { if (confirm('Revenir à l’ordre automatique ?')) videoWrite('social-order', { pinned: [] }, 'Ordre automatique rétabli.'); return; }
     if (act === 'mkdel') { if (confirm('Supprimer ce repère ?')) markerWrite('DELETE', null, el.dataset.id); }

@@ -62,7 +62,7 @@ import { join } from 'node:path';
 import {
   STATE_TAG, STATE_FILE, ORDER_FILE, DEFAULT_MIN_RELEASE_APP, kindFor, parisHourOf, postedFor as postedForTarget, upcoming,
 } from '../../api/_hq/social-queue.mjs';
-import { ACCOUNTS_FILE, open, seal, refresh, publishInstagram, publishTikTok } from '../../api/_hq/direct.mjs';
+import { ACCOUNTS_FILE, open, seal, refresh, langOf, publishInstagram, publishTikTok } from '../../api/_hq/direct.mjs';
 
 // Valeurs collées depuis un téléphone : on enlève espaces et retours à la ligne.
 const env = Object.fromEntries(Object.entries(process.env).map(([k, v]) => [k, v?.trim()]));
@@ -132,12 +132,12 @@ function saveState(state) {
 
 const postedFor = (p) => postedForTarget(p, TARGET);
 
-function pending(state) {
+function pending(state, langs = LANGS) {
   const order = loadOrder();
   const releases = JSON.parse(gh('release', 'list', '--limit', '100', '--json', 'tagName,createdAt,publishedAt'));
   const assetsOf = (tag) => JSON.parse(gh('release', 'view', tag, '--json', 'assets')).assets.map((a) => a.name);
   return upcoming({
-    state, releases, assetsOf, target: TARGET, kind: KIND, langs: LANGS, minRelease: MIN_RELEASE, minReleaseApp: MIN_RELEASE_APP,
+    state, releases, assetsOf, target: TARGET, kind: KIND, langs, minRelease: MIN_RELEASE, minReleaseApp: MIN_RELEASE_APP,
     // Une vidéo retirée puis publiée à la main (VIDEO) part quand même.
     pinned: order.pinned, skipped: order.skipped.filter((key) => key !== env.VIDEO),
   });
@@ -318,7 +318,11 @@ if (env.VIDEO && !todo.length) throw new Error(`${env.VIDEO} : introuvable dans 
 console.log(`[${TARGET}] ${todo.length} vidéo(s) en attente dont ${wanted.length} au format ${KIND || 'quelconque'} (langues ${LANGS.join(', ')}, releases ≥ shorts-${MIN_RELEASE}).`);
 
 const accounts = USE_ZERNIO ? await zernioAccounts() : [];
-const direct = USE_DIRECT && todo.length ? (DRY_RUN ? loadDirect() : await refreshDirect(loadDirect())) : [];
+const allDirect = USE_DIRECT ? (DRY_RUN ? loadDirect() : await refreshDirect(loadDirect())) : [];
+// Comptes dans une langue publiée (fr) : même vidéo que Zernio. Les autres
+// (compte Instagram anglais…) ont leur propre file, plus bas.
+const direct = allDirect.filter((a) => LANGS.includes(langOf(a)));
+const otherLangs = [...new Set(allDirect.map(langOf).filter((l) => !LANGS.includes(l)))];
 const targets = [
   ...accounts.map((a) => `${a.platform} (Zernio)`),
   ...direct.map((a) => `${a.platform} ${a.name} (direct)`),
@@ -351,6 +355,26 @@ for (const item of todo.slice(0, COUNT)) {
   });
   // Écrit après chaque vidéo : un échec plus loin ne fait pas republier celle-ci.
   saveState(state);
+}
+
+// Comptes en direct dans une autre langue : leur propre file (vidéos -en-…),
+// même format que le créneau, une vidéo jamais publiée deux fois.
+for (const lang of env.VIDEO ? [] : otherLangs) {
+  const accs = allDirect.filter((a) => langOf(a) === lang);
+  const { todo: queue } = pending(state, [lang]);
+  console.log(`[${TARGET}/${lang}] ${queue.length} vidéo(s) en attente pour ${accs.map((a) => a.name).join(', ')}.`);
+  for (const item of queue.slice(0, COUNT)) {
+    const files = download(item);
+    if (DRY_RUN) {
+      console.log(`[simulation] ${item.key} → ${accs.map((a) => `${a.platform} ${a.name}`).join(', ')}\n  ${files.caption.replace(/\n/g, '\n  ')}`);
+      continue;
+    }
+    const done = await postDirect(item, files, accs);
+    if (!done.direct) break;
+    console.log(`Publié ${item.key} → ${JSON.stringify(done)}`);
+    state.posted.push({ key: item.key, tag: item.tag, group: item.group, variant: item.variant, at: new Date().toISOString(), lang, ...done });
+    saveState(state);
+  }
 }
 
 if (DRY_RUN && todo.length) console.log('Simulation : rien n\'a été publié (DRY_RUN=0 pour publier).');
