@@ -52,6 +52,7 @@ import { saveSoloScore } from '../lib/soloResult';
 import { OffLeaderboardNotice } from '../components/OffLeaderboardNotice';
 import { RunRecap, type RecapEntry } from '../components/RunRecap';
 import { SoloCoinReward } from '../components/SoloCoinReward';
+import { SoloEndActions } from '../components/SoloEndActions';
 import { PlayerGlobe } from '../components/PlayerGlobe';
 import { EndGlobe } from '../components/end/EndGlobe';
 import { Reveal } from '../components/end/Reveal';
@@ -1502,7 +1503,85 @@ export default function VersusCapitals({
           )}
         </View>
 
-        {gameOver && !isOnline && (
+        {/* Solo : le même écran de fin que les autres modes (globe, score,
+            pièces, récap, barre SoloEndActions), qui défile sur petit écran. */}
+        {gameOver && !isOnline && soloMode && numPlayers === 1 && (
+          <View
+            style={[
+              styles.gameOverOverlay,
+              { backgroundColor: isDarkMode ? 'rgba(10,22,40,0.96)' : 'rgba(242,232,208,0.97)' },
+            ]}
+          >
+            <ScrollView
+              style={{ alignSelf: 'stretch' }}
+              contentContainerStyle={styles.gameOverContent}
+              showsVerticalScrollIndicator={false}
+            >
+              <EndGlobe
+                config={myGlobe}
+                size={100}
+                accent="#2a6e3f"
+                animate
+                style={{ marginBottom: 10 }}
+                record={
+                  isDaily
+                    ? undefined
+                    : {
+                        mode: soloAnalyticsMode,
+                        score: normalizeRoundScore('versus', scores[1], { numQuestions: totalRounds, maxPointsPerQuestion: 5 }),
+                        ctx: { scope, review: isReview, training },
+                      }
+                }
+              />
+              <Reveal at={END_CHOREO.verdict}>
+                <ScoreText style={styles.gameOverScore}>{scores[1]}</ScoreText>
+                <Text style={{ color: c.textMuted, fontFamily: FONTS.mono, fontSize: 14, marginBottom: 16, textAlign: 'center' }}>
+                  {tr(language, '{0} / {1} bonnes réponses', '{0} / {1} correct', [
+                    recap.filter((e) => e.ok).length,
+                    totalRounds,
+                  ])}
+                </Text>
+                {!isDaily && (
+                  <OffLeaderboardNotice run={{ scope, review: isReview, training }} color={c.textMuted} />
+                )}
+              </Reveal>
+
+              {/* Pièces + doubleur pub avant le récap : la récompense d'abord,
+                  la solution juste après. */}
+              <Reveal at={END_CHOREO.detail}>
+                <SoloCoinReward
+                  coinsEarned={coinsEarned}
+                  coinsCapped={coinsCapped}
+                  coinsSyncFailed={coinsSyncFailed}
+                  containerStyle={{ alignSelf: 'stretch', marginBottom: 14 }}
+                />
+              </Reveal>
+
+              <Reveal at={END_CHOREO.reward}>
+                <View style={{ alignSelf: 'stretch', marginBottom: 18 }}>
+                  <RunRecap entries={recap} />
+                </View>
+              </Reveal>
+
+              <Reveal at={END_CHOREO.actions}>
+                <View style={{ alignSelf: 'stretch' }}>
+                  <SoloEndActions
+                    onShare={isDaily ? onShare : undefined}
+                    onReplaySame={isDaily ? undefined : () => { replaySameGame(); setNumPlayers(1); }}
+                    onNewGame={isDaily ? undefined : () => { resetMatch(); setNumPlayers(1); }}
+                    share={{
+                      mode: soloAnalyticsMode,
+                      summary: `${recap.filter((e) => e.ok).length}/${totalRounds}`,
+                    }}
+                    onMenu={quitToMenu}
+                  />
+                </View>
+              </Reveal>
+            </ScrollView>
+          </View>
+        )}
+
+        {gameOver && !isOnline && !(soloMode && numPlayers === 1) && (
           <View style={[styles.overlay, !isDarkMode && styles.overlayLight]}>
             {soloMode ? (
               <EndGlobe
@@ -1870,6 +1949,18 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   overlayLight: { backgroundColor: 'rgba(242, 232, 208, 0.98)' },
+  gameOverOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  gameOverContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    paddingBottom: 40,
+    width: '100%',
+    maxWidth: 500,
+    alignSelf: 'center',
+  },
+  gameOverScore: { fontSize: 48, fontFamily: FONTS.headingBlack, marginBottom: 4, color: '#2a6e3f', textAlign: 'center' },
   winnerTitle: { fontSize: 40, fontFamily: FONTS.headingBlack, color: '#d8e8f4', marginVertical: 20 },
   finalScore: { fontSize: 32, fontFamily: FONTS.mono, color: '#7aa0c4', marginBottom: 40 },
   resetBtn: {
