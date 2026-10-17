@@ -3,6 +3,7 @@ import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View, useWindowD
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
+import { AdBanner } from './AdBanner';
 import { playSfx } from '../lib/sfx';
 import { Home, RotateCcw, Trophy } from 'lucide-react-native';
 import { useTheme } from '../contexts/ThemeContext';
@@ -378,6 +379,7 @@ export function MatchResult({
         </View>
         </Reveal>
       </ScrollView>
+      <AdBanner />
     </SafeAreaView>
   );
 }

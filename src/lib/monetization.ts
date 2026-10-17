@@ -100,6 +100,12 @@ const INTERSTITIAL_AD_UNIT_IDS: Record<string, string> = {
   ios: 'ca-app-pub-2429865520138981/6631423650',
 };
 
+// Real AdMob banner ad-unit ids (2026-10-17).
+const BANNER_AD_UNIT_IDS: Record<string, string> = {
+  android: 'ca-app-pub-2429865520138981/4468294740',
+  ios: 'ca-app-pub-2429865520138981/4481482048',
+};
+
 /** How long to wait for an ad to load before giving up. */
 const AD_LOAD_TIMEOUT_MS = 15000;
 
@@ -364,4 +370,30 @@ export async function maybeShowInterstitial(): Promise<void> {
     log.warn('interstitial failed', e);
     track('interstitial_failed', {});
   }
+}
+
+// ── Banner ads (flag-gated) ──────────────────────────────────────────────────
+// A small anchored banner at the bottom of calm screens (menu, results) —
+// never during a game. Native only: on web the desktop side rails are the
+// display ads.
+
+/**
+ * The SDK + unit id to render a banner with, once the `banner_ads` flag is on
+ * and the SDK is started; null otherwise (web, jest, flag off, init failure).
+ */
+export async function bannerAdConfig(): Promise<{ sdk: AdsSdk; unitId: string } | null> {
+  if (RECORDING_MODE) return null;
+  if (Platform.OS === 'web') return null;
+  if (!(await isFeatureEnabled('banner_ads'))) return null;
+  const sdk = loadAdsSdk();
+  if (!sdk) return null;
+  try {
+    await initAdsOnce(sdk);
+  } catch (e) {
+    log.warn('ads init failed (banner)', e);
+    return null;
+  }
+  const configured = BANNER_AD_UNIT_IDS[Platform.OS];
+  const unitId = configured && configured.length > 0 ? configured : sdk.TestIds.ADAPTIVE_BANNER;
+  return { sdk, unitId };
 }

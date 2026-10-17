@@ -33,6 +33,7 @@ import {
   X,
   Zap,
 } from 'lucide-react-native';
+import { AdBanner } from '../components/AdBanner';
 import { AtlasFlame } from '../components/AtlasIcons';
 import { LanguageButton } from '../components/LanguageButton';
 import { AvatarPreview3D } from '../components/AvatarPreview3D';
@@ -1584,6 +1585,8 @@ export function MainMenu({
       {/* "How to play" card opened from a mode's "?" button — a plain close
           handler, so consulting the rules here never marks the mode as seen. */}
       <ModeIntroCard mode={helpMode} onDismiss={() => setHelpMode(null)} />
+
+      <AdBanner />
     </SafeAreaView>
   );
 }

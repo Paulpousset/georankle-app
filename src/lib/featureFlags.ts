@@ -15,6 +15,7 @@ export type FeatureFlag =
   | 'iap'
   | 'rewarded_ads'
   | 'interstitial_ads'
+  | 'banner_ads'
   | 'web_ads'
   | 'avatar_3d'
   | 'globe_3d'

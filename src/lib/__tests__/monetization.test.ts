@@ -8,6 +8,7 @@ import {
   showCoinMultiplierAd,
   getRewardedAdsRemaining,
   rewardedAdsAvailable,
+  bannerAdConfig,
 } from '../monetization';
 import { __resetFeatureFlagCache } from '../featureFlags';
 import { supabase } from '../supabase';
@@ -67,7 +68,7 @@ jest.mock('react-native-google-mobile-ads', () => {
     __fakeAd: fakeAd,
     MobileAds: () => ({ initialize: jest.fn(() => Promise.resolve([])) }),
     AdsConsent: { gatherConsent: jest.fn(() => Promise.resolve({})) },
-    TestIds: { REWARDED: 'test-rewarded' },
+    TestIds: { REWARDED: 'test-rewarded', ADAPTIVE_BANNER: 'test-banner' },
     RewardedAdEventType: { LOADED: 'loaded', EARNED_REWARD: 'earned' },
     AdEventType: { CLOSED: 'closed', ERROR: 'error' },
     RewardedAd: { createForAdRequest: jest.fn(() => fakeAd) },
@@ -247,5 +248,19 @@ describe('claimRewardedAd (server relay)', () => {
 
     sb.rpc.mockResolvedValueOnce({ data: null, error: { message: 'boom' } });
     expect((await claimRewardedAd()).reason).toBe('failed');
+  });
+});
+
+describe('bannerAdConfig', () => {
+  it('returns null while the banner flag is off', async () => {
+    flagsOff();
+    expect(await bannerAdConfig()).toBeNull();
+  });
+
+  it('returns the SDK and the real unit id once the flag is on', async () => {
+    sb.__setResult('feature_flags', { data: [{ key: 'banner_ads', enabled: true }], error: null });
+    const config = await bannerAdConfig();
+    expect(config?.sdk).toBe(adsMock);
+    expect(config?.unitId).toMatch(/^ca-app-pub-2429865520138981\//);
   });
 });
