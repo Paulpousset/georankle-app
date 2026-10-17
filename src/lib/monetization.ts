@@ -46,7 +46,7 @@ import { loadAdsSdk, type AdsSdk } from './adsSdk';
 import { initWebAds, showWebInterstitial, showWebRewardedAd, webAdsSupported } from './adsWeb';
 import { supabase } from './supabase';
 import { isFeatureEnabled } from './featureFlags';
-import { recordGameAndShouldShow } from './interstitialGate';
+import { shouldShowAtBreak } from './interstitialGate';
 import { track } from './analytics';
 import { log } from './log';
 import { RECORDING_MODE } from './recordingMode';
@@ -299,7 +299,9 @@ export async function claimRewardedAd(): Promise<RewardedAdResult> {
 // ── Interstitial ads (flag-gated, frequency-capped) ──────────────────────────
 // Unlike rewarded ads, interstitials are shown proactively at natural breaks
 // (leaving a finished game) and grant nothing — so there's no server claim, just
-// the ad. The frequency gate (interstitialGate.ts) protects retention.
+// the ad. The frequency gate (interstitialGate.ts: one per 12 min of play,
+// daily cap) protects retention. Skippability (a skip button after ~5 s on
+// video creatives) is decided by the ad network, not by us.
 
 /** Load + show one interstitial; resolves when it closes (or fails). */
 function loadAndShowInterstitial(sdk: AdsSdk): Promise<void> {
@@ -333,9 +335,9 @@ function loadAndShowInterstitial(sdk: AdsSdk): Promise<void> {
 }
 
 /**
- * Maybe show an interstitial at a natural break. Call this once per finished
- * game — it records the play and decides internally whether to actually show
- * (flag off, or under the per-N-games / daily-cap threshold → no-op). Fire and
+ * Maybe show an interstitial at a natural break. Call this when the player
+ * leaves a game — it decides internally whether to actually show (flag off,
+ * less than 12 min since the last ad / app launch, or daily cap hit → no-op). Fire and
  * forget: navigation can proceed behind the ad. Never throws.
  */
 export async function maybeShowInterstitial(): Promise<void> {
@@ -346,8 +348,8 @@ export async function maybeShowInterstitial(): Promise<void> {
   // doesn't burn gate credits.
   const web = Platform.OS === 'web';
   if (web && !(webAdsSupported() && (await isFeatureEnabled('web_ads')))) return;
-  // Count the game & consult the gate BEFORE touching the SDK.
-  if (!(await recordGameAndShouldShow())) return;
+  // Consult the gate BEFORE touching the SDK.
+  if (!(await shouldShowAtBreak())) return;
   if (web) {
     const shown = await showWebInterstitial();
     track(shown ? 'interstitial_shown' : 'interstitial_failed', {});

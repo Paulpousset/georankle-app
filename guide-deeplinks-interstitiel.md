@@ -33,10 +33,10 @@ const INTERSTITIAL_AD_UNIT_IDS: Record<string, string> = {
 Tant que ces champs sont vides, le code retombe sur les **TestIds Google** (pubs de test) — pratique pour tester, à NE PAS laisser en prod.
 
 ### A3. Tester le timing (avant d'activer en prod)
-Le déclenchement est câblé à **la sortie du défi quotidien** ([Router.tsx](src/Router.tsx), `DailyGameHost onExit`), avec la règle de [interstitialGate.ts](src/lib/interstitialGate.ts) : **1 pub / 3 parties finies, max 4/jour**, jamais en plein match.
+Le déclenchement est câblé à **chaque retour au menu après une partie** (solo, défi quotidien, fin de match en ligne — [Router.tsx](src/Router.tsx)), avec la règle de [interstitialGate.ts](src/lib/interstitialGate.ts) : **1 pub toutes les 12 min de jeu minimum (chrono lancé à l'ouverture de l'app), max 10/jour**, jamais en plein match. La pub peut être passée après ~5 s quand c'est une vidéo : c'est AdMob qui gère le bouton « Passer », pas notre code.
 1. Build de test : `eas build --profile preview --platform android` (ou iOS).
 2. Pour forcer l'affichage pendant le test, mets temporairement `interstitial_ads` à `true` (voir A4) **avec les TestIds** (ids vides) → tu verras une pub de test.
-3. Joue le **défi du jour 3 fois** → l'interstitiel doit apparaître à la 3e sortie. Vérifie : pas d'apparition en plein jeu, pas plus de 4/jour.
+3. Joue ~12 min puis reviens au menu → l'interstitiel doit apparaître. Vérifie : pas d'apparition en plein jeu, pas deux pubs à moins de 12 min d'écart.
 4. Remets le flag à `false` le temps de finir A2 avec les vrais ids + rebuild.
 
 ### A4. Activer en prod (le flip)
