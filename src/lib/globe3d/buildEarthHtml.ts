@@ -1095,7 +1095,7 @@ function pickAt(tx,ty){
   var poly=coords?hitTest(coords):null;
   var near=dotInFootprint(tx,ty);
   // A tap on a country's own centre belongs to that country even when a dot's
-  // footprint covers it (coarse ISR ring vs the Palestine dot).
+  // footprint covers it (ISR ring, West Bank included, vs the Palestine dot).
   if(near&&poly&&centreDist(poly,tx,ty)<near.d)return poly;
   if(near)return near.c.cca3;
   // …then the same courtesy for the small polygon countries, but never against
