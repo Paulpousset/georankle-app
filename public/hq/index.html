@@ -390,6 +390,7 @@ const S = {
   vbusy: null, // action en cours sur l'onglet Vidéos (ordre, publication)
   vmsg: null, // { kind, text } : retour de la dernière action
   vtab: store('hq.vtab') || 'next', // onglet Vidéos : next | bank | gen
+  adFormat: store('hq.adformat') || 'all', // onglet Revenus : type de pub AdMob
 };
 function json(t) { try { return JSON.parse(t ?? 'null'); } catch { return null; } }
 
@@ -941,22 +942,43 @@ function reviews(v) {
   return v.slice(0, 10).map((r) => `<div class="review"><span class="stars" aria-label="${r.rating} sur 5">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span> ${r.title ? `<b>${esc(r.title)}</b>` : ''}<div>${esc(r.text ?? '')}</div><div class="meta">${esc(r.author ?? '')} · ${esc(r.territory ?? r.lang ?? '')} · ${r.version ? `v${esc(r.version)} · ` : ''}${ago(r.date)}</div></div>`).join('');
 }
 
+// Types de pub AdMob (valeur brute FORMAT de l'API) pour le filtre de l'onglet Revenus.
+const AD_FORMATS = [
+  ['all', 'Toutes'],
+  ['INTERSTITIAL', 'Interstitiel'],
+  ['BANNER', 'Bannière'],
+  ['REWARDED', 'Récompensée'],
+];
+/** byDayFormat filtré sur S.adFormat puis remis à une ligne par jour. */
+function adDays(v) {
+  const rows = S.adFormat === 'all' ? v : v.filter((r) => r.FORMAT_ID === S.adFormat);
+  const days = {};
+  for (const r of rows) {
+    const d = (days[r.x] ??= { x: r.x, earnings: 0, impressions: 0, requests: 0, clicks: 0 });
+    d.earnings += r.earnings; d.impressions += r.impressions; d.requests += r.requests; d.clicks += r.clicks;
+  }
+  return Object.values(days).sort((a, b) => a.x.localeCompare(b.x));
+}
+
 function revenue() {
   const am = 'admob', as = 'adsense';
   const amSum = (k) => (v) => sum(v, (r) => r[k]);
+  const ad = (f) => (v) => f(adDays(v));
+  const formats = AD_FORMATS.map(([v, label]) => `<button class="chip" data-act="adfmt" data-v="${v}" aria-pressed="${S.adFormat === v}">${label}</button>`).join(' ');
   return `
   <h2 class="section">App · AdMob</h2>
+  <div class="opts" style="margin:0 0 12px;display:flex;flex-wrap:wrap;gap:6px"><span class="flbl" style="align-self:center">Type de pub</span>${formats}</div>
   <div class="kpis">
-    ${tile('Revenus estimés', am, 'byDay', (v) => ({ value: eur(amSum('earnings')(v)), sub: `${eur(amSum('earnings')(v) / periodDays())} / jour` }))}
-    ${tile('Impressions', am, 'byDay', (v) => ({ value: compact(amSum('impressions')(v)), sub: `${compact(amSum('requests')(v))} demandes` }))}
-    ${tile('eCPM', am, 'byDay', (v) => { const i = amSum('impressions')(v); return { value: eur(i ? (amSum('earnings')(v) / i) * 1000 : null), sub: 'pour 1 000 impressions' }; })}
-    ${tile('Taux de remplissage', am, 'byDay', (v) => { const q = amSum('requests')(v); return { value: pct(q ? amSum('impressions')(v) / q : null, 0), sub: 'impressions / demandes' }; })}
+    ${tile('Revenus estimés', am, 'byDayFormat', ad((v) => ({ value: eur(amSum('earnings')(v)), sub: `${eur(amSum('earnings')(v) / periodDays())} / jour` })))}
+    ${tile('Impressions', am, 'byDayFormat', ad((v) => ({ value: compact(amSum('impressions')(v)), sub: `${compact(amSum('requests')(v))} demandes` })))}
+    ${tile('eCPM', am, 'byDayFormat', ad((v) => { const i = amSum('impressions')(v); return { value: eur(i ? (amSum('earnings')(v) / i) * 1000 : null), sub: 'pour 1 000 impressions' }; }))}
+    ${tile('Taux de remplissage', am, 'byDayFormat', ad((v) => { const q = amSum('requests')(v); return { value: pct(q ? amSum('impressions')(v) / q : null, 0), sub: 'impressions / demandes' }; }))}
     ${tile('Pubs récompensées vues', 'supabase', 'economy', (v) => ({ value: fmt(v.rewardedAds), sub: 'crédits accordés (serveur)' }))}
     ${tile('Achats intégrés', 'supabase', 'economy', (v) => ({ value: fmt(v.iapPurchases), sub: 'pièces accordées (serveur)' }))}
   </div>
   <div class="grid two" style="margin-top:12px">
-    ${card('Revenus AdMob par jour', am, block(am, 'byDay', (v) => chart([{ name: 'Revenus', color: 'var(--s1)', points: P(v, (r) => r.earnings) }], { type: 'bar', fmtY: (x) => eur(x) })))}
-    ${card('Impressions AdMob par jour', am, block(am, 'byDay', (v) => chart([{ name: 'Impressions', color: 'var(--s1)', points: P(v, (r) => r.impressions) }])))}
+    ${card('Revenus AdMob par jour', am, block(am, 'byDayFormat', ad((v) => chart([{ name: 'Revenus', color: 'var(--s1)', points: P(v, (r) => r.earnings) }], { type: 'bar', fmtY: (x) => eur(x) }))))}
+    ${card('Impressions AdMob par jour', am, block(am, 'byDayFormat', ad((v) => chart([{ name: 'Impressions', color: 'var(--s1)', points: P(v, (r) => r.impressions) }]))))}
     ${card('Par format', am, block(am, 'byFormat', (v) => hlist(v, { label: (r) => r.FORMAT, value: (r) => r.earnings, show: (r) => `${eur(r.earnings)} · ${compact(r.impressions)} impr.` })))}
     ${card('Par pays', am, block(am, 'byCountry', (v) => hlist(v, { label: (r) => r.COUNTRY, value: (r) => r.earnings, show: (r) => `${eur(r.earnings)} · ${compact(r.impressions)}` })))}
   </div>
@@ -1620,6 +1642,7 @@ function onAct(e) {
     if (act === 'vpub') return publishVideo(el.dataset.key);
     if (act === 'vskip') return skipVideo(el.dataset.key);
     if (act === 'vunskip') return videoWrite('social-order', { unskip: el.dataset.key }, 'Vidéo remise dans la file.');
+    if (act === 'adfmt') { S.adFormat = el.dataset.v; store('hq.adformat', S.adFormat); return render(); }
     if (act === 'vtab') { S.vtab = el.dataset.v; store('hq.vtab', S.vtab); return render(); }
     if (act === 'vreset') { if (confirm('Revenir à l’ordre automatique ?')) videoWrite('social-order', { pinned: [] }, 'Ordre automatique rétabli.'); return; }
     if (act === 'mkdel') { if (confirm('Supprimer ce repère ?')) markerWrite('DELETE', null, el.dataset.id); }

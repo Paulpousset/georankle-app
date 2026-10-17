@@ -152,7 +152,10 @@ export async function admob({ days, from, to }) {
       .filter((x) => x.row)
       .map(({ row }) => {
         const dim = Object.fromEntries(
-          Object.entries(row.dimensionValues).map(([k, v]) => [k, v.displayLabel ?? v.value]),
+          Object.entries(row.dimensionValues).flatMap(([k, v]) => [
+            [k, v.displayLabel ?? v.value],
+            [`${k}_ID`, v.value], // valeur brute (BANNER, INTERSTITIAL…) pour filtrer
+          ]),
         );
         const m = row.metricValues;
         return {
@@ -170,6 +173,9 @@ export async function admob({ days, from, to }) {
     byDay: async () =>
       (await report(['DATE'])).map((r) => ({ ...r, x: `${r.DATE.slice(0, 4)}-${r.DATE.slice(4, 6)}-${r.DATE.slice(6)}` })),
     byFormat: () => report(['FORMAT']),
+    // Jour × format : l'onglet Revenus filtre par type de pub côté navigateur.
+    byDayFormat: async () =>
+      (await report(['DATE', 'FORMAT'])).map((r) => ({ ...r, x: `${r.DATE.slice(0, 4)}-${r.DATE.slice(4, 6)}-${r.DATE.slice(6)}` })),
     byCountry: async () => (await report(['COUNTRY'])).sort((a, b) => b.earnings - a.earnings).slice(0, 10),
     byApp: () => report(['APP']),
   });
