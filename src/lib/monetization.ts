@@ -98,7 +98,7 @@ const REWARDED_AD_UNIT_IDS: Record<string, string> = {
 // TEST ids so the flow is exercisable without serving real (policy-violating) ads.
 const INTERSTITIAL_AD_UNIT_IDS: Record<string, string> = {
   android: '',
-  ios: '',
+  ios: 'ca-app-pub-2429865520138981/6631423650',
 };
 
 /** How long to wait for an ad to load before giving up. */
