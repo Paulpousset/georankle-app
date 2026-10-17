@@ -6,12 +6,18 @@
  */
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { bannerAdConfig } from '../lib/monetization';
 
 type Config = NonNullable<Awaited<ReturnType<typeof bannerAdConfig>>>;
 
-export function AdBanner() {
+/**
+ * `padBottom`: pad for the home indicator, for screens whose SafeAreaView
+ * leaves out the bottom edge (the main menu).
+ */
+export function AdBanner({ padBottom = false }: { padBottom?: boolean }) {
+  const insets = useSafeAreaInsets();
   const [config, setConfig] = useState<Config | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -30,7 +36,7 @@ export function AdBanner() {
   if (!config || failed) return null;
   const { BannerAd, BannerAdSize } = config.sdk;
   return (
-    <View style={{ alignItems: 'center' }}>
+    <View style={{ alignItems: 'center', paddingBottom: padBottom ? insets.bottom : 0 }}>
       <BannerAd
         unitId={config.unitId}
         size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}

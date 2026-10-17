@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import {
   BarChart3,
@@ -501,6 +501,7 @@ export function MainMenu({
   incomingInviteMode = null,
 }: MainMenuProps) {
   const { isDarkMode, toggleTheme } = useTheme();
+  const insets = useSafeAreaInsets();
   const { language } = useLanguage();
   const c = getColors(isDarkMode);
   const iconColor = c.text;
@@ -637,6 +638,9 @@ export function MainMenu({
 
   return (
     <SafeAreaView
+      // No bottom edge: the menu scrolls all the way to the bottom of the
+      // screen instead of stopping above an empty home-indicator strip.
+      edges={['top', 'left', 'right']}
       style={[styles.container, !isDarkMode && styles.containerLight, { flex: 1 }]}
     >
       <StatusBar style={isDarkMode ? 'light' : 'dark'} />
@@ -743,7 +747,7 @@ export function MainMenu({
           alignItems: 'center',
           paddingHorizontal: 20,
           paddingTop: 0,
-          paddingBottom: 60,
+          paddingBottom: 60 + insets.bottom,
         }}
         showsVerticalScrollIndicator={false}
       >
@@ -1586,7 +1590,7 @@ export function MainMenu({
           handler, so consulting the rules here never marks the mode as seen. */}
       <ModeIntroCard mode={helpMode} onDismiss={() => setHelpMode(null)} />
 
-      <AdBanner />
+      <AdBanner padBottom />
     </SafeAreaView>
   );
 }
