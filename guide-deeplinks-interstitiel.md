@@ -35,7 +35,7 @@ Tant que ces champs sont vides, le code retombe sur les **TestIds Google** (pubs
 ### A3. Tester le timing (avant d'activer en prod)
 Le déclenchement est câblé à **chaque retour au menu après une partie** (solo, défi quotidien, fin de match en ligne — [Router.tsx](src/Router.tsx)), avec la règle de [interstitialGate.ts](src/lib/interstitialGate.ts) : **1 pub toutes les 12 min de jeu minimum (chrono lancé à l'ouverture de l'app), max 10/jour**, jamais en plein match. La pub peut être passée après ~5 s quand c'est une vidéo : c'est AdMob qui gère le bouton « Passer », pas notre code.
 1. Build de test : `eas build --profile preview --platform android` (ou iOS).
-2. Pour forcer l'affichage pendant le test, mets temporairement `interstitial_ads` à `true` (voir A4) **avec les TestIds** (ids vides) → tu verras une pub de test.
+2. Pour forcer l'affichage pendant le test, mets temporairement `interstitial_ads_v2` à `true` (voir A4) **avec les TestIds** (ids vides) → tu verras une pub de test.
 3. Joue ~12 min puis reviens au menu → l'interstitiel doit apparaître. Vérifie : pas d'apparition en plein jeu, pas deux pubs à moins de 12 min d'écart.
 4. Remets le flag à `false` le temps de finir A2 avec les vrais ids + rebuild.
 
@@ -46,7 +46,7 @@ Le flag vit dans `public.feature_flags`. Deux options :
 - **Via SQL (dashboard Supabase → SQL editor)** :
   ```sql
   update public.feature_flags set enabled = true, updated_at = now()
-  where key = 'interstitial_ads';
+  where key = 'interstitial_ads_v2';
   ```
 - **Ou demande-moi** de le flipper (MCP Supabase authentifiée).
 

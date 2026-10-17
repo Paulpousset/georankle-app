@@ -348,7 +348,7 @@ function loadAndShowInterstitial(sdk: AdsSdk): Promise<void> {
 export async function maybeShowInterstitial(): Promise<void> {
   // Mode tournage : aucune pub ne doit couvrir une vidéo.
   if (RECORDING_MODE) return;
-  if (!(await isFeatureEnabled('interstitial_ads'))) return;
+  if (!(await isFeatureEnabled('interstitial_ads_v2'))) return;
   // Web needs its own flag too — checked BEFORE the gate so an off switch
   // doesn't burn gate credits.
   const web = Platform.OS === 'web';

@@ -14,7 +14,10 @@ import { supabase } from './supabase';
 export type FeatureFlag =
   | 'iap'
   | 'rewarded_ads'
-  | 'interstitial_ads'
+  // v2 = time-gated interstitials with real ad units. The old
+  // 'interstitial_ads' key must stay OFF: bundles that still read it fall back
+  // to Google test ids.
+  | 'interstitial_ads_v2'
   | 'banner_ads'
   | 'web_ads'
   | 'avatar_3d'

@@ -234,7 +234,7 @@ qu'il est vide, seuls les deux rails s'affichent.
 - **Activer le rewarded web** : `UPDATE public.feature_flags SET enabled = true
   WHERE key = 'web_ads';` (effet en ~5 min, le temps du cache des flags).
   ⚠️ `rewarded_ads` étant déjà à `true`, ce flag allume le rewarded web d'un
-  seul coup. L'interstitiel reste éteint tant que `interstitial_ads` est à
+  seul coup. L'interstitiel reste éteint tant que `interstitial_ads_v2` est à
   `false`.
 - **Remonter éventuellement les rails desktop dans le jeu** : réinsérer
   `<SideRailAds />` dans App.tsx. À ne faire qu'après avoir enrichi `/play` en
