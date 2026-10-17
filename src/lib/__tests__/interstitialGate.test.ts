@@ -9,60 +9,67 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   },
 }));
 
-import { decide, SHOW_EVERY_N_GAMES, DAILY_CAP, type GateState } from '../interstitialGate';
+import { decide, MIN_INTERVAL_MS, DAILY_CAP, type GateState } from '../interstitialGate';
 
-const DAY = '2026-07-22';
+const START = Date.parse('2026-07-22T08:00:00Z');
+const MIN = 60 * 1000;
 
 describe('interstitial frequency gate — decide()', () => {
-  it('does not show before N games are played', () => {
-    let state: GateState | null = null;
-    for (let i = 1; i < SHOW_EVERY_N_GAMES; i++) {
-      const r = decide(state, DAY);
-      expect(r.show).toBe(false);
-      state = r.next;
-    }
-    // The Nth game trips it.
-    const r = decide(state, DAY);
+  it('never shows before the interval has elapsed since app launch', () => {
+    expect(decide(null, START, START).show).toBe(false);
+    expect(decide(null, START + MIN_INTERVAL_MS - 1, START).show).toBe(false);
+    const r = decide(null, START + MIN_INTERVAL_MS, START);
     expect(r.show).toBe(true);
-    expect(r.next.gamesSinceLast).toBe(0);
     expect(r.next.shownToday).toBe(1);
+    expect(r.next.lastShownAt).toBe(START + MIN_INTERVAL_MS);
   });
 
-  it('shows exactly once per N games', () => {
+  it('waits the full interval after an ad before showing the next one', () => {
+    const shownAt = START + 20 * MIN;
+    const state: GateState = { day: '2026-07-22', shownToday: 1, lastShownAt: shownAt };
+    expect(decide(state, shownAt + MIN_INTERVAL_MS - MIN, START).show).toBe(false);
+    expect(decide(state, shownAt + MIN_INTERVAL_MS, START).show).toBe(true);
+  });
+
+  it('a non-showing break leaves the state untouched', () => {
+    const state: GateState = { day: '2026-07-22', shownToday: 2, lastShownAt: START };
+    const r = decide(state, START + MIN, START);
+    expect(r.show).toBe(false);
+    expect(r.next).toEqual(state);
+  });
+
+  it('shows at most once per interval however many breaks happen', () => {
     let state: GateState | null = null;
     let shows = 0;
-    for (let i = 0; i < SHOW_EVERY_N_GAMES * 3; i++) {
-      const r = decide(state, DAY);
+    // A break every minute for one hour → 60 min / 12 min = 5 ads.
+    for (let t = 1; t <= 60; t++) {
+      const r = decide(state, START + t * MIN, START);
       if (r.show) shows++;
       state = r.next;
     }
-    expect(shows).toBe(3);
+    expect(shows).toBe(Math.floor((60 * MIN) / MIN_INTERVAL_MS));
   });
 
   it('never exceeds the daily cap', () => {
     let state: GateState | null = null;
     let shows = 0;
-    // Play far more games than the cap allows.
-    for (let i = 0; i < SHOW_EVERY_N_GAMES * (DAILY_CAP + 5); i++) {
-      const r = decide(state, DAY);
+    for (let i = 1; i <= DAILY_CAP + 5; i++) {
+      const r = decide(state, START + i * MIN_INTERVAL_MS, START);
       if (r.show) shows++;
       state = r.next;
     }
     expect(shows).toBe(DAILY_CAP);
   });
 
-  it('rolls the counter over on a new day', () => {
-    // Maxed out yesterday.
-    const maxed: GateState = { day: '2026-07-21', shownToday: DAILY_CAP, gamesSinceLast: 0 };
-    let state = maxed;
-    let firstShowIndex = -1;
-    for (let i = 0; i < SHOW_EVERY_N_GAMES; i++) {
-      const r = decide(state, DAY);
-      if (r.show && firstShowIndex < 0) firstShowIndex = i;
-      state = r.next;
-    }
-    // A fresh day resets shownToday, so the Nth game of the new day shows again.
-    expect(firstShowIndex).toBe(SHOW_EVERY_N_GAMES - 1);
-    expect(state.day).toBe(DAY);
+  it('rolls the daily counter over on a new day', () => {
+    const maxed: GateState = {
+      day: '2026-07-21',
+      shownToday: DAILY_CAP,
+      lastShownAt: START - 60 * MIN,
+    };
+    const r = decide(maxed, START + MIN_INTERVAL_MS, START);
+    expect(r.show).toBe(true);
+    expect(r.next.day).toBe('2026-07-22');
+    expect(r.next.shownToday).toBe(1);
   });
 });

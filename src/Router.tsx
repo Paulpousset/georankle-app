@@ -176,6 +176,11 @@ export function Router({
   const soloReview = (mode: GameMode) =>
     matchData || !reviewIds?.length ? null : reviewIds;
   const leaveGame = (mode: GameMode) => {
+    // Back to the menu from a game that actually ran (not from the solo launch
+    // screen) → a natural break: maybe show one interstitial (flag-gated,
+    // ≥ 12 min apart). Fire and forget so navigation proceeds behind it.
+    const played = gameMode !== 'menu' && (!DIRECT_SOLO_MODES.has(gameMode) || startedMode === gameMode);
+    if (mode === 'menu' && played) void maybeShowInterstitial();
     setReviewIds(null);
     resetMatchState();
     setGameMode(mode);
@@ -235,7 +240,7 @@ export function Router({
         onPlayDaily={(mode) => setDaily({ mode, date: getTodayUTC() })}
         onExit={() => {
           // Leaving a finished daily → a natural break: maybe show one
-          // (flag-gated, frequency-capped) interstitial. Fire and forget so
+          // (flag-gated, ≥ 12 min apart) interstitial. Fire and forget so
           // navigation proceeds behind it.
           void maybeShowInterstitial();
           setDaily(null);
@@ -484,7 +489,11 @@ export function Router({
             resetMatchState();
             setReplayMatch(played);
           }}
-          onExit={resetMatchState}
+          onExit={() => {
+            // Leaving a finished match's results → natural break.
+            void maybeShowInterstitial();
+            resetMatchState();
+          }}
         />
       </SafeAreaProvider>
     );

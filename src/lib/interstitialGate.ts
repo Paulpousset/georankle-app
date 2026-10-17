@@ -2,44 +2,57 @@
  * Frequency gate for interstitial ads.
  *
  * Interstitials grant no coins, so there's no fraud incentive — the whole
- * decision lives client-side. The rule protects retention: at most one
- * interstitial per N finished games, and a hard daily cap. The pure `decide()`
- * function holds the policy (fully unit-tested); the async wrapper just persists
- * the counter in AsyncStorage.
+ * decision lives client-side. The rule is time-based: at most one interstitial
+ * every MIN_INTERVAL_MS of play, only ever at a natural break (leaving a game),
+ * plus a hard daily cap. The clock starts at app launch, so opening the app never
+ * greets the player with an ad. The pure `decide()` function holds the policy
+ * (fully unit-tested); the async wrapper just persists the state in AsyncStorage.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-/** Show at most one interstitial per this many finished games. */
-export const SHOW_EVERY_N_GAMES = 3;
+/** Minimum time between two interstitials (and from app launch to the first). */
+export const MIN_INTERVAL_MS = 12 * 60 * 1000;
 /** Never show more than this many interstitials in a single UTC day. */
-export const DAILY_CAP = 4;
+export const DAILY_CAP = 10;
 
-const KEY = 'interstitial_gate_v1';
+const KEY = 'interstitial_gate_v2';
+
+/** When this JS session started — the earliest anchor for the interval. */
+const SESSION_START = Date.now();
 
 export interface GateState {
-  /** UTC day (YYYY-MM-DD) the counters belong to. */
+  /** UTC day (YYYY-MM-DD) the daily counter belongs to. */
   day: string;
   /** Interstitials already shown today. */
   shownToday: number;
-  /** Finished games since the last interstitial was shown. */
-  gamesSinceLast: number;
+  /** Epoch ms of the last interstitial shown (0 = never). */
+  lastShownAt: number;
 }
 
-const EMPTY: GateState = { day: '', shownToday: 0, gamesSinceLast: 0 };
+const EMPTY: GateState = { day: '', shownToday: 0, lastShownAt: 0 };
 
 /**
- * Pure policy: given the stored state and today's date, record one more finished
- * game and decide whether to show an interstitial now. Rolls the daily counter
- * over at a new day. Returns the decision + the next state to persist.
+ * Pure policy: at a natural break, decide whether to show an interstitial now.
+ * Shows once MIN_INTERVAL_MS has passed since both the last interstitial and the
+ * session start, under the daily cap. Rolls the daily counter over at a new day.
+ * Returns the decision + the next state to persist.
  */
-export function decide(prev: GateState | null, today: string): { show: boolean; next: GateState } {
-  const base = prev && prev.day === today ? prev : { ...EMPTY, day: today };
-  const gamesSinceLast = base.gamesSinceLast + 1;
-  const canShow = gamesSinceLast >= SHOW_EVERY_N_GAMES && base.shownToday < DAILY_CAP;
+export function decide(
+  prev: GateState | null,
+  now: number,
+  sessionStart: number,
+): { show: boolean; next: GateState } {
+  const today = new Date(now).toISOString().slice(0, 10);
+  const base =
+    prev && prev.day === today
+      ? prev
+      : { ...EMPTY, day: today, lastShownAt: prev?.lastShownAt ?? 0 };
+  const anchor = Math.max(base.lastShownAt, sessionStart);
+  const canShow = now - anchor >= MIN_INTERVAL_MS && base.shownToday < DAILY_CAP;
   if (canShow) {
-    return { show: true, next: { day: today, shownToday: base.shownToday + 1, gamesSinceLast: 0 } };
+    return { show: true, next: { day: today, shownToday: base.shownToday + 1, lastShownAt: now } };
   }
-  return { show: false, next: { day: today, shownToday: base.shownToday, gamesSinceLast } };
+  return { show: false, next: base };
 }
 
 async function read(): Promise<GateState | null> {
@@ -60,17 +73,17 @@ async function write(state: GateState): Promise<void> {
 }
 
 /**
- * Record a finished game and return whether an interstitial should be shown now,
- * persisting the updated counter. UTC day matches the rewarded-ad cap window.
+ * At a natural break (a game was just left), return whether an interstitial
+ * should be shown now, persisting the updated state. UTC day matches the
+ * rewarded-ad cap window.
  */
-export async function recordGameAndShouldShow(): Promise<boolean> {
-  const today = new Date().toISOString().slice(0, 10);
-  const { show, next } = decide(await read(), today);
-  await write(next);
+export async function shouldShowAtBreak(): Promise<boolean> {
+  const { show, next } = decide(await read(), Date.now(), SESSION_START);
+  if (show) await write(next);
   return show;
 }
 
-/** Test hook: clear the persisted counter. */
+/** Test hook: clear the persisted state. */
 export async function __resetGate(): Promise<void> {
   try {
     await AsyncStorage.removeItem(KEY);
