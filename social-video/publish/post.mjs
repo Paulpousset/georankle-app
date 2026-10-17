@@ -4,7 +4,10 @@
 //   Le script publie sur tous les comptes connectés au profil.
 // - Upload-Post (https://upload-post.com) : 10 envois/mois gratuits sans
 //   TikTok, ou plan payant pour tout.
-// Version gratuite : TikTok + Instagram sur Zernio, YouTube sur Upload-Post.
+// - En direct (api/_hq/direct.mjs) : comptes Instagram et TikTok de plus,
+//   branchés depuis /hq (Vidéos › Comptes), sur les API officielles.
+// Version gratuite : TikTok + Instagram sur Zernio, YouTube sur Upload-Post,
+// les comptes en plus en direct.
 //
 // Source : les releases `shorts-N` créées par le workflow « Vidéos réseaux
 // sociaux » (chaque .mp4 a son .txt avec le texte de la publication).
@@ -24,6 +27,12 @@
 //   UPLOAD_POST_PLATFORMS  plateformes envoyées à Upload-Post
 //                        (défaut youtube si Zernio est branché, sinon
 //                        tiktok,instagram,youtube)
+//   SOCIAL_ACCOUNTS_KEY  clé du coffre des comptes en direct (accounts.enc),
+//                        la même que dans Vercel (facultative)
+//   TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET  appli TikTok (renouvellement
+//                        des jetons des comptes TikTok en direct)
+//   TIKTOK_AUDITED       true une fois l'appli TikTok auditée : publication
+//                        directe en public au lieu de la boîte de réception
 //   LANGS                langues à publier, ex. "fr" ou "fr en" (défaut fr)
 //   COUNT                vidéos par passage (défaut 1)
 //   MIN_GAP_HOURS        ne rien publier si la dernière publication de la
@@ -53,6 +62,7 @@ import { join } from 'node:path';
 import {
   STATE_TAG, STATE_FILE, ORDER_FILE, DEFAULT_MIN_RELEASE_APP, kindFor, parisHourOf, postedFor as postedForTarget, upcoming,
 } from '../../api/_hq/social-queue.mjs';
+import { ACCOUNTS_FILE, open, seal, refresh, langOf, publishInstagram, publishTikTok } from '../../api/_hq/direct.mjs';
 
 // Valeurs collées depuis un téléphone : on enlève espaces et retours à la ligne.
 const env = Object.fromEntries(Object.entries(process.env).map(([k, v]) => [k, v?.trim()]));
@@ -72,13 +82,14 @@ const MIN_RELEASE_APP = Number(env.MIN_RELEASE_APP || DEFAULT_MIN_RELEASE_APP);
 const KIND = kindFor(TARGET, env.KIND, parisHourOf(new Date()));
 const USE_ZERNIO = ZERNIO && TARGET !== 'youtube';
 const USE_UPLOAD_POST = (UPLOAD_POST || !ZERNIO) && TARGET !== 'social';
+const USE_DIRECT = Boolean(env.SOCIAL_ACCOUNTS_KEY) && TARGET !== 'youtube';
 
 const gh = (...args) => execFileSync('gh', [...args, '--repo', REPO], { encoding: 'utf8' });
 const work = mkdtempSync(join(tmpdir(), 'social-post-'));
 
 if (!REPO) throw new Error('GITHUB_REPOSITORY manquant (owner/repo)');
-if (!DRY_RUN && !ZERNIO && !UPLOAD_POST) {
-  throw new Error('Aucun service branché : ZERNIO_API_KEY ou UPLOAD_POST_API_KEY + UPLOAD_POST_USER');
+if (!DRY_RUN && !ZERNIO && !UPLOAD_POST && !USE_DIRECT) {
+  throw new Error('Aucun service branché : ZERNIO_API_KEY, UPLOAD_POST_API_KEY + UPLOAD_POST_USER ou SOCIAL_ACCOUNTS_KEY');
 }
 
 // --- Mémoire de ce qui est déjà publié -------------------------------------
@@ -121,12 +132,12 @@ function saveState(state) {
 
 const postedFor = (p) => postedForTarget(p, TARGET);
 
-function pending(state) {
+function pending(state, langs = LANGS) {
   const order = loadOrder();
   const releases = JSON.parse(gh('release', 'list', '--limit', '100', '--json', 'tagName,createdAt,publishedAt'));
   const assetsOf = (tag) => JSON.parse(gh('release', 'view', tag, '--json', 'assets')).assets.map((a) => a.name);
   return upcoming({
-    state, releases, assetsOf, target: TARGET, kind: KIND, langs: LANGS, minRelease: MIN_RELEASE, minReleaseApp: MIN_RELEASE_APP,
+    state, releases, assetsOf, target: TARGET, kind: KIND, langs, minRelease: MIN_RELEASE, minReleaseApp: MIN_RELEASE_APP,
     // Une vidéo retirée puis publiée à la main (VIDEO) part quand même.
     pinned: order.pinned, skipped: order.skipped.filter((key) => key !== env.VIDEO),
   });
@@ -216,6 +227,54 @@ async function postZernio(item, { video, caption }, accounts) {
   return { zernio: accounts.map((a) => a.platform), zernioPost: body.post?._id ?? null };
 }
 
+// Comptes en direct : jetons renouvelés à chaque passage (TikTok : 24 h), le
+// coffre est réécrit s'il a changé. Un compte en panne n'arrête pas les autres.
+function loadDirect() {
+  try {
+    gh('release', 'download', STATE_TAG, '--pattern', ACCOUNTS_FILE, '--dir', work, '--clobber');
+  } catch {
+    return [];
+  }
+  return open(readFileSync(join(work, ACCOUNTS_FILE), 'utf8'), env.SOCIAL_ACCOUNTS_KEY);
+}
+
+async function refreshDirect(list) {
+  let changed = false;
+  const out = [];
+  for (const acc of list) {
+    try {
+      const next = await refresh(acc, env);
+      changed ||= next !== acc;
+      out.push(next);
+    } catch (e) {
+      console.error(e.message);
+      out.push({ ...acc, broken: e.message.slice(0, 200) });
+    }
+  }
+  if (changed) {
+    const path = join(work, ACCOUNTS_FILE);
+    writeFileSync(path, seal(out, env.SOCIAL_ACCOUNTS_KEY));
+    gh('release', 'upload', STATE_TAG, path, '--clobber');
+  }
+  return out.filter((a) => !a.broken);
+}
+
+async function postDirect(item, { video, caption }, list) {
+  const data = readFileSync(video);
+  const done = [];
+  for (const acc of list) {
+    try {
+      if (acc.platform === 'instagram') await publishInstagram(acc, data, caption);
+      else await publishTikTok(acc, data, caption, { audited: env.TIKTOK_AUDITED === 'true' });
+      done.push(`${acc.platform} ${acc.name}`);
+    } catch (e) {
+      failed = true;
+      console.error(e.message);
+    }
+  }
+  return done.length ? { direct: done } : {};
+}
+
 // --- Main -------------------------------------------------------------------
 
 const state = loadState();
@@ -251,6 +310,7 @@ if (MIN_GAP_HOURS && last && Date.now() - last < MIN_GAP_HOURS * 3600e3) {
   process.exit(0);
 }
 
+let failed = false;
 const { todo: queued, wanted } = pending(state);
 // VIDEO : une vidéo précise, lancée depuis /hq (« Publier maintenant »).
 const todo = env.VIDEO ? queued.filter((item) => item.key === env.VIDEO) : queued;
@@ -258,11 +318,16 @@ if (env.VIDEO && !todo.length) throw new Error(`${env.VIDEO} : introuvable dans 
 console.log(`[${TARGET}] ${todo.length} vidéo(s) en attente dont ${wanted.length} au format ${KIND || 'quelconque'} (langues ${LANGS.join(', ')}, releases ≥ shorts-${MIN_RELEASE}).`);
 
 const accounts = USE_ZERNIO ? await zernioAccounts() : [];
+const allDirect = USE_DIRECT ? (DRY_RUN ? loadDirect() : await refreshDirect(loadDirect())) : [];
+// Comptes dans une langue publiée (fr) : même vidéo que Zernio. Les autres
+// (compte Instagram anglais…) ont leur propre file, plus bas.
+const direct = allDirect.filter((a) => LANGS.includes(langOf(a)));
+const otherLangs = [...new Set(allDirect.map(langOf).filter((l) => !LANGS.includes(l)))];
 const targets = [
   ...accounts.map((a) => `${a.platform} (Zernio)`),
+  ...direct.map((a) => `${a.platform} ${a.name} (direct)`),
   ...(USE_UPLOAD_POST ? PLATFORMS.map((p) => `${p} (Upload-Post)`) : []),
 ];
-let failed = false;
 
 for (const item of todo.slice(0, COUNT)) {
   const files = download(item);
@@ -277,6 +342,7 @@ for (const item of todo.slice(0, COUNT)) {
     try { Object.assign(done, await postZernio(item, files, accounts)); }
     catch (e) { failed = true; console.error(e.message); }
   }
+  if (direct.length) Object.assign(done, await postDirect(item, files, direct));
   if (USE_UPLOAD_POST && UPLOAD_POST) {
     try { Object.assign(done, await postUploadPost(item, files)); }
     catch (e) { failed = true; console.error(e.message); }
@@ -289,6 +355,26 @@ for (const item of todo.slice(0, COUNT)) {
   });
   // Écrit après chaque vidéo : un échec plus loin ne fait pas republier celle-ci.
   saveState(state);
+}
+
+// Comptes en direct dans une autre langue : leur propre file (vidéos -en-…),
+// même format que le créneau, une vidéo jamais publiée deux fois.
+for (const lang of env.VIDEO ? [] : otherLangs) {
+  const accs = allDirect.filter((a) => langOf(a) === lang);
+  const { todo: queue } = pending(state, [lang]);
+  console.log(`[${TARGET}/${lang}] ${queue.length} vidéo(s) en attente pour ${accs.map((a) => a.name).join(', ')}.`);
+  for (const item of queue.slice(0, COUNT)) {
+    const files = download(item);
+    if (DRY_RUN) {
+      console.log(`[simulation] ${item.key} → ${accs.map((a) => `${a.platform} ${a.name}`).join(', ')}\n  ${files.caption.replace(/\n/g, '\n  ')}`);
+      continue;
+    }
+    const done = await postDirect(item, files, accs);
+    if (!done.direct) break;
+    console.log(`Publié ${item.key} → ${JSON.stringify(done)}`);
+    state.posted.push({ key: item.key, tag: item.tag, group: item.group, variant: item.variant, at: new Date().toISOString(), lang, ...done });
+    saveState(state);
+  }
 }
 
 if (DRY_RUN && todo.length) console.log('Simulation : rien n\'a été publié (DRY_RUN=0 pour publier).');
