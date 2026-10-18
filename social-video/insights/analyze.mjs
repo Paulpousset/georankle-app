@@ -157,7 +157,8 @@ for (const [concept, byLang] of Object.entries(hooks)) {
       const fail = (s.n >= rules.minPosts && s.avgWatchS != null && s.avgWatchS < rules.hookFailWatchS)
         || (i.n >= rules.minPosts && i.skipRate != null && i.skipRate > rules.hookFailSkipRate);
       if (fail) failing++;
-      w[id] = fail ? 0 : sc ?? (best || 1);
+      // Une accroche qui ne retient pas garde la moitié de sa note : les nouvelles passent devant.
+      w[id] = fail ? (sc ?? 0) * 0.5 : sc ?? (best || 1);
       hookTable.push({ concept, lang, id, text: list.find((h) => h.id === id).text.join(' '), s, ig: i, fail });
     }
     const total = Object.values(w).reduce((a, b) => a + b, 0) || 1;
