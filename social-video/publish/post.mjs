@@ -29,6 +29,8 @@
 //                        tiktok,instagram,youtube)
 //   ZERNIO_API_KEY_EN    clé du 2e compte Zernio (comptes anglais) : vidéos -en-,
 //                        leur propre file, aux mêmes créneaux (facultative)
+//   ONLY_LANG            publier seulement la file de cette langue (ex. en),
+//                        sans toucher aux comptes français
 //   SOCIAL_ACCOUNTS_KEY  clé du coffre des comptes en direct (accounts.enc),
 //                        la même que dans Vercel (facultative)
 //   TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET  appli TikTok (renouvellement
@@ -315,7 +317,7 @@ if (MIN_GAP_HOURS && last && Date.now() - last < MIN_GAP_HOURS * 3600e3) {
 let failed = false;
 const { todo: queued, wanted } = pending(state);
 // VIDEO : une vidéo précise, lancée depuis /hq (« Publier maintenant »).
-const todo = env.VIDEO ? queued.filter((item) => item.key === env.VIDEO) : queued;
+const todo = env.ONLY_LANG ? [] : env.VIDEO ? queued.filter((item) => item.key === env.VIDEO) : queued;
 if (env.VIDEO && !todo.length) throw new Error(`${env.VIDEO} : introuvable dans la file (déjà publiée ?)`);
 console.log(`[${TARGET}] ${todo.length} vidéo(s) en attente dont ${wanted.length} au format ${KIND || 'quelconque'} (langues ${LANGS.join(', ')}, releases ≥ shorts-${MIN_RELEASE}).`);
 
@@ -326,7 +328,8 @@ const allDirect = USE_DIRECT ? (DRY_RUN ? loadDirect() : await refreshDirect(loa
 const direct = allDirect.filter((a) => LANGS.includes(langOf(a)));
 // 2e compte Zernio (autre adresse mail) pour les comptes anglais : ZERNIO_API_KEY_EN.
 const ZERNIO_BY_LANG = TARGET === 'youtube' ? {} : Object.fromEntries([['en', env.ZERNIO_API_KEY_EN]].filter(([, k]) => k));
-const otherLangs = [...new Set([...allDirect.map(langOf), ...Object.keys(ZERNIO_BY_LANG)].filter((l) => !LANGS.includes(l)))];
+const otherLangs = [...new Set([...allDirect.map(langOf), ...Object.keys(ZERNIO_BY_LANG)].filter((l) => !LANGS.includes(l)))]
+  .filter((l) => !env.ONLY_LANG || l === env.ONLY_LANG);
 const targets = [
   ...accounts.map((a) => `${a.platform} (Zernio)`),
   ...direct.map((a) => `${a.platform} ${a.name} (direct)`),

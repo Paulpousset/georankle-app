@@ -43,6 +43,10 @@ on:
         description: Vidéo précise (ex. shorts-39/globe1-fr-v1.mp4), vide = la suivante
         default: ''
         required: false
+      only_lang:
+        description: Seulement la file de cette langue (ex. en), vide = tout
+        default: ''
+        required: false
       dry_run:
         description: Simulation (ne rien publier)
         type: boolean
@@ -88,6 +92,7 @@ jobs:
           COUNT: ${{ github.event.inputs.count || '1' }}
           KIND: ${{ github.event.inputs.kind || 'auto' }}
           VIDEO: ${{ github.event.inputs.video }}
+          ONLY_LANG: ${{ github.event.inputs.only_lang }}
           # Tâche planifiée seulement : si une publication manuelle a déjà
           # rempli le créneau, ne pas en refaire une.
           MIN_GAP_HOURS: ${{ github.event_name == 'schedule' && '3' || '0' }}
