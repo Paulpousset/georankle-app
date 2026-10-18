@@ -14,7 +14,7 @@
 import { copyFileSync, cpSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { geoArea, geoBounds } from 'd3-geo';
+import { geoArea, geoBounds, geoMercator, geoPath } from 'd3-geo';
 import { feature } from 'topojson-client';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -465,9 +465,19 @@ function randomPlusOuMoins(i) {
   }
   throw new Error('aucune chaîne Plus ou moins trouvée');
 }
+// Silhouette d'un pays (son plus grand morceau) en tracé SVG de 430 × 300,
+// calculée ici : dans le navigateur de rendu, certains pays (Australie)
+// sortaient en rectangle.
+function silhouette(c) {
+  const f = featureById[atlasId(c)];
+  const main = f.geometry.type !== 'MultiPolygon' ? f : f.geometry.coordinates
+    .map((coordinates) => ({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates } }))
+    .reduce((a, b) => (geoArea(b) > geoArea(a) ? b : a));
+  return geoPath(geoMercator().fitSize([430, 300], main))(main).replace(/\d+\.\d+/g, (x) => String(Math.round(x)));
+}
 function plusOuMoins(name, { themeId, chain, value }, hook = null) {
   const th = PM_THEMES[themeId];
-  const cards = chain.map((c) => ({ id: atlasId(c), cc: cca2[c], name: fr(c), value: value(c), display: th.format(value(c)) }));
+  const cards = chain.map((c) => ({ id: atlasId(c), cc: cca2[c], name: fr(c), value: value(c), display: th.format(value(c)), shape: silhouette(c) }));
   const rounds = cards.slice(1).map((c, i) => {
     const higher = c.value > cards[i].value;
     return { higher, pick: i === PM_ROUNDS - 1 ? !higher : higher };

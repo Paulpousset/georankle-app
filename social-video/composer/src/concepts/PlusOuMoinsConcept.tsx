@@ -7,15 +7,11 @@
  * la dernière manche, avec secousse et tampon « Raté ».
  * Cinq manches de 3,6 s : environ 20 s avant la carte de fin.
  */
-import { geoArea, geoMercator, geoPath } from 'd3-geo';
-import type { Feature, FeatureCollection, Geometry, MultiPolygon, Polygon } from 'geojson';
 import { AbsoluteFill, Audio, Img, interpolate, random, spring, useCurrentFrame, useVideoConfig } from 'remotion';
-import { feature } from 'topojson-client';
-import world from 'world-atlas/countries-50m.json';
 
 import { C, EndCard, FPS, Hook, Paper, Progress, Sfx, Stamp, VoiceTrack, app, clamp, flag, mono, musicVolume, serif, sfx, type VoiceLine } from './kit';
 
-export type PmCard = { id: string; cc: string; name: string; value: number; display: string };
+export type PmCard = { id: string; cc: string; name: string; value: number; display: string; shape?: string };
 export type PmRound = { higher: boolean; pick: boolean };
 export type PlusOuMoinsConceptProps = {
   hook: string[];
@@ -48,23 +44,11 @@ const roundAt = (i: number) => PM.START + i * PM.ROUND;
 const endAt = (p: PlusOuMoinsConceptProps) => roundAt(p.rounds.length - 1) + PM.VERDICT + PM.FAIL_HOLD + PM.OUTRO;
 export const plusOuMoinsConceptSeconds = (p: PlusOuMoinsConceptProps) => endAt(p) + 4;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const topo = world as any;
-const countries = (feature(topo, topo.objects.countries) as unknown as FeatureCollection<Geometry>).features;
-const byId = new Map(countries.map((f) => [String(f.id), f]));
-function mainland(f: Feature<Geometry>): Feature<Polygon> {
-  if (f.geometry.type !== 'MultiPolygon') return f as Feature<Polygon>;
-  const polys = (f.geometry as MultiPolygon).coordinates.map((c) => ({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: c } }) as Feature<Polygon>);
-  return polys.reduce((a, b) => (geoArea(b) > geoArea(a) ? b : a));
-}
-/** Silhouette du pays (son plus grand morceau), cadrée dans w × h. */
-function Silhouette({ id, w, h, color, opacity }: { id: string; w: number; h: number; color: string; opacity: number }) {
-  const f = byId.get(id);
-  if (!f) return null;
-  const main = mainland(f);
-  const d = geoPath(geoMercator().fitSize([w, h], main))(main) ?? '';
+/** Silhouette du pays (tracé SVG 430 × 300 calculé par concepts.mjs). */
+function Silhouette({ d, color, opacity }: { d?: string; color: string; opacity: number }) {
+  if (!d) return null;
   return (
-    <svg width={w} height={h} style={{ opacity }}>
+    <svg width={430} height={300} style={{ opacity }}>
       <path d={d} fill={color} stroke={C.sepia} strokeWidth={3} strokeLinejoin="round" />
     </svg>
   );
@@ -89,7 +73,7 @@ function Card({ card, y, reveal, ratio, accent, state, shake }: { card: PmCard; 
       }}
     >
       <div style={{ position: 'absolute', right: 10, top: 20 }}>
-        <Silhouette id={card.id} w={430} h={300} color={accent} opacity={0.22} />
+        <Silhouette d={card.shape} color={accent} opacity={0.22} />
       </div>
       <div style={{ position: 'absolute', left: 50, top: 46, display: 'flex', alignItems: 'center', gap: 30 }}>
         <Img src={flag(card.cc)} style={{ width: 150, height: 112, borderRadius: 16, objectFit: 'cover', boxShadow: '0 6px 0 rgba(44,24,16,0.25)' }} />
