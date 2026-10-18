@@ -9,7 +9,6 @@
  * POST /api/hq?source=social-order { pinned: [clés] } | { skip } | { unskip } → ordre, vidéos retirées
  * POST /api/hq?source=social-generate { record, globes } → lance un tournage (social-video.yml)
  * POST /api/hq?source=social-publish { key }          → publie cette vidéo tout de suite
- * POST /api/hq?source=min-version { platform, version } → version minimale de l'app (mise à jour obligatoire)
  * Tableau de bord privé (page /hq). Réservé aux profils is_admin : la page
  * envoie le jeton de session Supabase, on le vérifie avant toute requête.
  */
@@ -142,39 +141,6 @@ async function markersWrite(request, method) {
   }
 }
 
-// ─── Mise à jour obligatoire (table app_min_version, service role uniquement) ─
-
-const VERSION = /^\d{1,4}(\.\d{1,4}){0,2}$/;
-
-async function minVersionWrite(request) {
-  try {
-    if (!(await requireAdmin(request))) return json({ error: 'forbidden' }, 403);
-  } catch (e) {
-    return json({ error: e.message }, 500);
-  }
-  const b = await request.json().catch(() => ({}));
-  const platform = ['ios', 'android'].includes(b.platform) ? b.platform : null;
-  const version = String(b.version ?? '').trim();
-  if (!platform || !VERSION.test(version)) return json({ error: 'plateforme ou version invalide (ex. 5.8.0)' }, 400);
-  const key = env('SUPABASE_SERVICE_ROLE_KEY');
-  try {
-    const [row] = await http(`${SUPABASE_URL()}/rest/v1/app_min_version?on_conflict=platform`, {
-      method: 'POST',
-      headers: {
-        apikey: key,
-        authorization: `Bearer ${key}`,
-        'content-type': 'application/json',
-        prefer: 'resolution=merge-duplicates,return=representation',
-      },
-      body: JSON.stringify({ platform, min_version: version, updated_at: new Date().toISOString() }),
-    });
-    for (const k of cache.keys()) if (k.startsWith('supabase:')) cache.delete(k);
-    return json({ ok: true, row: row ?? null });
-  } catch (e) {
-    return json({ error: e.message }, 500);
-  }
-}
-
 // ─── Vidéos : ordre et publication immédiate (GitHub) ────────────────────────
 
 async function socialWrite(request, source) {
@@ -198,7 +164,6 @@ async function socialWrite(request, source) {
 export const POST = (request) => {
   const source = new URL(request.url).searchParams.get('source');
   if (['social-order', 'social-publish', 'social-generate'].includes(source)) return socialWrite(request, source);
-  if (source === 'min-version') return minVersionWrite(request);
   return markersWrite(request, 'POST');
 };
 export const DELETE = (request) => markersWrite(request, 'DELETE');

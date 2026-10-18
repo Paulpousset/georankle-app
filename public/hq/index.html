@@ -1065,54 +1065,7 @@ function deploysView() {
       { h: 'Runtime', f: (r) => esc(r.runtimeVersion) },
       { h: 'Quand', f: (r) => ago(r.createdAt) },
     ], v.updates)))}
-  </div>
-  <h2 class="section">Mise à jour obligatoire</h2>
-  ${card('Version minimale de l’app', 'supabase', minVersionHtml())}`;
-}
-
-// ─── Mise à jour obligatoire (table app_min_version) ────────────────────────
-const verParts = (v) => (/^\d+(\.\d+){0,2}$/.test(v ?? '') ? v.split('.').map(Number) : null);
-function cmpVer(a, b) {
-  const x = verParts(a), y = verParts(b);
-  if (!x || !y) return 0;
-  for (let i = 0; i < 3; i++) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) - (y[i] ?? 0);
-  return 0;
-}
-/** Dernière version publiée sur le store (iOS : vitrine publique ; Android : dernier build EAS de prod). */
-function liveVersion(platform) {
-  if (platform === 'ios') return val('appstore', 'rating', (v) => v.find((r) => r.version)?.version);
-  return val('deploys', 'eas', (v) => v.builds.find((b) => b.platform === 'ANDROID' && b.status === 'FINISHED' && b.buildProfile === 'production')?.appVersion);
-}
-function minVersionHtml() {
-  const p = part('supabase', 'minVersion');
-  if (!p.ok) return /app_min_version/.test(p.html) ? '<p class="muted" style="font-size:13px">Table app_min_version pas encore créée (migration Supabase).</p>' : p.html;
-  const rows = ['ios', 'android'].map((platform) => {
-    const r = p.v.find((x) => x.platform === platform);
-    const min = r?.min_version ?? '0.0.0';
-    const live = liveVersion(platform);
-    return `<form class="addm" data-act="minv" data-platform="${platform}" style="align-items:center">
-      <b style="min-width:70px">${platform === 'ios' ? 'iOS' : 'Android'}</b>
-      <input type="text" name="version" value="${esc(min)}" inputmode="decimal" pattern="\\d{1,4}(\\.\\d{1,4}){0,2}" maxlength="14" style="width:90px" aria-label="Version minimale ${platform}" required>
-      <button class="btn ghost" type="submit">Enregistrer</button>
-      <span class="muted" style="font-size:12px">${min === '0.0.0' ? 'aucune contrainte' : `bloque &lt; ${esc(min)}`}${live ? ` · en ligne : ${esc(live)}` : ''}${r?.updated_at ? ` · modifié ${ago(r.updated_at)}` : ''}</span>
-    </form>`;
-  }).join('');
-  return `${rows}<p class="muted" style="font-size:12px;margin:10px 0 0">Les joueurs dont la version est plus ancienne voient un écran bloquant qui les envoie vers le store. Monte la version seulement quand elle est disponible sur le store, sinon personne ne peut jouer. 0.0.0 = désactivé.</p>`;
-}
-async function minVersionWrite(platform, version) {
-  const live = liveVersion(platform);
-  if (live && cmpVer(version, live) > 0 && !confirm(`La version en ligne sur le store est ${live}. Exiger ${version} bloquerait tout le monde. Continuer ?`)) return;
-  if (!confirm(`Bloquer les joueurs ${platform === 'ios' ? 'iOS' : 'Android'} en dessous de ${version} ?`)) return;
-  const { data: { session } } = await client.auth.getSession();
-  if (session) S.token = session.access_token;
-  const r = await fetch('/api/hq?source=min-version', {
-    method: 'POST',
-    headers: { authorization: `Bearer ${S.token}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ platform, version }),
-  });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok || !j.ok) { alert(`Version non enregistrée : ${j.error ?? r.status}`); return; }
-  await loadAll(true, ['supabase']);
+  </div>`;
 }
 
 // ─── Vidéos : prochaines publications automatiques (social-post.yml) ───────
@@ -1675,7 +1628,7 @@ function onAct(e) {
   if (!el) return;
   const act = el.dataset.act;
   if (e.type === 'click') {
-    if (['cmp', 'from', 'to', 'addc', 'mkadd', 'minv'].includes(act)) return;
+    if (['cmp', 'from', 'to', 'addc', 'mkadd'].includes(act)) return;
     if (act === 'csv') { e.preventDefault(); e.stopPropagation(); if (CSV[el.dataset.id]) downloadCsv(CSV[el.dataset.id]); return; }
     if (act === 'plat') return setFilters({ platform: el.dataset.v });
     if (act === 'preset') { const [, list, ex] = PRESETS[Number(el.dataset.k)]; return setFilters({ countries: [...list], exclude: ex }); }
@@ -1711,9 +1664,6 @@ function onAct(e) {
     if (confirm(`Lancer un tournage ${record ? 'complet (avec l’app filmée)' : 'des formats animés'} ?`)) {
       videoWrite('social-generate', { record, globes: Number(f.get('globes')) }, 'Tournage lancé : les vidéos arrivent dans la banque à la fin.');
     }
-  } else if (e.type === 'submit' && act === 'minv') {
-    e.preventDefault();
-    minVersionWrite(el.dataset.platform, String(new FormData(el).get('version') ?? '').trim());
   } else if (e.type === 'submit' && act === 'mkadd') {
     e.preventDefault();
     const f = new FormData(el);

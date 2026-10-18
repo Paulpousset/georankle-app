@@ -478,18 +478,6 @@
     ]
   },
   {
-    "key": "A new version of GeoG is available. Update the app to keep playing.",
-    "fr": "Une nouvelle version de GeoG est disponible. Mets à jour l’app pour continuer à jouer.",
-    "en": "A new version of GeoG is available. Update the app to keep playing.",
-    "count": 1,
-    "kinds": [
-      "call"
-    ],
-    "files": [
-      "src/components/ForceUpdateGate.tsx"
-    ]
-  },
-  {
     "key": "A non-neighbouring country costs a life (3 lives per route): think it through — you can’t undo a step.",
     "fr": "Un pays non voisin coûte une vie (3 vies par trajet) : réfléchissez bien, on ne peut pas revenir en arrière.",
     "en": "A non-neighbouring country costs a life (3 lives per route): think it through — you can’t undo a step.",
@@ -583,18 +571,6 @@
     ],
     "files": [
       "src/screens/Friends.tsx"
-    ]
-  },
-  {
-    "key": "A short ad to support the game ;)",
-    "fr": "Une courte pub pour soutenir le jeu ;)",
-    "en": "A short ad to support the game ;)",
-    "count": 1,
-    "kinds": [
-      "call"
-    ],
-    "files": [
-      "src/components/AdBreakNotice.tsx"
     ]
   },
   {
@@ -9767,18 +9743,6 @@
     ]
   },
   {
-    "key": "Often skippable after 5 seconds",
-    "fr": "Souvent passable après 5 secondes",
-    "en": "Often skippable after 5 seconds",
-    "count": 1,
-    "kinds": [
-      "call"
-    ],
-    "files": [
-      "src/components/AdBreakNotice.tsx"
-    ]
-  },
-  {
     "key": "Olympic medals",
     "fr": "Médailles olympiques",
     "en": "Olympic medals",
@@ -11350,18 +11314,6 @@
     ],
     "files": [
       "src/screens/LocalParcours.tsx"
-    ]
-  },
-  {
-    "key": "QUICK AD BREAK",
-    "fr": "PETITE PAUSE PUB",
-    "en": "QUICK AD BREAK",
-    "count": 1,
-    "kinds": [
-      "call"
-    ],
-    "files": [
-      "src/components/AdBreakNotice.tsx"
     ]
   },
   {
@@ -15394,30 +15346,6 @@
     ]
   },
   {
-    "key": "Update",
-    "fr": "Mettre à jour",
-    "en": "Update",
-    "count": 1,
-    "kinds": [
-      "call"
-    ],
-    "files": [
-      "src/components/ForceUpdateGate.tsx"
-    ]
-  },
-  {
-    "key": "Update required",
-    "fr": "Mise à jour nécessaire",
-    "en": "Update required",
-    "count": 1,
-    "kinds": [
-      "call"
-    ],
-    "files": [
-      "src/components/ForceUpdateGate.tsx"
-    ]
-  },
-  {
     "key": "Urban population",
     "fr": "Population urbaine",
     "en": "Urban population",
@@ -17802,7 +17730,7 @@
     "key": "{0} / {1} correct",
     "fr": "{0} / {1} bonnes réponses",
     "en": "{0} / {1} correct",
-    "count": 5,
+    "count": 4,
     "kinds": [
       "call"
     ],
@@ -17810,8 +17738,7 @@
       "src/screens/ChallengeQuiz.tsx",
       "src/screens/LanguagesGame.tsx",
       "src/screens/PinpointGame.tsx",
-      "src/screens/SilhouetteGame.tsx",
-      "src/screens/VersusCapitals.tsx"
+      "src/screens/SilhouetteGame.tsx"
     ]
   },
   {
