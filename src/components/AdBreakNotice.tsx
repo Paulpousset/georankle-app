@@ -2,9 +2,13 @@
  * Full-screen "ad break" card shown for a few seconds before an interstitial:
  * a 3-2-1 countdown and a word on why there's an ad. Mounted once at the root;
  * announceAdBreak() (src/lib/adBreak.ts) opens it and waits for the countdown.
+ *
+ * A plain overlay View, never an RN <Modal>: a Modal is a native view
+ * controller, and on iOS the interstitial presented while it was still being
+ * dismissed failed to appear and left the Modal stuck on screen over the game.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Modal, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
@@ -50,16 +54,19 @@ export function AdBreakNotice() {
 
   if (left === null) return null;
   return (
-    <Modal visible transparent animationType="fade" statusBarTranslucent>
-      <View
-        style={{
-          flex: 1,
+    <View
+      style={[
+        StyleSheet.absoluteFill,
+        {
+          zIndex: 1000,
+          elevation: 1000,
           alignItems: 'center',
           justifyContent: 'center',
           backgroundColor: c.background,
           paddingHorizontal: 32,
-        }}
-      >
+        },
+      ]}
+    >
         <Text
           style={{ color: c.textMuted, fontFamily: FONTS.monoBold, fontSize: 13, letterSpacing: 2 }}
         >
@@ -103,7 +110,6 @@ export function AdBreakNotice() {
         >
           {tr(language, 'Souvent passable après 5 secondes', 'Often skippable after 5 seconds')}
         </Text>
-      </View>
-    </Modal>
+    </View>
   );
 }
