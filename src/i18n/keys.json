@@ -15968,6 +15968,78 @@
     ]
   },
   {
+    "key": "What is the capital of this Canadian province {0}?",
+    "fr": "Quelle est la capitale de cette province canadienne {0} ?",
+    "en": "What is the capital of this Canadian province {0}?",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/challenges.ts"
+    ]
+  },
+  {
+    "key": "What is the capital of this French region {0}?",
+    "fr": "Quel est le chef-lieu de cette région française {0} ?",
+    "en": "What is the capital of this French region {0}?",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/challenges.ts"
+    ]
+  },
+  {
+    "key": "What is the capital of this German Land {0}?",
+    "fr": "Quelle est la capitale de ce Land allemand {0} ?",
+    "en": "What is the capital of this German Land {0}?",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/challenges.ts"
+    ]
+  },
+  {
+    "key": "What is the capital of this Italian region {0}?",
+    "fr": "Quel est le chef-lieu de cette région italienne {0} ?",
+    "en": "What is the capital of this Italian region {0}?",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/challenges.ts"
+    ]
+  },
+  {
+    "key": "What is the capital of this Spanish community {0}?",
+    "fr": "Quelle est la capitale de cette communauté espagnole {0} ?",
+    "en": "What is the capital of this Spanish community {0}?",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/challenges.ts"
+    ]
+  },
+  {
+    "key": "What is the capital of this US state {0}?",
+    "fr": "Quelle est la capitale de cet État américain {0} ?",
+    "en": "What is the capital of this US state {0}?",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/challenges.ts"
+    ]
+  },
+  {
     "key": "What is the capital?",
     "fr": "Quelle est la capitale ?",
     "en": "What is the capital?",
@@ -15980,21 +16052,9 @@
     ]
   },
   {
-    "key": "What is this Land’s capital?",
-    "fr": "Quelle est la capitale de ce Land ?",
-    "en": "What is this Land’s capital?",
-    "count": 1,
-    "kinds": [
-      "label"
-    ],
-    "files": [
-      "src/data/challenges.ts"
-    ]
-  },
-  {
-    "key": "What is this community’s capital?",
-    "fr": "Quelle est la capitale de cette communauté ?",
-    "en": "What is this community’s capital?",
+    "key": "What is the number of this French department {0}?",
+    "fr": "Quel est le numéro de ce département français {0} ?",
+    "en": "What is the number of this French department {0}?",
     "count": 1,
     "kinds": [
       "label"
@@ -16016,54 +16076,6 @@
     ]
   },
   {
-    "key": "What is this department’s number?",
-    "fr": "Quel est le numéro de ce département ?",
-    "en": "What is this department’s number?",
-    "count": 1,
-    "kinds": [
-      "label"
-    ],
-    "files": [
-      "src/data/challenges.ts"
-    ]
-  },
-  {
-    "key": "What is this province’s capital?",
-    "fr": "Quelle est la capitale de cette province ?",
-    "en": "What is this province’s capital?",
-    "count": 1,
-    "kinds": [
-      "label"
-    ],
-    "files": [
-      "src/data/challenges.ts"
-    ]
-  },
-  {
-    "key": "What is this region’s capital?",
-    "fr": "Quel est le chef-lieu de cette région ?",
-    "en": "What is this region’s capital?",
-    "count": 2,
-    "kinds": [
-      "label"
-    ],
-    "files": [
-      "src/data/challenges.ts"
-    ]
-  },
-  {
-    "key": "What is this state’s capital?",
-    "fr": "Quelle est la capitale de cet État ?",
-    "en": "What is this state’s capital?",
-    "count": 1,
-    "kinds": [
-      "label"
-    ],
-    "files": [
-      "src/data/challenges.ts"
-    ]
-  },
-  {
     "key": "What you'll compare",
     "fr": "Ce que vous allez comparer",
     "en": "What you'll compare",
@@ -16073,6 +16085,18 @@
     ],
     "files": [
       "src/screens/GuessCountryGame.tsx"
+    ]
+  },
+  {
+    "key": "Which US state is this {0}?",
+    "fr": "Quel est cet État américain {0} ?",
+    "en": "Which US state is this {0}?",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/challenges.ts"
     ]
   },
   {
@@ -16134,18 +16158,6 @@
     ],
     "files": [
       "src/screens/LanguagesGame.tsx"
-    ]
-  },
-  {
-    "key": "Which state is this?",
-    "fr": "Quel est cet État ?",
-    "en": "Which state is this?",
-    "count": 1,
-    "kinds": [
-      "label"
-    ],
-    "files": [
-      "src/data/challenges.ts"
     ]
   },
   {
