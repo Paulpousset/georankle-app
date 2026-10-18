@@ -4,6 +4,14 @@ name: Concepts courts en anglais (temporaire)
 # liste social-video/composer/redo-en.txt), ajoutées à la release shorts-next.
 on:
   workflow_dispatch:
+  push:
+    branches: [claude/project-thread-jkusyn-en]
+    paths:
+      - .github/workflows/concepts-en.yml
+
+concurrency:
+  group: concepts-en
+  cancel-in-progress: false
 
 permissions:
   contents: write
