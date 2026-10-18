@@ -78,7 +78,10 @@ function diagnose(label, s, ig) {
   if (s.n < rules.minPosts) return out;
   const hookFail = (s.avgWatchS != null && s.avgWatchS < rules.hookFailWatchS) || (ig?.skipRate != null && ig.skipRate > rules.hookFailSkipRate);
   if (hookFail) {
-    out.push({ kind: 'accroche', label, text: `On part avant la fin de l'accroche (${sec(s.avgWatchS)} regardées en moyenne${ig?.skipRate != null ? `, ${pct(ig.skipRate)} de swipe sur Instagram` : ''}).`, action: 'Accroche plus forte : nouvelles accroches à tester, celle-ci passe au minimum.' });
+    const why = ig?.skipRate != null && ig.skipRate > rules.hookFailSkipRate
+      ? `${pct(ig.skipRate)} font défiler avant 3 s sur Instagram`
+      : `${sec(s.avgWatchS)} regardées en moyenne sur TikTok`;
+    out.push({ kind: 'accroche', label, text: `Les gens partent dès l'accroche (${why}).`, action: 'Accroche plus forte : nouvelles accroches à tester.' });
   } else if (s.watchPct != null && s.watchPct < rules.midDropWatchPct) {
     out.push({ kind: 'milieu', label, text: `L'accroche tient, mais on décroche au milieu (${pct(s.watchPct)} de la vidéo regardée, ${sec(s.avgWatchS)} sur ${sec(s.durationS)}).`, action: `Raccourcir : viser environ ${Math.max(12, Math.round((s.avgWatchS ?? 10) / 0.6))} s, et une réponse plus tôt.` });
   } else if (s.watchPct != null && s.watchPct >= rules.endDropWatchPct && s.completion != null && s.completion < rules.endDropCompletion) {
@@ -135,18 +138,27 @@ const needsNewHooks = [];
 const hookTable = [];
 for (const [concept, byLang] of Object.entries(hooks)) {
   for (const [lang, list] of Object.entries(byLang)) {
-    const rs = tt.filter((r) => r.concept === concept && r.lang === lang);
-    const per = Object.fromEntries(list.map((h) => [h.id, stats(rs.filter((r) => r.hook === h.id))]));
-    const scored = list.map((h) => [h.id, per[h.id].n >= rules.minPosts ? score(per[h.id]) : null]);
+    // L'accroche se juge sur les 3 premières secondes : la part qui ne fait pas
+    // défiler sur Instagram, sinon la part regardée sur TikTok.
+    const mine = (rs, id) => rs.filter((r) => r.concept === concept && r.lang === lang && r.hook === id);
+    const per = Object.fromEntries(list.map((h) => [h.id, stats(mine(tt, h.id))]));
+    const perIg = Object.fromEntries(list.map((h) => [h.id, stats(mine(ig, h.id))]));
+    const bySkip = list.some((h) => perIg[h.id].n >= rules.minPosts && perIg[h.id].skipRate != null);
+    const hookScore = (id) => (bySkip
+      ? (perIg[id].n >= rules.minPosts && perIg[id].skipRate != null ? 1 - perIg[id].skipRate : null)
+      : (per[id].n >= rules.minPosts ? score(per[id]) : null));
+    const scored = list.map((h) => [h.id, hookScore(h.id)]);
     const best = Math.max(0, ...scored.map(([, x]) => x ?? 0));
     const w = {};
     let failing = 0;
     for (const [id, sc] of scored) {
       const s = per[id];
-      const fail = s.n >= rules.minPosts && s.avgWatchS != null && s.avgWatchS < rules.hookFailWatchS;
+      const i = perIg[id];
+      const fail = (s.n >= rules.minPosts && s.avgWatchS != null && s.avgWatchS < rules.hookFailWatchS)
+        || (i.n >= rules.minPosts && i.skipRate != null && i.skipRate > rules.hookFailSkipRate);
       if (fail) failing++;
       w[id] = fail ? 0 : sc ?? (best || 1);
-      hookTable.push({ concept, lang, id, text: list.find((h) => h.id === id).text.join(' '), s, fail });
+      hookTable.push({ concept, lang, id, text: list.find((h) => h.id === id).text.join(' '), s, ig: i, fail });
     }
     const total = Object.values(w).reduce((a, b) => a + b, 0) || 1;
     for (const id of Object.keys(w)) w[id] = Math.round(Math.max(rules.hookFloor, w[id] / total) * 100) / 100;
@@ -182,18 +194,18 @@ md.push('## Ce qu\'il faut changer', '');
 if (!findings.length) md.push(`Rien à signaler (il faut au moins ${rules.minPosts} vidéos par concept).`);
 for (const f of findings) md.push(`- **${f.label}** : ${f.text} → ${f.action}`);
 md.push('', '## Par concept', '');
-md.push('| Concept · format | Vidéos | Vues TT | Durée vue TT | Part vue TT | Fin TT | Likes TT | Abonnés TT | Vues Insta | Durée vue Insta |', '|---|---|---|---|---|---|---|---|---|---|');
+md.push('| Concept · format | Vidéos | Vues TT | Durée vue TT | Part vue TT | Fin TT | Likes TT | Abonnés TT | Vues Insta | Durée vue Insta | Partis avant 3 s (Insta) |', '|---|---|---|---|---|---|---|---|---|---|---|');
 for (const { k, tt: s, ig: i } of cfTable) {
-  md.push(`| ${k} | ${Math.max(s.n, i.n)} | ${s.views == null ? '—' : Math.round(s.views)} | ${sec(s.avgWatchS)} | ${pct(s.watchPct)} | ${pct(s.completion)} | ${pct(s.likeRate)} | ${s.followRate == null ? '—' : pct(s.followRate)} | ${i.views == null ? '—' : Math.round(i.views)} | ${sec(i.avgWatchS)} |`);
+  md.push(`| ${k} | ${Math.max(s.n, i.n)} | ${s.views == null ? '—' : Math.round(s.views)} | ${sec(s.avgWatchS)} | ${pct(s.watchPct)} | ${pct(s.completion)} | ${pct(s.likeRate)} | ${s.followRate == null ? '—' : pct(s.followRate)} | ${i.views == null ? '—' : Math.round(i.views)} | ${sec(i.avgWatchS)} | ${pct(i.skipRate)} |`);
 }
-md.push('', '## Accroches (TikTok)', '');
-md.push('| Concept | Langue | Accroche | Vidéos | Durée vue | Part vue | Poids |', '|---|---|---|---|---|---|---|');
-for (const h of hookTable) md.push(`| ${h.concept} | ${h.lang} | ${h.text.replace(/\|/g, '/')} | ${h.s.n} | ${sec(h.s.avgWatchS)} | ${pct(h.s.watchPct)} | ${pct(hookWeights[h.concept][h.lang][h.id])}${h.fail ? ' ⚠️' : ''} |`);
+md.push('', '## Accroches', '');
+md.push('| Concept | Langue | Accroche | Vidéos | Durée vue TT | Part vue TT | Partis avant 3 s (Insta) | Poids |', '|---|---|---|---|---|---|---|---|');
+for (const h of hookTable) md.push(`| ${h.concept} | ${h.lang} | ${h.text.replace(/\|/g, '/')} | ${h.s.n} | ${sec(h.s.avgWatchS)} | ${pct(h.s.watchPct)} | ${pct(h.ig.skipRate)} | ${pct(hookWeights[h.concept][h.lang][h.id])}${h.fail ? ' ⚠️' : ''} |`);
 md.push('', '## Prochain lot', '');
 md.push(`- Mélange : ${ATLAS.map((c) => `${c} ${pct(mix[c])}`).join(', ')}.`);
 md.push(`- Format : ${short ? 'court (~20 s)' : 'long'}${court.n && long.n ? ` (part vue court ${pct(court.watchPct)}, long ${pct(long.watchPct)})` : ''}.`);
 md.push(`- Nouvelles accroches à écrire : ${needsNewHooks.length ? needsNewHooks.join(', ') : 'aucune'}.`);
-md.push('', 'Limites : ni TikTok ni Instagram ne donnent la courbe de rétention seconde par seconde par API. « Partir avant le début » se lit à la durée moyenne regardée (moins de 3 s).');
+md.push('', 'Limites : pas de courbe de rétention seconde par seconde par API. « Partis avant 3 s » vient d\'Instagram (taux de swipe) ; sur TikTok, seule la durée moyenne regardée le dit.');
 const report = md.join('\n');
 writeFileSync(join(OUT, 'rapport.md'), `${report}\n`);
 if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${report}\n`);

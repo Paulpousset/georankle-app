@@ -57,6 +57,8 @@ function durationOf(key) {
 }
 
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+// 0 sur TikTok veut dire « pas mesuré » ; en pourcentage sur Instagram.
+const skip = (v) => (!v ? null : v > 1 ? v / 100 : v);
 const posted = await postedJson();
 const byPost = Object.fromEntries(posted.filter((p) => p.zernioPost).map((p) => [p.zernioPost, p]));
 const fromDate = new Date(Date.now() - DAYS * 864e5).toISOString().slice(0, 10);
@@ -93,7 +95,7 @@ for (const [lang, key] of Object.entries(KEYS)) {
           ageHours: Math.round((Date.now() - Date.parse(p.publishedAt ?? p.scheduledFor)) / 36e5),
           key: src?.key ?? null,
           ...video,
-          durationS: src ? durationOf(src.key) : null,
+          durationS: num(a.videoDurationSeconds) ?? (src ? durationOf(src.key) : null),
           caption: (p.content ?? '').replace(/\s+/g, ' ').slice(0, 120),
           views: num(a.views),
           reach: num(a.reach),
@@ -104,8 +106,11 @@ for (const [lang, key] of Object.entries(KEYS)) {
           follows: num(a.follows),
           completionRate: num(a.completionRate),
           avgWatchS: avgWatchMs == null ? null : Math.round(avgWatchMs / 100) / 10,
-          // Instagram : part des gens qui font défiler dans les 3 premières secondes.
-          skipRate: num(a.reelsSkipRate) ?? num(a.igReelsSkipRate) ?? num(a.skipRate),
+          // Part des gens qui font défiler dans les 3 premières secondes (Instagram ;
+          // Zernio la donne en pourcentage, ex. 62.3).
+          skipRate: skip(num(a.reelsSkipRate) ?? num(a.igReelsSkipRate)),
+          replays: num(a.replays),
+          profileViews: num(a.profileViews),
           raw: Object.fromEntries(Object.entries(a).filter(([, v]) => typeof v === 'number')),
         });
       }
@@ -115,6 +120,9 @@ for (const [lang, key] of Object.entries(KEYS)) {
   }
 }
 
+for (const r of [...rows].sort((x, y) => String(x.at).localeCompare(String(y.at)))) {
+  console.log([r.platform.slice(0, 2), String(r.at).slice(0, 13), r.concept, r.format, r.hook, r.lang, r.durationS, r.views, r.avgWatchS, r.completionRate, r.skipRate, r.likes, r.shares, r.follows].join('\t'));
+}
 for (const [platform, fields] of Object.entries(seenFields)) console.log(`champs ${platform} : ${[...fields].sort().join(', ')}`);
 writeFileSync(join(OUT, 'posts.json'), JSON.stringify(rows, null, 1));
 writeFileSync(durFile, JSON.stringify(durations, null, 1));
