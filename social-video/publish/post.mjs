@@ -262,7 +262,8 @@ if (env.SCHEDULE && Date.now() < PAUSED_UNTIL) {
   process.exit(0);
 }
 const MIN_GAP_HOURS = Number(env.MIN_GAP_HOURS || 0);
-const last = state.posted.filter(postedFor).map((p) => Date.parse(p.at)).filter(Boolean).sort().pop();
+// Les publications des comptes anglais (lang) ne comptent pas pour l'écart.
+const last = state.posted.filter((p) => postedFor(p) && !p.lang).map((p) => Date.parse(p.at)).filter(Boolean).sort().pop();
 if (MIN_GAP_HOURS && last && Date.now() - last < MIN_GAP_HOURS * 3600e3) {
   console.log(`[${TARGET}] dernière publication il y a moins de ${MIN_GAP_HOURS} h : rien à faire.`);
   process.exit(0);
