@@ -868,6 +868,11 @@ function players() {
       [`Cosmétiques achetés (${per()})`, fmt(v.cosmeticsBought)],
       [`Achats intégrés (${per()})`, fmt(v.iapPurchases)],
     ])))}
+  </div>
+  <h2 class="section">Anciennes versions</h2>
+  <div class="grid two">
+    ${card(`Joueurs sur une ancienne version, par ${unit()}`, ph, block(ph, 'outdated', outdatedChart))}
+    ${card('Anciennes versions, détail', ph, block(ph, 'outdated', outdatedTable))}
   </div>`;
 }
 
@@ -1033,6 +1038,25 @@ function quality() {
     ${card('Derniers push envoyés', sb, block(sb, 'ops', (v) => table([{ h: 'Titre', wrap: 1, f: (r) => esc(r.title) }, { h: 'Reçus', r: 1, f: (r) => `${fmt(r.sent)}/${fmt(r.recipients)}` }, { h: 'Quand', f: (r) => ago(r.created_at) }], v.recentPushes)))}
     ${card('Feature flags', sb, block(sb, 'ops', (v) => table([{ h: 'Flag', f: (r) => `<code>${esc(r.key)}</code>` }, { h: '', f: (r) => (r.enabled ? '<span class="pill good">● ON</span>' : '<span class="pill">○ off</span>') }], v.flags, { limit: 40 })))}
   </div>`;
+}
+
+// ─── Joueurs sur une ancienne version (PostHog, $app_version) ────────────────
+function outdatedChart(v) {
+  const latest = Object.entries(v.latest).map(([p, x]) => `${p} ${esc(x)}`).join(' · ');
+  return chart([
+    { name: 'iOS', color: 'var(--s1)', points: v.days.map((r) => ({ x: r.x, y: r.iOS })) },
+    { name: 'Android', color: 'var(--s2)', points: v.days.map((r) => ({ x: r.x, y: r.Android })) },
+  ], { type: 'bar', name: 'anciennes-versions' }) + `<p class="muted" style="font-size:12px;margin:6px 0 0">Dernière version vue : ${latest || '—'}. Un joueur compte une fois par ${unit()}, sous la dernière version qu’il a utilisée.</p>`;
+}
+function outdatedTable(v) {
+  const rows = [...v.days].reverse().filter((r) => r.total);
+  if (!rows.length) return '<div class="empty">Rien sur la période.</div>';
+  return table([
+    { h: 'Jour', f: (r) => esc(r.x) },
+    { h: 'Anciennes', r: 1, f: (r) => `<b>${fmt(r.iOS + r.Android)}</b>` },
+    { h: 'Sur', r: 1, f: (r) => `${fmt(r.total)} <span class="muted">(${pct((r.iOS + r.Android) / r.total, 0)})</span>` },
+    { h: 'Versions', wrap: 1, f: (r) => Object.entries(r.versions).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${esc(k)} : ${fmt(n)}`).join(' · ') || '—' },
+  ], rows, { limit: 30 });
 }
 
 function deploysView() {

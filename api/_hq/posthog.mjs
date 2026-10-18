@@ -91,6 +91,36 @@ export async function posthog({ days, from, to, countries, exclude, platform }) 
       top(await hogql(`select properties.$geoip_country_code c, uniq(person_id) n from events where ${win} group by c order by n desc limit 15`)),
     appVersions: async () =>
       top(await hogql(`select properties.$app_version v, uniq(person_id) n from events where timestamp > now() - interval 7 day and properties.$lib = 'posthog-react-native'${F} group by v order by n desc limit 8`)),
+    // Joueurs restés sur une ancienne version, par jour et par plateforme :
+    // la version de référence est la plus récente vue sur la période ; un
+    // joueur compte sous la dernière version qu'il a utilisée ce jour-là.
+    outdated: async () => {
+      const rows = await hogql(`
+        select d, p, v, count()
+        from (select ${W.bucket} d, ${PLATFORM} p, person_id, argMax(properties.$app_version, timestamp) v
+              from events where ${win} and properties.$lib = 'posthog-react-native' and properties.$app_version != ''
+              group by d, p, person_id)
+        group by d, p, v`);
+      const num = (v) => String(v).split('.').map(Number);
+      const cmp = (a, b) => {
+        const x = num(a), y = num(b);
+        for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0);
+        return 0;
+      };
+      const latest = {};
+      for (const [, p, v] of rows) if (!latest[p] || cmp(v, latest[p]) > 0) latest[p] = v;
+      const empty = (x) => ({ x, iOS: 0, Android: 0, total: 0, versions: {} });
+      const byDay = {};
+      for (const [d, p, v, n] of rows) {
+        const r = (byDay[d] ??= empty(d));
+        r.total += n;
+        if (cmp(v, latest[p]) < 0) {
+          r[p] += n;
+          r.versions[`${p} ${v}`] = (r.versions[`${p} ${v}`] ?? 0) + n;
+        }
+      }
+      return { latest, days: W.buckets.map((x) => byDay[x] ?? empty(x)) };
+    },
     webVitals: async () => {
       const [[lcp, inp, cls, n]] = await hogql(`
         select quantile(0.75)(toFloat(properties.$web_vitals_LCP_value)),
