@@ -29,10 +29,14 @@ const arg = (name, fallback) => {
   return i > -1 ? process.argv[i + 1] : fallback;
 };
 const BATCH = Number(arg('batch', 0));
+// --tuning fichier : réglages tirés des stats (social-video/insights/analyze.mjs,
+// tuning.json de la release shorts-state) : mélange des concepts d'un lot,
+// accroches à tester et leurs poids, format court ou long.
+const TUNING = arg('tuning') ? JSON.parse(readFileSync(arg('tuning'), 'utf8')) : null;
 // --short : lot de vidéos d'environ 20 s (stats du 15/10 : on décroche avant la
 // moitié des vidéos de 26 à 42 s). Frontières en une manche, Devine en trois
 // essais, deux Frontières pour un Devine (Frontières est le plus regardé).
-const SHORT = process.argv.includes('--short');
+const SHORT = process.argv.includes('--short') || TUNING?.short === true;
 let seed = Number(arg('seed', Date.now() % 100000));
 // --lang en : mêmes vidéos en anglais (voix, textes à l'écran, noms de pays,
 // légende). Sans --lang, sortie française inchangée.
@@ -175,13 +179,13 @@ function reaction(g, t) {
   if (d < 3500) return 'Proche, mais pas le bon continent.';
   return pick(['Très loin.', 'Froid, très froid.', 'Pas du tout.', 'Raté, et de loin.']);
 }
-function devine(name, target, guesses) {
+function devine(name, target, guesses, hook = null) {
   const n = guesses.length;
   const guessAt = (i) => DV.FIRST + i * DV.GUESS + (i === n - 1 ? DV.PAUSE : 0);
   const pauseStart = guessAt(n - 2) + DV.GUESS;
   const revealAt = guessAt(n - 1) + DV.TYPE + 6 * DV.FLIP + 0.4;
   const end = guessAt(n - 1) + 1.8 + DV.REVEAL;
-  const voice = [{ text: L('Trouve ce pays avant moi.', 'Find this country before I do.'), at: 0 }];
+  const voice = [{ text: hook?.say ?? L('Trouve ce pays avant moi.', 'Find this country before I do.'), at: 0 }];
   guesses.forEach((g, i) => {
     if (i === n - 1) return;
     voice.push({ text: `${say(fr(g))}${L(' ', '')}?`, at: guessAt(i) + 0.1, maxLate: i === 0 ? 1.3 : 0.7 });
@@ -193,7 +197,7 @@ function devine(name, target, guesses) {
   voice.push({ text: END_LINE, at: end + 0.4, maxLate: 1 });
   write(name, {
     composition: 'DevineConcept',
-    hook: L(['Trouve ce pays', 'avant moi 🕵️'], ['Find this country', 'before I do 🕵️']),
+    hook: hook?.text ?? L(['Trouve ce pays', 'avant moi 🕵️'], ['Find this country', 'before I do 🕵️']),
     intro: L('Six indices par essai', 'Six clues per guess'),
     rows: guesses.map((g) => guessRow(g, target)),
     pause: L('Tu l’as ?', 'Got it?'),
@@ -291,12 +295,12 @@ function frontierRound(from, to, level, view) {
   const LEVEL_EN = { MOYEN: 'MEDIUM', EXPERT: 'EXPERT', FACILE: 'EASY' };
   return { level: EN ? LEVEL_EN[level] ?? level : level, view: view ?? viewOf(path), path: path.map((c) => ({ id: atlasId(c), cc: cca2[c], name: fr(c) })) };
 }
-function frontieres(name, rounds) {
+function frontieres(name, rounds, hook = null) {
   const roundSeconds = (r) => FR.INTRO + FR.THINK + r.path.length * FR.step(r.path.length) + FR.HOLD;
   // Une réplique par moment fort, jamais en rafale : voice.mjs abandonne une
   // réplique qui arriverait trop tard derrière la précédente.
   // Demande de Paul (15/10) : on demande quels pays traverser, pas combien.
-  const voice = [{ text: L('Quels pays faut-il traverser ?', 'Which countries do you have to cross?'), at: 0 }];
+  const voice = [{ text: hook?.say ?? L('Quels pays faut-il traverser ?', 'Which countries do you have to cross?'), at: 0 }];
   let s0 = 0.4;
   rounds.forEach((r, ri) => {
     const a = r.path[0].name;
@@ -319,7 +323,7 @@ function frontieres(name, rounds) {
   const first = rounds[0].path;
   write(name, {
     composition: 'FrontieresConcept',
-    hook: L(['Quels pays', 'traverser ? 🧭'], ['Which countries', 'do you cross? 🧭']),
+    hook: hook?.text ?? L(['Quels pays', 'traverser ? 🧭'], ['Which countries', 'do you cross? 🧭']),
     rounds,
     ask: L('Quels pays traverser ?', 'Which countries to cross?'),
     outro: rounds.length > 1 ? L('Tu avais trouvé les deux ?', 'Did you get both?') : L('Tu avais trouvé ?', 'Did you get it?'),
@@ -424,6 +428,46 @@ function randomRankle() {
   throw new Error('aucune partie Rankle trouvée');
 }
 
+// ───────────────────────────── Réglages (--tuning) ─────────────────────────────
+// Ordre des concepts d'un lot au prorata de tuning.mix, bien réparti (tourniquet
+// pondéré : à chaque vidéo, le concept le plus en retard sur sa part).
+function mixSequence(mix, count) {
+  const kinds = Object.entries(mix).filter(([, w]) => w > 0);
+  const total = kinds.reduce((a, [, w]) => a + w, 0);
+  const done = {};
+  return Array.from({ length: count }, (_, i) => {
+    const [kind] = kinds.reduce((best, cur) => {
+      const lag = (k, w) => (w / total) * (i + 1) - (done[k] ?? 0);
+      return lag(...cur) > lag(...best) ? cur : best;
+    });
+    done[kind] = (done[kind] ?? 0) + 1;
+    return kind;
+  });
+}
+// Accroche de la prochaine vidéo d'un concept : même tourniquet sur les poids
+// de tuning.hookWeights, variables remplies ({a}, {b}, {n}). Une accroche dont
+// une ligne dépasse 20 caractères une fois remplie (noms longs) est sautée.
+const hookUses = {};
+function pickHook(concept, vars) {
+  const list = TUNING?.hooks?.[concept]?.[LANG];
+  if (!list?.length) return null;
+  const weights = TUNING.hookWeights?.[concept]?.[LANG] ?? {};
+  const fill = (t) => t.replace(/\{(\w+)\}/g, (_, k) => (k === 'n' ? String(vars.n) : say(String(vars[k] ?? ''))));
+  const uses = (hookUses[concept] ||= {});
+  const total = Object.values(uses).reduce((a, b) => a + b, 0);
+  const ranked = list
+    .map((h) => ({ ...h, w: weights[h.id] ?? 1 / list.length }))
+    .filter((h) => h.w > 0)
+    .sort((x, y) => (y.w * (total + 1) - (uses[y.id] ?? 0)) - (x.w * (total + 1) - (uses[x.id] ?? 0)));
+  for (const h of ranked) {
+    const text = h.text.map(fill);
+    if (text.some((l) => [...l].length > 20)) continue;
+    uses[h.id] = (uses[h.id] ?? 0) + 1;
+    return { id: h.id, text, say: fill(h.say) };
+  }
+  return null;
+}
+
 // ───────────────────────────── Vitrine ou lot ─────────────────────────────
 // --redo fichier : refaire des Frontières déjà en file, une ligne
 // « nom|Départ|Arrivée » (noms français), en une manche. Une ligne
@@ -465,18 +509,21 @@ if (REDO) {
   const targets = shuffle(KNOWN.filter((c) => c !== 'MNG'));
   const usedPairs = new Set(['FRACHN', 'CANARG']);
   let ti = 0;
+  const kinds = TUNING ? mixSequence(TUNING.mix, BATCH) : null;
   for (let i = 0; i < BATCH; i++) {
     const num = String(i + 1).padStart(2, '0');
-    const kind = (SHORT ? ['frontieres', 'devine', 'frontieres'] : ['devine', 'frontieres', 'rankle'])[i % 3];
+    const kind = kinds ? kinds[i] : (SHORT ? ['frontieres', 'devine', 'frontieres'] : ['devine', 'frontieres', 'rankle'])[i % 3];
     if (kind === 'devine') {
       let g = null;
       while (!g) g = devineGuesses(targets[ti++ % targets.length]);
       console.log('  ', g.map(fr).join(' → '));
-      devine(`${prefix}-${num}-devine-${slug(fr(g[g.length - 1]))}`, g[g.length - 1], g);
+      const hook = pickHook('devine', { n: g.length });
+      devine(`${prefix}-${num}-devine-${slug(fr(g[g.length - 1]))}${hook ? `-${hook.id}` : ''}`, g[g.length - 1], g, hook);
     } else if (kind === 'frontieres') {
       const r1 = randomFrontier(4, 6, 'MOYEN', usedPairs);
       const r2 = SHORT ? null : randomFrontier(7, 10, 'EXPERT', usedPairs);
-      frontieres(`${prefix}-${num}-frontieres-${slug(r1.path[0].name)}`, r2 ? [r1, r2] : [r1]);
+      const hook = pickHook('frontieres', { a: r1.path[0].name, b: r1.path[r1.path.length - 1].name });
+      frontieres(`${prefix}-${num}-frontieres-${slug(r1.path[0].name)}${hook ? `-${hook.id}` : ''}`, r2 ? [r1, r2] : [r1], hook);
     } else {
       const { themes, play } = randomRankle();
       rankle(`${prefix}-${num}-rankle-${slug(fr(play[5][0]))}`, themes, play);
