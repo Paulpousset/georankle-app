@@ -109,6 +109,8 @@ const BANNER_AD_UNIT_IDS: Record<string, string> = {
 
 /** How long to wait for an ad to load before giving up. */
 const AD_LOAD_TIMEOUT_MS = 15000;
+/** After show(): how long the interstitial gets to actually open. */
+const AD_OPEN_TIMEOUT_MS = 5000;
 
 let initPromise: Promise<void> | null = null;
 
@@ -324,7 +326,7 @@ function loadAndShowInterstitial(sdk: AdsSdk): Promise<void> {
       subs.forEach((off) => off());
       fn();
     };
-    const timer = setTimeout(
+    let timer = setTimeout(
       () => settle(() => reject(new Error('interstitial load timeout'))),
       AD_LOAD_TIMEOUT_MS,
     );
@@ -332,8 +334,18 @@ function loadAndShowInterstitial(sdk: AdsSdk): Promise<void> {
       ad.addAdEventListener(sdk.AdEventType.LOADED, () => {
         clearTimeout(timer);
         // Only once an ad is actually in hand: warn the player (3-2-1), then show.
-        void announceAdBreak().then(() => ad.show().catch((e) => settle(() => reject(e))));
+        void announceAdBreak().then(() => {
+          if (settled) return;
+          // If the ad never opens (iOS refusing to present it, for one), give
+          // up rather than wait forever on a CLOSED that will never come.
+          timer = setTimeout(
+            () => settle(() => reject(new Error('interstitial did not open'))),
+            AD_OPEN_TIMEOUT_MS,
+          );
+          ad.show().catch((e) => settle(() => reject(e)));
+        });
       }),
+      ad.addAdEventListener(sdk.AdEventType.OPENED, () => clearTimeout(timer)),
       ad.addAdEventListener(sdk.AdEventType.CLOSED, () => settle(() => resolve())),
       ad.addAdEventListener(sdk.AdEventType.ERROR, (e) => settle(() => reject(e))),
     );
