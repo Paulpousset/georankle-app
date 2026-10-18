@@ -109,7 +109,7 @@ for (const { k, tt: s, ig: i } of cfTable) findings.push(...diagnose(k, s.n ? s 
 const want = prev.short ?? DEFAULT.short ? 'court' : 'long';
 const conceptScore = {};
 for (const c of ATLAS) {
-  const rs = tt.filter((r) => r.concept === c);
+  const rs = tt.filter((r) => r.concept === c && r.format !== 'app');
   const same = rs.filter((r) => r.format === want);
   const s = stats(same.length >= rules.minPosts ? same : rs);
   conceptScore[c] = s.n >= rules.minPosts ? score(s) : null;

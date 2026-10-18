@@ -13,7 +13,7 @@
     "mixFloor": 0.15,
     "hookFloor": 0.1
   },
-  "mix": { "frontieres": 2, "devine": 1, "rankle": 0 },
+  "mix": { "frontieres": 2, "devine": 1, "plus-ou-moins": 1, "rankle": 0 },
   "short": true,
   "hooks": {
     "frontieres": {
@@ -26,6 +26,18 @@
         { "id": "h0", "text": ["Which countries", "do you cross? 🧭"], "say": "Which countries do you have to cross?" },
         { "id": "h1", "text": ["No flying.", "Which way? 🧭"], "say": "No flying. Which way do you go?" },
         { "id": "h2", "text": ["Find the route", "before the map ⏱️"], "say": "Find the route before the map draws it." }
+      ]
+    },
+    "plus-ou-moins": {
+      "fr": [
+        { "id": "h0", "text": ["Tiens 5 manches", "sans erreur 🔥"], "say": "Tiens cinq manches sans te tromper." },
+        { "id": "h1", "text": ["Je craque à", "quelle manche ? 😬"], "say": "Devine à quelle manche je craque." },
+        { "id": "h2", "text": ["Plus ou moins ?", "Réponds avant moi ⏱️"], "say": "Plus ou moins ? Réponds avant moi." }
+      ],
+      "en": [
+        { "id": "h0", "text": ["Survive 5 rounds", "no mistakes 🔥"], "say": "Survive five rounds without a mistake." },
+        { "id": "h1", "text": ["Guess the round", "I crack on 😬"], "say": "Guess which round I crack on." },
+        { "id": "h2", "text": ["Higher or lower?", "Beat me to it ⏱️"], "say": "Higher or lower? Answer before I do." }
       ]
     },
     "devine": {

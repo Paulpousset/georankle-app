@@ -8,6 +8,7 @@ import { AppTrailer, appTrailerSeconds, type AppTrailerProps } from './concepts/
 import { DevineConcept, devineSeconds, type DevineProps } from './concepts/DevineConcept';
 import { FrontieresConcept, frontieresSeconds, type FrontieresProps } from './concepts/FrontieresConcept';
 import { FPS as CONCEPT_FPS } from './concepts/kit';
+import { PlusOuMoinsConcept, plusOuMoinsConceptSeconds, type PlusOuMoinsConceptProps } from './concepts/PlusOuMoinsConcept';
 import { RankleConcept, rankleSeconds, type RankleProps } from './concepts/RankleConcept';
 
 const defaultProps: ShortProps = {
@@ -119,12 +120,33 @@ const rankleDefaults: RankleProps = {
   cta: 'Gratuit sur iOS et Android',
   icon: 'icon.png',
 };
+const plusOuMoinsDefaults: PlusOuMoinsConceptProps = {
+  hook: ['Tiens 5 manches', 'sans erreur 🔥'],
+  category: 'Population',
+  categoryIcon: '👥',
+  unit: 'habitants',
+  question: '{b} : plus ou moins peuplé ?',
+  more: 'PLUS',
+  less: 'MOINS',
+  fail: 'Raté !',
+  outro: 'Tu fais mieux ?',
+  outroSub: 'Ton score en commentaire 👇',
+  cta: 'Gratuit sur iOS et Android',
+  icon: 'icon.png',
+  cards: [
+    { id: '250', cc: 'fr', name: 'France', value: 68e6, display: '68,2 M' },
+    { id: '276', cc: 'de', name: 'Allemagne', value: 84e6, display: '84,1 M' },
+    { id: '764', cc: 'th', name: 'Thaïlande', value: 71e6, display: '71,7 M' },
+  ],
+  rounds: [{ higher: true, pick: true }, { higher: false, pick: true }],
+};
 
 const concepts = [
   { id: 'AppTrailer', component: AppTrailer, seconds: appTrailerSeconds, defaults: trailerDefaults },
   { id: 'DevineConcept', component: DevineConcept, seconds: devineSeconds, defaults: devineDefaults },
   { id: 'FrontieresConcept', component: FrontieresConcept, seconds: frontieresSeconds, defaults: frontieresDefaults },
   { id: 'RankleConcept', component: RankleConcept, seconds: rankleSeconds, defaults: rankleDefaults },
+  { id: 'PlusOuMoinsConcept', component: PlusOuMoinsConcept, seconds: plusOuMoinsConceptSeconds, defaults: plusOuMoinsDefaults },
 ] as const;
 
 export const Root = () => (

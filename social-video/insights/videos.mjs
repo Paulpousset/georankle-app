@@ -23,8 +23,11 @@ export function describe(key) {
   const [, base, lang, variant] = m;
   const name = base.replace(/^\d+-/, '');
   const concept = CONCEPTS.find(([, re]) => re.test(name))?.[0] ?? 'autre';
-  const atlas = ['frontieres', 'devine', 'rankle', 'bande-annonce'].includes(concept);
-  const format = !atlas ? 'app' : /(^|-)court-/.test(name) ? 'court' : 'long';
+  // Vidéos concepts (concepts.mjs) : court-… ou lot-…, ou les premiers lots
+  // numérotés (03-frontieres-maroc). Le reste vient du tournage de l'app.
+  const court = /(^|-)court-/.test(name);
+  const atlas = court || /^lot-/.test(name) || ['frontieres', 'devine', 'rankle', 'bande-annonce'].includes(concept);
+  const format = !atlas ? 'app' : court ? 'court' : 'long';
   const h = name.match(/-(h\d+)$/);
   return { concept, format, hook: atlas ? (h ? h[1] : 'h0') : variant, lang };
 }

@@ -428,6 +428,82 @@ function randomRankle() {
   throw new Error('aucune partie Rankle trouvée');
 }
 
+// ───────────────────────────── Plus ou moins ─────────────────────────────
+// Mêmes durées que src/concepts/PlusOuMoinsConcept.tsx (placement de la voix off).
+const PMT = { START: 0.3, ROUND: 3.6, PICK: 2.0, VERDICT: 2.75, FAIL_HOLD: 1.4, OUTRO: 2.4 };
+const PM_ROUNDS = 5;
+const PM_THEMES = {
+  population: {
+    icon: '👥', category: L('Population', 'Population'), unit: L('habitants', 'people'),
+    question: L('{b} : plus ou moins peuplé ?', '{b}: more or fewer people?'),
+    format: (v) => (v >= 1e9 ? `${dec(v / 1e9)} ${L('Md', 'B')}` : v >= 1e6 ? `${dec(v / 1e6)} M` : `${Math.round(v / 1e3)} k`),
+  },
+  area: {
+    icon: '📏', category: L('Superficie', 'Area'), unit: 'km²',
+    question: L('{b} : plus grand ou plus petit ?', '{b}: bigger or smaller?'),
+    format: (v) => `${(v >= 1e6 ? dec(v / 1e6) + ' M' : Math.round(v / 1e3) + ' k')} km²`,
+  },
+};
+const pmUsed = {};
+// Une chaîne de six pays connus, chaque pas à moins de 2× du précédent (chaque
+// manche se joue) ; le joueur a juste partout sauf à la dernière.
+function randomPlusOuMoins(i) {
+  const themeId = Object.keys(PM_THEMES)[i % 2];
+  const value = (c) => game.countries.find((x) => x.cca3 === c)?.data?.[themeId]?.value;
+  const pool = KNOWN.filter((c) => value(c) > 0 && atlasId(c) && cca2[c] && (pmUsed[c] ?? 0) < 2);
+  for (let tries = 0; tries < 2000; tries++) {
+    const chain = [pick(pool)];
+    while (chain.length < PM_ROUNDS + 1) {
+      const prev = value(chain[chain.length - 1]);
+      const options = pool.filter((c) => !chain.includes(c) && value(c) / prev < 2 && prev / value(c) < 2);
+      if (!options.length) break;
+      chain.push(pick(options));
+    }
+    if (chain.length < PM_ROUNDS + 1) continue;
+    for (const c of chain) pmUsed[c] = (pmUsed[c] ?? 0) + 1;
+    return { themeId, chain, value };
+  }
+  throw new Error('aucune chaîne Plus ou moins trouvée');
+}
+function plusOuMoins(name, { themeId, chain, value }, hook = null) {
+  const th = PM_THEMES[themeId];
+  const cards = chain.map((c) => ({ id: atlasId(c), cc: cca2[c], name: fr(c), value: value(c), display: th.format(value(c)) }));
+  const rounds = cards.slice(1).map((c, i) => {
+    const higher = c.value > cards[i].value;
+    return { higher, pick: i === PM_ROUNDS - 1 ? !higher : higher };
+  });
+  const at = (i) => PMT.START + i * PMT.ROUND;
+  const failAt = at(PM_ROUNDS - 1) + PMT.VERDICT;
+  const end = failAt + PMT.FAIL_HOLD + PMT.OUTRO;
+  const voice = [{ text: hook?.say ?? L('Tiens cinq manches sans te tromper.', 'Survive five rounds without a mistake.'), at: 0 }];
+  rounds.forEach((r, i) => {
+    if (i > 0) voice.push({ text: `${say(cards[i + 1].name)} ?`, at: at(i) + 0.15, maxLate: 0.5 });
+    voice.push({ text: r.pick ? L('Plus !', 'Higher!') : L('Moins !', 'Lower!'), at: at(i) + PMT.PICK - 0.15, maxLate: 0.4 });
+  });
+  voice.push({ text: L('Ah non… raté.', 'Oh no… wrong.'), at: failAt + 0.3, maxLate: 0.8 });
+  voice.push({ text: L('Tu fais mieux ?', 'Can you beat it?'), at: failAt + PMT.FAIL_HOLD + 0.2, maxLate: 1 });
+  voice.push({ text: END_LINE, at: end + 0.4, maxLate: 1 });
+  console.log('  ', cards.map((c) => `${c.name} ${c.display}`).join(' / '));
+  write(name, {
+    composition: 'PlusOuMoinsConcept',
+    hook: hook?.text ?? L(['Tiens 5 manches', 'sans erreur 🔥'], ['Survive 5 rounds', 'no mistakes 🔥']),
+    category: th.category,
+    categoryIcon: th.icon,
+    unit: th.unit,
+    question: th.question,
+    more: L('PLUS', 'HIGHER'),
+    less: L('MOINS', 'LOWER'),
+    fail: L('Raté !', 'Wrong!'),
+    cards,
+    rounds,
+    outro: L('Tu fais mieux ?', 'Can you beat it?'),
+    outroSub: L('Ton score en commentaire 👇', 'Drop your score 👇'),
+    ...COMMON,
+    voice,
+    post: L(`Plus ou moins : tu aurais tenu combien de manches ? 🔥\n\n${POST_TAGS}`, `Higher or lower: how many rounds would you survive? 🔥\n\n${POST_TAGS}`),
+  });
+}
+
 // ───────────────────────────── Réglages (--tuning) ─────────────────────────────
 // Ordre des concepts d'un lot au prorata de tuning.mix, bien réparti (tourniquet
 // pondéré : à chaque vidéo, le concept le plus en retard sur sa part).
@@ -524,6 +600,10 @@ if (REDO) {
       const r2 = SHORT ? null : randomFrontier(7, 10, 'EXPERT', usedPairs);
       const hook = pickHook('frontieres', { a: r1.path[0].name, b: r1.path[r1.path.length - 1].name });
       frontieres(`${prefix}-${num}-frontieres-${slug(r1.path[0].name)}${hook ? `-${hook.id}` : ''}`, r2 ? [r1, r2] : [r1], hook);
+    } else if (kind === 'plus-ou-moins') {
+      const pm = randomPlusOuMoins(i);
+      const hook = pickHook('plus-ou-moins', {});
+      plusOuMoins(`${prefix}-${num}-plusmoins-${slug(fr(pm.chain[0]))}${hook ? `-${hook.id}` : ''}`, pm, hook);
     } else {
       const { themes, play } = randomRankle();
       rankle(`${prefix}-${num}-rankle-${slug(fr(play[5][0]))}`, themes, play);

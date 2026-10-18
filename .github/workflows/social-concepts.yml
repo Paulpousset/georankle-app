@@ -87,7 +87,8 @@ jobs:
             [ "$n" -gt 0 ] && plans=$(jq -c --arg l "$lang" --argjson n "$n" '. + [{lang: $l, count: $n}]' <<<"$plans")
           done
           echo "plans=$plans" >> "$GITHUB_OUTPUT"
-          echo "renders=$(jq -c '[.[] | .lang as $l | range(4) | {lang: $l, shard: .}]' <<<"$plans")" >> "$GITHUB_OUTPUT"
+          # Jusqu'à 4 rendus en parallèle par langue (jamais plus que de vidéos).
+          echo "renders=$(jq -c '[.[] | .lang as $l | ([.count, 4] | min) as $n | range($n) | {lang: $l, shard: ., of: $n}]' <<<"$plans")" >> "$GITHUB_OUTPUT"
           echo "Lot : $plans"
 
   plan:
@@ -137,7 +138,7 @@ jobs:
           include-hidden-files: true
 
   render:
-    name: Rendu ${{ matrix.lang }} ${{ matrix.shard }}/4
+    name: Rendu ${{ matrix.lang }} ${{ matrix.shard }}/${{ matrix.of }}
     needs: [setup, plan]
     runs-on: ubuntu-latest
     timeout-minutes: 120
@@ -158,7 +159,7 @@ jobs:
       - name: Rendu
         working-directory: social-video/composer
         env:
-          SHARD: ${{ matrix.shard }}/4
+          SHARD: ${{ matrix.shard }}/${{ matrix.of }}
         run: |
           npm ci --no-audit --no-fund
           node concepts.mjs --assets
