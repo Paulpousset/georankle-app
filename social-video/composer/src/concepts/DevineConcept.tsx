@@ -22,8 +22,16 @@ export type DevineProps = {
   outroSub: string;
   cta: string;
   icon: string;
+  lang?: string;
   voice?: VoiceLine[];
 };
+
+// Textes fixes de la vidéo, selon la langue de la fiche (concepts.mjs --lang).
+const TX = {
+  fr: { more: '▲ plus', less: '▼ moins', tag: 'Devine le pays', mystery: 'Pays mystère', guess: 'Essai', found: (n: number) => `Trouvé en ${n} !`, endTitle: 'Un pays mystère chaque jour', ctaSub: 'Lien dans la bio' },
+  en: { more: '▲ more', less: '▼ less', tag: 'Guess the country', mystery: 'Mystery country', guess: 'Guess', found: (n: number) => `Got it in ${n}!`, endTitle: 'A mystery country every day', ctaSub: 'Link in bio' },
+};
+const txOf = (lang?: string) => (lang === 'en' ? TX.en : TX.fr);
 
 const FIRST = 1.0;
 const GUESS_S = 3.4;
@@ -43,7 +51,7 @@ function Arrow({ deg, size }: { deg: number; size: number }) {
   return <div style={{ fontSize: size, lineHeight: 1, transform: `rotate(${deg}deg)`, fontFamily: mono, fontWeight: 700 }}>↑</div>;
 }
 
-function BigTile({ tile, flip }: { tile: DevineTile; flip: number }) {
+function BigTile({ tile, flip, lang }: { tile: DevineTile; flip: number; lang?: string }) {
   // flip : 0 = face cachée, 1 = retournée.
   const shown = flip > 0.5;
   // Première moitié : le dos bascule jusqu'à la tranche ; seconde moitié : la face arrive.
@@ -72,7 +80,7 @@ function BigTile({ tile, flip }: { tile: DevineTile; flip: number }) {
             <div style={{ fontFamily: mono, fontSize: 26, opacity: 0.9, textTransform: 'uppercase', letterSpacing: 2 }}>{tile.label}</div>
             {tile.arrow != null ? <Arrow deg={tile.arrow} size={74} /> : null}
             {tile.value ? <div style={{ fontFamily: mono, fontWeight: 700, fontSize: tile.value.length > 9 ? 36 : 44 }}>{tile.value}</div> : null}
-            {tile.dir ? <div style={{ fontFamily: mono, fontWeight: 700, fontSize: 30 }}>{tile.dir > 0 ? '▲ plus' : '▼ moins'}</div> : null}
+            {tile.dir ? <div style={{ fontFamily: mono, fontWeight: 700, fontSize: 30 }}>{tile.dir > 0 ? txOf(lang).more : txOf(lang).less}</div> : null}
           </>
         ) : (
           <div style={{ fontFamily: serif, fontWeight: 900, fontSize: 90, color: C.tan }}>?</div>
@@ -128,6 +136,7 @@ export function DevineConcept(p: DevineProps) {
   const typed = row ? row.name.slice(0, Math.round(interpolate(since, [0, TYPE_S * 0.8], [0, row.name.length], clamp))) : '';
   const hookOut = interpolate(t, [2.2, 2.6], [1, 0], clamp);
   const reveal = spring({ frame: frame - revealAt * fps, fps, config: { damping: 11 } });
+  const tx = txOf(p.lang);
   const shake = inPause ? Math.sin(t * 40) * interpolate(t - pauseStart, [0, PAUSE_S], [0, 6], clamp) : 0;
 
   return (
@@ -138,11 +147,11 @@ export function DevineConcept(p: DevineProps) {
           <Hook lines={p.hook} y={80} size={100} />
         </div>
         <div style={{ position: 'absolute', top: 70, left: 0, right: 0, textAlign: 'center', opacity: 1 - hookOut }}>
-          <Tag>Devine le pays</Tag>
+          <Tag>{tx.tag}</Tag>
           <div style={{ fontFamily: serif, fontWeight: 900, fontSize: 74, color: C.sepia, marginTop: 18 }}>
-            {t >= revealAt ? p.answer.name : 'Pays mystère'}
+            {t >= revealAt ? p.answer.name : tx.mystery}
           </div>
-          <div style={{ fontFamily: mono, fontSize: 32, color: C.brown, marginTop: 6 }}>{t >= revealAt ? '' : `${p.intro} · Essai ${Math.max(1, cur + 1)}/${n}`}</div>
+          <div style={{ fontFamily: mono, fontSize: 32, color: C.brown, marginTop: 6 }}>{t >= revealAt ? '' : `${p.intro} · ${tx.guess} ${Math.max(1, cur + 1)}/${n}`}</div>
         </div>
 
         {/* Barre de recherche + essai en cours */}
@@ -170,7 +179,7 @@ export function DevineConcept(p: DevineProps) {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 30, justifyContent: 'center', marginTop: 40 }}>
               {row.tiles.map((tile, i) => {
                 const f = interpolate(since, [TYPE_S + i * FLIP_EVERY, TYPE_S + i * FLIP_EVERY + 0.25], [0, 1], clamp);
-                return <BigTile key={i} tile={tile} flip={f} />;
+                return <BigTile key={i} tile={tile} flip={f} lang={p.lang} />;
               })}
             </div>
           </div>
@@ -199,7 +208,7 @@ export function DevineConcept(p: DevineProps) {
             <div style={{ fontFamily: mono, fontSize: 38, color: C.vermilion, marginTop: 14, opacity: interpolate(t - revealAt, [2, 2.4], [0, 1], clamp) }}>{p.outroSub}</div>
           </div>
         ) : null}
-        <Stamp text={`Trouvé en ${n} !`} at={revealAt + 0.5} top={720} size={80} color={C.green} />
+        <Stamp text={tx.found(n)} at={revealAt + 0.5} top={720} size={80} color={C.green} />
 
         {/* Historique des essais */}
         <div style={{ position: 'absolute', bottom: 330, left: 40, right: 40, display: 'flex', flexDirection: 'column', gap: 14, opacity: t >= revealAt ? 0 : 1 }}>
@@ -210,7 +219,7 @@ export function DevineConcept(p: DevineProps) {
         <Progress total={end} />
       </Paper>
 
-      <EndCard title="Un pays mystère chaque jour" cta={p.cta} ctaSub="Lien dans la bio" icon={p.icon} start={end} />
+      <EndCard title={tx.endTitle} cta={p.cta} ctaSub={tx.ctaSub} icon={p.icon} start={end} />
 
       <Audio src={sfx('music')} volume={(f) => {
         const s = f / FPS;

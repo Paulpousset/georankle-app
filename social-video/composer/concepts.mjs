@@ -34,15 +34,21 @@ const BATCH = Number(arg('batch', 0));
 // essais, deux Frontières pour un Devine (Frontières est le plus regardé).
 const SHORT = process.argv.includes('--short');
 let seed = Number(arg('seed', Date.now() % 100000));
+// --lang en : mêmes vidéos en anglais (voix, textes à l'écran, noms de pays,
+// légende). Sans --lang, sortie française inchangée.
+const LANG = arg('lang', 'fr');
+const EN = LANG === 'en';
 
 const stats = Object.fromEntries(JSON.parse(readFileSync(join(ROOT, 'assets', 'countries_stats.json'), 'utf8')).map((c) => [c.cca3, c]));
 const game = JSON.parse(readFileSync(join(ROOT, 'assets', 'game_data.json'), 'utf8'));
 const cca2 = Object.fromEntries(
   [...readFileSync(join(ROOT, 'src', 'data', 'countryCodes.ts'), 'utf8').matchAll(/([A-Z]{3}): '([A-Z]{2})'/g)].map((m) => [m[1], m[2].toLowerCase()]),
 );
-const fr = (c) => stats[c].name;
+const fr = EN ? (c) => stats[c].name_en : (c) => stats[c].name;
 // Nom à dire à voix haute (« Congo (Rép. dém.) » se lit mal).
 const say = (name) => name.replace('Congo (Rép. dém.)', 'RDC');
+// Choix d'un texte selon la langue : L('français', 'English').
+const L = (f, e) => (EN ? e : f);
 
 // Captures de l'app actuelle (build web, viewport iPhone, assets/captures) et
 // bruitages de l'app, copiés dans public/ avant le bundle.
@@ -58,9 +64,9 @@ const write = (name, ep) => {
   writeFileSync(join(EPISODES, `${name}.json`), JSON.stringify(ep, null, 2));
   console.log('•', name);
 };
-const POST_TAGS = '#geographie #quiz #culturegenerale #geog #jeu';
-const COMMON = { cta: 'Gratuit sur iOS et Android', icon: 'icon.png', lang: 'fr' };
-const END_LINE = 'GeoG, gratuit sur iOS et Android.';
+const POST_TAGS = L('#geographie #quiz #culturegenerale #geog #jeu', '#geography #quiz #trivia #geog #geographyquiz');
+const COMMON = { cta: L('Gratuit sur iOS et Android', 'Free on iOS & Android'), icon: 'icon.png', lang: LANG };
+const END_LINE = L('GeoG, gratuit sur iOS et Android.', 'GeoG, free on iOS and Android.');
 
 // Hasard reproductible (--seed) : un même lot se régénère à l'identique.
 const rand = () => {
@@ -132,10 +138,11 @@ function bearing(a, b) {
   const x = Math.cos(rad(a.lat)) * Math.sin(rad(b.lat)) - Math.sin(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.cos(rad(b.lng - a.lng));
   return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
 }
-const CONT = { Africa: 'Afrique', Asia: 'Asie', Europe: 'Europe', Oceania: 'Océanie', Americas: 'Amériques' };
-const contOf = (s) => (s.region === 'Americas' ? (s.subregion === 'South America' ? 'Am. du Sud' : 'Am. du Nord') : CONT[s.region] ?? s.region);
-const short = (v) => (v >= 1e9 ? `${(v / 1e9).toFixed(1).replace('.', ',')} Md` : v >= 1e6 ? `${Math.round(v / 1e6)} M` : `${Math.round(v / 1e3)} k`);
-const km2 = (v) => (v >= 1e6 ? `${(v / 1e6).toFixed(1).replace('.', ',')} M km²` : `${Math.round(v / 1e3)}k km²`);
+const CONT = EN ? { Americas: 'Americas' } : { Africa: 'Afrique', Asia: 'Asie', Europe: 'Europe', Oceania: 'Océanie', Americas: 'Amériques' };
+const contOf = (s) => (s.region === 'Americas' ? (s.subregion === 'South America' ? L('Am. du Sud', 'S. America') : L('Am. du Nord', 'N. America')) : CONT[s.region] ?? s.region);
+const dec = (x) => (EN ? x.toFixed(1) : x.toFixed(1).replace('.', ','));
+const short = (v) => (v >= 1e9 ? `${dec(v / 1e9)} ${L('Md', 'B')}` : v >= 1e6 ? `${Math.round(v / 1e6)} M` : `${Math.round(v / 1e3)} k`);
+const km2 = (v) => (v >= 1e6 ? `${dec(v / 1e6)} M km²` : `${Math.round(v / 1e3)}k km²`);
 const km = (c, t) => distance(stats[c], stats[t]);
 function guessRow(g, t) {
   const a = stats[g];
@@ -147,16 +154,22 @@ function guessRow(g, t) {
     tiles: [
       { label: 'Continent', value: contOf(a), state: contOf(a) === contOf(b) ? 'ok' : 'ko' },
       { label: 'Direction', value: same ? '🎯' : '', arrow: same ? null : Math.round(bearing(a, b)), state: same ? 'ok' : 'info' },
-      { label: 'Distance', value: same ? '0 km' : `${Math.round(distance(a, b)).toLocaleString('fr-FR').replace(/\s/g, ' ')} km`, state: same ? 'ok' : distance(a, b) < 1500 ? 'near' : 'info' },
+      { label: 'Distance', value: same ? '0 km' : `${EN ? Math.round(distance(a, b)).toLocaleString('en-US') : Math.round(distance(a, b)).toLocaleString('fr-FR').replace(/\s/g, ' ')} km`, state: same ? 'ok' : distance(a, b) < 1500 ? 'near' : 'info' },
       { label: 'Population', value: short(a.population), dir: same ? 0 : b.population > a.population ? 1 : -1, state: same ? 'ok' : 'ko' },
-      { label: 'Superficie', value: km2(a.area), dir: same ? 0 : b.area > a.area ? 1 : -1, state: same ? 'ok' : 'ko' },
-      { label: 'Côtes', value: a.coastline ? 'Côtier' : 'Enclavé', state: a.coastline === b.coastline ? 'ok' : 'ko' },
+      { label: L('Superficie', 'Area'), value: km2(a.area), dir: same ? 0 : b.area > a.area ? 1 : -1, state: same ? 'ok' : 'ko' },
+      { label: L('Côtes', 'Coast'), value: a.coastline ? L('Côtier', 'Coastal') : L('Enclavé', 'Landlocked'), state: a.coastline === b.coastline ? 'ok' : 'ko' },
     ],
   };
 }
 function reaction(g, t) {
   const d = km(g, t);
   const sameCont = contOf(stats[g]) === contOf(stats[t]);
+  if (EN) {
+    if (d < 1500) return pick(['So close!', 'Burning hot!', 'Really close!']);
+    if (sameCont) return pick(['Right continent.', 'Getting closer.', 'Getting warmer.']);
+    if (d < 3500) return 'Close, but wrong continent.';
+    return pick(['Way off.', 'Cold, ice cold.', 'Not even close.', 'Missed, by a mile.']);
+  }
   if (d < 1500) return pick(['Tout près !', 'Brûlant !', 'Ça brûle !']);
   if (sameCont) return pick(['Bon continent.', 'On se rapproche.', 'Ça chauffe.']);
   if (d < 3500) return 'Proche, mais pas le bon continent.';
@@ -168,28 +181,28 @@ function devine(name, target, guesses) {
   const pauseStart = guessAt(n - 2) + DV.GUESS;
   const revealAt = guessAt(n - 1) + DV.TYPE + 6 * DV.FLIP + 0.4;
   const end = guessAt(n - 1) + 1.8 + DV.REVEAL;
-  const voice = [{ text: 'Trouve ce pays avant moi.', at: 0 }];
+  const voice = [{ text: L('Trouve ce pays avant moi.', 'Find this country before I do.'), at: 0 }];
   guesses.forEach((g, i) => {
     if (i === n - 1) return;
-    voice.push({ text: `${say(fr(g))} ?`, at: guessAt(i) + 0.1, maxLate: i === 0 ? 1.3 : 0.7 });
+    voice.push({ text: `${say(fr(g))}${L(' ', '')}?`, at: guessAt(i) + 0.1, maxLate: i === 0 ? 1.3 : 0.7 });
     voice.push({ text: reaction(g, target), at: guessAt(i) + DV.TYPE + 6 * DV.FLIP + 0.1, maxLate: 0.8 });
   });
-  voice.push({ text: 'Tu l’as ? Trois, deux, un…', at: pauseStart + 0.1, maxLate: 0.5 });
-  voice.push({ text: `Réponse : ${say(fr(target))} !`, at: revealAt, maxLate: 0.6 });
-  voice.push({ text: 'Trouvé en combien d’essais ?', at: revealAt + 1.8, maxLate: 1 });
+  voice.push({ text: L('Tu l’as ? Trois, deux, un…', 'Got it? Three, two, one…'), at: pauseStart + 0.1, maxLate: 0.5 });
+  voice.push({ text: L(`Réponse : ${say(fr(target))} !`, `It's ${say(fr(target))}!`), at: revealAt, maxLate: 0.6 });
+  voice.push({ text: L('Trouvé en combien d’essais ?', 'How many guesses did you need?'), at: revealAt + 1.8, maxLate: 1 });
   voice.push({ text: END_LINE, at: end + 0.4, maxLate: 1 });
   write(name, {
     composition: 'DevineConcept',
-    hook: ['Trouve ce pays', 'avant moi 🕵️'],
-    intro: 'Six indices par essai',
+    hook: L(['Trouve ce pays', 'avant moi 🕵️'], ['Find this country', 'before I do 🕵️']),
+    intro: L('Six indices par essai', 'Six clues per guess'),
     rows: guesses.map((g) => guessRow(g, target)),
-    pause: 'Tu l’as ?',
+    pause: L('Tu l’as ?', 'Got it?'),
     answer: { cc: cca2[target], name: fr(target) },
-    outro: 'Trouvé en combien d’essais ?',
-    outroSub: 'Dis-le en commentaire 👇',
+    outro: L('Trouvé en combien d’essais ?', 'How many guesses did you need?'),
+    outroSub: L('Dis-le en commentaire 👇', 'Tell me in the comments 👇'),
     ...COMMON,
     voice,
-    post: `Un pays mystère, six indices par essai. Tu le trouves en combien ? 🕵️\n\n${POST_TAGS}`,
+    post: L(`Un pays mystère, six indices par essai. Tu le trouves en combien ? 🕵️\n\n${POST_TAGS}`, `A mystery country, six clues per guess. How many tries do you need? 🕵️\n\n${POST_TAGS}`),
   });
 }
 // Quatre essais de plus en plus proches (loin, moyen, même continent, voisin), puis la cible.
@@ -275,44 +288,45 @@ function frontierRound(from, to, level, view) {
   if (!path) throw new Error(`pas de chemin ${from} → ${to}`);
   const miss = path.filter((c) => !atlasId(c));
   if (miss.length) throw new Error(`world-atlas : pas d'identifiant pour ${miss.join(', ')}`);
-  return { level, view: view ?? viewOf(path), path: path.map((c) => ({ id: atlasId(c), cc: cca2[c], name: fr(c) })) };
+  const LEVEL_EN = { MOYEN: 'MEDIUM', EXPERT: 'EXPERT', FACILE: 'EASY' };
+  return { level: EN ? LEVEL_EN[level] ?? level : level, view: view ?? viewOf(path), path: path.map((c) => ({ id: atlasId(c), cc: cca2[c], name: fr(c) })) };
 }
 function frontieres(name, rounds) {
   const roundSeconds = (r) => FR.INTRO + FR.THINK + r.path.length * FR.step(r.path.length) + FR.HOLD;
   // Une réplique par moment fort, jamais en rafale : voice.mjs abandonne une
   // réplique qui arriverait trop tard derrière la précédente.
   // Demande de Paul (15/10) : on demande quels pays traverser, pas combien.
-  const voice = [{ text: 'Quels pays faut-il traverser ?', at: 0 }];
+  const voice = [{ text: L('Quels pays faut-il traverser ?', 'Which countries do you have to cross?'), at: 0 }];
   let s0 = 0.4;
   rounds.forEach((r, ri) => {
     const a = r.path[0].name;
     const b = r.path[r.path.length - 1].name;
     const step = FR.step(r.path.length);
     const draw = s0 + FR.INTRO + FR.THINK;
-    voice.push({ text: `Départ, ${say(a)}. Arrivée, ${say(b)}. Quels pays traverser ?`, at: ri === 0 ? 2.1 : s0 + 0.3, maxLate: 1.5 });
+    voice.push({ text: L(`Départ, ${say(a)}. Arrivée, ${say(b)}. Quels pays traverser ?`, `Start, ${say(a)}. Finish, ${say(b)}. Which countries do you cross?`), at: ri === 0 ? 2.1 : s0 + 0.3, maxLate: 1.5 });
     // Les pays traversés ne sont dits que sur les chemins courts (le rythme le permet).
     // Chemins courts : chaque pays est dit quand il se pose. Sinon, la liste
     // tombe d'un coup une fois le chemin dessiné.
     const mid = r.path.slice(1, -1).map((c) => say(c.name));
-    const list = mid.length > 1 ? `${mid.slice(0, -1).join(', ')} et ${mid[mid.length - 1]}` : mid[0];
+    const list = mid.length > 1 ? `${mid.slice(0, -1).join(', ')} ${L('et', 'and')} ${mid[mid.length - 1]}` : mid[0];
     if (step >= 0.9 && r.path.length <= 6) mid.forEach((n, j) => n.length <= 12 && voice.push({ text: n, at: draw + (j + 1) * step, maxLate: 0.3 }));
-    else voice.push({ text: `Par ${list} !`, at: draw + r.path.length * step + 0.15, maxLate: 1.2 });
+    else voice.push({ text: L(`Par ${list} !`, `Through ${list}!`), at: draw + r.path.length * step + 0.15, maxLate: 1.2 });
     s0 += roundSeconds(r);
   });
-  voice.push({ text: 'Tu avais trouvé ? Dis-le en commentaire.', at: s0 + 0.1, maxLate: 0.8 });
+  voice.push({ text: L('Tu avais trouvé ? Dis-le en commentaire.', 'Did you get it? Tell me in the comments.'), at: s0 + 0.1, maxLate: 0.8 });
   voice.push({ text: END_LINE, at: s0 + 2.6 + 0.4, maxLate: 1 });
   for (const r of rounds) console.log('  ', r.path.map((p) => p.name).join(' → '));
   const first = rounds[0].path;
   write(name, {
     composition: 'FrontieresConcept',
-    hook: ['Quels pays', 'traverser ? 🧭'],
+    hook: L(['Quels pays', 'traverser ? 🧭'], ['Which countries', 'do you cross? 🧭']),
     rounds,
-    ask: 'Quels pays traverser ?',
-    outro: rounds.length > 1 ? 'Tu avais trouvé les deux ?' : 'Tu avais trouvé ?',
-    outroSub: 'Ton score en commentaire 👇',
+    ask: L('Quels pays traverser ?', 'Which countries to cross?'),
+    outro: rounds.length > 1 ? L('Tu avais trouvé les deux ?', 'Did you get both?') : L('Tu avais trouvé ?', 'Did you get it?'),
+    outroSub: L('Ton score en commentaire 👇', 'Your score in the comments 👇'),
     ...COMMON,
     voice,
-    post: `${first[0].name} → ${first[first.length - 1].name} sans avion : quels pays faut-il traverser ? 🧭\n\n${POST_TAGS}`,
+    post: L(`${first[0].name} → ${first[first.length - 1].name} sans avion : quels pays faut-il traverser ? 🧭\n\n${POST_TAGS}`, `${first[0].name} → ${first[first.length - 1].name} without flying: which countries do you have to cross? 🧭\n\n${POST_TAGS}`),
   });
 }
 // Pays déjà traversés dans le lot : on évite de repasser toujours par la Russie et l'Allemagne (on tolère un pays déjà vu de plus tous les 1000 essais).
@@ -412,12 +426,23 @@ function randomRankle() {
 
 // ───────────────────────────── Vitrine ou lot ─────────────────────────────
 // --redo fichier : refaire des Frontières déjà en file, une ligne
-// « nom|Départ|Arrivée » (noms français), en une manche.
+// « nom|Départ|Arrivée » (noms français), en une manche. Une ligne
+// « nom|devine|Pays » refait un Devine sur ce pays (essais tirés au hasard,
+// --short pour trois essais). Avec --lang en, mêmes vidéos en anglais.
 const REDO = arg('redo');
 if (REDO) {
   const byFr = Object.fromEntries(Object.values(stats).map((c) => [c.name, c.cca3]));
   for (const line of readFileSync(REDO, 'utf8').split('\n').filter(Boolean)) {
     const [name, a, b] = line.split('|');
+    if (a === 'devine') {
+      if (!byFr[b]) throw new Error(`pays inconnu : ${b}`);
+      let g = null;
+      for (let k = 0; !g && k < 50; k++) g = devineGuesses(byFr[b]);
+      if (!g) throw new Error(`pas d'essais pour ${b}`);
+      console.log('  ', g.map(fr).join(' → '));
+      devine(name, byFr[b], g);
+      continue;
+    }
     if (!byFr[a] || !byFr[b]) throw new Error(`pays inconnu : ${a} / ${b}`);
     frontieres(name, [frontierRound(byFr[a], byFr[b], 'MOYEN')]);
   }

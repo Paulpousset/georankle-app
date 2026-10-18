@@ -23,8 +23,16 @@ export type FrontieresProps = {
   outroSub: string;
   cta: string;
   icon: string;
+  lang?: string;
   voice?: VoiceLine[];
 };
+
+// Textes fixes de la vidéo, selon la langue de la fiche (concepts.mjs --lang).
+const TX = {
+  fr: { round: 'Manche', path: 'Le chemin !', endTitle: 'Relie le monde, frontière par frontière', ctaSub: 'Lien dans la bio' },
+  en: { round: 'Round', path: 'The route!', endTitle: 'Connect the world, one border at a time', ctaSub: 'Link in bio' },
+};
+const txOf = (lang?: string) => (lang === 'en' ? TX.en : TX.fr);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const topo = world as any;
@@ -52,7 +60,7 @@ function mainland(f: Feature<Geometry>): Feature<Polygon> {
   return polys.reduce((a, b) => (geoArea(b) > geoArea(a) ? b : a));
 }
 
-function Round({ r, idx, total, local, ask }: { r: FrontierRound; idx: number; total: number; local: number; ask: string }) {
+function Round({ r, idx, total, local, ask, roundWord }: { r: FrontierRound; idx: number; total: number; local: number; ask: string; roundWord: string }) {
   const { fps } = useVideoConfig();
   const [w, s, e, n] = r.view;
   const projection = geoMercator().fitExtent(
@@ -96,7 +104,7 @@ function Round({ r, idx, total, local, ask }: { r: FrontierRound; idx: number; t
       {/* Titre de la manche */}
       <div style={{ position: 'absolute', top: 240, left: 0, right: 0, textAlign: 'center', transform: `scale(${0.8 + 0.2 * intro})`, opacity: intro }}>
         <Tag>
-          {total > 1 ? `Manche ${idx + 1}/${total} · ` : ''}{r.level}
+          {total > 1 ? `${roundWord} ${idx + 1}/${total} · ` : ''}{r.level}
         </Tag>
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 18, marginTop: 24, fontFamily: serif, fontWeight: 900, fontSize: titleSize, color: C.sepia, whiteSpace: 'nowrap' }}>
           <Img src={flag(first.cc)} style={{ width: 84, height: 63, borderRadius: 8, objectFit: 'cover' }} />
@@ -180,18 +188,19 @@ export function FrontieresConcept(p: FrontieresProps) {
   const local = t - roundStart(p, cur);
   const hookOut = interpolate(t, [0.4 + INTRO_S + 0.6, 0.4 + INTRO_S + 1.0], [1, 0], clamp);
   const allDone = t >= roundStart(p, p.rounds.length);
+  const tx = txOf(p.lang);
 
   return (
     <AbsoluteFill>
       <Paper>
-        {!allDone ? <Round r={r} idx={cur} total={p.rounds.length} local={local} ask={p.ask} /> : null}
+        {!allDone ? <Round r={r} idx={cur} total={p.rounds.length} local={local} ask={p.ask} roundWord={tx.round} /> : null}
         <div style={{ opacity: hookOut, position: 'absolute', inset: 0 }}>
           <Hook lines={p.hook} y={60} size={78} />
         </div>
         {p.rounds.map((round, i) => {
           const at = roundStart(p, i) + INTRO_S + THINK_S + round.path.length * stepS(round) + 0.1;
           return t < roundStart(p, i + 1) ? (
-            <Stamp key={i} text="Le chemin !" at={at} top={MAP_TOP + MAP_H - 190} size={96} color={C.green} rotate={-6} />
+            <Stamp key={i} text={tx.path} at={at} top={MAP_TOP + MAP_H - 190} size={96} color={C.green} rotate={-6} />
           ) : null;
         })}
         {allDone ? (
@@ -202,7 +211,7 @@ export function FrontieresConcept(p: FrontieresProps) {
         ) : null}
         <Progress total={end} />
       </Paper>
-      <EndCard title="Relie le monde, frontière par frontière" cta={p.cta} ctaSub="Lien dans la bio" icon={p.icon} start={end} />
+      <EndCard title={tx.endTitle} cta={p.cta} ctaSub={tx.ctaSub} icon={p.icon} start={end} />
 
       <Audio src={sfx('tension')} volume={(f) => musicVolume(p.voice, f / FPS, 0.6, end)} />
       <VoiceTrack voice={p.voice} />
