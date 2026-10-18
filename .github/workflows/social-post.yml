@@ -9,7 +9,8 @@ name: Publication réseaux sociaux
 # Pour tout couper : variable de dépôt SOCIAL_POST_ENABLED = false (le
 # workflow tourne alors en simulation, rien ne part).
 #
-# Secrets : ZERNIO_API_KEY et/ou UPLOAD_POST_API_KEY ; comptes en direct
+# Secrets : ZERNIO_API_KEY et/ou UPLOAD_POST_API_KEY ; ZERNIO_API_KEY_EN (2e
+# compte Zernio, comptes anglais, vidéos -en-) ; comptes en direct
 # (branchés depuis /hq › Vidéos › Comptes) : SOCIAL_ACCOUNTS_KEY, et pour
 # TikTok TIKTOK_CLIENT_KEY + TIKTOK_CLIENT_SECRET.
 # Variables : UPLOAD_POST_USER (profil Upload-Post), SOCIAL_POST_ENABLED,
@@ -73,6 +74,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
+          ZERNIO_API_KEY_EN: ${{ secrets.ZERNIO_API_KEY_EN }}
           UPLOAD_POST_API_KEY: ${{ secrets.UPLOAD_POST_API_KEY }}
           UPLOAD_POST_USER: ${{ vars.UPLOAD_POST_USER }}
           UPLOAD_POST_PLATFORMS: ${{ vars.UPLOAD_POST_PLATFORMS }}

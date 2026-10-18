@@ -27,6 +27,8 @@
 //   UPLOAD_POST_PLATFORMS  plateformes envoyées à Upload-Post
 //                        (défaut youtube si Zernio est branché, sinon
 //                        tiktok,instagram,youtube)
+//   ZERNIO_API_KEY_EN    clé du 2e compte Zernio (comptes anglais) : vidéos -en-,
+//                        leur propre file, aux mêmes créneaux (facultative)
 //   SOCIAL_ACCOUNTS_KEY  clé du coffre des comptes en direct (accounts.enc),
 //                        la même que dans Vercel (facultative)
 //   TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET  appli TikTok (renouvellement
@@ -186,27 +188,27 @@ async function postUploadPost(item, { video, caption }) {
 
 const ZERNIO_API = 'https://zernio.com/api/v1';
 
-async function zernio(path, init = {}) {
+async function zernio(path, init = {}, key = env.ZERNIO_API_KEY) {
   const res = await fetch(`${ZERNIO_API}${path}`, {
     ...init,
-    headers: { Authorization: `Bearer ${env.ZERNIO_API_KEY}`, 'Content-Type': 'application/json', ...init.headers },
+    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', ...init.headers },
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(`Zernio ${path} ${res.status} : ${JSON.stringify(body).slice(0, 500)}`);
   return { status: res.status, body };
 }
 
-async function zernioAccounts() {
-  const { body } = await zernio('/accounts');
+async function zernioAccounts(key) {
+  const { body } = await zernio('/accounts', {}, key);
   return (body.accounts || []).filter((a) => a.isActive !== false && a.enabled !== false);
 }
 
-async function postZernio(item, { video, caption }, accounts) {
+async function postZernio(item, { video, caption }, accounts, key) {
   const data = readFileSync(video);
   const { body: up } = await zernio('/media/presign', {
     method: 'POST',
     body: JSON.stringify({ filename: item.name, contentType: 'video/mp4', size: data.length }),
-  });
+  }, key);
   const put = await fetch(up.uploadUrl, { method: 'PUT', headers: { 'Content-Type': 'video/mp4' }, body: data });
   if (!put.ok) throw new Error(`Zernio envoi de la vidéo ${put.status}`);
 
@@ -221,7 +223,7 @@ async function postZernio(item, { video, caption }, accounts) {
   const { status, body } = await zernio('/posts', {
     method: 'POST',
     body: JSON.stringify({ content: caption, mediaItems: [{ type: 'video', url: up.publicUrl }], platforms, publishNow: true }),
-  });
+  }, key);
   // 207 : publié sur une partie des comptes seulement.
   if (status === 207) console.warn(`Zernio : publication partielle ${JSON.stringify(body).slice(0, 500)}`);
   return { zernio: accounts.map((a) => a.platform), zernioPost: body.post?._id ?? null };
@@ -317,12 +319,14 @@ const todo = env.VIDEO ? queued.filter((item) => item.key === env.VIDEO) : queue
 if (env.VIDEO && !todo.length) throw new Error(`${env.VIDEO} : introuvable dans la file (déjà publiée ?)`);
 console.log(`[${TARGET}] ${todo.length} vidéo(s) en attente dont ${wanted.length} au format ${KIND || 'quelconque'} (langues ${LANGS.join(', ')}, releases ≥ shorts-${MIN_RELEASE}).`);
 
-const accounts = USE_ZERNIO ? await zernioAccounts() : [];
+const accounts = USE_ZERNIO ? await zernioAccounts(env.ZERNIO_API_KEY) : [];
 const allDirect = USE_DIRECT ? (DRY_RUN ? loadDirect() : await refreshDirect(loadDirect())) : [];
 // Comptes dans une langue publiée (fr) : même vidéo que Zernio. Les autres
 // (compte Instagram anglais…) ont leur propre file, plus bas.
 const direct = allDirect.filter((a) => LANGS.includes(langOf(a)));
-const otherLangs = [...new Set(allDirect.map(langOf).filter((l) => !LANGS.includes(l)))];
+// 2e compte Zernio (autre adresse mail) pour les comptes anglais : ZERNIO_API_KEY_EN.
+const ZERNIO_BY_LANG = TARGET === 'youtube' ? {} : Object.fromEntries([['en', env.ZERNIO_API_KEY_EN]].filter(([, k]) => k));
+const otherLangs = [...new Set([...allDirect.map(langOf), ...Object.keys(ZERNIO_BY_LANG)].filter((l) => !LANGS.includes(l)))];
 const targets = [
   ...accounts.map((a) => `${a.platform} (Zernio)`),
   ...direct.map((a) => `${a.platform} ${a.name} (direct)`),
@@ -361,16 +365,23 @@ for (const item of todo.slice(0, COUNT)) {
 // même format que le créneau, une vidéo jamais publiée deux fois.
 for (const lang of env.VIDEO ? [] : otherLangs) {
   const accs = allDirect.filter((a) => langOf(a) === lang);
+  const zKey = ZERNIO_BY_LANG[lang];
+  const zAccs = zKey ? await zernioAccounts(zKey) : [];
   const { todo: queue } = pending(state, [lang]);
-  console.log(`[${TARGET}/${lang}] ${queue.length} vidéo(s) en attente pour ${accs.map((a) => a.name).join(', ')}.`);
+  console.log(`[${TARGET}/${lang}] ${queue.length} vidéo(s) en attente pour ${[...zAccs.map((a) => `${a.platform} (Zernio ${lang})`), ...accs.map((a) => a.name)].join(', ')}.`);
   for (const item of queue.slice(0, COUNT)) {
     const files = download(item);
     if (DRY_RUN) {
-      console.log(`[simulation] ${item.key} → ${accs.map((a) => `${a.platform} ${a.name}`).join(', ')}\n  ${files.caption.replace(/\n/g, '\n  ')}`);
+      console.log(`[simulation] ${item.key} → ${[...zAccs.map((a) => `${a.platform} (Zernio ${lang})`), ...accs.map((a) => `${a.platform} ${a.name}`)].join(', ')}\n  ${files.caption.replace(/\n/g, '\n  ')}`);
       continue;
     }
-    const done = await postDirect(item, files, accs);
-    if (!done.direct) break;
+    const done = {};
+    if (zAccs.length) {
+      try { Object.assign(done, await postZernio(item, files, zAccs, zKey)); }
+      catch (e) { failed = true; console.error(e.message); }
+    }
+    if (accs.length) Object.assign(done, await postDirect(item, files, accs));
+    if (!Object.keys(done).length) break;
     console.log(`Publié ${item.key} → ${JSON.stringify(done)}`);
     state.posted.push({ key: item.key, tag: item.tag, group: item.group, variant: item.variant, at: new Date().toISOString(), lang, ...done });
     saveState(state);
