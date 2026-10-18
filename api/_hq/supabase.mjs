@@ -190,6 +190,8 @@ export async function supabase({ days, from, to }) {
       ]);
       return { friendships: friends, pending };
     },
+    // Mise à jour obligatoire (table app_min_version, réglée depuis l'onglet Déploiements).
+    minVersion: async () => db.all('app_min_version?select=platform,min_version,updated_at&order=platform'),
     ops: async () => {
       const [cron, flags, pushes] = await Promise.all([
         db.all('cron_run_log?select=job,status,detail,created_at&order=created_at.desc&limit=200', 200),

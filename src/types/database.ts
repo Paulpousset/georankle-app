@@ -263,6 +263,24 @@ export type Database = {
           },
         ]
       }
+      app_min_version: {
+        Row: {
+          min_version: string
+          platform: string
+          updated_at: string
+        }
+        Insert: {
+          min_version?: string
+          platform: string
+          updated_at?: string
+        }
+        Update: {
+          min_version?: string
+          platform?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       feature_flags: {
         Row: {
           enabled: boolean
