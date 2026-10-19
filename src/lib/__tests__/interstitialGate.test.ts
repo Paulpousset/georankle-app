@@ -41,7 +41,7 @@ describe('interstitial frequency gate — decide()', () => {
   it('shows at most once per interval however many breaks happen', () => {
     let state: GateState | null = null;
     let shows = 0;
-    // A break every minute for one hour → 60 min / 12 min = 5 ads.
+    // A break every minute for one hour → 60 min / 6 min = 10 ads.
     for (let t = 1; t <= 60; t++) {
       const r = decide(state, START + t * MIN, START);
       if (r.show) shows++;

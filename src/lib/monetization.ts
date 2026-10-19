@@ -307,7 +307,7 @@ export async function claimRewardedAd(): Promise<RewardedAdResult> {
 // ── Interstitial ads (flag-gated, frequency-capped) ──────────────────────────
 // Unlike rewarded ads, interstitials are shown proactively at natural breaks
 // (leaving a finished game) and grant nothing — so there's no server claim, just
-// the ad. The frequency gate (interstitialGate.ts: one per 12 min of play,
+// the ad. The frequency gate (interstitialGate.ts: one per 6 min of play,
 // daily cap) protects retention. Skippability (a skip button after ~5 s on
 // video creatives) is decided by the ad network, not by us.
 
@@ -356,7 +356,7 @@ function loadAndShowInterstitial(sdk: AdsSdk): Promise<void> {
 /**
  * Maybe show an interstitial at a natural break. Call this when the player
  * leaves a game — it decides internally whether to actually show (flag off,
- * less than 12 min since the last ad / app launch, or daily cap hit → no-op). Fire and
+ * less than 6 min since the last ad / app launch, or daily cap hit → no-op). Fire and
  * forget: navigation can proceed behind the ad. Never throws.
  */
 export async function maybeShowInterstitial(): Promise<void> {
