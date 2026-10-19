@@ -30,6 +30,7 @@ import { a11yButton, a11yHidden } from '../lib/a11y';
 import { shareSoloResult } from '../lib/shareSolo';
 import { storeLinkForWeb } from '../lib/links';
 import { track } from '../lib/analytics';
+import { afterAdBreak } from '../lib/monetization';
 import type { GameMode } from '../types';
 import { ScoreText } from './ScoreText';
 import { ReferralNudge } from './ReferralNudge';
@@ -142,7 +143,7 @@ export function SoloEndActions({
               'same',
               tr(language, 'Rejouer la même partie', 'Replay the same game'),
               RefreshCcw,
-              onReplaySame,
+              afterAdBreak(onReplaySame),
               'primary',
             )
           : null}
@@ -154,7 +155,7 @@ export function SoloEndActions({
               'new',
               tr(language, 'Nouvelle partie', 'New game'),
               Shuffle,
-              onNewGame,
+              afterAdBreak(onNewGame),
               onShare || onReplaySame ? 'secondary' : 'primary',
             )}
           </View>
