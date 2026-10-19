@@ -312,7 +312,7 @@ export async function claimRewardedAd(): Promise<RewardedAdResult> {
 // video creatives) is decided by the ad network, not by us.
 
 /** Load + show one interstitial; resolves when it closes (or fails). */
-function loadAndShowInterstitial(sdk: AdsSdk): Promise<void> {
+function loadAndShowInterstitial(sdk: AdsSdk, loadTimeoutMs = AD_LOAD_TIMEOUT_MS): Promise<void> {
   const configured = INTERSTITIAL_AD_UNIT_IDS[Platform.OS];
   const unitId = configured && configured.length > 0 ? configured : sdk.TestIds.INTERSTITIAL;
   const ad = sdk.InterstitialAd.createForAdRequest(unitId);
@@ -328,7 +328,7 @@ function loadAndShowInterstitial(sdk: AdsSdk): Promise<void> {
     };
     let timer = setTimeout(
       () => settle(() => reject(new Error('interstitial load timeout'))),
-      AD_LOAD_TIMEOUT_MS,
+      loadTimeoutMs,
     );
     subs.push(
       ad.addAdEventListener(sdk.AdEventType.LOADED, () => {
@@ -359,7 +359,9 @@ function loadAndShowInterstitial(sdk: AdsSdk): Promise<void> {
  * less than 6 min since the last ad / app launch, or daily cap hit → no-op). Fire and
  * forget: navigation can proceed behind the ad. Never throws.
  */
-export async function maybeShowInterstitial(): Promise<void> {
+export async function maybeShowInterstitial(
+  { loadTimeoutMs = AD_LOAD_TIMEOUT_MS }: { loadTimeoutMs?: number } = {},
+): Promise<void> {
   // Mode tournage : aucune pub ne doit couvrir une vidéo.
   if (RECORDING_MODE) return;
   if (!(await isFeatureEnabled('interstitial_ads_v2'))) return;
@@ -378,12 +380,34 @@ export async function maybeShowInterstitial(): Promise<void> {
   if (!sdk) return;
   try {
     await initAdsOnce(sdk);
-    await loadAndShowInterstitial(sdk);
+    await loadAndShowInterstitial(sdk, loadTimeoutMs);
     track('interstitial_shown', {});
   } catch (e) {
     log.warn('interstitial failed', e);
     track('interstitial_failed', {});
   }
+}
+
+/** Between two games the player is waiting on the tap: give a slow ad less time. */
+const BETWEEN_GAMES_LOAD_TIMEOUT_MS = 5000;
+let betweenGamesBusy = false;
+
+/**
+ * Wrap a "next game" action (replay, new game, next level, next daily) so an
+ * interstitial can show first — players often chain games without ever going
+ * back to the menu. Unlike the menu break, the next game must NOT start behind
+ * the ad (its timer would run), so this waits for the ad to close, then runs
+ * `start`. Taps while an ad break is in progress are ignored.
+ */
+export function afterAdBreak(start: () => void): () => void {
+  return () => {
+    if (betweenGamesBusy) return;
+    betweenGamesBusy = true;
+    void maybeShowInterstitial({ loadTimeoutMs: BETWEEN_GAMES_LOAD_TIMEOUT_MS }).finally(() => {
+      betweenGamesBusy = false;
+      start();
+    });
+  };
 }
 
 // ── Banner ads (flag-gated) ──────────────────────────────────────────────────

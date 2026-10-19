@@ -9,6 +9,7 @@ import type { RecordLevelResult } from '../lib/story';
 import { variantForSeed } from '../lib/languages';
 import { pickBandCountries } from '../lib/matchCountries';
 import { track } from '../lib/analytics';
+import { afterAdBreak } from '../lib/monetization';
 
 import { ClassicGame } from './ClassicGame';
 import StreakGame from './StreakGame';
@@ -86,8 +87,8 @@ export default function StoryGameHost({
           maxLevelBefore={maxLevelBefore}
           lives={lives}
           signedIn={signedIn}
-          onNext={() => onPlayLevel(level.level + 1)}
-          onReplay={() => onPlayLevel(level.level)}
+          onNext={afterAdBreak(() => onPlayLevel(level.level + 1))}
+          onReplay={afterAdBreak(() => onPlayLevel(level.level))}
           onMap={onExit}
         />
       </SafeAreaProvider>

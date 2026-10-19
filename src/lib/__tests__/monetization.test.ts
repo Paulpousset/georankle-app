@@ -9,6 +9,7 @@ import {
   getRewardedAdsRemaining,
   rewardedAdsAvailable,
   bannerAdConfig,
+  afterAdBreak,
 } from '../monetization';
 import { __resetFeatureFlagCache } from '../featureFlags';
 import { supabase } from '../supabase';
@@ -262,5 +263,23 @@ describe('bannerAdConfig', () => {
     const config = await bannerAdConfig();
     expect(config?.sdk).toBe(adsMock);
     expect(config?.unitId).toMatch(/^ca-app-pub-2429865520138981\//);
+  });
+});
+
+describe('afterAdBreak', () => {
+  it('starts the next game once, even on a double tap, when no ad is due', async () => {
+    flagsOff();
+    const start = jest.fn();
+    const next = afterAdBreak(start);
+    next();
+    next();
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(start).toHaveBeenCalledTimes(1);
+    // Once the break is over, the next tap goes through again.
+    next();
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(start).toHaveBeenCalledTimes(2);
   });
 });

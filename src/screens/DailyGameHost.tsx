@@ -29,6 +29,7 @@ import RegionGameFlow from './RegionGameFlow';
 import ChallengeQuiz from './ChallengeQuiz';
 import VersusCapitals from './VersusCapitals';
 import DailyEnd from './DailyEnd';
+import { afterAdBreak } from '../lib/monetization';
 
 interface DailyGameHostProps {
   mode: GameMode;
@@ -308,7 +309,7 @@ export default function DailyGameHost({
             result={ending.result}
             streak={streak}
             streakIncreased={ending.streakIncreased}
-            onNext={(next) => (onPlayDaily ? onPlayDaily(next) : onExit())}
+            onNext={(next) => afterAdBreak(() => (onPlayDaily ? onPlayDaily(next) : onExit()))()}
             onShare={onShare}
             onDetail={() => setShowEnd(false)}
             onHub={onExit}
