@@ -177,6 +177,14 @@ const THEMATIC = [
     paths: { fr: '/guides/quiz-capitales-d-asie/', en: '/en/guides/asia-capitals-quiz/' },
   },
   {
+    id: 'guide-southam-capitals-quiz',
+    paths: { fr: '/guides/quiz-capitales-d-amerique-du-sud/', en: '/en/guides/south-america-capitals-quiz/' },
+  },
+  {
+    id: 'guide-africa-flag-families',
+    paths: { fr: '/guides/familles-de-drapeaux-africains/', en: '/en/guides/african-flag-families/' },
+  },
+  {
     id: 'guide-area-ranking',
     paths: { fr: '/guides/pays-par-superficie/', en: '/en/guides/countries-by-area/' },
   },
@@ -287,6 +295,16 @@ export const COUNTRY_PAGES = [
   { cca3: 'COL', fr: 'colombie', en: 'colombia' },
   { cca3: 'KOR', fr: 'coree-du-sud', en: 'south-korea' },
   { cca3: 'SDN', fr: 'soudan', en: 'sudan' },
+  { cca3: 'UGA', fr: 'ouganda', en: 'uganda' },
+  { cca3: 'ESP', fr: 'espagne', en: 'spain' },
+  { cca3: 'DZA', fr: 'algerie', en: 'algeria' },
+  { cca3: 'IRQ', fr: 'irak', en: 'iraq' },
+  { cca3: 'ARG', fr: 'argentine', en: 'argentina' },
+  { cca3: 'AFG', fr: 'afghanistan', en: 'afghanistan' },
+  { cca3: 'CAN', fr: 'canada', en: 'canada' },
+  { cca3: 'YEM', fr: 'yemen', en: 'yemen' },
+  { cca3: 'MAR', fr: 'maroc', en: 'morocco' },
+  { cca3: 'AGO', fr: 'angola', en: 'angola' },
 ];
 
 const COUNTRY_ROUTES = COUNTRY_PAGES.map((p) => ({

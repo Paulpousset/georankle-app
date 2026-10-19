@@ -682,6 +682,51 @@ export function flagsNotorietyTable(scope, locale) {
   };
 }
 
+/** Les familles de drapeaux étudiées dans les guides (cca3, dans l'ordre d'affichage). */
+const FLAG_SETS = {
+  'africa-red-gold-green': {
+    codes: ['ETH', 'GHA', 'SEN', 'MLI', 'GIN', 'CMR', 'BEN', 'TGO', 'COG', 'GNB', 'STP', 'BFA', 'MRT'],
+    name: { fr: 'Les drapeaux africains rouge, or et vert', en: 'African flags in red, gold and green' },
+  },
+  'africa-pan-arab': {
+    codes: ['EGY', 'SDN', 'LBY', 'DZA', 'MAR', 'TUN'],
+    name: { fr: 'Les drapeaux du nord de l’Afrique', en: 'The flags of North Africa' },
+  },
+  'africa-borrowed': {
+    codes: ['LBR', 'TCD', 'CIV', 'NER', 'SOM', 'DJI'],
+    name: { fr: 'Drapeaux africains à rapprocher d’autres drapeaux', en: 'African flags that echo other flags' },
+  },
+  'africa-unique': {
+    codes: ['ZAF', 'MOZ', 'KEN', 'BWA', 'UGA', 'MWI', 'ZMB', 'NAM', 'AGO', 'ERI'],
+    name: { fr: 'Dix drapeaux africains sans équivalent', en: 'Ten African flags with no equivalent' },
+  },
+};
+
+/** Drapeau → pays → capitale pour une famille de drapeaux choisie (voir FLAG_SETS). */
+export function flagSetTable(scope, locale) {
+  const set = FLAG_SETS[scope];
+  if (!set) throw new Error(`flag-set : ensemble inconnu « ${scope} »`);
+  const fr = locale === 'fr';
+  const list = set.codes.map((code) => {
+    const c = COUNTRIES.find((x) => x.cca3 === code);
+    if (!c) throw new Error(`flag-set : ${code} absent des données du jeu`);
+    return c;
+  });
+  const rows = list.map(
+    (c) =>
+      cell(
+        `<img src="${flagUrl(c.cca3)}" alt="${attr(`${fr ? 'Drapeau de' : 'Flag of'} ${countryName(c, locale)}`)}" width="40" height="27" loading="lazy" decoding="async" />`,
+      ) +
+      cell(`<strong>${countryName(c, locale)}</strong>`) +
+      cell(capitalName(c, locale)),
+  );
+  return {
+    html: table(fr ? ['Drapeau', 'Pays', 'Capitale'] : ['Flag', 'Country', 'Capital'], rows),
+    items: list.map((c) => countryName(c, locale)),
+    name: set.name[locale],
+  };
+}
+
 /** Le tableau demandé par une directive `{{table:famille:portée}}`. */
 /**
  * Le classement des N premiers pays selon un champ (`population` ou `area`), avec
@@ -730,6 +775,18 @@ const CAPITAL_SETS = {
   'africa-namesakes': {
     codes: ['GIN', 'GNB', 'GNQ', 'COG', 'COD', 'SDN', 'SSD', 'NER', 'NGA'],
     name: { fr: 'Les pays africains aux noms jumeaux et leurs capitales', en: 'African countries with twin names and their capitals' },
+  },
+  'southam-andes': {
+    codes: ['VEN', 'COL', 'ECU', 'PER', 'BOL'],
+    name: { fr: 'Capitales du bloc andin et caribéen', en: 'Capitals of the Andean and Caribbean block' },
+  },
+  'southam-cone': {
+    codes: ['CHL', 'ARG', 'URY', 'PRY'],
+    name: { fr: 'Capitales du cône sud', en: 'Capitals of the Southern Cone' },
+  },
+  'southam-atlantic': {
+    codes: ['BRA', 'GUY', 'SUR'],
+    name: { fr: 'Capitales de la façade atlantique', en: 'Capitals of the Atlantic block' },
   },
   'asia-status': {
     codes: ['ISR', 'PSE', 'LKA', 'MYS', 'IDN', 'MMR', 'KAZ', 'ARE', 'TUR', 'IND', 'PAK'],
@@ -782,6 +839,7 @@ export const TABLES = {
   smallest: smallestTable,
   'capital-blocks': capitalBlocksTable,
   'capital-set': capitalSetTable,
+  'flag-set': flagSetTable,
   'flags-notoriety': flagsNotorietyTable,
   'population-top': populationTopTable,
   'area-top': areaTopTable,
