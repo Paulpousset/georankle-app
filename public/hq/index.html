@@ -963,10 +963,46 @@ function adDays(v) {
   return Object.values(days).sort((a, b) => a.x.localeCompare(b.x));
 }
 
+const AD_LABELS = Object.fromEntries(AD_FORMATS.slice(1));
+const adLabel = (f) => AD_LABELS[f] ?? f.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+
+/** Pays × format : impressions de chaque type de pub par pays, triés par revenus (filtre « Type de pub » appliqué). */
+function adCountries(v) {
+  const want = S.adFormat;
+  const fmts = [...new Set(v.map(adFmt))].filter(Boolean).sort((a, b) => sum(v.filter((r) => adFmt(r) === b), (r) => r.impressions) - sum(v.filter((r) => adFmt(r) === a), (r) => r.impressions));
+  const cols = want === 'all' ? fmts : fmts.filter((f) => f === want);
+  const by = {};
+  for (const r of v) {
+    const c = r.COUNTRY_ID ?? r.COUNTRY;
+    const o = (by[c] ??= { c, earnings: 0, impressions: 0 });
+    o[adFmt(r)] = (o[adFmt(r)] ?? 0) + r.impressions;
+    if (want === 'all' || adFmt(r) === want) { o.earnings += r.earnings; o.impressions += r.impressions; }
+  }
+  const rows = Object.values(by).filter((r) => r.impressions || r.earnings).sort((a, b) => b.earnings - a.earnings || b.impressions - a.impressions);
+  if (!cols.length) return '<div class="empty">Aucune pub de ce type sur la période.</div>';
+  return table([
+    { h: 'Pays', f: (r) => esc(country(r.c)) },
+    ...cols.map((f) => ({ h: esc(adLabel(f)), r: true, f: (r) => compact(r[f] ?? 0) })),
+    { h: 'Revenus', r: true, f: (r) => eur(r.earnings) },
+  ], rows, { limit: 15 });
+}
+
+/** Pubs vues par heure (24 h), empilées par format, selon le filtre « Type de pub ». */
+function adHours(v) {
+  const want = S.adFormat;
+  if (want !== 'all' && want !== 'interstitial' && want !== 'rewarded') return '<div class="empty">Ce type de pub n’est pas suivi à l’heure (seuls les interstitiels et les récompensées le sont).</div>';
+  const series = [
+    { key: 'interstitial', name: 'Interstitiel', color: 'var(--s1)' },
+    { key: 'rewarded', name: 'Récompensée', color: 'var(--s3)' },
+  ].filter((x) => want === 'all' || x.key === want);
+  return chart(series.map((x) => ({ name: x.name, color: x.color, points: P(v, (r) => r[x.key]) })), { type: 'bar', stacked: true, name: 'pubs-par-heure' });
+}
+
 function revenue() {
   const am = 'admob', as = 'adsense';
   const amSum = (k) => (v) => sum(v, (r) => r[k]);
   const ad = (f) => (v) => f(adDays(v));
+  const hourlyAds = S.days === 1 && !S.range;
   const formats = AD_FORMATS.map(([v, label]) => `<button class="chip" data-act="adfmt" data-v="${v}" aria-pressed="${S.adFormat === v}">${label}</button>`).join(' ');
   return `
   <h2 class="section">App · AdMob</h2>
@@ -980,10 +1016,14 @@ function revenue() {
     ${tile('Achats intégrés', 'supabase', 'economy', (v) => ({ value: fmt(v.iapPurchases), sub: 'pièces accordées (serveur)' }))}
   </div>
   <div class="grid two" style="margin-top:12px">
-    ${card('Revenus AdMob par jour', am, block(am, 'byDayFormat', ad((v) => chart([{ name: 'Revenus', color: 'var(--s1)', points: P(v, (r) => r.earnings) }], { type: 'bar', fmtY: (x) => eur(x) }))))}
-    ${card('Impressions AdMob par jour', am, block(am, 'byDayFormat', ad((v) => chart([{ name: 'Impressions', color: 'var(--s1)', points: P(v, (r) => r.impressions) }]))))}
+    ${hourlyAds
+      ? card('Pubs vues par heure', am, block(am, 'byHour', adHours), { extra: 'PostHog · app' })
+      : card('Revenus AdMob par jour', am, block(am, 'byDayFormat', ad((v) => chart([{ name: 'Revenus', color: 'var(--s1)', points: P(v, (r) => r.earnings) }], { type: 'bar', fmtY: (x) => eur(x) }))))}
+    ${hourlyAds ? '' : card('Impressions AdMob par jour', am, block(am, 'byDayFormat', ad((v) => chart([{ name: 'Impressions', color: 'var(--s1)', points: P(v, (r) => r.impressions) }]))))}
     ${card('Par format', am, block(am, 'byFormat', (v) => hlist(v, { label: (r) => r.FORMAT, value: (r) => r.earnings, show: (r) => `${eur(r.earnings)} · ${compact(r.impressions)} impr.` })))}
-    ${card('Par pays', am, block(am, 'byCountry', (v) => hlist(v, { label: (r) => r.COUNTRY, value: (r) => r.earnings, show: (r) => `${eur(r.earnings)} · ${compact(r.impressions)}` })))}
+  </div>
+  <div class="grid" style="margin-top:12px">
+    ${card(`Types de pub par pays${hourlyAds ? ' (aujourd’hui)' : ''}`, am, block(am, 'byCountryFormat', adCountries))}
   </div>
   <h2 class="section">Site · AdSense</h2>
   <div class="kpis">

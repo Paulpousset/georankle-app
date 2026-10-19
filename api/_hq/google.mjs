@@ -1,5 +1,5 @@
 /** Sources Google : Search Console, Google Play (avis + vitals), AdMob, AdSense. */
-import { env, need, http, settle, googleToken, isoDay, daysAgo, countryOk, periodOf } from './lib.mjs';
+import { env, need, http, settle, googleToken, isoDay, daysAgo, countryOk, periodOf, windowOf, hogql } from './lib.mjs';
 
 const PKG = 'com.paulpousset.geog';
 const ymd = (iso) => {
@@ -177,8 +177,37 @@ export async function admob({ days, from, to }) {
     byDayFormat: async () =>
       (await report(['DATE', 'FORMAT'])).map((r) => ({ ...r, x: `${r.DATE.slice(0, 4)}-${r.DATE.slice(4, 6)}-${r.DATE.slice(6)}` })),
     byCountry: async () => (await report(['COUNTRY'])).sort((a, b) => b.earnings - a.earnings).slice(0, 10),
+    // Pays × format : quels types de pub sont vus dans chaque pays.
+    byCountryFormat: () => report(['COUNTRY', 'FORMAT']),
     byApp: () => report(['APP']),
+    // AdMob ne descend pas sous le jour : en 24 h, les pubs vues par heure
+    // viennent des événements PostHog de l'app (les bannières n'en émettent pas).
+    ...(P.hourly ? { byHour: () => adsByHour(days) } : {}),
   });
+}
+
+const AD_EVENTS = {
+  interstitial_shown: 'interstitial',
+  rewarded_ad_earned: 'rewarded',
+  story_life_ad_claimed: 'rewarded',
+  story_coins_ad_claimed: 'rewarded',
+};
+
+/** Pubs vues par heure et par format (app native), sur les seaux de la fenêtre 24 h. */
+async function adsByHour(days) {
+  need(['POSTHOG_PERSONAL_API_KEY'], 'Clé perso PostHog (déjà dans .env.secrets)');
+  const W = windowOf({ days });
+  const list = Object.keys(AD_EVENTS).map((e) => `'${e}'`).join(',');
+  const rows = await hogql(`
+    select ${W.bucket} h, event, count()
+    from events where ${W.cur} and event in (${list}) and properties.$lib = 'posthog-react-native'
+    group by h, event`);
+  const by = {};
+  for (const [h, e, n] of rows) {
+    const b = (by[h] ??= { interstitial: 0, rewarded: 0 });
+    b[AD_EVENTS[e]] += n;
+  }
+  return W.buckets.map((x) => ({ x, interstitial: by[x]?.interstitial ?? 0, rewarded: by[x]?.rewarded ?? 0 }));
 }
 
 // ─── AdSense (site web) ─────────────────────────────────────────────────────
