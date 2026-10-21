@@ -1,0 +1,129 @@
+name: Vidéos concepts (lot)
+
+# Un lot de vidéos « atlas » sans tournage (Devine le pays, Frontières, Rankle),
+# dessinées dans le style de l'app avec la voix off ElevenLabs, rendues en
+# parallèle. Les vidéos arrivent dans une pré-version « Concepts #N » (tag
+# concepts-N) : PAS dans les releases shorts-N, donc rien n'est publié
+# automatiquement par social-post.yml.
+#
+# Secret : XI_API_KEY (sans lui, les vidéos sortent sans voix). Variables
+# facultatives : XI_VOICE_FR, XI_MODEL.
+on:
+  workflow_dispatch:
+    inputs:
+      count:
+        description: Nombre de vidéos
+        default: '24'
+        required: true
+      seed:
+        description: Graine (même graine = même lot)
+        default: '7'
+        required: true
+      short:
+        description: Vidéos courtes (~20 s, Frontières en 1 manche, Devine en 3 essais)
+        type: boolean
+        default: true
+  push:
+    branches: [claude/project-thread-2sqpxp, claude/project-thread-thyjdt]
+    paths:
+      - .github/workflows/social-concepts.yml
+      - social-video/composer/concepts.mjs
+      - social-video/composer/src/concepts/**
+
+permissions:
+  contents: write
+
+concurrency:
+  group: social-concepts-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  COUNT: ${{ github.event.inputs.count || '18' }}
+  SEED: ${{ github.event.inputs.seed || '15' }}
+  SHORT: ${{ github.event.inputs.short || 'true' }}
+  SHARDS: '4'
+
+jobs:
+  plan:
+    name: Fiches + voix off
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - name: Fiches et voix
+        working-directory: social-video/composer
+        env:
+          XI_API_KEY: ${{ secrets.XI_API_KEY }}
+          XI_VOICE_FR: ${{ vars.XI_VOICE_FR }}
+          XI_MODEL: ${{ vars.XI_MODEL }}
+        run: |
+          npm ci --no-audit --no-fund
+          node concepts.mjs --batch "$COUNT" --seed "$SEED" $([ "$SHORT" = true ] && echo --short)
+          node voice.mjs
+          mkdir -p public/voice
+      - uses: actions/upload-artifact@v4
+        with:
+          name: concepts-plan
+          path: |
+            social-video/out/episodes/
+            social-video/composer/public/voice/
+          include-hidden-files: true
+
+  render:
+    name: Rendu ${{ matrix.shard }}/4
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-color-emoji ffmpeg
+      - uses: actions/download-artifact@v4
+        with:
+          name: concepts-plan
+          path: social-video
+      - name: Rendu
+        working-directory: social-video/composer
+        env:
+          SHARD: ${{ matrix.shard }}/4
+        run: |
+          npm ci --no-audit --no-fund
+          node concepts.mjs --assets
+          node render.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: concepts-final-${{ matrix.shard }}
+          path: social-video/out/final/
+
+  release:
+    name: Pré-version
+    needs: render
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: concepts-final-*
+          merge-multiple: true
+          path: final
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          files=(final/*.mp4 final/*.txt)
+          [ ${#files[@]} -gt 0 ] || { echo "Aucune vidéo"; exit 1; }
+          tag="concepts-${{ github.run_number }}"
+          gh release create "$tag" "${files[@]}" --repo "${{ github.repository }}" --target "${{ github.sha }}" \
+            --prerelease --title "Concepts #${{ github.run_number }}" \
+            --notes "Lot de vidéos concepts (Devine le pays, Frontières, Rankle) avec voix off. Chaque .txt contient le texte à coller sous la vidéo du même nom. Rien n'est publié automatiquement."

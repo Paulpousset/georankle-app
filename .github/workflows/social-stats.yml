@@ -1,0 +1,35 @@
+name: Stats réseaux sociaux
+
+# Relève les stats des posts TikTok / Instagram (API analytics Zernio).
+# Lecture seule : rien n'est publié.
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: Jours en arrière
+        default: '60'
+  # Chaque lundi à 8 h (Paris, heure d'été), résumé dans l'onglet Actions.
+  schedule:
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  stats:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Relever les stats
+        env:
+          ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
+          DAYS: ${{ github.event.inputs.days || '60' }}
+        run: node social-video/publish/stats.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: social-stats
+          path: social-stats.json
