@@ -51,7 +51,7 @@ import { mkdtempSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  STATE_TAG, STATE_FILE, ORDER_FILE, DEFAULT_MIN_RELEASE_APP, kindFor, parisHourOf, postedFor as postedForTarget, upcoming,
+  STATE_TAG, STATE_FILE, ORDER_FILE, DEFAULT_MIN_RELEASE_APP, kindFor, parse, parisHourOf, postedFor as postedForTarget, upcoming,
 } from '../../api/_hq/social-queue.mjs';
 
 // Valeurs collées depuis un téléphone : on enlève espaces et retours à la ligne.
@@ -139,7 +139,24 @@ function download(item) {
   if (item.hasCaption) patterns.push('--pattern', item.name.replace(/\.mp4$/, '.txt'));
   gh('release', 'download', item.tag, ...patterns, '--dir', work, '--clobber');
   const txt = join(work, item.name.replace(/\.mp4$/, '.txt'));
-  return { video: join(work, item.name), caption: existsSync(txt) ? readFileSync(txt, 'utf8').trim() : '' };
+  const caption = existsSync(txt) ? readFileSync(txt, 'utf8').trim() : '';
+  return { video: join(work, item.name), caption: withAppLine(caption, parse(item.name)?.lang) };
+}
+
+// Les stats du 15/10 montrent presque aucun abonné ni passage vers l'app :
+// chaque légende nomme l'app et où la trouver, juste avant les hashtags.
+const APP_LINE = {
+  fr: '📲 Joue gratuitement sur GeoG (App Store et Google Play)',
+  en: '📲 Play free on GeoG (App Store and Google Play)',
+};
+function withAppLine(caption, lang) {
+  const line = APP_LINE[lang] ?? APP_LINE.en;
+  if (!caption || /\bgeog\b/i.test(caption.replace(/#\S+/g, ''))) return caption;
+  const lines = caption.split('\n');
+  const tags = lines.findIndex((l) => l.trim().startsWith('#'));
+  if (tags === -1) return `${caption}\n\n${line}`;
+  const before = lines.slice(0, tags).join('\n').trimEnd();
+  return `${before}\n\n${line}\n\n${lines.slice(tags).join('\n')}`;
 }
 
 // Titre YouTube : première ligne du texte, sans hashtags, 100 caractères max.

@@ -4,6 +4,12 @@ import { GLOBE_FPS, GlobeQuiz, globeQuizSeconds, type GlobeQuizProps } from './G
 import { PLUS_FPS, PlusOuMoins, plusOuMoinsSeconds, type PlusOuMoinsProps } from './PlusOuMoins';
 import { QUIZ_FPS, QuizTV, quizTVSeconds, type QuizTVProps } from './QuizTV';
 import { FPS, Short, endCardSeconds, type ShortProps } from './Short';
+import { AppTrailer, appTrailerSeconds, type AppTrailerProps } from './concepts/AppTrailer';
+import { DevineConcept, devineSeconds, type DevineProps } from './concepts/DevineConcept';
+import { FrontieresConcept, frontieresSeconds, type FrontieresProps } from './concepts/FrontieresConcept';
+import { FPS as CONCEPT_FPS } from './concepts/kit';
+import { PlusOuMoinsConcept, plusOuMoinsConceptSeconds, type PlusOuMoinsConceptProps } from './concepts/PlusOuMoinsConcept';
+import { RankleConcept, rankleSeconds, type RankleProps } from './concepts/RankleConcept';
 
 const defaultProps: ShortProps = {
   clip: 'sample.mp4',
@@ -75,8 +81,92 @@ const quizDefaults: QuizTVProps = {
   icon: 'icon.png',
 };
 
+// Concepts « atlas » (concepts.mjs fait les vraies fiches) : petits exemples pour le studio.
+const trailerDefaults: AppTrailerProps = {
+  hook: ['12 jeux de géo.', 'Une seule app.'],
+  shots: [{ file: 'shots/02-modes.png', title: '12 modes de jeu', sub: 'Choisis ton terrain' }],
+  outro: 'GeoG',
+  cta: 'Gratuit sur iOS et Android',
+  ctaSub: 'Lien dans la bio',
+  icon: 'icon.png',
+};
+const devineDefaults: DevineProps = {
+  hook: ['Trouve ce pays', 'avant moi 🕵️'],
+  intro: 'Six indices par essai',
+  rows: [{ cc: 'mn', name: 'Mongolie', tiles: [{ label: 'Continent', value: 'Asie', state: 'ok' }] }, { cc: 'mn', name: 'Mongolie', tiles: [{ label: 'Continent', value: 'Asie', state: 'ok' }] }],
+  pause: 'Tu l’as ?',
+  answer: { cc: 'mn', name: 'Mongolie' },
+  outro: 'Trouvé en combien d’essais ?',
+  outroSub: 'Dis-le en commentaire 👇',
+  cta: 'Gratuit sur iOS et Android',
+  icon: 'icon.png',
+};
+const frontieresDefaults: FrontieresProps = {
+  hook: ['Combien de frontières', 'minimum ? 🧭'],
+  rounds: [{ level: 'FACILE', view: [-12, 35, 30, 60], path: [{ id: '250', cc: 'fr', name: 'France' }, { id: '276', cc: 'de', name: 'Allemagne' }, { id: '616', cc: 'pl', name: 'Pologne' }] }],
+  ask: 'Combien de pays à traverser ?',
+  outro: 'Tu avais trouvé ?',
+  outroSub: 'Ton score en commentaire 👇',
+  cta: 'Gratuit sur iOS et Android',
+  icon: 'icon.png',
+};
+const rankleDefaults: RankleProps = {
+  hook: ['Chaque pays dans', 'sa meilleure catégorie'],
+  rule: 'Le plus petit total gagne',
+  themes: [{ emoji: '👥', label: 'Population' }, { emoji: '📏', label: 'Superficie' }],
+  turns: [{ cc: 'cn', name: 'Chine', theme: 0, rank: 2 }, { cc: 'ru', name: 'Russie', theme: 1, rank: 1 }],
+  outro: 'Tu fais mieux ?',
+  outroSub: 'Ton total en commentaire 👇',
+  cta: 'Gratuit sur iOS et Android',
+  icon: 'icon.png',
+};
+const plusOuMoinsDefaults: PlusOuMoinsConceptProps = {
+  hook: ['Tiens 5 manches', 'sans erreur 🔥'],
+  category: 'Population',
+  categoryIcon: '👥',
+  unit: 'habitants',
+  question: '{b} : plus ou moins peuplé ?',
+  more: 'PLUS',
+  less: 'MOINS',
+  fail: 'Raté !',
+  outro: 'Tu fais mieux ?',
+  outroSub: 'Ton score en commentaire 👇',
+  cta: 'Gratuit sur iOS et Android',
+  icon: 'icon.png',
+  cards: [
+    { id: '250', cc: 'fr', name: 'France', value: 68e6, display: '68,2 M' },
+    { id: '276', cc: 'de', name: 'Allemagne', value: 84e6, display: '84,1 M' },
+    { id: '764', cc: 'th', name: 'Thaïlande', value: 71e6, display: '71,7 M' },
+  ],
+  rounds: [{ higher: true, pick: true }, { higher: false, pick: true }],
+};
+
+const concepts = [
+  { id: 'AppTrailer', component: AppTrailer, seconds: appTrailerSeconds, defaults: trailerDefaults },
+  { id: 'DevineConcept', component: DevineConcept, seconds: devineSeconds, defaults: devineDefaults },
+  { id: 'FrontieresConcept', component: FrontieresConcept, seconds: frontieresSeconds, defaults: frontieresDefaults },
+  { id: 'RankleConcept', component: RankleConcept, seconds: rankleSeconds, defaults: rankleDefaults },
+  { id: 'PlusOuMoinsConcept', component: PlusOuMoinsConcept, seconds: plusOuMoinsConceptSeconds, defaults: plusOuMoinsDefaults },
+] as const;
+
 export const Root = () => (
   <>
+  {concepts.map((c) => (
+    <Composition
+      key={c.id}
+      id={c.id}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      component={c.component as any}
+      width={1080}
+      height={1920}
+      fps={CONCEPT_FPS}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      durationInFrames={Math.ceil(CONCEPT_FPS * (c.seconds as any)(c.defaults))}
+      defaultProps={c.defaults}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      calculateMetadata={({ props }) => ({ durationInFrames: Math.ceil(CONCEPT_FPS * (c.seconds as any)(props)) })}
+    />
+  ))}
   <Composition
     id="PlusOuMoins"
     component={PlusOuMoins}
