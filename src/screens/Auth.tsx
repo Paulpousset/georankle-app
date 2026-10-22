@@ -39,6 +39,7 @@ import { AppleLogo, GoogleLogo } from '../components/SocialLogos';
 import {
   confirmPasswordError,
   emailError,
+  emailTypoSuggestion,
   isValidEmail,
   isValidUsername,
   passwordError,
@@ -112,6 +113,7 @@ const Auth = ({ onAuthSuccess, language, initialMode = 'login' }: AuthProps) => 
   const canSubmitLogin = isValidEmail(email) && password.length > 0;
   const canSubmitSignup =
     isValidEmail(email) &&
+    emailTypoSuggestion(email) === null &&
     isValidUsername(username) &&
     password.length > 0 &&
     passwordErr === null &&
@@ -206,8 +208,11 @@ const Auth = ({ onAuthSuccess, language, initialMode = 'login' }: AuthProps) => 
 
   // Supabase Auth plafonne les emails (inscription, renvoi, réinitialisation) :
   // son message brut est en anglais et ne dit pas quoi faire.
+  function isEmailRateLimited(error: AuthError): boolean {
+    return error.code === 'over_email_send_rate_limit' || error.status === 429;
+  }
   function authEmailError(error: AuthError): string {
-    return error.code === 'over_email_send_rate_limit' || error.status === 429 ? t.emailRateLimited : error.message;
+    return isEmailRateLimited(error) ? t.emailRateLimited : error.message;
   }
 
   async function updateUsername() {
@@ -267,7 +272,8 @@ const Auth = ({ onAuthSuccess, language, initialMode = 'login' }: AuthProps) => 
     });
     setLoading(false);
     if (error) {
-      log.error('Password reset error:', error);
+      if (isEmailRateLimited(error)) log.warn('Password reset email rate limited:', error);
+      else log.error('Password reset error:', error);
       showAlert(t.error, authEmailError(error));
       return;
     }
@@ -297,6 +303,11 @@ const Auth = ({ onAuthSuccess, language, initialMode = 'login' }: AuthProps) => 
       showAlert(t.error, t.invalidEmail);
       return;
     }
+    // A misspelled domain would bounce the confirmation email.
+    if (emailTypoSuggestion(email)) {
+      showAlert(t.error, emailErr ?? t.invalidEmail);
+      return;
+    }
     if (!isValidUsername(username)) {
       showAlert(t.error, usernameErr ?? t.invalidUsername);
       return;
@@ -323,7 +334,9 @@ const Auth = ({ onAuthSuccess, language, initialMode = 'login' }: AuthProps) => 
     });
 
     if (error) {
-      log.error('Signup error details:', error);
+      // The email quota is a known limit (the player sees a message), not a bug.
+      if (isEmailRateLimited(error)) log.warn('Signup email rate limited:', error);
+      else log.error('Signup error details:', error);
       showAlert(t.error, authEmailError(error));
     } else if (data?.session) {
       // Email confirmation disabled: the session exists, persist the username now.
