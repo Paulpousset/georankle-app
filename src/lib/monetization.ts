@@ -46,6 +46,7 @@ import { loadAdsSdk, type AdsSdk } from './adsSdk';
 import { initWebAds, showWebInterstitial, showWebRewardedAd, webAdsSupported } from './adsWeb';
 import { supabase } from './supabase';
 import { isFeatureEnabled } from './featureFlags';
+import { fetchGoldenHour } from './goldenHour';
 import { shouldShowAtBreak } from './interstitialGate';
 import { announceAdBreak } from './adBreak';
 import { track } from './analytics';
@@ -84,7 +85,11 @@ export interface RewardedAdResult {
   reason?: 'disabled' | 'capped' | 'not_implemented' | 'dismissed' | 'failed';
 }
 
-/** Must mirror claim_rewarded_ad in seasons_monetization.sql. */
+/**
+ * Must mirror claim_rewarded_ad (supabase/migrations/20261022_01_golden_hour.sql).
+ * During a golden hour the server pays REWARDED_COINS × multiplier and raises
+ * the cap — see goldenHour.ts.
+ */
 export const REWARDED_DAILY_CAP = 5;
 export const REWARDED_COINS = 5;
 
@@ -205,19 +210,19 @@ export async function rewardedAdsAvailable(): Promise<boolean> {
 }
 
 /**
- * Ad claims left today for the signed-in user (server cap: 5/day, UTC), or
- * null when it can't be read — callers should then just show the button.
+ * Ad claims left today for the signed-in user (server cap: 5/day UTC, more
+ * during a golden hour), or null when it can't be read — callers should then
+ * just show the button.
  */
 export async function getRewardedAdsRemaining(): Promise<number | null> {
   try {
     const today = new Date().toISOString().slice(0, 10); // UTC, matches the SQL cap window
-    const { data, error } = await supabase
-      .from('ad_claims')
-      .select('count')
-      .eq('day', today)
-      .maybeSingle();
+    const [{ data, error }, golden] = await Promise.all([
+      supabase.from('ad_claims').select('count').eq('day', today).maybeSingle(),
+      fetchGoldenHour(),
+    ]);
     if (error) return null;
-    return Math.max(0, REWARDED_DAILY_CAP - (data?.count ?? 0));
+    return Math.max(0, golden.adCap - (data?.count ?? 0));
   } catch {
     return null;
   }

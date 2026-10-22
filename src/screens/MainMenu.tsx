@@ -34,6 +34,7 @@ import {
   Zap,
 } from 'lucide-react-native';
 import { AdBanner } from '../components/AdBanner';
+import { GoldenHourBanner } from '../components/GoldenHourBanner';
 import { AtlasFlame } from '../components/AtlasIcons';
 import { LanguageButton } from '../components/LanguageButton';
 import { AvatarPreview3D } from '../components/AvatarPreview3D';
@@ -776,6 +777,9 @@ export function MainMenu({
         </View>
 
         <View style={{ width: '100%', marginVertical: 16, overflow: 'hidden', height: 1, backgroundColor: c.border, opacity: 0.6 }} />
+
+        {/* Golden hour: ads pay ×3 for a while (or a teaser the day before). */}
+        {isAuthenticated && <GoldenHourBanner maxWidth={grid.col} />}
 
         {/* Sign-up call-to-action for logged-out players: what an account unlocks,
             straight to the sign-up screen. Dismissible for the session. */}

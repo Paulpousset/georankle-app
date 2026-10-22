@@ -12,6 +12,7 @@ import {
   afterAdBreak,
 } from '../monetization';
 import { __resetFeatureFlagCache } from '../featureFlags';
+import { __resetGoldenHourCache } from '../goldenHour';
 import { supabase } from '../supabase';
 import type { SupabaseMock } from '../../../test-utils/supabaseMock';
 
@@ -86,6 +87,7 @@ const adsMock = require('react-native-google-mobile-ads');
 beforeEach(() => {
   sb.__reset();
   __resetFeatureFlagCache();
+  __resetGoldenHourCache();
   adsMock.__state.__outcome = 'earned';
   adsMock.__state.__listeners = {};
 });
@@ -185,6 +187,12 @@ describe('getRewardedAdsRemaining', () => {
   it('returns the full cap when no row exists yet', async () => {
     sb.__setResult('ad_claims', { data: null, error: null });
     expect(await getRewardedAdsRemaining()).toBe(REWARDED_DAILY_CAP);
+  });
+
+  it('uses the raised cap during a golden hour', async () => {
+    sb.__setResult('ad_claims', { data: { count: 6 }, error: null });
+    sb.rpc.mockResolvedValueOnce({ data: { active: true, multiplier: 3, ad_cap: 10 }, error: null });
+    expect(await getRewardedAdsRemaining()).toBe(4);
   });
 
   it('never goes negative and returns null on read errors', async () => {
