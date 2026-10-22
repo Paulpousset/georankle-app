@@ -289,6 +289,9 @@ tr.on .box { background: var(--accent); border-color: var(--accent); }
 .xbtn:hover { background: var(--surface-2); }
 .addm { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .addm input[type=text] { flex: 1 1 150px; }
+.grow { display: grid; grid-template-columns: minmax(0, 1fr) auto auto 28px; gap: 8px; align-items: center; padding: 7px 0; border-top: 1px solid var(--border); font-size: 13px; }
+.grow .btn.ghost { font-size: 12px; padding: 4px 10px; }
+.addm label { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; }
 .cardbtn { border: 1px solid var(--border); background: var(--surface); border-radius: 8px; padding: 3px 9px; font-size: 12px; cursor: pointer; color: var(--ink-2); }
 .card-h .tools { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .seg.small button { padding: 3px 9px; font-size: 12px; }
@@ -340,10 +343,11 @@ tr.on .box { background: var(--accent); border-color: var(--accent); }
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
 // ─── Réglages ────────────────────────────────────────────────────────────────
-const SOURCES = ['growth', 'supabase', 'posthog', 'searchconsole', 'admob', 'adsense', 'sentry', 'play', 'appstore', 'deploys', 'social'];
+const SOURCES = ['growth', 'supabase', 'posthog', 'searchconsole', 'admob', 'adsense', 'sentry', 'play', 'appstore', 'deploys', 'social', 'golden'];
 const SOURCE_NAMES = {
   supabase: 'Supabase', posthog: 'PostHog', searchconsole: 'Search Console', admob: 'AdMob', adsense: 'AdSense',
   sentry: 'Sentry', play: 'Google Play', appstore: 'App Store', deploys: 'Vercel · EAS', growth: 'PostHog · stores · pubs', social: 'GitHub · publication auto',
+  golden: 'Supabase',
 };
 /** Sources qui suivent les filtres pays / plateforme / dates perso. */
 const FILTERED = new Set(['growth', 'posthog']);
@@ -1025,6 +1029,10 @@ function revenue() {
   <div class="grid" style="margin-top:12px">
     ${card(`Types de pub par pays${hourlyAds ? ' (aujourd’hui)' : ''}`, am, block(am, 'byCountryFormat', adCountries))}
   </div>
+  <h2 class="section">Heure dorée</h2>
+  <div class="grid">
+    ${card('Pubs récompensées boostées', 'golden', goldenHtml())}
+  </div>
   <h2 class="section">Site · AdSense</h2>
   <div class="kpis">
     ${tile('Revenus estimés', as, 'byDay', (v) => ({ value: eur(amSum('earnings')(v)), sub: `RPM ${eur(v.length ? sum(v, (r) => r.rpm) / v.length : null)}` }))}
@@ -1650,6 +1658,79 @@ function journalHtml(D) {
   <p class="muted" style="font-size:12px;margin:8px 0 0">Effet = téléchargements des 3 jours à partir du repère vs les 3 jours d’avant. Versions (PostHog) et push (Supabase) ajoutés tout seuls.</p>${warn}`;
 }
 
+// ─── Heure dorée : créneaux de pubs récompensées boostées ───────────────────
+// Stockés en UTC (jour 0 = dimanche), comme les campagnes push ; affichés et
+// saisis dans l'heure du navigateur.
+const WEEKDAYS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+const clock = (d) => `${d.getHours()}h${String(d.getMinutes()).padStart(2, '0')}`;
+/** Début de l'occurrence en cours ou de la prochaine d'un créneau hebdo. */
+function goldenNext(s, now = new Date()) {
+  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), s.hour));
+  d.setUTCDate(d.getUTCDate() + ((s.weekday - d.getUTCDay() + 7) % 7));
+  const dur = s.duration_min * 60000;
+  const prev = d.getTime() - 7 * 86400000; // créneau de la semaine passée qui déborde encore (dimanche soir → lundi)
+  if (prev + dur > now.getTime()) return new Date(prev);
+  if (d.getTime() + dur <= now.getTime()) d.setUTCDate(d.getUTCDate() + 7);
+  return d;
+}
+/** Jour + heure locaux → jour + heure UTC (à la date de la prochaine occurrence). */
+function toUtcSlot(weekday, hour) {
+  const d = new Date();
+  d.setHours(hour, 0, 0, 0);
+  d.setDate(d.getDate() + ((weekday - d.getDay() + 7) % 7));
+  return { weekday: d.getUTCDay(), hour: d.getUTCHours() };
+}
+const opt = (list, cur, label = (v) => v) => list.map((v) => `<option value="${v}" ${v === cur ? 'selected' : ''}>${label(v)}</option>`).join('');
+function goldenHtml() {
+  const p = part('golden', 'slots');
+  if (!p.ok) return p.html;
+  const now = Date.now();
+  const rows = p.v.map((s) => {
+    const start = s.starts_at ? new Date(s.starts_at) : goldenNext(s);
+    const end = new Date(start.getTime() + s.duration_min * 60000);
+    if (s.starts_at && end.getTime() < now - 86400000) return '';
+    const when = s.starts_at
+      ? `${start.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })} ${clock(start)}–${clock(end)}`
+      : `Chaque ${WEEKDAYS[start.getDay()]} ${clock(start)}–${clock(end)}`;
+    const state = !s.enabled ? '<span class="pill warn">en pause</span>'
+      : start.getTime() <= now && now < end.getTime() ? '<span class="pill good">en cours</span>'
+      : end.getTime() <= now ? '<span class="pill">terminé</span>'
+      : `<span class="pill">${start.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })}</span>`;
+    return `<div class="grow"><span><b>${esc(when)}</b> <span class="muted">· pubs ×${s.multiplier} · plafond ${s.ad_cap}/jour${s.campaign_id ? ' · notif' : ''}</span></span>
+      ${state}
+      <button class="btn ghost" type="button" data-act="ghtog" data-id="${s.id}" data-on="${s.enabled ? '0' : '1'}">${s.enabled ? 'Pause' : 'Reprendre'}</button>
+      <button class="xbtn" type="button" data-act="ghdel" data-id="${s.id}" aria-label="Supprimer le créneau">×</button></div>`;
+  }).join('');
+  const hours = Array.from({ length: 24 }, (_, h) => h);
+  return `${rows || '<div class="empty">Aucun créneau.</div>'}
+  <form class="addm" data-act="ghadd">
+    <select name="weekday" aria-label="Jour">${opt([1, 2, 3, 4, 5, 6, 0], 6, (d) => WEEKDAYS[d])}</select>
+    <select name="hour" aria-label="Heure">${opt(hours, 18, (h) => `${h}h`)}</select>
+    <select name="duration" aria-label="Durée">${opt([60, 90, 120, 180], 120, (m) => (m % 60 ? `${m} min` : `${m / 60} h`))}</select>
+    <select name="multiplier" aria-label="Multiplicateur">${opt([2, 3, 4, 5], 3, (m) => `×${m}`)}</select>
+    <select name="adCap" aria-label="Plafond">${opt([8, 10, 15, 20], 10, (n) => `${n} pubs/jour`)}</select>
+    <label><input type="checkbox" name="push" checked> notif</label>
+    <button class="btn ghost" type="submit">Ajouter chaque semaine</button>
+  </form>
+  <form class="addm" data-act="ghnow">
+    <select name="duration" aria-label="Durée">${opt([30, 60, 120], 60, (m) => (m % 60 ? `${m} min` : `${m / 60} h`))}</select>
+    <button class="btn ghost" type="submit">Lancer maintenant (×3, 10 pubs/jour)</button>
+  </form>
+  <p class="muted" style="font-size:12px;margin:8px 0 0">Pendant un créneau, chaque pub « +5 pièces » en donne 5 × le multiplicateur, et le plafond de pubs du jour monte (le doubleur de fin de partie en profite aussi, sans être multiplié). La notif part à tous les joueurs au début du créneau ; « Lancer maintenant » n'en envoie pas. Heures enregistrées en UTC comme les notifs : au changement d'heure, un créneau se décale d'1 h.</p>`;
+}
+async function goldenWrite(body, confirmText) {
+  if (confirmText && !confirm(confirmText)) return;
+  const { data: { session } } = await client.auth.getSession();
+  const r = await fetch('/api/hq?source=golden-write', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${session?.access_token ?? S.token}`, 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { alert(`Heure dorée non enregistrée : ${j.error ?? r.status}`); return; }
+  await loadAll(true, ['golden']);
+}
+
 async function markerWrite(method, body, id) {
   const { data: { session } } = await client.auth.getSession();
   const r = await fetch(`/api/hq?source=markers${id ? `&id=${id}` : ''}`, {
@@ -1668,7 +1749,7 @@ function onAct(e) {
   if (!el) return;
   const act = el.dataset.act;
   if (e.type === 'click') {
-    if (['cmp', 'from', 'to', 'addc', 'mkadd'].includes(act)) return;
+    if (['cmp', 'from', 'to', 'addc', 'mkadd', 'ghadd', 'ghnow'].includes(act)) return;
     if (act === 'csv') { e.preventDefault(); e.stopPropagation(); if (CSV[el.dataset.id]) downloadCsv(CSV[el.dataset.id]); return; }
     if (act === 'plat') return setFilters({ platform: el.dataset.v });
     if (act === 'preset') { const [, list, ex] = PRESETS[Number(el.dataset.k)]; return setFilters({ countries: [...list], exclude: ex }); }
@@ -1689,6 +1770,8 @@ function onAct(e) {
     if (act === 'vtab') { S.vtab = el.dataset.v; store('hq.vtab', S.vtab); return render(); }
     if (act === 'vreset') { if (confirm('Revenir à l’ordre automatique ?')) videoWrite('social-order', { pinned: [] }, 'Ordre automatique rétabli.'); return; }
     if (act === 'mkdel') { if (confirm('Supprimer ce repère ?')) markerWrite('DELETE', null, el.dataset.id); }
+    if (act === 'ghtog') return goldenWrite({ toggle: Number(el.dataset.id), enabled: el.dataset.on === '1' });
+    if (act === 'ghdel') return goldenWrite({ remove: Number(el.dataset.id) }, 'Supprimer ce créneau (et sa notif) ?');
   } else if (e.type === 'change') {
     if (act === 'cmp') return setFilters({ compare: el.checked });
     if (act === 'addc' && el.value) { const c = el.value; el.value = ''; return setFilters({ countries: [...(S.exclude ? [] : S.countries), c], exclude: false }); }
@@ -1708,6 +1791,16 @@ function onAct(e) {
     e.preventDefault();
     const f = new FormData(el);
     markerWrite('POST', { day: f.get('day'), kind: f.get('kind'), label: String(f.get('label') ?? '').trim() });
+  } else if (e.type === 'submit' && act === 'ghadd') {
+    e.preventDefault();
+    const f = new FormData(el);
+    const push = f.get('push') === 'on';
+    const add = { ...toUtcSlot(Number(f.get('weekday')), Number(f.get('hour'))), duration: Number(f.get('duration')), multiplier: Number(f.get('multiplier')), adCap: Number(f.get('adCap')), push };
+    goldenWrite({ add }, push ? 'Ajouter ce créneau ? Une notif partira à tous les joueurs chaque semaine au début du créneau.' : null);
+  } else if (e.type === 'submit' && act === 'ghnow') {
+    e.preventDefault();
+    const f = new FormData(el);
+    goldenWrite({ now: { duration: Number(f.get('duration')), multiplier: 3, adCap: 10 } }, 'Lancer une Heure dorée maintenant ?');
   }
 }
 

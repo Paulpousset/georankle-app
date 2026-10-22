@@ -11,6 +11,7 @@ import { track } from '../lib/analytics';
 import { playSfx } from '../lib/sfx';
 import { useToast } from './ToastProvider';
 import { REWARDED_COINS, showRewardedAd, watchRewardedAd } from '../lib/monetization';
+import { useGoldenHour } from '../lib/goldenHour';
 import {
   MAX_LIVES,
   STORY_LIFE_PRICE,
@@ -52,6 +53,8 @@ export function StoryLivesSheet({
   const toast = useToast();
   const [balance, setBalance] = useState<number | null>(null);
   const [busy, setBusy] = useState<Busy>(null);
+  // A golden hour multiplies the flat video reward (claim_rewarded_ad).
+  const adCoins = REWARDED_COINS * useGoldenHour().multiplier;
   const full = lives >= MAX_LIVES;
 
   useEffect(() => {
@@ -114,7 +117,7 @@ export function StoryLivesSheet({
     setBusy(null);
     if (res.granted) {
       playSfx('coin');
-      const coins = res.coins ?? REWARDED_COINS;
+      const coins = res.coins ?? adCoins;
       setBalance((b) => (b ?? 0) + coins);
       toast.success(tr(language, '+{0} pièces !', '+{0} coins!', [coins]));
       track('story_coins_ad_claimed', { coins });
@@ -123,7 +126,7 @@ export function StoryLivesSheet({
     } else {
       toast.error(tr(language, 'Vidéo non terminée.', 'Video not finished.'));
     }
-  }, [language, toast]);
+  }, [language, toast, adCoins]);
 
   const canBuy = !!user && !full && (balance ?? 0) >= STORY_LIFE_PRICE;
 
@@ -206,14 +209,14 @@ export function StoryLivesSheet({
             <Option
               icon={Coins}
               tint={GOLD}
-              title={tr(language, '+{0} pièces', '+{0} coins', [REWARDED_COINS])}
+              title={tr(language, '+{0} pièces', '+{0} coins', [adCoins])}
               subtitle={tr(language, 'Regarde une vidéo, garde tes pièces', 'Watch a video, bank the coins')}
               price={<VideoPill language={language} />}
               disabled={!adAvailable || !user || busy != null}
               busy={busy === 'coins'}
               onPress={earnCoins}
               colors={c}
-              a11y={tr(language, 'Regarder une vidéo pour {0} pièces', 'Watch a video for {0} coins', [REWARDED_COINS])}
+              a11y={tr(language, 'Regarder une vidéo pour {0} pièces', 'Watch a video for {0} coins', [adCoins])}
             />
           </View>
 

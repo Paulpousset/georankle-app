@@ -9,6 +9,7 @@
  * POST /api/hq?source=social-order { pinned: [clés] } | { skip } | { unskip } → ordre, vidéos retirées
  * POST /api/hq?source=social-generate { record, globes } → lance un tournage (social-video.yml)
  * POST /api/hq?source=social-publish { key }          → publie cette vidéo tout de suite
+ * POST /api/hq?source=golden-write { add | now | toggle | remove } → créneaux d'Heure dorée
  * Tableau de bord privé (page /hq). Réservé aux profils is_admin : la page
  * envoie le jeton de session Supabase, on le vérifie avant toute requête.
  */
@@ -21,8 +22,9 @@ import { searchconsole, play, admob, adsense } from './_hq/google.mjs';
 import { appstore } from './_hq/appstore.mjs';
 import { growth } from './_hq/growth.mjs';
 import { social, videoProxy, setOrder, publishNow, generate } from './_hq/social.mjs';
+import { golden, goldenWrite } from './_hq/golden.mjs';
 
-const SOURCES = { supabase, posthog, sentry, deploys, searchconsole, play, admob, adsense, appstore, growth, social };
+const SOURCES = { supabase, posthog, sentry, deploys, searchconsole, play, admob, adsense, appstore, growth, social, golden };
 
 const cache = new Map(); // `${source}:${days}:${filtres}` → { at, body }
 const TTL = 5 * 60000;
@@ -161,9 +163,28 @@ async function socialWrite(request, source) {
   }
 }
 
+// ─── Heure dorée : créneaux de pubs récompensées boostées ────────────────────
+
+async function goldenPost(request) {
+  try {
+    if (!(await requireAdmin(request))) return json({ error: 'forbidden' }, 403);
+  } catch (e) {
+    return json({ error: e.message }, 500);
+  }
+  const b = await request.json().catch(() => ({}));
+  try {
+    const out = await goldenWrite(b);
+    for (const k of cache.keys()) if (k.startsWith('golden:')) cache.delete(k);
+    return json({ ok: true, ...out });
+  } catch (e) {
+    return json({ error: e.message }, 400);
+  }
+}
+
 export const POST = (request) => {
   const source = new URL(request.url).searchParams.get('source');
   if (['social-order', 'social-publish', 'social-generate'].includes(source)) return socialWrite(request, source);
+  if (source === 'golden-write') return goldenPost(request);
   return markersWrite(request, 'POST');
 };
 export const DELETE = (request) => markersWrite(request, 'DELETE');

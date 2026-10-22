@@ -1,6 +1,7 @@
 /**
  * RewardedAdButton — the single "watch an ad → +5 coins" entry point, reused in
- * the Shop, the daily quests card and the solo end-of-game summary.
+ * the Shop, the daily quests card and the solo end-of-game summary. During a
+ * golden hour it shows the boosted reward (×3) and the raised daily cap.
  *
  * Fully self-gating: renders nothing while the 'rewarded_ads' feature flag is
  * off (fail closed), when the native SDK isn't available, or once the server's
@@ -12,12 +13,12 @@ import { Play } from 'lucide-react-native';
 
 import {
   REWARDED_COINS,
-  REWARDED_DAILY_CAP,
   getRewardedAdsRemaining,
   rewardedAdsAvailable,
   showRewardedAd,
 } from '../lib/monetization';
 import { track } from '../lib/analytics';
+import { useGoldenHour } from '../lib/goldenHour';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { useTheme } from '../contexts/ThemeContext';
@@ -29,7 +30,7 @@ import { ScoreText } from './ScoreText';
 
 interface RewardedAdButtonProps {
   /** Where the button lives — analytics dimension only. */
-  context: 'shop' | 'quests' | 'solo_summary';
+  context: 'shop' | 'quests' | 'solo_summary' | 'golden_hour';
   /** Called with the coins granted after a successful claim (e.g. refresh a balance). */
   onEarned?: (coins: number) => void;
 }
@@ -39,6 +40,8 @@ export function RewardedAdButton({ context, onEarned }: RewardedAdButtonProps) {
   const { language } = useLanguage();
   const toast = useToast();
   const c = getColors(isDarkMode);
+  const golden = useGoldenHour();
+  const coins = REWARDED_COINS * golden.multiplier;
 
   const [visible, setVisible] = useState(false);
   const [remaining, setRemaining] = useState<number | null>(null);
@@ -63,20 +66,20 @@ export function RewardedAdButton({ context, onEarned }: RewardedAdButtonProps) {
     return () => {
       alive = false;
     };
-  }, [refresh]);
+  }, [refresh, golden.adCap]);
 
   const onPress = async () => {
     if (busy) return;
     setBusy(true);
-    track('rewarded_ad_requested', { context });
+    track('rewarded_ad_requested', { context, golden: golden.active });
     try {
       const result = await showRewardedAd();
       if (result.granted) {
-        const coins = result.coins ?? REWARDED_COINS;
-        toast.success(tr(language, '+{0} pièces !', '+{0} coins!', [coins]));
-        announce(tr(language, '{0} pièces gagnées', '{0} coins earned', [coins]));
-        track('rewarded_ad_earned', { context, coins });
-        onEarned?.(coins);
+        const earned = result.coins ?? coins;
+        toast.success(tr(language, '+{0} pièces !', '+{0} coins!', [earned]));
+        announce(tr(language, '{0} pièces gagnées', '{0} coins earned', [earned]));
+        track('rewarded_ad_earned', { context, coins: earned, golden: golden.active });
+        onEarned?.(earned);
       } else if (result.reason === 'capped') {
         toast.info(tr(language, 'Plafond quotidien atteint — reviens demain !', 'Daily cap reached — come back tomorrow!'));
       } else if (result.reason === 'dismissed') {
@@ -93,9 +96,9 @@ export function RewardedAdButton({ context, onEarned }: RewardedAdButtonProps) {
 
   if (!visible) return null;
 
-  const counter = remaining !== null ? ` (${remaining}/${REWARDED_DAILY_CAP})` : '';
+  const counter = remaining !== null ? ` (${remaining}/${golden.adCap})` : '';
   const label = tr(
-    language, 'Regarder une pub : {0} pièces{1}', 'Watch an ad: {0} coins{1}', [REWARDED_COINS, counter],
+    language, 'Regarder une pub : {0} pièces{1}', 'Watch an ad: {0} coins{1}', [coins, counter],
   );
 
   const GOLD = '#f5b301';
@@ -137,18 +140,25 @@ export function RewardedAdButton({ context, onEarned }: RewardedAdButtonProps) {
           <Play color={INK} size={15} fill={INK} />
         )}
       </View>
-      <Text style={{ flex: 1, fontFamily: FONTS.heading, color: c.text, fontSize: 14 }}>
-        {tr(language, 'Regarder une pub', 'Watch an ad')}
-      </Text>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontFamily: FONTS.heading, color: c.text, fontSize: 14 }}>
+          {tr(language, 'Regarder une pub', 'Watch an ad')}
+        </Text>
+        {golden.active && (
+          <Text style={{ fontFamily: FONTS.monoBold, color: GOLD, fontSize: 11 }}>
+            {tr(language, 'Heure dorée ×{0}', 'Golden hour ×{0}', [golden.multiplier])}
+          </Text>
+        )}
+      </View>
       {remaining !== null && (
         <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 11 }}>
-          {remaining}/{REWARDED_DAILY_CAP}
+          {remaining}/{golden.adCap}
         </Text>
       )}
       {/* Gold reward chip */}
       <View style={{ backgroundColor: GOLD, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 3 }}>
         <ScoreText style={{ color: INK, fontFamily: FONTS.monoBold, fontSize: 14 }}>
-          +{REWARDED_COINS}
+          +{coins}
         </ScoreText>
       </View>
     </TouchableOpacity>

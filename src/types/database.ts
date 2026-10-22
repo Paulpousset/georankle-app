@@ -887,6 +887,7 @@ export type Database = {
       }
       claim_quest: { Args: { p_quest_id: string }; Returns: Json }
       claim_rewarded_ad: { Args: never; Returns: Json }
+      golden_hour_status: { Args: never; Returns: Json }
       claim_story_life: { Args: never; Returns: Json }
       buy_story_life: { Args: never; Returns: Json }
       consume_story_life: { Args: never; Returns: Json }

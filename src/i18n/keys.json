@@ -574,6 +574,18 @@
     ]
   },
   {
+    "key": "A short ad to support the game ;)",
+    "fr": "Une courte pub pour soutenir le jeu ;)",
+    "en": "A short ad to support the game ;)",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/AdBreakNotice.tsx"
+    ]
+  },
+  {
     "key": "A single mistake ends the game — go for the longest streak!",
     "fr": "Une seule erreur et la partie s’arrête : visez la plus longue série !",
     "en": "A single mistake ends the game — go for the longest streak!",
@@ -5100,6 +5112,18 @@
     ]
   },
   {
+    "key": "Every ad pays {0} times the coins, until {1}.",
+    "fr": "Chaque pub rapporte {0} fois plus de pièces, jusqu’à {1}.",
+    "en": "Every ad pays {0} times the coins, until {1}.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/GoldenHourBanner.tsx"
+    ]
+  },
+  {
     "key": "Every daily challenge combined",
     "fr": "Tous les défis du jour combinés",
     "en": "Every daily challenge combined",
@@ -6345,6 +6369,42 @@
     ],
     "files": [
       "src/data/cosmetics.ts"
+    ]
+  },
+  {
+    "key": "Golden hour",
+    "fr": "Heure dorée",
+    "en": "Golden hour",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/GoldenHourBanner.tsx"
+    ]
+  },
+  {
+    "key": "Golden hour in {0}: ads ×{1}",
+    "fr": "Heure dorée dans {0} : pubs ×{1}",
+    "en": "Golden hour in {0}: ads ×{1}",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/GoldenHourBanner.tsx"
+    ]
+  },
+  {
+    "key": "Golden hour ×{0}",
+    "fr": "Heure dorée ×{0}",
+    "en": "Golden hour ×{0}",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/RewardedAdButton.tsx"
     ]
   },
   {
@@ -9743,6 +9803,18 @@
     ]
   },
   {
+    "key": "Often skippable after 5 seconds",
+    "fr": "Souvent passable après 5 secondes",
+    "en": "Often skippable after 5 seconds",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/AdBreakNotice.tsx"
+    ]
+  },
+  {
     "key": "Olympic medals",
     "fr": "Médailles olympiques",
     "en": "Olympic medals",
@@ -11314,6 +11386,18 @@
     ],
     "files": [
       "src/screens/LocalParcours.tsx"
+    ]
+  },
+  {
+    "key": "QUICK AD BREAK",
+    "fr": "PETITE PAUSE PUB",
+    "en": "QUICK AD BREAK",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/AdBreakNotice.tsx"
     ]
   },
   {
@@ -17730,7 +17814,7 @@
     "key": "{0} / {1} correct",
     "fr": "{0} / {1} bonnes réponses",
     "en": "{0} / {1} correct",
-    "count": 4,
+    "count": 5,
     "kinds": [
       "call"
     ],
@@ -17738,7 +17822,8 @@
       "src/screens/ChallengeQuiz.tsx",
       "src/screens/LanguagesGame.tsx",
       "src/screens/PinpointGame.tsx",
-      "src/screens/SilhouetteGame.tsx"
+      "src/screens/SilhouetteGame.tsx",
+      "src/screens/VersusCapitals.tsx"
     ]
   },
   {
