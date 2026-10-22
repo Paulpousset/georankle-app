@@ -39,11 +39,55 @@ export function isValidEmail(email: string): boolean {
   return EMAIL_RE.test(email.trim());
 }
 
+/**
+ * Misspelled domains seen at signup. An address like `x@gmial.com` passes the
+ * shape check, so Supabase sends the confirmation email anyway and it bounces:
+ * too many bounces and Supabase cuts the project off from its email service.
+ */
+const DOMAIN_TYPOS: Record<string, string> = {
+  'gmial.com': 'gmail.com', 'gmai.com': 'gmail.com', 'gamil.com': 'gmail.com', 'gmal.com': 'gmail.com',
+  'gmil.com': 'gmail.com', 'gnail.com': 'gmail.com', 'gmaill.com': 'gmail.com', 'gmail.co': 'gmail.com',
+  'gmail.cm': 'gmail.com', 'gmail.om': 'gmail.com', 'gmail.fr': 'gmail.com', 'gmail.con': 'gmail.com',
+  'gmail.cmo': 'gmail.com', 'gmail.comm': 'gmail.com', 'gmail.vom': 'gmail.com', 'gmail.xom': 'gmail.com',
+  'gmail.ocm': 'gmail.com', 'gmaul.com': 'gmail.com', 'gmsil.com': 'gmail.com', 'gmail.coml': 'gmail.com',
+  'hotmial.com': 'hotmail.com', 'hotmai.com': 'hotmail.com', 'hotmal.com': 'hotmail.com', 'hotmil.com': 'hotmail.com',
+  'hotmail.con': 'hotmail.com', 'hotmail.co': 'hotmail.com', 'hotmial.fr': 'hotmail.fr', 'hotmai.fr': 'hotmail.fr',
+  'hotmal.fr': 'hotmail.fr', 'hotmil.fr': 'hotmail.fr', 'hotmail.fe': 'hotmail.fr',
+  'outlok.com': 'outlook.com', 'outloo.com': 'outlook.com', 'outlook.con': 'outlook.com', 'outlok.fr': 'outlook.fr',
+  'yahooo.com': 'yahoo.com', 'yaho.com': 'yahoo.com', 'yahoo.con': 'yahoo.com', 'yaho.fr': 'yahoo.fr', 'yahooo.fr': 'yahoo.fr',
+  'icloud.con': 'icloud.com', 'iclod.com': 'icloud.com', 'icoud.com': 'icloud.com', 'icloud.co': 'icloud.com',
+  'iclould.com': 'icloud.com', 'icluod.com': 'icloud.com',
+  'orange.fe': 'orange.fr', 'oange.fr': 'orange.fr', 'ornage.fr': 'orange.fr', 'wanadoo.fe': 'wanadoo.fr',
+  'free.fe': 'free.fr', 'sfr.fe': 'sfr.fr', 'laposte.ne': 'laposte.net',
+};
+
+/** Top-level domains no real mail host uses, typed in place of `.com`. */
+const TLD_TYPOS: Record<string, string> = { con: 'com', cpm: 'com', cmo: 'com', ocm: 'com', vom: 'com', xom: 'com', comm: 'com' };
+
+/**
+ * The address the user most likely meant when the domain is a known typo
+ * (`x@gmial.com` → `x@gmail.com`), or null when nothing looks misspelled.
+ */
+export function emailTypoSuggestion(email: string): string | null {
+  const v = email.trim();
+  if (!isValidEmail(v)) return null;
+  const at = v.lastIndexOf('@');
+  const local = v.slice(0, at);
+  const domain = v.slice(at + 1).toLowerCase();
+  const fixed = DOMAIN_TYPOS[domain];
+  if (fixed) return `${local}@${fixed}`;
+  const dot = domain.lastIndexOf('.');
+  const tld = TLD_TYPOS[domain.slice(dot + 1)];
+  return tld ? `${local}@${domain.slice(0, dot)}.${tld}` : null;
+}
+
 /** Inline error for an email field, or null when valid/empty. */
 export function emailError(language: Language, email: string): string | null {
   const v = email.trim();
   if (!v) return null; // don't nag on an untouched field
   if (!isValidEmail(v)) return tr(language, 'Adresse email invalide', 'Invalid email address');
+  const suggestion = emailTypoSuggestion(v);
+  if (suggestion) return tr(language, 'Vouliez-vous dire {0} ?', 'Did you mean {0}?', [suggestion]);
   return null;
 }
 

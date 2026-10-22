@@ -1,6 +1,7 @@
 import {
   confirmPasswordError,
   emailError,
+  emailTypoSuggestion,
   isCommonPassword,
   isValidEmail,
   isValidUsername,
@@ -78,5 +79,22 @@ describe('username validation', () => {
     expect(usernameError('en', 'ab')).toMatch(/At least/);
     expect(usernameError('en', 'good name')).toBeNull();
     expect(usernameError('fr', 'x@y')).toBe('Lettres, chiffres et espaces uniquement');
+  });
+});
+
+describe('emailTypoSuggestion', () => {
+  it('suggests the intended domain for known typos', () => {
+    expect(emailTypoSuggestion('paul@gmial.com')).toBe('paul@gmail.com');
+    expect(emailTypoSuggestion(' Paul@Hotmail.Con ')).toBe('Paul@hotmail.com');
+    expect(emailTypoSuggestion('a@example.con')).toBe('a@example.com');
+  });
+  it('stays null for real or malformed addresses', () => {
+    for (const ok of ['a@gmail.com', 'a@hotmail.fr', 'a@example.co', 'a@uni.edu', 'nope', '']) {
+      expect(emailTypoSuggestion(ok)).toBeNull();
+    }
+  });
+  it('surfaces the suggestion as the inline email error', () => {
+    expect(emailError('en', 'a@gmial.com')).toBe('Did you mean a@gmail.com?');
+    expect(emailError('fr', 'a@gmial.com')).toBe('Vouliez-vous dire a@gmail.com ?');
   });
 });
