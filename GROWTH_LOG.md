@@ -42,6 +42,24 @@ seuil.
 
 ## Entrées
 
+### 2026-10-23 — rapport hebdo (sans PostHog)
+
+- Pas de `POSTHOG_PERSONAL_API_KEY` dans la session : aucun indicateur produit mesuré. `playgeog.com` est bloqué par le réseau de la session (403 sur CONNECT) : sitemap et PageSpeed non mesurés, pas de nouvel essai.
+
+| Mesurable sans clé | Valeur (vs 16/10) |
+|---|---|
+| Commits sur 7 jours | 13 (14), dernier : 22/10 |
+| Pages ajoutées dans `site/content` | 0 (116 fichiers, inchangé) |
+| Cases cochées de la file éditoriale | 0 / 15 |
+| Taux partage/complétion, parrainages, rétention | non mesuré |
+
+Faits saillants :
+1. Semaine centrée monétisation : interstitiels (toutes les 12 puis 6 min, aussi entre parties enchaînées), écran « pause pub 3-2-1», bannières menu/résultats, filtres et graphiques pubs dans le /hq ; notes v5.7.0.
+2. Côté jeu : Israël redessiné sur le globe, zoom des Régions, écran de fin unifié pour Capitales et Drapeaux. Risque à surveiller : la fréquence accrue des pubs peut peser sur la rétention, invisible sans PostHog.
+3. Quatrième semaine consécutive sans page SEO : la Routine « Contenu SEO » ne livre rien (0 case cochée, 116 fichiers inchangés).
+
+Décision : (a) réparer la Routine « Contenu SEO » en priorité (4 lundis sans livraison) ; (b) fournir `POSTHOG_PERSONAL_API_KEY` et autoriser `playgeog.com` à cette Routine, sinon impossible de vérifier l'effet des pubs toutes les 6 min sur la rétention J1/J7 ; (c) file éditoriale non réordonnée, aucune donnée ne le justifie.
+
 ### 2026-10-16 — rapport hebdo (sans PostHog)
 
 - Pas de `POSTHOG_PERSONAL_API_KEY` dans la session : aucun indicateur produit mesuré. `playgeog.com` est bloqué par le réseau de la session (403 sur CONNECT) : sitemap et PageSpeed non mesurés, pas de nouvel essai.
