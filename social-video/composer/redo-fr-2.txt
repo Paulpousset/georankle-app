@@ -1,0 +1,16 @@
+44-court-frontieres-france-fr-v1|France|Turquie
+45-court-frontieres-espagne-fr-v1|Espagne|Pologne
+46-court-frontieres-mexique-fr-v1|Mexique|Panama
+47-court-frontieres-chine-fr-v1|Chine|Irak
+48-court-frontieres-egypte-fr-v1|Égypte|Tanzanie
+49-court-frontieres-allemagne-fr-v1|Allemagne|Roumanie
+50-court-frontieres-chili-fr-v1|Chili|Venezuela
+51-court-frontieres-viet-nam-fr-v1|Viêt Nam|Bangladesh
+52-court-frontieres-nigeria-fr-v1|Nigéria|Congo (Rép. dém.)
+53-court-frontieres-thailande-fr-v1|Thaïlande|Népal
+54-court-frontieres-pays-bas-fr-v1|Pays-Bas|Croatie
+55-court-devine-japon-fr-v1|devine|Japon
+56-court-devine-bresil-fr-v1|devine|Brésil
+57-court-devine-royaume-uni-fr-v1|devine|Royaume-Uni
+58-court-devine-norvege-fr-v1|devine|Norvège
+59-court-devine-argentine-fr-v1|devine|Argentine

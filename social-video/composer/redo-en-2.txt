@@ -1,0 +1,16 @@
+18-court-frontieres-france-en-v1|France|Turquie
+19-court-frontieres-spain-en-v1|Espagne|Pologne
+20-court-frontieres-mexico-en-v1|Mexique|Panama
+21-court-frontieres-china-en-v1|Chine|Irak
+22-court-frontieres-egypt-en-v1|Égypte|Tanzanie
+23-court-frontieres-germany-en-v1|Allemagne|Roumanie
+24-court-frontieres-chile-en-v1|Chili|Venezuela
+25-court-frontieres-vietnam-en-v1|Viêt Nam|Bangladesh
+26-court-frontieres-nigeria-en-v1|Nigéria|Congo (Rép. dém.)
+27-court-frontieres-thailand-en-v1|Thaïlande|Népal
+28-court-frontieres-netherlands-en-v1|Pays-Bas|Croatie
+29-court-devine-japan-en-v1|devine|Japon
+30-court-devine-brazil-en-v1|devine|Brésil
+31-court-devine-united-kingdom-en-v1|devine|Royaume-Uni
+32-court-devine-norway-en-v1|devine|Norvège
+33-court-devine-argentina-en-v1|devine|Argentine

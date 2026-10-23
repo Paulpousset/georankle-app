@@ -1,0 +1,122 @@
+name: Concepts courts, lot 2 FR + EN (temporaire)
+
+# Deuxième lot de shorts Frontières / Devine : 44 à 59 en français
+# (social-video/composer/redo-fr-2.txt) et les mêmes en anglais, 18 à 33
+# (redo-en-2.txt), ajoutés à la release shorts-next sans toucher aux vidéos déjà
+# en file.
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/project-thread-jkusyn-en]
+    paths:
+      - .github/workflows/concepts-lot2.yml
+
+concurrency:
+  group: concepts-lot2
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  plan:
+    name: Fiches + voix off
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - name: Fiches et voix
+        working-directory: social-video/composer
+        env:
+          XI_API_KEY: ${{ secrets.XI_API_KEY }}
+          # Voix FR : Anatole (LANG_VOICES de voice.mjs) même si XI_VOICE est défini.
+          XI_VOICE_FR: ${{ vars.XI_VOICE_FR || 'Jrq4GqCKqYpigdQsZRkP' }}
+          XI_VOICE: ${{ vars.XI_VOICE }}
+          XI_VOICE_EN: ${{ vars.XI_VOICE_EN }}
+          XI_MODEL: ${{ vars.XI_MODEL }}
+        run: |
+          [ -n "$XI_API_KEY" ] || { echo "XI_API_KEY absente"; exit 1; }
+          npm ci --no-audit --no-fund
+          node concepts.mjs --short --seed 16 --redo redo-fr-2.txt
+          node concepts.mjs --lang en --short --seed 16 --redo redo-en-2.txt
+          n=$(ls ../out/episodes/*.json | wc -l)
+          echo "$n fiches"
+          [ "$n" -eq 32 ] || { ls ../out/episodes; exit 1; }
+          node voice.mjs
+          ls public/voice/*.mp3 | wc -l
+      - uses: actions/upload-artifact@v4
+        with:
+          name: concepts-lot2-plan
+          path: |
+            social-video/out/episodes/
+            social-video/composer/public/voice/
+          include-hidden-files: true
+
+  render:
+    name: Rendu ${{ matrix.shard }}/4
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-color-emoji ffmpeg
+      - uses: actions/download-artifact@v4
+        with:
+          name: concepts-lot2-plan
+          path: social-video
+      - name: Rendu
+        working-directory: social-video/composer
+        env:
+          SHARD: ${{ matrix.shard }}/4
+        run: |
+          npm ci --no-audit --no-fund
+          node concepts.mjs --assets
+          node render.mjs
+          cd ../out/final
+          for f in *.mp4; do
+            ffmpeg -y -loglevel error -i "$f" -c:v libx264 -crf 18 -pix_fmt yuv420p -c:a copy -movflags +faststart "tmp-$f"
+            mv "tmp-$f" "$f"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: concepts-lot2-final-${{ matrix.shard }}
+          path: social-video/out/final/
+
+  release:
+    name: Ajout à shorts-next
+    needs: render
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: concepts-lot2-final-*
+          merge-multiple: true
+          path: final
+      - name: Envoi
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          files=(final/*-court-*-v1.mp4 final/*-court-*-v1.txt)
+          echo "${#files[@]} fichiers"
+          [ ${#files[@]} -eq 64 ] || { ls final; exit 1; }
+          # Jamais d'écrasement d'une vidéo déjà en file : on n'envoie que les
+          # noms absents de la release (--clobber ne sert qu'à reprendre un envoi
+          # interrompu de ce même lot).
+          gh api --paginate "repos/${{ github.repository }}/releases/tags/shorts-next" --jq '.assets[].name' > existing.txt
+          new=()
+          for f in "${files[@]}"; do grep -qxF "$(basename "$f")" existing.txt && echo "déjà là : $f" || new+=("$f"); done
+          echo "${#new[@]} nouveaux fichiers"
+          [ ${#new[@]} -gt 0 ] || exit 0
+          gh release upload shorts-next "${new[@]}" --clobber --repo "${{ github.repository }}"
