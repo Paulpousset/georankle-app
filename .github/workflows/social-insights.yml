@@ -1,0 +1,76 @@
+name: Stats des vidéos et réglages
+
+# Relève les stats de chaque vidéo publiée (TikTok, Instagram, via l'API
+# analytics de Zernio), les analyse et règle les prochaines vidéos concepts
+# (social-video/insights) : mélange des concepts, accroches à tester, format.
+# Les réglages (tuning.json) et le bilan (rapport.md) vont dans la release
+# shorts-state, où social-concepts.yml les lit pour le lot suivant.
+#
+# Secrets : ZERNIO_API_KEY, ZERNIO_API_KEY_EN (facultatif).
+on:
+  # Lundi et jeudi à 7 h (Paris, heure d'été), avant le lot de social-concepts.yml.
+  schedule:
+    - cron: '0 5 * * 1,4'
+  workflow_dispatch:
+    inputs:
+      days:
+        description: Jours en arrière
+        default: '60'
+      dry_run:
+        description: Simulation (ne pas changer les réglages)
+        type: boolean
+        default: false
+  push:
+    branches: [claude/project-thread-l5zx7r]
+    paths:
+      - .github/workflows/social-insights.yml
+      - social-video/insights/**
+
+permissions:
+  contents: write
+
+concurrency:
+  group: social-insights
+  cancel-in-progress: false
+
+jobs:
+  insights:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - name: Réglages précédents
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p social-video/insights/out
+          gh release download shorts-state --repo "$GITHUB_REPOSITORY" --pattern tuning.json --pattern durations.json \
+            --dir social-video/insights/out --clobber || echo "Pas encore de réglages : départ de tuning.default.json"
+          [ -f social-video/insights/out/tuning.json ] && mv social-video/insights/out/tuning.json social-video/insights/out/tuning-prev.json || true
+      - name: Relevé
+        env:
+          ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
+          ZERNIO_API_KEY_EN: ${{ secrets.ZERNIO_API_KEY_EN }}
+          DAYS: ${{ github.event.inputs.days || '60' }}
+        run: node social-video/insights/collect.mjs
+      - name: Analyse
+        env:
+          TUNING_IN: social-video/insights/out/tuning-prev.json
+        run: node social-video/insights/analyze.mjs
+      - name: Réglages pour le prochain lot
+        # Un push sur la branche de travail ne fait qu'un essai.
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run != 'true')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: social-video/insights/out
+        run: |
+          cp posts.json insights-posts.json
+          gh release upload shorts-state tuning.json rapport.md durations.json insights-posts.json --repo "$GITHUB_REPOSITORY" --clobber
+      - uses: actions/upload-artifact@v4
+        with:
+          name: social-insights
+          path: social-video/insights/out/

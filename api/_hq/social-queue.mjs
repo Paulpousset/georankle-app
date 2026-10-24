@@ -79,7 +79,8 @@ function queue({ posted, releases: all, assetsOf, target, langs, minRelease }) {
       if (!info || !langs.includes(info.lang)) continue;
       (groups[info.group] ||= []).push({ ...info, name, tag: tagName, key: `${tagName}/${name}` });
     }
-    for (const [group, variants] of Object.entries(groups).sort()) {
+    // Tri naturel : « 100-… » après « 99-… » (lots numérotés de shorts-next).
+    for (const [group, variants] of Object.entries(groups).sort(([a], [b]) => a.localeCompare(b, 'en', { numeric: true }))) {
       if (posted.some((p) => p.tag === tagName && p.group === group)) continue;
       if (generated(group) && postedDays.has(`${dayOf[tagName]}|${group}`)) continue;
       const pick = variants
