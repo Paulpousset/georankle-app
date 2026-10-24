@@ -169,6 +169,15 @@ jobs:
           files=(final/*.mp4 final/*.txt)
           [ ${#files[@]} -gt 0 ] || { echo "Aucune vidéo"; exit 1; }
           if [ "$QUEUE" = true ]; then
+            # Remplace le lot test du premier passage (pas encore publié) :
+            # ses vidéos sortent de shorts-next et de l'ordre de /hq.
+            old=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/shorts-next" --jq \
+              '.assets[] | select(.created_at >= "2026-10-24T20:55:00Z") | select(.name | test("^[0-9]+-court-.*-${{ matrix.lang }}-v1[.](mp4|txt)$")) | .name')
+            for n in $old; do gh release delete-asset shorts-next "$n" -y --repo "$GITHUB_REPOSITORY"; done
+            gh release download shorts-state --repo "$GITHUB_REPOSITORY" --pattern order.json --dir /tmp/state --clobber
+            jq --arg names "$old" '.pinned |= map(select(. as $k | ($names | split("\n") | map("shorts-next/" + .) | index($k)) | not))' /tmp/state/order.json > /tmp/state/o.json
+            mv /tmp/state/o.json /tmp/state/order.json
+            gh release upload shorts-state /tmp/state/order.json --clobber --repo "$GITHUB_REPOSITORY"
             node social-video/insights/next-lot.mjs queue ${{ matrix.lang }} final
           else
             tag="concepts-lot-2-${{ matrix.lang }}"

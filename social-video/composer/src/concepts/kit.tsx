@@ -87,9 +87,11 @@ export const Hook = ({ lines, y = 170, size = 92, delay = 0 }: { lines: string[]
         <div key={li}>
           {words.map((x, i) => {
             if (x.li !== li) return null;
-            // Lisible dès la première image (c'est elle qui décide du swipe) :
-            // les mots partent déjà à moitié posés, une image d'écart chacun.
-            const s = spring({ frame: frame - delay - i + 5, fps, config: { damping: 11, stiffness: 180 } });
+            // Sans délai, l'accroche est entière et lisible dès la première image
+            // (c'est elle qui décide du swipe) : les mots ne font qu'un petit rebond.
+            const s = delay === 0
+              ? 0.85 + 0.15 * spring({ frame: frame - i, fps, config: { damping: 9, stiffness: 220 } })
+              : spring({ frame: frame - delay - i * 3, fps, config: { damping: 11, stiffness: 180 } });
             const last = i === words.length - 1;
             return (
               <span

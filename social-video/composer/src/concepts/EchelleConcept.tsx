@@ -103,7 +103,8 @@ export function EchelleConcept(p: EchelleProps) {
   const rx = (LEFT_W + (BOARD_W - LEFT_W) / 2) * K;
   const cy = H / 2;
 
-  const arrive = spring({ frame: Math.round(lt * fps), fps, config: { damping: 14, stiffness: 160 } });
+  // La première paire est en place dès la première image (rien de vide à l'écran).
+  const arrive = cur === 0 ? 1 : spring({ frame: Math.round(lt * fps), fps, config: { damping: 14, stiffness: 160 } });
   const reveal = spring({ frame: Math.round((lt - EC.REVEAL) * fps), fps, config: { damping: 12, stiffness: 170 } });
   const truthDraw = interpolate(lt, [EC.REVEAL, EC.REVEAL + 0.5], [0, 1], clamp);
   const pressed = lt >= EC.SUBMIT && lt < EC.SUBMIT + 0.25;

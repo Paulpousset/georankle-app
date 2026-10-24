@@ -185,6 +185,19 @@ export function DevineConcept(p: DevineProps) {
           </div>
         ) : null}
 
+        {/* Avant le premier essai : la grille d'indices encore cachée, pour qu'il y ait un jeu à l'écran dès la première image. */}
+        {!row ? (
+          <div style={{ position: 'absolute', top: 320, left: 60, right: 60 }}>
+            <div style={{ background: C.card, border: `4px solid ${C.tan}`, borderRadius: 30, padding: '22px 30px', fontFamily: mono, fontSize: 44, color: C.sepia, display: 'flex', alignItems: 'center', gap: 20 }}>
+              <span style={{ color: C.brown }}>⌕</span>
+              <span style={{ opacity: Math.floor(t * 3) % 2 ? 1 : 0, color: C.vermilion }}>|</span>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 30, justifyContent: 'center', marginTop: 40 }}>
+              {p.rows[0].tiles.map((tile, i) => <BigTile key={i} tile={tile} flip={0} lang={p.lang} />)}
+            </div>
+          </div>
+        ) : null}
+
         {/* Compte à rebours avant le dernier essai */}
         {inPause ? (
           <div style={{ position: 'absolute', top: 1010, left: 0, right: 0, textAlign: 'center' }}>
