@@ -46,6 +46,7 @@ import {
   type DailyState,
 } from '../lib/daily';
 import { variantForSeed } from '../lib/languages';
+import { isGhostDay } from '../lib/ghostCountries';
 import { claimDailyOverallNotices, DAILY_OVERALL_PRIZES } from '../lib/dailyOverall';
 import { challengeForSeed, challengeLabel } from '../data/challenges';
 import { prefetchReferralCode, shareDailyResult } from '../lib/shareDaily';
@@ -56,7 +57,7 @@ import { commonStyles as styles } from '../theme/commonStyles';
 import { PALETTE, getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { tr } from '../i18n';
-import { a11yButton, a11yImage, ICON_HIT_SLOP } from '../lib/a11y';
+import { a11yButton, a11yHidden, a11yImage, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
 import { DailyResultCard } from '../components/DailyResultCard';
 import { DailyLeaderboardModal } from '../components/DailyLeaderboardModal';
@@ -308,6 +309,48 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
         {/* Daily quests (signed-in only — progress lives server-side) */}
         {user && <DailyQuests />}
 
+        {/* Halloween: the Silhouette slot is « Pays fantômes » — surfaced on top
+            so the event is the first thing a push or a menu tap lands on. */}
+        {isGhostDay(todayUTC) ? (
+          <TouchableOpacity
+            onPress={() => {
+              const ghostResult = state?.results.silhouette;
+              if (ghostResult) setViewing(ghostResult);
+              else onPlayDaily('silhouette');
+            }}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 14,
+              backgroundColor: '#1b1030',
+              borderRadius: 16,
+              borderWidth: 2,
+              borderColor: '#ff7a18',
+              paddingVertical: 14,
+              paddingHorizontal: 16,
+              marginTop: 8,
+            }}
+            {...a11yButton(tr(language, 'Défi Halloween : Pays fantômes', 'Halloween challenge: Ghost Countries'))}
+          >
+            <Text style={{ fontSize: 34 }} {...a11yHidden}>🎃</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontFamily: FONTS.heading, color: '#ff7a18', fontSize: 16 }}>
+                {tr(language, 'Défi Halloween : Pays fantômes', 'Halloween challenge: Ghost Countries')}
+              </Text>
+              <Text style={{ fontFamily: FONTS.mono, color: '#d9cdf0', fontSize: 11, marginTop: 3 }}>
+                {state?.results.silhouette
+                  ? `${tr(language, 'Fait', 'Done')} · ${shortScore(state.results.silhouette)}`
+                  : tr(
+                      language,
+                      'URSS, Yougoslavie, Zaïre… Reconnais les pays disparus.',
+                      'USSR, Yugoslavia, Zaire… Spot the countries that vanished.',
+                    )}
+              </Text>
+            </View>
+            <Play color="#ff7a18" size={20} />
+          </TouchableOpacity>
+        ) : null}
+
         <Text
           style={{
             fontFamily: FONTS.mono,
@@ -330,7 +373,7 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
               <TouchableOpacity
                 key={mode}
                 onPress={() => (done ? setViewing(result) : onPlayDaily(mode))}
-                {...a11yButton(dailyModeLabel(mode, language), {
+                {...a11yButton(dailyModeLabel(mode, language, todayUTC), {
                   hint: done
                     ? tr(language, 'Voir votre résultat', 'View your result')
                     : tr(language, 'Démarrer ce mode', 'Start this mode'),
@@ -366,7 +409,7 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
                       { fontSize: 16, textAlign: 'left' },
                     ]}
                   >
-                    {dailyModeLabel(mode, language)}
+                    {dailyModeLabel(mode, language, todayUTC)}
                   </Text>
                   {done ? (
                     <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 11 }}>
@@ -393,7 +436,7 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
                     onPress={() => setHelpMode(mode)}
                     style={{ padding: 8 }}
                     hitSlop={ICON_HIT_SLOP}
-                    {...a11yButton(tr(language, 'Comment jouer à {0}', 'How to play {0}', [dailyModeLabel(mode, language)]), {
+                    {...a11yButton(tr(language, 'Comment jouer à {0}', 'How to play {0}', [dailyModeLabel(mode, language, todayUTC)]), {
                       hint: tr(language, 'Voir les règles de ce mode', 'See this mode’s rules'),
                     })}
                   >

@@ -37,6 +37,13 @@ import {
   silhouettePath,
   type SilhouetteQuestion,
 } from '../lib/silhouette';
+import {
+  buildGhostRun,
+  ghostAcceptedAnswers,
+  ghostFactLine,
+  ghostName,
+  ghostPath,
+} from '../lib/ghostCountries';
 import { isAnswerClose } from '../lib/answerMatch';
 import { createSeededRng, seededShuffle } from '../lib/rng';
 import { normalizeRoundScore } from '../lib/score';
@@ -73,6 +80,9 @@ type Feedback = { correct: boolean; points: number; answer: string };
 const MODE_POINTS: Record<QuizMode, number> = { DUO: 1, CARRE: 3, CASH: 5 };
 /** Ceiling per question, so match normalization matches the challenge quiz. */
 const MAX_POINTS_PER_QUESTION = 5;
+/** « Pays fantômes » (Halloween): pumpkin shapes on a night-sky box. */
+const GHOST_FILL = '#ff7a18';
+const GHOST_NIGHT = '#1b1030';
 
 interface SilhouetteGameProps {
   setGameMode: (mode: GameMode) => void;
@@ -98,6 +108,11 @@ interface SilhouetteGameProps {
   scope?: ContinentId | null;
   /** Review run: shapes to ask about first (see lib/reviewPool). */
   reviewIds?: string[] | null;
+  /**
+   * « Pays fantômes » — the Halloween daily: vanished countries
+   * (src/data/ghostCountries.ts) instead of today's. Same board and scoring.
+   */
+  ghost?: boolean;
 }
 
 export default function SilhouetteGame({
@@ -113,6 +128,7 @@ export default function SilhouetteGame({
   scope = null,
   reviewIds = null,
   training = false,
+  ghost = false,
 }: SilhouetteGameProps) {
   const { isDarkMode, setIsDarkMode } = useTheme();
   const { language, openLanguagePicker } = useLanguage();
@@ -137,9 +153,13 @@ export default function SilhouetteGame({
         ? matchData.game_data.seed + (currentRound - 1)
         : Math.floor(Math.random() * 2147483647)),
   );
-  const [run, setRun] = useState<SilhouetteQuestion[]>(() =>
-    buildSilhouetteRun(seed, numQuestions, { continent: scope, reviewIds }),
-  );
+  // Ghost runs swap the question source, names and shapes; everything else
+  // (board, scoring, daily wiring) is the Silhouette's.
+  const buildRun = (s: number) =>
+    ghost ? buildGhostRun(s, numQuestions) : buildSilhouetteRun(s, numQuestions, { continent: scope, reviewIds });
+  const nameOf = (id: string) => (ghost ? ghostName(id, language) : silhouetteCountryName(id, language));
+  const pathOf = (id: string) => (ghost ? ghostPath(id, 100) : silhouettePath(id, 100));
+  const [run, setRun] = useState<SilhouetteQuestion[]>(() => buildRun(seed));
   const [runSeed, setRunSeed] = useState(seed);
 
   const [questionIndex, setQuestionIndex] = useState(0);
@@ -174,7 +194,7 @@ export default function SilhouetteGame({
   }, []);
 
   const question = run[questionIndex] ?? null;
-  const correctName = question ? silhouetteCountryName(question.answer, language) : '';
+  const correctName = question ? nameOf(question.answer) : '';
 
   const pickMode = (m: QuizMode) => {
     if (!question) return;
@@ -218,7 +238,13 @@ export default function SilhouetteGame({
 
   const submitCash = () => {
     if (!question || !cashInput.trim()) return;
-    resolve(isAnswerClose(cashInput, correctName, silhouetteAcceptedAnswers(question.answer)));
+    resolve(
+      isAnswerClose(
+        cashInput,
+        correctName,
+        ghost ? ghostAcceptedAnswers(question.answer) : silhouetteAcceptedAnswers(question.answer),
+      ),
+    );
   };
 
   const finishRun = (finalScore: number, finalGrid: string) => {
@@ -328,13 +354,13 @@ export default function SilhouetteGame({
   const resetGame = () => {
     const fresh = Math.floor(Math.random() * 2147483647);
     setRunSeed(fresh);
-    setRun(buildSilhouetteRun(fresh, numQuestions, { continent: scope, reviewIds }));
+    setRun(buildRun(fresh));
     restartRun();
   };
 
   if (!question) return null;
 
-  const pathD = silhouettePath(question.answer, 100);
+  const pathD = pathOf(question.answer);
 
   return (
     <SafeAreaView
@@ -354,7 +380,9 @@ export default function SilhouetteGame({
           >
             <Home color={c.accent} size={18} />
           </TouchableOpacity>
-          <Text style={[styles.title, { color: c.text }]}>Silhouette</Text>
+          <Text style={[styles.title, { color: ghost ? GHOST_FILL : c.text }]}>
+            {ghost ? tr(language, 'Pays fantômes', 'Ghost Countries') : 'Silhouette'}
+          </Text>
         </View>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -402,17 +430,23 @@ export default function SilhouetteGame({
         <View
           style={[styles.card, !isDarkMode && styles.cardLight]}
           accessible
-          accessibilityLabel={tr(language, "Silhouette d'un pays mystère", 'Silhouette of a mystery country')}
+          accessibilityLabel={
+            ghost
+              ? tr(language, 'Silhouette d’un pays disparu', 'Silhouette of a vanished country')
+              : tr(language, "Silhouette d'un pays mystère", 'Silhouette of a mystery country')
+          }
         >
-          <View style={styles.shapeBox} {...a11yHidden}>
+          <View style={[styles.shapeBox, ghost && styles.ghostBox]} {...a11yHidden}>
             {pathD && (
               <Svg width="100%" height="100%" viewBox="0 0 100 100">
-                <Path d={pathD} fill={c.accent} />
+                <Path d={pathD} fill={ghost ? GHOST_FILL : c.accent} />
               </Svg>
             )}
           </View>
           <Text style={[styles.instruction, { color: c.textMuted }]}>
-            {tr(language, 'Quel pays a cette forme ?', 'Which country has this shape?')}
+            {ghost
+              ? tr(language, 'Quel pays disparu avait cette forme ? 👻', 'Which vanished country had this shape? 👻')
+              : tr(language, 'Quel pays a cette forme ?', 'Which country has this shape?')}
           </Text>
         </View>
 
@@ -485,10 +519,10 @@ export default function SilhouetteGame({
                 key={cca3}
                 style={[styles.optionBtn, !isDarkMode && styles.optionBtnLight]}
                 onPress={() => resolve(cca3 === question.answer)}
-                {...a11yButton(silhouetteCountryName(cca3, language))}
+                {...a11yButton(nameOf(cca3))}
               >
                 <Text style={[styles.optionText, { color: c.text }]}>
-                  {silhouetteCountryName(cca3, language)}
+                  {nameOf(cca3)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -507,6 +541,12 @@ export default function SilhouetteGame({
                   ? `+${feedback.points} ${tr(language, 'point(s)', 'point(s)')}`
                   : tr(language, 'La réponse était : {0}', 'The answer was: {0}', [feedback.answer])}
               </Text>
+              {/* The history is the treat: when it existed, what it became. */}
+              {ghost && question && (
+                <Text style={[styles.ghostFact, { color: c.textMuted }]}>
+                  {ghostFactLine(question.answer, language)}
+                </Text>
+              )}
               {/* Entraînement: the reveal is the lesson, so the country's facts
                   are one tap away instead of waiting for the end-of-run recap. */}
               {training && question && (
@@ -584,20 +624,22 @@ export default function SilhouetteGame({
             <View style={[styles.recapCard, { backgroundColor: c.card, borderColor: c.border }]}>
               {run.map((q, i) => {
                 const h = history[i];
-                const name = silhouetteCountryName(q.answer, language);
-                const d = silhouettePath(q.answer, 100);
+                const name = nameOf(q.answer);
+                const d = pathOf(q.answer);
                 return (
                   // Tapping a row opens the country's fact sheet: the shape is
                   // what you got wrong, the facts are what make it stick.
                   <TouchableOpacity
                     key={`${q.answer}-${i}`}
+                    // No fact sheet for a ghost: it has no cca3 left.
+                    disabled={ghost}
                     onPress={() => setFactsFor(q.answer)}
                     style={[styles.recapRow, i > 0 && { borderTopWidth: 1, borderTopColor: c.border }]}
                     {...a11yButton(
                       h?.correct
                         ? tr(language, '{0}, bonne réponse, +{1} points', '{0}, correct, +{1} points', [name, h.points])
                         : tr(language, '{0}, mauvaise réponse', '{0}, wrong', [name]),
-                      { hint: tr(language, 'Voir la fiche du pays', 'See the country facts') },
+                      ghost ? {} : { hint: tr(language, 'Voir la fiche du pays', 'See the country facts') },
                     )}
                   >
                     <View style={styles.recapShape} {...a11yHidden}>
@@ -685,6 +727,8 @@ const styles = StyleSheet.create({
   },
   cardLight: { backgroundColor: '#e8d9b8', borderColor: '#c4a87a', elevation: 4, shadowOpacity: 0.1 },
   shapeBox: { width: '100%', maxWidth: 300, aspectRatio: 1.2, marginBottom: 6 },
+  ghostFact: { fontSize: 13, fontFamily: FONTS.mono, textAlign: 'center', marginTop: 6 },
+  ghostBox: { backgroundColor: GHOST_NIGHT, borderRadius: 14, padding: 10 },
   instruction: { color: '#4a6a88', fontSize: 14, fontFamily: FONTS.mono, marginTop: 10, textAlign: 'center' },
 
   modeSelection: { flexDirection: 'row', gap: 10, width: '100%', maxWidth: 500, justifyContent: 'center' },

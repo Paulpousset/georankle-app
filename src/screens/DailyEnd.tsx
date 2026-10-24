@@ -311,7 +311,7 @@ export default function DailyEnd({ result, streak, streakIncreased, onNext, onSh
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
               <View>
                 <Text style={{ color: c.textFaint, fontFamily: FONTS.monoBold, fontSize: 10, letterSpacing: 1.5 }}>
-                  {dailyModeLabel(result.mode, language).toUpperCase()}
+                  {dailyModeLabel(result.mode, language, result.date).toUpperCase()}
                 </Text>
                 <CountUp
                   to={result.score}
@@ -367,7 +367,7 @@ export default function DailyEnd({ result, streak, streakIncreased, onNext, onSh
               <View style={{ alignSelf: 'stretch', gap: 10 }}>
                 {nextMode ? (
                   <View style={{ flexDirection: 'row' }}>
-                    {btn(tr(language, 'Défi suivant · {0}', 'Next challenge · {0}', [dailyModeLabel(nextMode, language)]), ChevronRight, () => onNext(nextMode), 'primary')}
+                    {btn(tr(language, 'Défi suivant · {0}', 'Next challenge · {0}', [dailyModeLabel(nextMode, language, result.date)]), ChevronRight, () => onNext(nextMode), 'primary')}
                   </View>
                 ) : (
                   <Text style={{ color: GOLD_DEEP, fontFamily: FONTS.monoBold, fontSize: 13, textAlign: 'center' }}>

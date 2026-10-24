@@ -6238,6 +6238,30 @@
     ]
   },
   {
+    "key": "Ghost Countries",
+    "fr": "Pays fantômes",
+    "en": "Ghost Countries",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/SilhouetteGame.tsx"
+    ]
+  },
+  {
+    "key": "Ghost Countries 👻",
+    "fr": "Pays fantômes 👻",
+    "en": "Ghost Countries 👻",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/lib/daily.ts"
+    ]
+  },
+  {
     "key": "Give up (0 pt)",
     "fr": "Abandonner (0 pt)",
     "en": "Give up (0 pt)",
@@ -6561,6 +6585,18 @@
     ],
     "files": [
       "src/components/ModeIntroModal.tsx"
+    ]
+  },
+  {
+    "key": "Halloween challenge: Ghost Countries",
+    "fr": "Défi Halloween : Pays fantômes",
+    "en": "Halloween challenge: Ghost Countries",
+    "count": 2,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/DailyHub.tsx"
     ]
   },
   {
@@ -13467,6 +13503,18 @@
     ]
   },
   {
+    "key": "Silhouette of a vanished country",
+    "fr": "Silhouette d’un pays disparu",
+    "en": "Silhouette of a vanished country",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/SilhouetteGame.tsx"
+    ]
+  },
+  {
     "key": "Silver graticule",
     "fr": "Graticule argent",
     "en": "Silver graticule",
@@ -14958,6 +15006,18 @@
     ]
   },
   {
+    "key": "Today: {0}",
+    "fr": "Aujourd’hui : {0}",
+    "en": "Today: {0}",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/lib/ghostCountries.ts"
+    ]
+  },
+  {
     "key": "Today’s 3 challenges just dropped — play them before your friends!",
     "fr": "Les 3 défis du jour sont tombés — joue-les avant tes amis !",
     "en": "Today’s 3 challenges just dropped — play them before your friends!",
@@ -15320,6 +15380,18 @@
     ],
     "files": [
       "assets/game_data.json"
+    ]
+  },
+  {
+    "key": "USSR, Yugoslavia, Zaire… Spot the countries that vanished.",
+    "fr": "URSS, Yougoslavie, Zaïre… Reconnais les pays disparus.",
+    "en": "USSR, Yugoslavia, Zaire… Spot the countries that vanished.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/DailyHub.tsx"
     ]
   },
   {
@@ -16255,6 +16327,18 @@
     ],
     "files": [
       "src/screens/LanguagesGame.tsx"
+    ]
+  },
+  {
+    "key": "Which vanished country had this shape? 👻",
+    "fr": "Quel pays disparu avait cette forme ? 👻",
+    "en": "Which vanished country had this shape? 👻",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/SilhouetteGame.tsx"
     ]
   },
   {
@@ -17997,6 +18081,18 @@
     ]
   },
   {
+    "key": "{0} countries today",
+    "fr": "{0} pays aujourd’hui",
+    "en": "{0} countries today",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/lib/ghostCountries.ts"
+    ]
+  },
+  {
     "key": "{0} countries · {3} stay{4} worldwide",
     "fr": "{0} pays · {1} reste{2} en monde",
     "en": "{0} countries · {3} stay{4} worldwide",
@@ -18759,6 +18855,18 @@
     ],
     "files": [
       "src/components/ReferralCard.tsx"
+    ]
+  },
+  {
+    "key": "🎃 Halloween special: Ghost Countries",
+    "fr": "🎃 Spécial Halloween : Pays fantômes",
+    "en": "🎃 Halloween special: Ghost Countries",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/MainMenu.tsx"
     ]
   },
   {

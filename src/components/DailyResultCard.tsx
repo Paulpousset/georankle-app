@@ -108,7 +108,7 @@ export function DailyResultCard({
             style={{ fontFamily: FONTS.mono, color: c.textMuted, fontSize: 11, letterSpacing: 1, textAlign: 'center' }}
             numberOfLines={1}
           >
-            {dailyModeLabel(result.mode, language).toUpperCase()} #{puzzle}
+            {dailyModeLabel(result.mode, language, result.date).toUpperCase()} #{puzzle}
           </Text>
 
           <ScoreText

@@ -4,7 +4,7 @@ import { Home } from 'lucide-react-native';
 
 import { DailyLeaderboard } from '../screens/DailyLeaderboard';
 import { DailyOverallLeaderboard } from '../screens/DailyOverallLeaderboard';
-import { dailyModeLabel, getPuzzleNumber } from '../lib/daily';
+import { dailyModeLabel, getPuzzleNumber, getTodayUTC } from '../lib/daily';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getColors } from '../theme/colors';
@@ -68,7 +68,7 @@ export function DailyLeaderboardModal({
                     {mode === 'overall'
                       ? tr(language, 'Classement général', 'Overall ranking')
                       : mode
-                        ? dailyModeLabel(mode, language)
+                        ? dailyModeLabel(mode, language, getTodayUTC())
                         : ''}
                   </Text>
                   <Text style={{ fontSize: 10, fontFamily: FONTS.mono, color: c.textFaint }}>

@@ -8,6 +8,7 @@ import type { GameMode } from '../types';
 import { completeDaily, getLocalState, seedFor, type DailyResult } from '../lib/daily';
 import { variantForSeed } from '../lib/languages';
 import { challengeForSeed } from '../data/challenges';
+import { isGhostDay } from '../lib/ghostCountries';
 import { prefetchReferralCode, shareDailyResult } from '../lib/shareDaily';
 import { track } from '../lib/analytics';
 import { maybeAskForReview } from '../lib/reviewPrompt';
@@ -212,6 +213,9 @@ export default function DailyGameHost({
         setGameMode={exitOnMenu}
         user={user}
         onDailyScoreChange={reportScore}
+        // Halloween: the Silhouette slot plays « Pays fantômes » — same seed,
+        // same leaderboard, no server change.
+        ghost={isGhostDay(date)}
         {...common}
       />
     );
