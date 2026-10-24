@@ -25,7 +25,7 @@ import StoryLevelEnd from './StoryLevelEnd';
 
 interface StoryGameHostProps {
   level: StoryLevel;
-  /** Vies restantes (déjà décomptée pour ce niveau) — pour « Rejouer ». */
+  /** Vies restantes (une vie en moins si le niveau est raté) — pour « Réessayer ». */
   lives: number;
   /** Plus haut niveau réussi avant cette partie (progression de la collection). */
   maxLevelBefore: number;
@@ -49,8 +49,8 @@ interface StoryGameHostProps {
  * (niveau suivant, rejouer, carte). L'enregistrement part tout de suite ; sa
  * réponse remplit les pièces quand elle arrive.
  *
- * Quitting mid-level = a fail for that attempt (the life was already spent when
- * the level was launched from the map).
+ * Quitting mid-level = a fail for that attempt: the map spends the life when
+ * the host exits before the end screen. A cleared level costs no life.
  */
 export default function StoryGameHost({
   level,
