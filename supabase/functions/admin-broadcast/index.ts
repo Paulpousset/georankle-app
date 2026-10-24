@@ -1,7 +1,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-import { runBroadcast, type Segment } from '../_shared/broadcast.ts';
+import { runBroadcast, type CampaignI18n, type Segment } from '../_shared/broadcast.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -16,6 +16,19 @@ function json(body: unknown, status = 200) {
     status,
     headers: { ...cors, 'Content-Type': 'application/json' },
   });
+}
+
+/** Version par langue envoyée par l'écran admin : codes à 2 lettres, textes courts, le reste ignoré. */
+function cleanI18n(raw: unknown): CampaignI18n | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const out: CampaignI18n = {};
+  for (const [lang, v] of Object.entries(raw as Record<string, unknown>).slice(0, 32)) {
+    if (!/^[a-z]{2}$/.test(lang) || !v || typeof v !== 'object') continue;
+    const { title: t, body: b } = v as { title?: unknown; body?: unknown };
+    if (typeof t !== 'string' || typeof b !== 'string' || !t.trim() || !b.trim()) continue;
+    out[lang] = { title: t.trim().slice(0, 80), body: b.trim().slice(0, 240) };
+  }
+  return Object.keys(out).length ? out : null;
 }
 
 Deno.serve(async (req) => {
@@ -43,11 +56,12 @@ Deno.serve(async (req) => {
       .single();
     if (!profile?.is_admin) return json({ error: 'forbidden' }, 403);
 
-    const { title, body, segment, dryRun } = (await req.json()) as {
+    const { title, body, segment, dryRun, i18n } = (await req.json()) as {
       title?: string;
       body?: string;
       segment?: Segment;
       dryRun?: boolean;
+      i18n?: unknown;
     };
 
     if (!segment) return json({ error: 'segment required' }, 400);
@@ -60,6 +74,7 @@ Deno.serve(async (req) => {
       title: title ?? '',
       body: body ?? '',
       segment,
+      i18n: cleanI18n(i18n),
       source: 'manual',
       sentBy: user.id,
       dryRun,

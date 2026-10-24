@@ -52,6 +52,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { a11yButton, ICON_HIT_SLOP } from '../lib/a11y';
 import type { MatchMode } from '../types';
+import { PUSH_TEMPLATES, type PushCopy, type PushTemplate } from '../data/pushTemplates';
 
 interface AdminNotificationsProps {
   onBack: () => void;
@@ -78,6 +79,30 @@ export default function AdminNotifications({
   // ── Compose ────────────────────────────────────────────────────────────────
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  // Version anglaise (facultative) : reçue par tous les joueurs qui n'ont pas
+  // choisi le français, sauf si un modèle fournit leur langue.
+  const [titleEn, setTitleEn] = useState('');
+  const [bodyEn, setBodyEn] = useState('');
+  // Modèle déjà traduit dans les 16 langues ; retiré dès qu'on retouche le français.
+  const [template, setTemplate] = useState<PushTemplate | null>(null);
+
+  const pickTemplate = (tpl: PushTemplate) => {
+    setTemplate(tpl);
+    setTitle(tpl.i18n.fr?.title ?? '');
+    setBody(tpl.i18n.fr?.body ?? '');
+    setTitleEn(tpl.i18n.en?.title ?? '');
+    setBodyEn(tpl.i18n.en?.body ?? '');
+  };
+
+  /** Copie par langue envoyée avec le push (chaque joueur reçoit la sienne), ou null = tout le monde reçoit le français. */
+  const buildI18n = (): Record<string, PushCopy> | null => {
+    const out: Record<string, PushCopy> = { ...(template?.i18n ?? {}) };
+    out.fr = { title: title.trim(), body: body.trim() };
+    if (titleEn.trim() && bodyEn.trim()) out.en = { title: titleEn.trim(), body: bodyEn.trim() };
+    else delete out.en;
+    return Object.keys(out).length > 1 ? out : null;
+  };
+  const languageCount = Object.keys(buildI18n() ?? { fr: 1 }).length;
 
   // ── Targeting ────────────────────────────────────────────────────────────────
   const [seg, setSeg] = useState<SegChoice>('everyone');
@@ -213,7 +238,7 @@ export default function AdminNotifications({
     const send = async () => {
       setSending(true);
       try {
-        const res = await sendBroadcast(title.trim(), body.trim(), segment);
+        const res = await sendBroadcast(title.trim(), body.trim(), segment, buildI18n());
         track('admin_broadcast_sent', { segment: segment.type, recipients: res.recipients, sent: res.sent });
         refreshLists();
         showAlert(
@@ -340,9 +365,31 @@ export default function AdminNotifications({
         {/* ── Compose ─────────────────────────────────────────────────────── */}
         <Text style={[styles.outerSectionTitle, { color: c.textMuted }]}>{t('MESSAGE', 'MESSAGE')}</Text>
         <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border, gap: 10 }]}>
+          <View style={styles.chipsRow}>
+            {PUSH_TEMPLATES.map((tpl) => {
+              const active = template?.id === tpl.id;
+              return (
+                <TouchableOpacity
+                  key={tpl.id}
+                  onPress={() => pickTemplate(tpl)}
+                  style={[
+                    styles.chip,
+                    { borderColor: active ? c.accent : c.border, backgroundColor: active ? c.accent : c.background },
+                  ]}
+                  {...a11yButton(t('Modèle : {0}', 'Template: {0}', [tpl.label]), { selected: active })}
+                >
+                  <Text style={[styles.chipText, { color: active ? '#fff' : c.textMuted }]}>{tpl.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <Text style={[styles.fieldLabel, { color: c.textMuted }]}>{t('Français', 'French')}</Text>
           <TextInput
             value={title}
-            onChangeText={setTitle}
+            onChangeText={(v) => {
+              setTitle(v);
+              setTemplate(null);
+            }}
             placeholder={t('Titre', 'Title')}
             placeholderTextColor={c.textFaint}
             style={inputStyle}
@@ -350,13 +397,45 @@ export default function AdminNotifications({
           />
           <TextInput
             value={body}
-            onChangeText={setBody}
+            onChangeText={(v) => {
+              setBody(v);
+              setTemplate(null);
+            }}
             placeholder={t('Message…', 'Message…')}
             placeholderTextColor={c.textFaint}
             style={[inputStyle, styles.multiline]}
             multiline
             maxLength={240}
           />
+          <Text style={[styles.fieldLabel, { color: c.textMuted }]}>
+            {t('Anglais (pour toutes les autres langues)', 'English (for every other language)')}
+          </Text>
+          <TextInput
+            value={titleEn}
+            onChangeText={setTitleEn}
+            placeholder="Title"
+            placeholderTextColor={c.textFaint}
+            style={inputStyle}
+            maxLength={80}
+          />
+          <TextInput
+            value={bodyEn}
+            onChangeText={setBodyEn}
+            placeholder={t('Message…', 'Message…')}
+            placeholderTextColor={c.textFaint}
+            style={[inputStyle, styles.multiline]}
+            multiline
+            maxLength={240}
+          />
+          <Text style={[styles.fieldLabel, { color: c.textMuted }]}>
+            {languageCount > 1
+              ? t(
+                  'Chaque joueur reçoit sa langue ({0} langues prêtes, les autres reçoivent l’anglais).',
+                  'Each player gets their language ({0} languages ready, the rest get English).',
+                  [languageCount],
+                )
+              : t('Sans version anglaise, tout le monde reçoit le français.', 'Without an English version, everyone gets the French text.')}
+          </Text>
         </View>
 
         {/* ── Targeting ───────────────────────────────────────────────────── */}
