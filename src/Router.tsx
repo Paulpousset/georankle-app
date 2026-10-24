@@ -23,6 +23,7 @@ import VersusCapitals from './screens/VersusCapitals';
 import GuessCountryGame from './screens/GuessCountryGame';
 import HigherLowerGame from './screens/HigherLowerGame';
 import SilhouetteGame from './screens/SilhouetteGame';
+import ScaleGame from './screens/ScaleGame';
 import PinpointGame from './screens/PinpointGame';
 import LanguagesFlow from './screens/LanguagesFlow';
 import BordersGame from './screens/BordersGame';
@@ -70,6 +71,7 @@ const DIRECT_SOLO_MODES = new Set<GameMode>([
   'streak',
   'higherlower',
   'silhouette',
+  'scale',
   'pinpoint',
   'borders',
   'guess',
@@ -614,6 +616,14 @@ export function Router({
           training={soloTraining('silhouette')}
           reviewIds={soloReview('silhouette')}
         />
+      </SafeAreaProvider>
+    );
+  }
+
+  if (gameMode === 'scale') {
+    return (
+      <SafeAreaProvider>
+        <ScaleGame setGameMode={leaveGame} user={user} training={soloTraining('scale')} />
       </SafeAreaProvider>
     );
   }

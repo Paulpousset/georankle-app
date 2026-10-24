@@ -336,6 +336,8 @@ export function dailyModeLabel(mode: GameMode, language: Language): string {
       return tr(language, 'Plus ou Moins', 'Higher or Lower');
     case 'silhouette':
       return 'Silhouette';
+    case 'scale':
+      return tr(language, 'À l’échelle', 'To Scale');
     case 'pinpoint':
       return tr(language, 'Point sur le Globe', 'Pin on the Globe');
     case 'borders':

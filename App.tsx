@@ -73,6 +73,8 @@ function stageModeLabel(mode: GameMode, language: Language): string {
       return tr(language, 'Drapeaux', 'Flags');
     case 'local-builder':
       return tr(language, 'Partie perso', 'Custom game');
+    case 'scale':
+      return tr(language, 'À l’échelle', 'To Scale');
     default:
       return modeLabel(mode, language);
   }

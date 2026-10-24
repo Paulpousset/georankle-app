@@ -21,6 +21,7 @@ import {
   MapPin,
   Puzzle,
   Route,
+  Ruler,
   SlidersHorizontal,
   Sun,
   Swords,
@@ -1103,6 +1104,17 @@ export function MainMenu({
                 onPress={() => onPlay('silhouette')}
                 worldOnly={worldOnly('silhouette')}
                 onHelp={() => setHelpMode('silhouette')}
+              />
+              <ModeTile
+                icon={Ruler}
+                accent={PALETTE.sand}
+                tint={isDarkMode ? 'rgba(196,135,42,0.15)' : 'rgba(196,135,42,0.10)'}
+                title={tr(language, 'À l’échelle', 'To Scale')}
+                subtitle={tr(language, 'Mettez deux pays à la même échelle', 'Put two countries at the same scale')}
+                isDarkMode={isDarkMode}
+                onPress={() => onPlay('scale')}
+                worldOnly={worldOnly('scale')}
+                onHelp={() => setHelpMode('scale')}
               />
               <ModeTile
                 icon={MapPin}
