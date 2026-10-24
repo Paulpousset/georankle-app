@@ -7,6 +7,9 @@ import {
   trueUnitPx,
   zoomAt,
   SCALE_MAX_POINTS,
+  BOARD_H,
+  LEFT_W,
+  RIGHT_W,
 } from '../scale';
 import { normalizeRoundScore } from '../score';
 import { simulateBotRound } from '../bot';
@@ -71,16 +74,21 @@ describe('scalePoints', () => {
 });
 
 describe('true scale', () => {
-  it('draws both countries with the same units per km at zoom 1', () => {
-    const [q] = buildScaleRun(11, 1);
-    const unit = trueUnitPx(q);
-    const l = shapeGeometry(q.left)!;
-    const r = shapeGeometry(q.right)!;
-    // The bigger country fills the reference span; both fit in their half.
-    const bigger = Math.max(l.width, l.height, r.width, r.height) * unit;
-    expect(bigger).toBeCloseTo(84);
-    expect(scaledPath(q.left, unit, 50, 50)).toMatch(/^M/);
-    expect(scaledPath(q.right, unit, 150, 50)).toMatch(/^M/);
+  it('keeps both countries inside their column, the right one up to max zoom', () => {
+    for (const seed of [11, 42, 777, 2024, 99999]) {
+      for (const q of buildScaleRun(seed, 5)) {
+        const unit = trueUnitPx(q);
+        const l = shapeGeometry(q.left)!;
+        const r = shapeGeometry(q.right)!;
+        expect(l.width * unit).toBeLessThanOrEqual(LEFT_W + 1e-6);
+        expect(l.height * unit).toBeLessThanOrEqual(BOARD_H + 1e-6);
+        expect(r.width * unit * q.maxZoom).toBeLessThanOrEqual(RIGHT_W + 1e-6);
+        expect(r.height * unit * q.maxZoom).toBeLessThanOrEqual(BOARD_H + 1e-6);
+        // …and the reference country stays big enough to read.
+        expect(Math.max(l.width * unit, l.height * unit)).toBeGreaterThan(15);
+        expect(scaledPath(q.left, unit, LEFT_W / 2, BOARD_H / 2)).toMatch(/^M/);
+      }
+    }
   });
 
   it('keeps France smaller than Brazil', () => {
