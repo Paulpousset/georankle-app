@@ -49,9 +49,15 @@ const CATALOG: Record<CosmeticCategory, CosmeticPart[]> = {
     { id: 'cosmos_solareclipse', category: 'cosmos', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Éclipse solaire', nameEn: 'Solar eclipse', tintable: false, cosmosStyle: 'solareclipse', swatch: '#241436', addedAt: '2026-07-02' },
     { id: 'cosmos_supernova', category: 'cosmos', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Supernova', nameEn: 'Supernova', tintable: false, cosmosStyle: 'supernova', swatch: '#2a1030', addedAt: '2026-07-02' },
     { id: 'cosmos_blackhole', category: 'cosmos', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Trou noir', nameEn: 'Black hole', tintable: false, cosmosStyle: 'blackhole', swatch: '#0c0a14', addedAt: '2026-07-02' },
+    // ── Vague "Nouveaux mondes" (2026-10) ──
+    { id: 'cosmos_dusk', category: 'cosmos', price: RARITY_META.uncommon.price, isDefault: false, rarity: 'uncommon', nameFr: 'Crépuscule rose', nameEn: 'Pink dusk', tintable: false, cosmosStyle: 'dusk', swatch: '#e07a9a', addedAt: '2026-10-24' },
+    { id: 'cosmos_deepsea', category: 'cosmos', price: RARITY_META.rare.price, isDefault: false, rarity: 'rare', nameFr: 'Abysses', nameEn: 'Deep sea', tintable: false, cosmosStyle: 'deepsea', swatch: '#06304a', addedAt: '2026-10-24' },
+    { id: 'cosmos_ringedplanet', category: 'cosmos', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Géante aux anneaux', nameEn: 'Ringed giant', tintable: false, cosmosStyle: 'ringedplanet', swatch: '#1a1438', addedAt: '2026-10-24' },
+    { id: 'cosmos_synthwave', category: 'cosmos', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Synthwave', nameEn: 'Synthwave', tintable: false, cosmosStyle: 'synthwave', swatch: '#2a0a3a', addedAt: '2026-10-24' },
     // ── Mode Histoire : fonds cosmiques EXCLUSIFS ──
     { id: 'cosmos_st_aurorastorm', category: 'cosmos', price: 0, isDefault: false, rarity: 'legendary', exclusive: true, nameFr: "Tempête d'Aurores", nameEn: 'Aurora Storm', tintable: false, cosmosStyle: 'st_aurorastorm', swatch: '#062a3a' },
     { id: 'cosmos_st_embersky', category: 'cosmos', price: 0, isDefault: false, rarity: 'legendary', exclusive: true, nameFr: 'Ciel de Braises', nameEn: 'Ember Sky', tintable: false, cosmosStyle: 'st_embersky', swatch: '#1a0a08' },
+    { id: 'cosmos_st_celestial', category: 'cosmos', price: 0, isDefault: false, rarity: 'legendary', exclusive: true, nameFr: 'Voûte Céleste', nameEn: 'Celestial Vault', tintable: false, cosmosStyle: 'st_celestial', swatch: '#0a1030' },
   ],
 
   // ── GLOBE — the planet/map skin ──────────────────────────────────────────────
@@ -74,10 +80,18 @@ const CATALOG: Record<CosmeticCategory, CosmeticPart[]> = {
     { id: 'globe_cyber', category: 'globe', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Cyber-monde', nameEn: 'Cyber world', tintable: false, globeStyle: 'cyber', addedAt: '2026-07-02' },
     { id: 'globe_eclipse', category: 'globe', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Éclipse', nameEn: 'Eclipse', tintable: false, globeStyle: 'eclipse', addedAt: '2026-07-02' },
     { id: 'globe_biolum', category: 'globe', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Bioluminescente', nameEn: 'Bioluminescent', tintable: false, globeStyle: 'biolum', addedAt: '2026-07-02' },
+    // ── Vague "Nouveaux mondes" (2026-10) ──
+    { id: 'globe_jungle', category: 'globe', price: RARITY_META.uncommon.price, isDefault: false, rarity: 'uncommon', nameFr: 'Planète jungle', nameEn: 'Jungle planet', tintable: false, globeStyle: 'jungle', addedAt: '2026-10-24' },
+    { id: 'globe_desert', category: 'globe', price: RARITY_META.uncommon.price, isDefault: false, rarity: 'uncommon', nameFr: 'Planète des sables', nameEn: 'Desert planet', tintable: false, globeStyle: 'desert', addedAt: '2026-10-24' },
+    { id: 'globe_candy', category: 'globe', price: RARITY_META.rare.price, isDefault: false, rarity: 'rare', nameFr: 'Planète bonbon', nameEn: 'Candy planet', tintable: false, globeStyle: 'candy', addedAt: '2026-10-24' },
+    { id: 'globe_neptune', category: 'globe', price: RARITY_META.rare.price, isDefault: false, rarity: 'rare', nameFr: 'Neptune', nameEn: 'Neptune', tintable: false, globeStyle: 'neptune', addedAt: '2026-10-24' },
+    { id: 'globe_toxic', category: 'globe', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Monde toxique', nameEn: 'Toxic world', tintable: false, globeStyle: 'toxic', addedAt: '2026-10-24' },
+    { id: 'globe_diamond', category: 'globe', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Planète diamant', nameEn: 'Diamond planet', tintable: false, globeStyle: 'diamond', addedAt: '2026-10-24' },
     // ── Mode Histoire : globes EXCLUSIFS à effet inédit (gagnés par jalon) ──
     { id: 'globe_st_fractured', category: 'globe', price: 0, isDefault: false, rarity: 'legendary', exclusive: true, nameFr: 'Terre Fracturée', nameEn: 'Fractured Earth', tintable: false, globeStyle: 'st_fractured' },
     { id: 'globe_st_galaxy', category: 'globe', price: 0, isDefault: false, rarity: 'legendary', exclusive: true, nameFr: 'Terre-Galaxie', nameEn: 'Galaxy World', tintable: false, globeStyle: 'st_galaxy' },
     { id: 'globe_st_crowned', category: 'globe', price: 0, isDefault: false, rarity: 'legendary', exclusive: true, nameFr: 'Monde Couronné', nameEn: 'Crowned World', tintable: false, globeStyle: 'st_crowned' },
+    { id: 'globe_st_obsidian', category: 'globe', price: 0, isDefault: false, rarity: 'legendary', exclusive: true, nameFr: "Monde d'Obsidienne", nameEn: 'Obsidian World', tintable: false, globeStyle: 'st_obsidian' },
   ],
 
   // ── ORBIT — the ring around the globe ────────────────────────────────────────
@@ -230,24 +244,28 @@ export function getPartById(id: string): CosmeticPart | undefined {
 /**
  * Story-mode reward schedule: which exclusive cosmetic is granted at the first
  * clear of a given level. MUST stay in sync with the CASE mapping in
- * `complete_story_level` (story_mode.sql). Client uses it only to show the
+ * `complete_story_level` (migrations/20261024_02_cosmetics_new_worlds.sql). Spread over
+ * the 1000 levels, never closer than 50 apart; the last stretch gets one every
+ * 50 so the endgame always has a reward in sight. Client uses it only to show the
  * unlock's name in the toast; the server is authoritative for the grant.
  */
 export const STORY_COSMETIC_UNLOCKS: { level: number; itemId: string }[] = [
-  { level: 30, itemId: 'emblem_st_star' },
-  { level: 60, itemId: 'sat_st_moon' },
-  { level: 75, itemId: 'globe_st_fractured' },
-  { level: 90, itemId: 'emblem_st_summit' },
-  { level: 100, itemId: 'orbit_st_laurel' },
-  { level: 125, itemId: 'cosmos_st_aurorastorm' },
-  { level: 150, itemId: 'emblem_st_worldtree' },
-  { level: 170, itemId: 'sat_st_ship' },
-  { level: 180, itemId: 'globe_st_galaxy' },
-  { level: 200, itemId: 'sat_st_comet' },
-  { level: 225, itemId: 'orbit_st_compass' },
-  { level: 250, itemId: 'emblem_st_laurel' },
-  { level: 275, itemId: 'cosmos_st_embersky' },
-  { level: 300, itemId: 'globe_st_crowned' },
+  { level: 40, itemId: 'emblem_st_star' },
+  { level: 90, itemId: 'sat_st_moon' },
+  { level: 150, itemId: 'globe_st_fractured' },
+  { level: 220, itemId: 'emblem_st_summit' },
+  { level: 290, itemId: 'orbit_st_laurel' },
+  { level: 360, itemId: 'cosmos_st_aurorastorm' },
+  { level: 430, itemId: 'emblem_st_worldtree' },
+  { level: 500, itemId: 'sat_st_ship' },
+  { level: 575, itemId: 'globe_st_galaxy' },
+  { level: 650, itemId: 'sat_st_comet' },
+  { level: 725, itemId: 'orbit_st_compass' },
+  { level: 800, itemId: 'emblem_st_laurel' },
+  { level: 850, itemId: 'globe_st_obsidian' },
+  { level: 900, itemId: 'cosmos_st_embersky' },
+  { level: 950, itemId: 'cosmos_st_celestial' },
+  { level: 1000, itemId: 'globe_st_crowned' },
 ];
 
 // ── Boutique 2.0 : badge NEW, vitrine du jour, packs ──────────────────────────
@@ -307,6 +325,20 @@ export const BUNDLES: CosmeticBundle[] = [
     nameEn: 'World Wonders pack',
     itemIds: ['emblem_moai', 'emblem_goldengate', 'emblem_sydney'],
     price: 1400, // 400 + 800 + 800 = 2000
+  },
+  {
+    id: 'bundle_explorer',
+    nameFr: 'Pack Explorateur',
+    nameEn: 'Explorer pack',
+    itemIds: ['globe_jungle', 'globe_desert', 'cosmos_deepsea'],
+    price: 500, // 150 + 150 + 400 = 700
+  },
+  {
+    id: 'bundle_retro',
+    nameFr: 'Pack Néo-rétro',
+    nameEn: 'Retro-future pack',
+    itemIds: ['cosmos_synthwave', 'globe_toxic', 'globe_candy'],
+    price: 1900, // 1500 + 800 + 400 = 2700
   },
 ];
 

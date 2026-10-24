@@ -1,6 +1,10 @@
-// Fonds COSMOS du pack cosmétique — backdrops carrés 512², rendus finaux
-// (pas de passage Blender : ce sont des 2D). DA cartoon pro : dégradés riches,
-// étoiles, effets par style. Sortie directe dans out/ (cosmos_<id>.png).
+// Fonds COSMOS du pack cosmétique — backdrops carrés, rendus finaux (pas de
+// passage Blender : ce sont des 2D). DA cartoon pro : dégradés riches, étoiles,
+// effets par style. Dessinés sur une grille d'auteur 512², sortis en deux tailles :
+//   out/<id>.png     512²  → couche des vignettes/listes (<WorldAvatar3D>)
+//   out/<id>_hd.png 2048²  → fond plein cadre des scènes three.js (héros du
+//                            profil, globe de jeu) : un 512² y était agrandi ~5×,
+//                            flou et pixelisé (retour Paul 24/10/2026).
 //   cd asset-pipeline && node gen_cosmos_textures.mjs
 import { mkdirSync } from 'fs';
 import { dirname, join } from 'path';
@@ -9,6 +13,8 @@ import sharp from 'sharp';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const S = 512;
+/** HD rasterisation multiplier over the 512 authoring grid (see the density call below). */
+const HD_SCALE = 4;
 
 function rngFactory(seed) {
   let s = seed >>> 0;
@@ -230,6 +236,101 @@ const COSMOS = {
       body: embers + stars(rnd, 40, 0.3, '#ffd9b0'),
     };
   },
+  // ── Vague « Nouveaux mondes » (24/10/2026) ──
+  // Les fonds sont recadrés en « cover » dans les scènes 3D : en portrait seul
+  // le tiers central reste visible, donc les motifs restent vers x ∈ [0.3, 0.7].
+  cosmos_dusk: (rnd) => {
+    let clouds = '';
+    for (let i = 0; i < 7; i++) {
+      const y = S * (0.72 + i * 0.045), x = rnd() * S * 0.6 - S * 0.1;
+      clouds += `<rect x="${x.toFixed(0)}" y="${y.toFixed(0)}" width="${(S * (0.5 + rnd() * 0.4)).toFixed(0)}" height="${(6 + rnd() * 8).toFixed(0)}" rx="7" fill="#ffd2c8" opacity="${(0.25 + rnd() * 0.3).toFixed(2)}" filter="url(#dc)"/>`;
+    }
+    return {
+      defs: `<linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1c1240"/><stop offset="0.45" stop-color="#6a2a6e"/><stop offset="0.78" stop-color="#e0708e"/><stop offset="1" stop-color="#ffb48a"/></linearGradient>` +
+        `<filter id="dc" x="-10%" y="-200%" width="120%" height="500%"><feGaussianBlur stdDeviation="3"/></filter>`,
+      body: stars(rnd, 70, 0.7).replace(/cy="(\d+)/g, (m, y) => `cy="${Math.round(Number(y) * 0.55)}`) + clouds +
+        `<circle cx="${S * 0.64}" cy="${S * 0.15}" r="${S * 0.055}" fill="#fff3e0"/>` +
+        `<circle cx="${S * 0.665}" cy="${S * 0.135}" r="${S * 0.05}" fill="#2a1848"/>`,
+    };
+  },
+  cosmos_deepsea: (rnd) => {
+    let rays = '', bubbles = '', glow = '';
+    for (let i = 0; i < 6; i++) {
+      const x = S * (0.15 + i * 0.14 + (rnd() - 0.5) * 0.05), w = S * (0.03 + rnd() * 0.05);
+      rays += `<path d="M${x},0 L${x + w},0 L${x + w * 3 + S * 0.08},${S} L${x + S * 0.08},${S} Z" fill="url(#ray)" opacity="${(0.25 + rnd() * 0.25).toFixed(2)}"/>`;
+    }
+    for (let i = 0; i < 46; i++) {
+      const x = rnd() * S, y = rnd() * S, r = 1.5 + rnd() * 5;
+      bubbles += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}" fill="none" stroke="#bff4ff" stroke-width="1.2" opacity="${(0.25 + rnd() * 0.45).toFixed(2)}"/>`;
+    }
+    for (let i = 0; i < 18; i++) glow += star(rnd() * S, S * 0.45 + rnd() * S * 0.55, 1 + rnd() * 2.2, 0.4 + rnd() * 0.5, rnd() > 0.5 ? '#5affd8' : '#9a8cff');
+    return {
+      defs: radial('g', '50%', '0%', '110%', [[0, '#1a7a9e'], [0.45, '#0a3a5a'], [1, '#020a16']]) +
+        `<linearGradient id="ray" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cff6ff" stop-opacity="0.7"/><stop offset="1" stop-color="#cff6ff" stop-opacity="0"/></linearGradient>`,
+      body: rays + bubbles + glow,
+    };
+  },
+  cosmos_ringedplanet: (rnd) => {
+    const cx = S * 0.6, cy = S * 0.16, r = S * 0.1;
+    return {
+      defs: radial('g', '50%', '40%', '90%', [[0, '#2a1e56'], [1, '#06040f']]) +
+        `<linearGradient id="pl" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd7a0"/><stop offset="0.55" stop-color="#e08a5a"/><stop offset="1" stop-color="#5a2a4a"/></linearGradient>` +
+        `<linearGradient id="rg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#f0d8b0" stop-opacity="0.2"/><stop offset="0.5" stop-color="#fff0d8"/><stop offset="1" stop-color="#f0d8b0" stop-opacity="0.2"/></linearGradient>`,
+      body: stars(rnd, 200, 0.75) +
+        `<g transform="rotate(-18 ${cx} ${cy})">` +
+        `<ellipse cx="${cx}" cy="${cy}" rx="${r * 2.1}" ry="${r * 0.42}" fill="none" stroke="url(#rg)" stroke-width="7" opacity="0.8"/>` +
+        `<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#pl)"/>` +
+        `<path d="M${cx - r},${cy - r * 0.25} Q${cx},${cy - r * 0.05} ${cx + r},${cy - r * 0.3}" fill="none" stroke="#b0604a" stroke-width="4" opacity="0.45"/>` +
+        `<path d="M${cx - r * 0.95},${cy + r * 0.25} Q${cx},${cy + r * 0.45} ${cx + r * 0.95},${cy + r * 0.2}" fill="none" stroke="#fff0d0" stroke-width="3" opacity="0.35"/>` +
+        `<path d="M${cx - r * 2.1},${cy} A${r * 2.1},${r * 0.42} 0 0 0 ${cx + r * 2.1},${cy}" fill="none" stroke="url(#rg)" stroke-width="7"/></g>` +
+        star(S * 0.35, S * 0.3, 3, 0.9, '#cfe0ff'),
+    };
+  },
+  cosmos_synthwave: (rnd) => {
+    const hy = S * 0.8, sr = S * 0.2;
+    let grid = '', stripes = '';
+    for (let i = -10; i <= 10; i++) {
+      grid += `<line x1="${S / 2 + i * S * 0.04}" y1="${hy}" x2="${S / 2 + i * S * 0.2}" y2="${S}" stroke="#ff4ad8" stroke-width="1.6" opacity="0.8"/>`;
+    }
+    for (let k = 1; k <= 6; k++) {
+      const y = hy + (S - hy) * Math.pow(k / 6, 1.8);
+      grid += `<line x1="0" y1="${y.toFixed(1)}" x2="${S}" y2="${y.toFixed(1)}" stroke="#ff4ad8" stroke-width="1.6" opacity="0.8"/>`;
+    }
+    for (let k = 0; k < 5; k++) {
+      const y = hy - sr * (0.08 + k * 0.17);
+      stripes += `<rect x="${S / 2 - sr}" y="${y.toFixed(1)}" width="${sr * 2}" height="${(2 + k * 1.4).toFixed(1)}" fill="#2a0a3a"/>`;
+    }
+    return {
+      defs: `<linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#07031a"/><stop offset="0.55" stop-color="#3a0e5a"/><stop offset="0.8" stop-color="#b0306e"/><stop offset="0.801" stop-color="#14041e"/><stop offset="1" stop-color="#2a0a3a"/></linearGradient>` +
+        `<linearGradient id="sun" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe45a"/><stop offset="1" stop-color="#ff3a8a"/></linearGradient>` +
+        `<clipPath id="hz"><rect x="0" y="0" width="${S}" height="${hy}"/></clipPath>` +
+        `<clipPath id="sn"><circle cx="${S / 2}" cy="${hy}" r="${sr}"/></clipPath>`,
+      body: stars(rnd, 90, 0.7).replace(/cy="(\d+)/g, (m, y) => `cy="${Math.round(Number(y) * 0.6)}`) +
+        `<g clip-path="url(#hz)"><circle cx="${S / 2}" cy="${hy}" r="${sr}" fill="url(#sun)"/><g clip-path="url(#sn)">${stripes}</g></g>` +
+        `<rect x="0" y="${hy - 1}" width="${S}" height="2" fill="#ff8ae8"/>` + grid,
+    };
+  },
+  cosmos_st_celestial: (rnd) => {
+    const cx = S / 2, cy = S / 2, R = S * 0.44;
+    let ring = '';
+    for (let i = 0; i < 12; i++) {
+      const a = (i * Math.PI) / 6 - Math.PI / 2;
+      const x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R, r = 5 + (i % 3) * 1.5;
+      // étoile à quatre branches dorée à chaque « maison » du zodiaque
+      ring += `<path d="M${x},${y - r * 2} L${x + r * 0.5},${y - r * 0.5} L${x + r * 2},${y} L${x + r * 0.5},${y + r * 0.5} L${x},${y + r * 2} L${x - r * 0.5},${y + r * 0.5} L${x - r * 2},${y} L${x - r * 0.5},${y - r * 0.5} Z" fill="#ffd86a"/>`;
+      const a2 = a + Math.PI / 12;
+      ring += star(cx + Math.cos(a2) * R, cy + Math.sin(a2) * R, 2, 0.9, '#ffe9a8');
+    }
+    return {
+      defs: radial('g', '50%', '50%', '75%', [[0, '#1c2a62'], [0.6, '#0c1236'], [1, '#03050f']]) +
+        radial('halo', '50%', '50%', '50%', [[0.8, '#ffd86a', 0], [0.9, '#ffd86a', 0.22], [1, '#ffd86a', 0]]),
+      body: stars(rnd, 260, 0.85) +
+        `<circle cx="${cx}" cy="${cy}" r="${R * 1.08}" fill="url(#halo)"/>` +
+        `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#ffd86a" stroke-width="1.6" opacity="0.75"/>` +
+        `<circle cx="${cx}" cy="${cy}" r="${R * 0.93}" fill="none" stroke="#ffd86a" stroke-width="0.8" stroke-dasharray="3,6" opacity="0.6"/>` +
+        ring,
+    };
+  },
 };
 
 const outDir = join(here, 'out');
@@ -239,5 +340,8 @@ for (const [id, build] of Object.entries(COSMOS)) {
   const { defs, body } = build(rnd);
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${S}" height="${S}"><defs>${defs}</defs><rect width="${S}" height="${S}" fill="url(#g)"/>${body}</svg>`;
   await sharp(Buffer.from(svg)).png().toFile(join(outDir, `${id}.png`));
-  console.log(`${id}.png OK`);
+  // Same trick as gen_globe_textures: the SVG DPI scales every radius, stroke
+  // and blur with the output, so the look is identical — only sharper.
+  await sharp(Buffer.from(svg), { density: 72 * HD_SCALE }).png().toFile(join(outDir, `${id}_hd.png`));
+  console.log(`${id}.png + ${id}_hd.png OK`);
 }

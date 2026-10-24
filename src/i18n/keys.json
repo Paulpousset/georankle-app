@@ -478,6 +478,18 @@
     ]
   },
   {
+    "key": "A new version of GeoG is on its way, the app will restart in a moment.",
+    "fr": "Une nouvelle version de GeoG arrive, l’app redémarre dans un instant.",
+    "en": "A new version of GeoG is on its way, the app will restart in a moment.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/ForceUpdateGate.tsx"
+    ]
+  },
+  {
     "key": "A non-neighbouring country costs a life (3 lives per route): think it through — you can’t undo a step.",
     "fr": "Un pays non voisin coûte une vie (3 vies par trajet) : réfléchissez bien, on ne peut pas revenir en arrière.",
     "en": "A non-neighbouring country costs a life (3 lives per route): think it through — you can’t undo a step.",
@@ -571,6 +583,18 @@
     ],
     "files": [
       "src/screens/Friends.tsx"
+    ]
+  },
+  {
+    "key": "A short ad to support the game ;)",
+    "fr": "Une courte pub pour soutenir le jeu ;)",
+    "en": "A short ad to support the game ;)",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/AdBreakNotice.tsx"
     ]
   },
   {
@@ -7786,6 +7810,18 @@
     ]
   },
   {
+    "key": "Level failed: −1 life",
+    "fr": "Niveau raté : −1 vie",
+    "en": "Level failed: −1 life",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/StoryLevelEnd.tsx"
+    ]
+  },
+  {
     "key": "Level {0}",
     "fr": "Niveau {0}",
     "en": "Level {0}",
@@ -7838,6 +7874,18 @@
     "key": "Level {0} locked",
     "fr": "Niveau {0} verrouillé",
     "en": "Level {0} locked",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/StoryMap.tsx"
+    ]
+  },
+  {
+    "key": "Level {0}, tier challenge, {2}",
+    "fr": "Niveau {0}, défi du palier, {1}",
+    "en": "Level {0}, tier challenge, {2}",
     "count": 1,
     "kinds": [
       "call"
@@ -9056,6 +9104,18 @@
     ]
   },
   {
+    "key": "Next coins at level {0}",
+    "fr": "Prochaines pièces au niveau {0}",
+    "en": "Next coins at level {0}",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/StoryLevelEnd.tsx"
+    ]
+  },
+  {
     "key": "Next life in {0}",
     "fr": "Prochaine vie dans {0}",
     "en": "Next life in {0}",
@@ -9161,12 +9221,13 @@
     "key": "No coins this time",
     "fr": "Aucune pièce cette fois",
     "en": "No coins this time",
-    "count": 1,
+    "count": 2,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/components/SoloCoinReward.tsx"
+      "src/components/SoloCoinReward.tsx",
+      "src/screens/StoryLevelEnd.tsx"
     ]
   },
   {
@@ -9740,6 +9801,18 @@
     ],
     "files": [
       "src/components/OfflineBanner.tsx"
+    ]
+  },
+  {
+    "key": "Often skippable after 5 seconds",
+    "fr": "Souvent passable après 5 secondes",
+    "en": "Often skippable after 5 seconds",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/AdBreakNotice.tsx"
     ]
   },
   {
@@ -11314,6 +11387,18 @@
     ],
     "files": [
       "src/screens/LocalParcours.tsx"
+    ]
+  },
+  {
+    "key": "QUICK AD BREAK",
+    "fr": "PETITE PAUSE PUB",
+    "en": "QUICK AD BREAK",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/AdBreakNotice.tsx"
     ]
   },
   {
@@ -15346,6 +15431,18 @@
     ]
   },
   {
+    "key": "Updating",
+    "fr": "Mise à jour en cours",
+    "en": "Updating",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/ForceUpdateGate.tsx"
+    ]
+  },
+  {
     "key": "Urban population",
     "fr": "Population urbaine",
     "en": "Urban population",
@@ -15968,6 +16065,78 @@
     ]
   },
   {
+    "key": "What is the capital of this Canadian province {0}?",
+    "fr": "Quelle est la capitale de cette province canadienne {0} ?",
+    "en": "What is the capital of this Canadian province {0}?",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/challenges.ts"
+    ]
+  },
+  {
+    "key": "What is the capital of this French region {0}?",
+    "fr": "Quel est le chef-lieu de cette région française {0} ?",
+    "en": "What is the capital of this French region {0}?",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/challenges.ts"
+    ]
+  },
+  {
+    "key": "What is the capital of this German Land {0}?",
+    "fr": "Quelle est la capitale de ce Land allemand {0} ?",
+    "en": "What is the capital of this German Land {0}?",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/challenges.ts"
+    ]
+  },
+  {
+    "key": "What is the capital of this Italian region {0}?",
+    "fr": "Quel est le chef-lieu de cette région italienne {0} ?",
+    "en": "What is the capital of this Italian region {0}?",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/challenges.ts"
+    ]
+  },
+  {
+    "key": "What is the capital of this Spanish community {0}?",
+    "fr": "Quelle est la capitale de cette communauté espagnole {0} ?",
+    "en": "What is the capital of this Spanish community {0}?",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/challenges.ts"
+    ]
+  },
+  {
+    "key": "What is the capital of this US state {0}?",
+    "fr": "Quelle est la capitale de cet État américain {0} ?",
+    "en": "What is the capital of this US state {0}?",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/challenges.ts"
+    ]
+  },
+  {
     "key": "What is the capital?",
     "fr": "Quelle est la capitale ?",
     "en": "What is the capital?",
@@ -15980,21 +16149,9 @@
     ]
   },
   {
-    "key": "What is this Land’s capital?",
-    "fr": "Quelle est la capitale de ce Land ?",
-    "en": "What is this Land’s capital?",
-    "count": 1,
-    "kinds": [
-      "label"
-    ],
-    "files": [
-      "src/data/challenges.ts"
-    ]
-  },
-  {
-    "key": "What is this community’s capital?",
-    "fr": "Quelle est la capitale de cette communauté ?",
-    "en": "What is this community’s capital?",
+    "key": "What is the number of this French department {0}?",
+    "fr": "Quel est le numéro de ce département français {0} ?",
+    "en": "What is the number of this French department {0}?",
     "count": 1,
     "kinds": [
       "label"
@@ -16016,54 +16173,6 @@
     ]
   },
   {
-    "key": "What is this department’s number?",
-    "fr": "Quel est le numéro de ce département ?",
-    "en": "What is this department’s number?",
-    "count": 1,
-    "kinds": [
-      "label"
-    ],
-    "files": [
-      "src/data/challenges.ts"
-    ]
-  },
-  {
-    "key": "What is this province’s capital?",
-    "fr": "Quelle est la capitale de cette province ?",
-    "en": "What is this province’s capital?",
-    "count": 1,
-    "kinds": [
-      "label"
-    ],
-    "files": [
-      "src/data/challenges.ts"
-    ]
-  },
-  {
-    "key": "What is this region’s capital?",
-    "fr": "Quel est le chef-lieu de cette région ?",
-    "en": "What is this region’s capital?",
-    "count": 2,
-    "kinds": [
-      "label"
-    ],
-    "files": [
-      "src/data/challenges.ts"
-    ]
-  },
-  {
-    "key": "What is this state’s capital?",
-    "fr": "Quelle est la capitale de cet État ?",
-    "en": "What is this state’s capital?",
-    "count": 1,
-    "kinds": [
-      "label"
-    ],
-    "files": [
-      "src/data/challenges.ts"
-    ]
-  },
-  {
     "key": "What you'll compare",
     "fr": "Ce que vous allez comparer",
     "en": "What you'll compare",
@@ -16073,6 +16182,18 @@
     ],
     "files": [
       "src/screens/GuessCountryGame.tsx"
+    ]
+  },
+  {
+    "key": "Which US state is this {0}?",
+    "fr": "Quel est cet État américain {0} ?",
+    "en": "Which US state is this {0}?",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/challenges.ts"
     ]
   },
   {
@@ -16134,18 +16255,6 @@
     ],
     "files": [
       "src/screens/LanguagesGame.tsx"
-    ]
-  },
-  {
-    "key": "Which state is this?",
-    "fr": "Quel est cet État ?",
-    "en": "Which state is this?",
-    "count": 1,
-    "kinds": [
-      "label"
-    ],
-    "files": [
-      "src/data/challenges.ts"
     ]
   },
   {
@@ -17718,7 +17827,7 @@
     "key": "{0} / {1} correct",
     "fr": "{0} / {1} bonnes réponses",
     "en": "{0} / {1} correct",
-    "count": 4,
+    "count": 5,
     "kinds": [
       "call"
     ],
@@ -17726,7 +17835,8 @@
       "src/screens/ChallengeQuiz.tsx",
       "src/screens/LanguagesGame.tsx",
       "src/screens/PinpointGame.tsx",
-      "src/screens/SilhouetteGame.tsx"
+      "src/screens/SilhouetteGame.tsx",
+      "src/screens/VersusCapitals.tsx"
     ]
   },
   {

@@ -95,6 +95,16 @@ export function normalizeRoundScore(
       return clamp(Math.round((raw / max) * ROUND_SCORE_MAX), 0, ROUND_SCORE_MAX);
     }
 
+    case 'scale': {
+      // À l'échelle: raw = sum of per-pair points, 200 a pair (SCALE_MAX_POINTS
+      // in lib/scale.ts). Fixed on purpose, not read from maxPointsPerQuestion:
+      // callers like BotMatch pass the quizzes' 5 for every mode.
+      const n = ctx.numQuestions ?? 0;
+      const max = n * 200;
+      if (max <= 0) return clamp(Math.round(raw), 0, ROUND_SCORE_MAX);
+      return clamp(Math.round((raw / max) * ROUND_SCORE_MAX), 0, ROUND_SCORE_MAX);
+    }
+
     default:
       return clamp(Math.round(raw), 0, ROUND_SCORE_MAX);
   }

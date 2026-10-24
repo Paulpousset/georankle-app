@@ -398,7 +398,7 @@ function paintOverlay(){
     // just as fast, so they thin with it. They never fade, though: a pick the
     // player cannot see is worse than a thick one.
     var k=D.regionCoat?1:coatK;
-    drawPoly(POLYGONS[idx].r,null,'rgba(255,255,255,0.85)',((s.lw||2.6)+5)*k);
+    drawPoly(POLYGONS[idx].r,null,'rgba(255,255,255,0.85)',((s.lw||2.6)+(D.regionCoat?2:5))*k);
     drawPoly(POLYGONS[idx].r,s.fill,s.stroke,(s.lw||2.6)*k);});
   if(overlayTex)overlayTex.needsUpdate=true;
   needsRender=true;}
@@ -645,8 +645,19 @@ function applyCosmos(){
   if(!SKIN||!SKIN.cosmos)return; // free procedural night → keep the theme colour
   new THREE.TextureLoader().load(SKIN.cosmos,function(t){
     t.colorSpace=THREE.SRGBColorSpace;
-    scene.background=t;needsRender=true;
+    scene.background=t;coverBackground();needsRender=true;
   },undefined,function(){});
+}
+// A background texture is drawn over the whole canvas whatever its shape: the
+// square sky came out stretched ~2× on a portrait phone. Crop it like CSS
+// background-size:cover instead (re-run on every resize).
+function coverBackground(){
+  var b=scene&&scene.background;
+  if(!b||!b.isTexture||!b.image||!W||!H)return;
+  var ia=(b.image.width||1)/(b.image.height||1),ca=W/H;
+  if(ca>ia){b.repeat.set(1,ia/ca);b.offset.set(0,(1-ia/ca)/2);}
+  else{b.repeat.set(ca/ia,1);b.offset.set((1-ca/ia)/2,0);}
+  b.matrixAutoUpdate=true;needsRender=true;
 }
 
 // ── Satellite: the equipped one, on the rig's own orbit ─────────────────────
@@ -983,7 +994,7 @@ function setup(){
 window.addEventListener('resize',function(){
   if(!renderer)return;
   W=window.innerWidth;H=window.innerHeight;baseR=Math.min(W,H)/2*D.initial.fit;
-  camera.aspect=W/H;renderer.setSize(W,H);if(post)post.setSize(W,H);updateCamera();});
+  camera.aspect=W/H;renderer.setSize(W,H);if(post)post.setSize(W,H);coverBackground();updateCamera();});
 ${gameJs}
 requestAnimationFrame(setup);
 </script>
@@ -1095,7 +1106,7 @@ function pickAt(tx,ty){
   var poly=coords?hitTest(coords):null;
   var near=dotInFootprint(tx,ty);
   // A tap on a country's own centre belongs to that country even when a dot's
-  // footprint covers it (coarse ISR ring vs the Palestine dot).
+  // footprint covers it (ISR ring, West Bank included, vs the Palestine dot).
   if(near&&poly&&centreDist(poly,tx,ty)<near.d)return poly;
   if(near)return near.c.cca3;
   // …then the same courtesy for the small polygon countries, but never against
@@ -1409,7 +1420,7 @@ export function buildRegionEarthHtml(opts: {
   polygons: WorldPolygon[];
   dots: RegionDot[];
   /** Auto-framing from lib/regionView (spherical mean + angular spread). */
-  view: { clat: number; clng: number; maxAng: number };
+  view: { clat: number; clng: number; maxAng: number; outliers?: string[] };
   maxDpr?: number;
   skin?: GameGlobeSkin | null;
 }): string {
@@ -1420,6 +1431,12 @@ var VIEW=${JSON.stringify({
     clng: +opts.view.clng.toFixed(4),
     maxAng: +opts.view.maxAng.toFixed(4),
   })};
+// Far-flung regions left out of the framing (Bouvet, Hawaii…) are left out of
+// the overlay box too, or its 2048 px would be stretched over half the planet
+// and every region drawn as a blurry smear. Off the box they have no fill, so
+// they always wear the tiny-region marker instead.
+var OUTSIDE={};
+${JSON.stringify(opts.view.outliers ?? [])}.forEach(function(id){OUTSIDE[id]=true;});
 D.drawBaseLand=true;   // the planet keeps its texture: it is the point of the mode
 D.regionCoat=true;     // …and the country's regions are drawn on top of it
 var sel=null,hov=null,locked=false,resultMode=false,resultCorrect=null,resultPicked=null;
@@ -1444,7 +1461,7 @@ function updateTiny(){
   for(var i=0;i<DOTS.length;i++){var d=DOTS[i];
     if(regionSpan[d.id]===undefined)regionSpan[d.id]=shapeSpan(d.id,d.lat,d.lng);
     var s=regionSpan[d.id];
-    if(s!==null&&projRadius(s*Math.PI/180,zoom)<TINY_PX)list.push(d.id);}
+    if(OUTSIDE[d.id]||(s!==null&&projRadius(s*Math.PI/180,zoom)<TINY_PX))list.push(d.id);}
   tinyIds=list;paintTiny();}
 function paintTiny(){
   if(!tinyDot)return;
@@ -1481,14 +1498,19 @@ function pickAt(tx,ty){
     var d=angDist(coords.lat,coords.lng,DOTS[i].lat,DOTS[i].lng);
     if(d<bestD){bestD=d;best=DOTS[i].id;}}
   return best;}
+// State outlines are texture pixels of the boxed overlay. At 8-10 px (+5 of
+// white under-stroke) a selected region read as a thick blurry band eating into
+// its neighbours (Paul, 17/10/2026); the crisp 3D lines already draw the border
+// itself, so the state only needs a thin rim on top of its fill.
+var STATE_LW=3;
 function repaintStates(){
   var list=[];
   if(resultMode){
-    if(resultCorrect)list.push({id:resultCorrect,fill:PAL.okF,stroke:PAL.okS,lw:9});
-    if(resultPicked&&resultPicked!==resultCorrect)list.push({id:resultPicked,fill:PAL.badF,stroke:PAL.badS,lw:9});
+    if(resultCorrect)list.push({id:resultCorrect,fill:PAL.okF,stroke:PAL.okS,lw:STATE_LW});
+    if(resultPicked&&resultPicked!==resultCorrect)list.push({id:resultPicked,fill:PAL.badF,stroke:PAL.badS,lw:STATE_LW});
   } else {
-    if(hov&&!locked&&hov!==sel)list.push({id:hov,fill:PAL.hovF,stroke:PAL.hovS,lw:8});
-    if(sel)list.push({id:sel,fill:PAL.selF,stroke:PAL.selS,lw:10});
+    if(hov&&!locked&&hov!==sel)list.push({id:hov,fill:PAL.hovF,stroke:PAL.hovS,lw:STATE_LW});
+    if(sel)list.push({id:sel,fill:PAL.selF,stroke:PAL.selS,lw:STATE_LW});
   }
   setOverlayStates(list);
   paintTiny();
@@ -1603,7 +1625,10 @@ window.showResult=function(correct,picked){
       interactive: true,
       resetAlways: true,
       initial: { rotLat: opts.view.clat, rotLon: opts.view.clng, fit: 0.9 },
-      overlayBox: regionOverlayBox(opts.view, opts.polygons),
+      overlayBox: regionOverlayBox(
+        opts.view,
+        opts.polygons.filter((p) => !opts.view.outliers?.includes(p.id)),
+      ),
       regionCoat: true,
       skin: opts.skin,
       bloom: !!opts.skin,

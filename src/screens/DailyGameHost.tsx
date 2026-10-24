@@ -21,6 +21,7 @@ import StreakGame from './StreakGame';
 import HigherLowerGame from './HigherLowerGame';
 import SilhouetteGame from './SilhouetteGame';
 import PinpointGame from './PinpointGame';
+import ScaleGame from './ScaleGame';
 import LanguagesFlow from './LanguagesFlow';
 import BordersGame from './BordersGame';
 import GuessCountryGame from './GuessCountryGame';
@@ -29,6 +30,7 @@ import RegionGameFlow from './RegionGameFlow';
 import ChallengeQuiz from './ChallengeQuiz';
 import VersusCapitals from './VersusCapitals';
 import DailyEnd from './DailyEnd';
+import { afterAdBreak } from '../lib/monetization';
 
 interface DailyGameHostProps {
   mode: GameMode;
@@ -222,6 +224,15 @@ export default function DailyGameHost({
         {...common}
       />
     );
+  } else if (mode === 'scale') {
+    screen = (
+      <ScaleGame
+        setGameMode={exitOnMenu}
+        user={user}
+        onDailyScoreChange={reportScore}
+        {...common}
+      />
+    );
   } else if (mode === 'languages') {
     screen = (
       <LanguagesFlow
@@ -308,7 +319,7 @@ export default function DailyGameHost({
             result={ending.result}
             streak={streak}
             streakIncreased={ending.streakIncreased}
-            onNext={(next) => (onPlayDaily ? onPlayDaily(next) : onExit())}
+            onNext={(next) => afterAdBreak(() => (onPlayDaily ? onPlayDaily(next) : onExit()))()}
             onShare={onShare}
             onDetail={() => setShowEnd(false)}
             onHub={onExit}

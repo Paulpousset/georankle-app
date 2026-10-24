@@ -12,15 +12,19 @@ import {
   gateForLevel,
   tierOfLevel,
   STORY_TIER_COUNT,
+  isBossLevel,
+  coinRewardForLevel,
+  nextCoinLevel,
 } from '../story';
 import { NOTORIETY_COUNT, notorietyRank } from '../../lib/notoriety';
 import { pickBandCountries } from '../../lib/matchCountries';
-import { BIOMES, biomeForTier } from '../biomes';
+import { BIOMES, TIERS_PER_BIOME, biomeForTier } from '../biomes';
 import { STORY_COSMETIC_UNLOCKS, getPartById, ALL_PARTS } from '../cosmetics';
 
 describe('story catalogue', () => {
-  it('builds exactly 500 levels, each with a mode and a seed', () => {
+  it('builds exactly 1000 levels, each with a mode and a seed', () => {
     const levels = buildStoryLevels();
+    expect(STORY_LEVEL_COUNT).toBe(1000);
     expect(levels).toHaveLength(STORY_LEVEL_COUNT);
     for (const l of levels) {
       expect(l.mode).toBeTruthy();
@@ -49,6 +53,28 @@ describe('story catalogue', () => {
     for (const x of withClassic) expect(x.lvl).toBeGreaterThanOrEqual(160);
   });
 
+  it('never serves the same mode twice in a row', () => {
+    for (let l = 2; l <= STORY_LEVEL_COUNT; l++) {
+      expect(modeForLevel(l)).not.toBe(modeForLevel(l - 1));
+    }
+    // and, once the pool is wide enough, not within three levels either
+    for (let l = 200; l <= STORY_LEVEL_COUNT; l++) {
+      expect(modeForLevel(l)).not.toBe(modeForLevel(l - 2));
+    }
+  });
+
+  it('ends each world (from world 2) on a longer défi', () => {
+    expect(isBossLevel(10)).toBe(false);
+    expect(isBossLevel(20)).toBe(true);
+    expect(isBossLevel(21)).toBe(false);
+    for (let l = 20; l <= STORY_LEVEL_COUNT; l += 10) {
+      const lvl = getStoryLevel(l);
+      expect(lvl.boss).toBe(true);
+      expect(lvl.questionCount).toBeGreaterThan(1); // always a count-based mode
+      expect(lvl.questionCount).toBe(Math.min(8, 3 + Math.floor(l / 45)) + 2);
+    }
+  });
+
   it('difficulty band slides from famous to obscure', () => {
     const b1 = difficultyBand(1);
     const b300 = difficultyBand(300);
@@ -62,9 +88,20 @@ describe('story catalogue', () => {
     expect(mid(difficultyBand(150))).toBeLessThan(mid(b300));
   });
 
+  it('past level 300, eases at the start of each world and peaks at the défi', () => {
+    const mid = (b: { minRank: number; maxRank: number }) => (b.minRank + b.maxRank) / 2;
+    expect(mid(difficultyBand(701))).toBeLessThan(mid(difficultyBand(710)));
+    expect(difficultyBand(710)).toEqual(difficultyBand(300));
+    for (let l = 301; l <= STORY_LEVEL_COUNT; l++) {
+      const b = difficultyBand(l);
+      expect(b.maxRank - b.minRank).toBeGreaterThanOrEqual(55); // never narrower than level 300's band
+    }
+  });
+
   it('question count ramps up for count-based modes', () => {
     expect(questionCountFor(1, 'globe')).toBe(3);
-    expect(questionCountFor(300, 'globe')).toBe(8);
+    expect(questionCountFor(299, 'globe')).toBe(8);
+    expect(questionCountFor(300, 'globe')).toBe(10); // a défi
     // Intrinsic-length modes always report 1.
     expect(questionCountFor(300, 'guess')).toBe(1);
     expect(questionCountFor(300, 'borders')).toBe(1);
@@ -107,10 +144,13 @@ describe('notoriety-band country picking', () => {
 describe('biomes', () => {
   const N = BIOMES.length;
   it('cycles through the biome list by tier', () => {
+    const K = TIERS_PER_BIOME;
+    expect(K).toBeGreaterThanOrEqual(3); // an environment lasts 30+ levels
     expect(biomeForTier(1).key).toBe(BIOMES[0].key);
-    expect(biomeForTier(N).key).toBe(BIOMES[N - 1].key);
-    expect(biomeForTier(N + 1).key).toBe(BIOMES[0].key); // wraps
-    expect(biomeForTier(30).key).toBe(BIOMES[(30 - 1) % N].key);
+    expect(biomeForTier(K).key).toBe(BIOMES[0].key);
+    expect(biomeForTier(K + 1).key).toBe(BIOMES[1].key);
+    expect(biomeForTier(N * K).key).toBe(BIOMES[N - 1].key);
+    expect(biomeForTier(N * K + 1).key).toBe(BIOMES[0].key); // wraps
   });
   it('has enough biomes to keep repeats far apart', () => {
     expect(N).toBeGreaterThanOrEqual(8);
@@ -124,8 +164,23 @@ describe('story cosmetic rewards', () => {
       expect(part).toBeDefined();
       expect(part!.exclusive).toBe(true);
       expect(u.level).toBeGreaterThanOrEqual(1);
-      expect(u.level).toBeLessThanOrEqual(300);
+      expect(u.level).toBeLessThanOrEqual(STORY_LEVEL_COUNT);
     }
+  });
+
+  it('spreads the rewards over the whole campaign, further apart as it goes', () => {
+    const levels = STORY_COSMETIC_UNLOCKS.map((u) => u.level);
+    expect(levels[levels.length - 1]).toBe(STORY_LEVEL_COUNT);
+    for (let i = 1; i < levels.length; i++) expect(levels[i] - levels[i - 1]).toBeGreaterThanOrEqual(50);
+  });
+
+  it('pays coins only on every 10th level', () => {
+    expect(coinRewardForLevel(9)).toBe(0);
+    expect(coinRewardForLevel(10)).toBeGreaterThan(0);
+    expect(nextCoinLevel(1)).toBe(10);
+    expect(nextCoinLevel(10)).toBe(10);
+    expect(nextCoinLevel(11)).toBe(20);
+    expect(nextCoinLevel(STORY_LEVEL_COUNT + 1)).toBeNull();
   });
 
   it('exclusive parts are free and never enter the priced catalogue', () => {
@@ -136,14 +191,15 @@ describe('story cosmetic rewards', () => {
 });
 
 describe('world star gates', () => {
-  it('asks 2.0 stars per earlier level at world 2, rising to 2.5 at the last world', () => {
+  it('asks 2.0 stars per earlier level at world 2, rising to 2.5 at world 50 then flat', () => {
     expect(starsRequiredForTier(1)).toBe(0);
     expect(starsRequiredForTier(2)).toBe(20);
+    expect(starsRequiredForTier(50)).toBe(Math.ceil(49 * 10 * 2.5));
     expect(starsRequiredForTier(STORY_TIER_COUNT)).toBe(Math.ceil((STORY_TIER_COUNT - 1) * 10 * 2.5));
     for (let t = 2; t <= STORY_TIER_COUNT; t++) {
       const levels = (t - 1) * 10;
-      // integer formula == ceil(levels × (190 + t) / 96), always reachable (≤ 3★/level)
-      expect(starsRequiredForTier(t)).toBe(Math.ceil((levels * (190 + t)) / 96 - 1e-9));
+      // integer formula == ceil(levels × (190 + min(t, 50)) / 96), always reachable (≤ 3★/level)
+      expect(starsRequiredForTier(t)).toBe(Math.ceil((levels * (190 + Math.min(t, 50))) / 96 - 1e-9));
       expect(starsRequiredForTier(t)).toBeLessThan(levels * 3);
       expect(starsRequiredForTier(t)).toBeGreaterThanOrEqual(starsRequiredForTier(t - 1));
     }

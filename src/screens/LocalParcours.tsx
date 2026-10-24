@@ -27,6 +27,7 @@ import {
   Play,
   Plus,
   MapPin,
+  Ruler,
   Puzzle,
   Route,
   TrendingUp,
@@ -57,6 +58,7 @@ import StreakGame from './StreakGame';
 import HigherLowerGame from './HigherLowerGame';
 import SilhouetteGame from './SilhouetteGame';
 import PinpointGame from './PinpointGame';
+import ScaleGame from './ScaleGame';
 import LanguagesGame from './LanguagesGame';
 import BordersGame from './BordersGame';
 import GuessCountryGame from './GuessCountryGame';
@@ -71,7 +73,7 @@ import { countryName } from '../lib/geoNames';
 
 // ─── Mode catalogue ───────────────────────────────────────────────────────────
 
-type ModeKey = 'capital' | 'flag' | 'classic' | 'streak' | 'guess' | 'globe' | 'regions' | 'challenge' | 'higherlower' | 'silhouette' | 'pinpoint' | 'borders' | 'languages';
+type ModeKey = 'capital' | 'flag' | 'classic' | 'streak' | 'guess' | 'globe' | 'regions' | 'challenge' | 'higherlower' | 'silhouette' | 'pinpoint' | 'borders' | 'languages' | 'scale';
 
 interface ModeDef {
   key: ModeKey;
@@ -96,6 +98,7 @@ const MODES: Record<ModeKey, ModeDef> = {
   higherlower: { key: 'higherlower', fr: 'Plus ou Moins', en: 'Higher or Lower', icon: TrendingUp, accent: PALETTE.chartBlue, rounds: 'fixed', defaultRounds: 1, unitFr: "jusqu'à l'erreur", unitEn: 'until a miss' },
   silhouette: { key: 'silhouette', fr: 'Silhouette', en: 'Silhouette', icon: Puzzle, accent: PALETTE.forestGreen, rounds: 'config', defaultRounds: 5, unitFr: 'formes', unitEn: 'shapes' },
   pinpoint: { key: 'pinpoint', fr: 'Point sur le Globe', en: 'Pin on the Globe', icon: MapPin, accent: PALETTE.vermilion, rounds: 'config', defaultRounds: 5, unitFr: 'points', unitEn: 'points' },
+  scale: { key: 'scale', fr: 'À l’échelle', en: 'To Scale', icon: Ruler, accent: PALETTE.sand, rounds: 'config', defaultRounds: 5, unitFr: 'paires', unitEn: 'pairs' },
   languages: { key: 'languages', fr: 'Langues', en: 'Languages', icon: Languages, accent: PALETTE.oceanBlue, rounds: 'config', defaultRounds: 5, unitFr: 'phrases', unitEn: 'phrases' },
   borders: { key: 'borders', fr: 'Frontières', en: 'Borders', icon: Route, accent: PALETTE.sand, rounds: 'fixed', defaultRounds: 1, unitFr: '1 trajet', unitEn: '1 route' },
   globe: { key: 'globe', fr: 'Globe Géo', en: 'Geo Globe', icon: Globe, accent: PALETTE.oceanBlue, rounds: 'config', defaultRounds: 5, unitFr: 'rounds', unitEn: 'rounds' },
@@ -103,7 +106,7 @@ const MODES: Record<ModeKey, ModeDef> = {
   challenge: { key: 'challenge', fr: 'Quiz Pays', en: 'Country Quiz', icon: Landmark, accent: PALETTE.chartBlue, rounds: 'config', defaultRounds: 5, unitFr: 'questions', unitEn: 'questions' },
 };
 
-const MODE_ORDER: ModeKey[] = ['globe', 'regions', 'challenge', 'guess', 'borders', 'silhouette', 'pinpoint', 'languages', 'higherlower', 'classic', 'streak', 'capital', 'flag'];
+const MODE_ORDER: ModeKey[] = ['globe', 'regions', 'challenge', 'guess', 'borders', 'silhouette', 'pinpoint', 'scale', 'languages', 'higherlower', 'classic', 'streak', 'capital', 'flag'];
 
 /**
  * Modes that inherently play one question per turn, so players alternate
@@ -126,6 +129,7 @@ function toMatchMode(mode: ModeKey): MatchMode {
     case 'higherlower': return 'higherlower';
     case 'silhouette': return 'silhouette';
     case 'pinpoint': return 'pinpoint';
+    case 'scale': return 'scale';
     case 'languages': return 'languages';
     case 'challenge': return 'challenge';
     case 'borders': return 'borders';
@@ -501,6 +505,16 @@ export default function LocalParcours({
       case 'pinpoint':
         return (
           <PinpointGame
+            key={key}
+            setGameMode={quit as (m: GameMode) => void}
+            user={null}
+            matchData={match}
+            onRoundComplete={handleRoundComplete}
+          />
+        );
+      case 'scale':
+        return (
+          <ScaleGame
             key={key}
             setGameMode={quit as (m: GameMode) => void}
             user={null}

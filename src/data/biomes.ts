@@ -1,10 +1,11 @@
 /**
- * Story-map biomes — a themed region every 10 levels (palier), cycling.
+ * Story-map biomes — a themed region every TIERS_PER_BIOME paliers (30 levels),
+ * cycling.
  *
  * The winding route on the map IS a river; each biome recolours the banks +
  * river + level medallions and brings its own scattered decoration and a big
  * background "feature" silhouette (mountains, a volcano, an iceberg…). StoryMap
- * paints one biome band per tier, varies it a little per tier (decoration seed +
+ * paints one band per tier (10 levels), varies it a little per tier (decoration seed +
  * feature placement) so repeats never look identical, and places the level
  * medallions on the river.
  */
@@ -47,8 +48,14 @@ export const BIOMES: Biome[] = [
   { key: 'cosmos',   nameFr: 'Cosmos',   nameEn: 'Cosmos',      bank: ['#141c40', '#070a1c'], river: ['#7f8cff', '#2a2a8a'], rim: '#9a7cff', onRim: '#fff',     decor: ['star', 'star', 'comet', 'crystal'],         feature: 'starfield', featureColor: '#20265a', night: true },
 ];
 
+/**
+ * Paliers (10-level tiers) a biome lasts before the next one takes over. Was 1:
+ * the scenery changed every 10 levels, too fast for a 1000-level campaign.
+ */
+export const TIERS_PER_BIOME = 3;
+
 /** Biome for a 1-based tier (group of 10 levels), cycling through the list. */
 export function biomeForTier(tier: number): Biome {
-  const i = ((tier - 1) % BIOMES.length + BIOMES.length) % BIOMES.length;
-  return BIOMES[i];
+  const span = Math.floor((Math.max(tier, 1) - 1) / TIERS_PER_BIOME);
+  return BIOMES[span % BIOMES.length];
 }

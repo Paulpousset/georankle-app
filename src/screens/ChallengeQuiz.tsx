@@ -356,7 +356,7 @@ export default function ChallengeQuiz({
             </Text>
           )}
           <Text style={[styles.instruction, { color: c.textMuted }]}>
-            {tr(language, challenge.questionFr, challenge.questionEn)}
+            {tr(language, challenge.questionFr, challenge.questionEn, [challenge.emoji])}
           </Text>
         </View>
 

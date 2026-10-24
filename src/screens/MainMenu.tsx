@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import {
   BarChart3,
@@ -21,6 +21,7 @@ import {
   MapPin,
   Puzzle,
   Route,
+  Ruler,
   SlidersHorizontal,
   Sun,
   Swords,
@@ -33,6 +34,7 @@ import {
   X,
   Zap,
 } from 'lucide-react-native';
+import { AdBanner } from '../components/AdBanner';
 import { AtlasFlame } from '../components/AtlasIcons';
 import { LanguageButton } from '../components/LanguageButton';
 import { AvatarPreview3D } from '../components/AvatarPreview3D';
@@ -500,6 +502,7 @@ export function MainMenu({
   incomingInviteMode = null,
 }: MainMenuProps) {
   const { isDarkMode, toggleTheme } = useTheme();
+  const insets = useSafeAreaInsets();
   const { language } = useLanguage();
   const c = getColors(isDarkMode);
   const iconColor = c.text;
@@ -636,6 +639,9 @@ export function MainMenu({
 
   return (
     <SafeAreaView
+      // No bottom edge: the menu scrolls all the way to the bottom of the
+      // screen instead of stopping above an empty home-indicator strip.
+      edges={['top', 'left', 'right']}
       style={[styles.container, !isDarkMode && styles.containerLight, { flex: 1 }]}
     >
       <StatusBar style={isDarkMode ? 'light' : 'dark'} />
@@ -742,7 +748,7 @@ export function MainMenu({
           alignItems: 'center',
           paddingHorizontal: 20,
           paddingTop: 0,
-          paddingBottom: 60,
+          paddingBottom: 60 + insets.bottom,
         }}
         showsVerticalScrollIndicator={false}
       >
@@ -1098,6 +1104,17 @@ export function MainMenu({
                 onPress={() => onPlay('silhouette')}
                 worldOnly={worldOnly('silhouette')}
                 onHelp={() => setHelpMode('silhouette')}
+              />
+              <ModeTile
+                icon={Ruler}
+                accent={PALETTE.sand}
+                tint={isDarkMode ? 'rgba(196,135,42,0.15)' : 'rgba(196,135,42,0.10)'}
+                title={tr(language, 'À l’échelle', 'To Scale')}
+                subtitle={tr(language, 'Mettez deux pays à la même échelle', 'Put two countries at the same scale')}
+                isDarkMode={isDarkMode}
+                onPress={() => onPlay('scale')}
+                worldOnly={worldOnly('scale')}
+                onHelp={() => setHelpMode('scale')}
               />
               <ModeTile
                 icon={MapPin}
@@ -1503,6 +1520,17 @@ export function MainMenu({
                 onLeaderboard={() => onOpenOnlineModeLeaderboard('pinpoint', isDarkMode ? PALETTE.chartBlue : PALETTE.vermilion)}
                 notify={incomingInviteMode === 'pinpoint'}
               />
+              <ModeCard
+                icon={Ruler}
+                accent={PALETTE.sand}
+                tint={isDarkMode ? 'rgba(196,135,42,0.15)' : 'rgba(196,135,42,0.10)'}
+                title={tr(language, 'À l’échelle', 'To Scale')}
+                subtitle={tr(language, 'Les mêmes paires pour les deux joueurs', 'Same pairs for both players')}
+                isDarkMode={isDarkMode}
+                onPress={() => onPlayOnline('scale')}
+                onLeaderboard={() => onOpenOnlineModeLeaderboard('scale', PALETTE.sand)}
+                notify={incomingInviteMode === 'scale'}
+              />
               {languagesMode && (
                 <ModeCard
                   icon={Languages}
@@ -1584,6 +1612,8 @@ export function MainMenu({
       {/* "How to play" card opened from a mode's "?" button — a plain close
           handler, so consulting the rules here never marks the mode as seen. */}
       <ModeIntroCard mode={helpMode} onDismiss={() => setHelpMode(null)} />
+
+      <AdBanner padBottom />
     </SafeAreaView>
   );
 }

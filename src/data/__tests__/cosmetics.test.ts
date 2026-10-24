@@ -163,6 +163,31 @@ describe('Boutique 2.0 wave', () => {
   });
 });
 
+describe('"Nouveaux mondes" wave', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { COSMETIC_LAYERS } = require('../cosmeticLayers.gen');
+  const wave = ALL_PARTS.filter((p) => p.addedAt === '2026-10-24');
+
+  it('adds 6 globes and 4 skies to the shop', () => {
+    expect(wave.filter((p) => p.category === 'globe')).toHaveLength(6);
+    expect(wave.filter((p) => p.category === 'cosmos')).toHaveLength(4);
+    expect(wave.every((p) => !p.exclusive)).toBe(true);
+  });
+
+  it('ships a pre-rendered layer for every new item, so lists never fall back to SVG', () => {
+    for (const p of [...wave, getPart('globe', 'globe_st_obsidian')!, getPart('cosmos', 'cosmos_st_celestial')!]) {
+      expect(COSMETIC_LAYERS[p.id]?.main).toBeDefined();
+    }
+  });
+
+  it('gives every textured sky an HD backdrop for the full-frame 3D scenes', () => {
+    for (const p of getCategoryParts('cosmos')) {
+      if (p.id === 'cosmos_bluenight') continue; // procedural, tintable
+      expect(COSMETIC_LAYERS[p.id]?.hd).toBeDefined();
+    }
+  });
+});
+
 describe('getEquippedParts', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { getEquippedParts } = require('../cosmetics');

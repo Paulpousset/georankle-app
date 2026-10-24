@@ -17,8 +17,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Circle, Defs, Ellipse, G, LinearGradient, Path, Polygon, Rect, Stop } from 'react-native-svg';
 import {
-  ArrowLeft, Check, Flag, Gift, Globe, Heart, Info, LayoutGrid, List, Lock, Map as MapIcon,
-  Plus, MapPin, Puzzle, Route, Star, TrendingUp, X, Zap, type LucideIcon,
+  ArrowLeft, Check, Crown, Flag, Gift, Globe, Heart, Info, LayoutGrid, List, Lock, Map as MapIcon,
+  Plus, MapPin, Puzzle, Route, Ruler, Star, TrendingUp, X, Zap, type LucideIcon,
 } from 'lucide-react-native';
 import type { User } from '@supabase/supabase-js';
 
@@ -47,7 +47,9 @@ import { BAND_ART_H, BAND_ART_W, STORY_BAND_ART, STORY_COIN_ART, STORY_COIN_LOCK
 import { useFeatureFlag } from '../lib/featureFlags';
 import {
   getStorySnapshot,
-  consumeLife,
+  beginAttempt,
+  endAttempt,
+  settleAbandonedAttempt,
   recordLevel,
   getFriendsPositions,
   MAX_LIVES,
@@ -115,6 +117,7 @@ const MODE_ICON: Record<string, LucideIcon> = {
   globe: Globe,
   silhouette: Puzzle,
   pinpoint: MapPin,
+  scale: Ruler,
   borders: Route,
   higherlower: TrendingUp,
   streak: Zap,
@@ -187,7 +190,7 @@ function bandIndexForY(y: number, tierCount: number): number {
  * Rendering is WINDOWED: only the biome bands (background art + medallions)
  * within the viewport ± WINDOW_MARGIN are mounted, and each band's SVG art is
  * built once and cached. Mounting all 30 bands (~35k px of SVG + 300 nodes) at
- * once froze the JS thread for seconds on open.
+ * once froze the JS thread for seconds on open — and the map now holds 100.
  */
 export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) {
   const { isDarkMode } = useTheme();
@@ -403,7 +406,8 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
 
   useEffect(() => {
     track('story_opened');
-    reload();
+    // A level left by killing the app mid-game counts as a fail (one life).
+    settleAbandonedAttempt(user).finally(() => void reload());
     rewardedAdsAvailable().then(setAdAvailable).catch(() => setAdAvailable(false));
     getFriendsPositions(user).then(setFriends).catch(() => setFriends([]));
     if (user) {
@@ -471,7 +475,10 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
     snapshotRef.current = snapshot;
   }, [snapshot]);
 
-  /** Dépense une vie et ouvre le niveau — depuis la carte ou l'écran de fin. */
+  /**
+   * Ouvre le niveau — depuis la carte ou l'écran de fin. Il faut au moins une
+   * vie, mais elle n'est dépensée que si le niveau est raté (ou abandonné).
+   */
   const launch = useCallback(
     async (level: number) => {
       const snap = snapshotRef.current;
@@ -490,13 +497,7 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
         openLivesSheet();
         return;
       }
-      const spent = await consumeLife(user);
-      if (!spent.ok) {
-        if (active) closeLevel();
-        openLivesSheet();
-        return;
-      }
-      setSnapshot((s) => (s ? { ...s, lives: spent.lives } : s));
+      await beginAttempt(user, level);
       track('story_level_started', { level });
       didAutoScroll.current = false;
       setRunId((r) => r + 1);
@@ -531,6 +532,8 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
     async ({ score, stars }: { score: number; stars: number }) => {
       const lvl = active?.level;
       if (lvl == null) return { firstClear: false, coins: 0, synced: false };
+      // Only a failed level costs a life.
+      await endAttempt(user, stars >= 1);
       const res = await recordLevel(user, lvl, score, stars);
       await reload();
       return res;
@@ -563,7 +566,8 @@ export default function StoryMap({ user, onBack, onOpenPlayer }: StoryMapProps) 
         signedIn={!!user}
         onExit={() => {
           closeLevel();
-          void reload();
+          // Quitting mid-level is a fail; after the end screen it's a no-op.
+          void endAttempt(user, false).finally(() => void reload());
         }}
         onLevelComplete={onLevelComplete}
         onPlayLevel={onPlayLevel}
@@ -878,7 +882,9 @@ const LevelNode = memo(function LevelNode({
           {...a11yButton(
             locked
               ? tr(language, 'Niveau {0} verrouillé', 'Level {0} locked', [level])
-              : tr(language, 'Niveau {0}, {1}', 'Level {0}, {2}', [level, biome.nameFr, biome.nameEn]),
+              : meta.boss
+                ? tr(language, 'Niveau {0}, défi du palier, {1}', 'Level {0}, tier challenge, {2}', [level, biome.nameFr, biome.nameEn])
+                : tr(language, 'Niveau {0}, {1}', 'Level {0}, {2}', [level, biome.nameFr, biome.nameEn]),
           )}
           style={
             coinArt != null
@@ -965,6 +971,28 @@ const LevelNode = memo(function LevelNode({
           ) : null}
         </TouchableOpacity>
       </View>
+
+      {/* World's « défi »: a longer round at the end of each world */}
+      {meta.boss ? (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: -6,
+            left: -6,
+            width: 24,
+            height: 24,
+            borderRadius: 12,
+            backgroundColor: locked ? '#6b6b6b' : '#ffcf4a',
+            borderWidth: 1.5,
+            borderColor: '#fff',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Crown color={locked ? '#fff' : '#3a2a00'} size={13} />
+        </View>
+      ) : null}
 
       {/* Stars earned */}
       {!locked && stars > 0 ? (
@@ -1082,6 +1110,24 @@ function StoryTable({
   const myMax = snapshot?.maxLevel ?? 0;
   const width = useStageWidth();
   const [preview, setPreview] = useState<{ itemId: string; level: number } | null>(null);
+  // Items actually owned: the milestones moved later when the campaign grew to
+  // 1000 levels, so a veteran can own an item whose new level is still ahead.
+  const [ownedIds, setOwnedIds] = useState<ReadonlySet<string>>(() => new Set());
+  useEffect(() => {
+    if (!user) return;
+    let alive = true;
+    supabase
+      .from('user_cosmetics')
+      .select('item_id')
+      .eq('user_id', user.id)
+      .in('item_id', STORY_COSMETIC_UNLOCKS.map((u) => u.itemId))
+      .then(({ data }: any) => {
+        if (alive && data) setOwnedIds(new Set((data as { item_id: string }[]).map((r) => r.item_id)));
+      }, () => {});
+    return () => {
+      alive = false;
+    };
+  }, [user]);
   // Même DA que la boutique / l'éditeur : pack 3D pré-rendu derrière le flag,
   // SVG procédural sinon.
   const avatar3d = useFeatureFlag('avatar_3d');
@@ -1118,7 +1164,7 @@ function StoryTable({
   const rewards = STORY_COSMETIC_UNLOCKS;
 
   const previewPart = preview ? getPartById(preview.itemId) : undefined;
-  const previewOwned = preview ? myMax >= preview.level : false;
+  const previewOwned = preview ? myMax >= preview.level || ownedIds.has(preview.itemId) : false;
   const previewSize = Math.min(width * 0.5, 190);
 
   return (
@@ -1171,7 +1217,7 @@ function StoryTable({
         {rewards.map((u, i) => {
           const part = getPartById(u.itemId);
           if (!part) return null;
-          const owned = myMax >= u.level;
+          const owned = myMax >= u.level || ownedIds.has(u.itemId);
           const name = tr(language, part.nameFr, part.nameEn);
           return (
             <TouchableOpacity

@@ -47,6 +47,7 @@ import FindRegionGame from './FindRegionGame';
 import HigherLowerGame from './HigherLowerGame';
 import SilhouetteGame from './SilhouetteGame';
 import PinpointGame from './PinpointGame';
+import ScaleGame from './ScaleGame';
 import LanguagesGame from './LanguagesGame';
 import ChallengeQuiz from './ChallengeQuiz';
 import BordersGame from './BordersGame';
@@ -68,6 +69,7 @@ const GLOBE_ROUNDS = 5;
 const REGION_ROUNDS = 5;
 const SILHOUETTE_QUESTIONS = 5; // SilhouetteGame's online default session length
 const PINPOINT_QUESTIONS = 5; // PinpointGame's online default session length
+const SCALE_PAIRS = 5; // ScaleGame's online default session length
 const LANGUAGES_QUESTIONS_ONLINE = 5; // LanguagesGame's online default session length
 
 interface PlayerProfile {
@@ -267,6 +269,7 @@ export default function BotMatch({ user, match, bot, onExit }: BotMatchProps) {
         : mode === 'regions' ? REGION_ROUNDS
           : mode === 'silhouette' ? SILHOUETTE_QUESTIONS
           : mode === 'pinpoint' ? PINPOINT_QUESTIONS
+          : mode === 'scale' ? SCALE_PAIRS
             : mode === 'languages' ? LANGUAGES_QUESTIONS_ONLINE
               : mode === 'challenge' ? CHALLENGE_QUESTIONS_ONLINE
                 : 1;
@@ -400,6 +403,8 @@ export default function BotMatch({ user, match, bot, onExit }: BotMatchProps) {
         return <SilhouetteGame setGameMode={quit} user={null} {...common} />;
       case 'pinpoint':
         return <PinpointGame setGameMode={quit} user={null} {...common} />;
+      case 'scale':
+        return <ScaleGame setGameMode={quit} user={null} {...common} />;
       case 'languages':
         return <LanguagesGame setGameMode={quit} user={null} {...common} />;
       case 'challenge':

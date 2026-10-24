@@ -50,6 +50,8 @@ Ton lien d'invitation est proposé en fin de partie : vous gagnez chacun 50 piè
 
 🔊 Bouton son flottant et bouton de langue plus clair.
 
+🛠️ Revanche en ligne corrigée ; les matchs ne comptent plus dans les classements solo.
+
 🛠️ Sous le capot
 Les prochaines corrections arriveront sans mise à jour du store.
 ```
@@ -75,6 +77,8 @@ Your invite link is offered at the end of a game: you both earn 50 coins.
 
 🔊 Floating sound button and a clearer language button.
 
+🛠️ Online rematch fixed; matches no longer count in solo leaderboards.
+
 🛠️ Under the hood
 Upcoming fixes will arrive without a store update.
 ```
@@ -83,56 +87,56 @@ Upcoming fixes will arrive without a store update.
 
 ## 3. Blocs pour `scripts/play_promote.mjs --notes` (Play, < 500 car.)
 
-<fr-FR>⚔️ Défie un ami : partage ton score, il joue le même mode dans son navigateur.
-🔥 Rappel du soir si ta série est en danger.
-👋 Bonus de retour : pièces offertes après une semaine d'absence.
-🎁 Lien de parrainage en fin de partie (50 pièces chacun).
-🏆 Défi du Jour : classement général et podium.
-🌍 Globes 3D plus beaux ; les petits pays changent enfin de couleur.
-🗺️ Mode Histoire : recharge de vies, portails d'étoiles, 500 niveaux, animaux 3D.
-🔊 Bouton son flottant et bouton de langue plus clair.</fr-FR>
+<fr-FR>⚔️ Défie un ami : partage ton score, il joue dans son navigateur.
+🔥 Rappel du soir si ta série est menacée.
+👋 Bonus de retour après une semaine d'absence.
+🎁 Parrainage en fin de partie (50 pièces chacun).
+🏆 Défi du Jour : classement général.
+🌍 Globes 3D plus beaux, Israël redessiné, régions mieux cadrées.
+🗺️ Mode Histoire : vies, portails d'étoiles, 500 niveaux.
+🏁 Capitales et Drapeaux : même écran de fin que les autres modes.</fr-FR>
 
-<en-US>⚔️ Challenge a friend: share your score, they play the same mode in their browser.
-🔥 Evening reminder when your daily streak is at risk.
-👋 Welcome-back bonus: free coins after a week away.
-🎁 Your referral link offered at the end of a game (50 coins each).
-🏆 Daily Challenge: overall ranking and podium (+20/+10/+5 coins).
-🌍 Nicer 3D globes; small countries finally change color.
-🗺️ Story mode: life refills, star gates, 500 levels, 3D animals.
-🔊 Floating sound button and a clearer language button.</en-US>
+<en-US>⚔️ Challenge a friend: share your score, they play in their browser.
+🔥 Evening reminder if your streak is at risk.
+👋 Welcome-back bonus after a week away.
+🎁 Referral link at the end of a game (50 coins each).
+🏆 Daily Challenge: overall ranking.
+🌍 Nicer 3D globes, redrawn Israel, better framed regions.
+🗺️ Story mode: lives, star gates, 500 levels.
+🏁 Capitals and Flags: same end screen as the other modes.</en-US>
 
-<es-ES>⚔️ Reta a un amigo: comparte tu puntuación y jugará el mismo modo en su navegador.
-🔥 Aviso por la tarde si tu racha diaria corre peligro.
-👋 Bono de regreso: monedas tras una semana sin jugar.
-🎁 Tu enlace de invitación al final de la partida (50 monedas cada uno).
-🏆 Reto diario: clasificación general y podio.
-🌍 Globos 3D más bonitos; los países pequeños cambian de color.
-🗺️ Modo Historia: recarga de vidas, portales, 500 niveles y animales 3D.
-🔊 Botón de sonido flotante.</es-ES>
+<es-ES>⚔️ Reta a un amigo: comparte tu puntuación y jugará en su navegador.
+🔥 Aviso nocturno si tu racha corre peligro.
+👋 Bono de regreso tras una semana sin jugar.
+🎁 Enlace de invitación al final de la partida (50 monedas cada uno).
+🏆 Reto diario: clasificación general.
+🌍 Globos 3D más bonitos, Israel redibujado, regiones mejor encuadradas.
+🗺️ Modo Historia: vidas, portales de estrellas, 500 niveles.
+🏁 Capitales y Banderas: misma pantalla final que los demás modos.</es-ES>
 
-<pt-PT>⚔️ Desafia um amigo: partilha a pontuação e ele joga o mesmo modo no browser.
-🔥 Lembrete ao fim do dia se a tua sequência diária estiver em risco.
-👋 Bónus de regresso: moedas após uma semana de ausência.
-🎁 O teu link de convite no fim do jogo (50 moedas cada).
-🏆 Desafio diário: classificação geral e pódio (+20/+10/+5).
-🌍 Globos 3D mais bonitos; países pequenos mudam de cor.
-🗺️ Modo História: recarga de vidas, portais, 500 níveis e animais 3D.
-🔊 Botão de som flutuante e idioma mais claro.</pt-PT>
+<pt-PT>⚔️ Desafia um amigo: partilha a pontuação e ele joga no browser.
+🔥 Lembrete à noite se a tua sequência estiver em risco.
+👋 Bónus de regresso após uma semana de ausência.
+🎁 Link de convite no fim do jogo (50 moedas cada).
+🏆 Desafio diário: classificação geral.
+🌍 Globos 3D mais bonitos, Israel redesenhado, regiões melhor enquadradas.
+🗺️ Modo História: vidas, portais de estrelas, 500 níveis.
+🏁 Capitais e Bandeiras: mesmo ecrã final dos outros modos.</pt-PT>
 
-<de-DE>⚔️ Fordere Freunde heraus: Score teilen, sie spielen denselben Modus im Browser.
+<de-DE>⚔️ Fordere Freunde heraus: Score teilen, sie spielen im Browser.
 🔥 Abenderinnerung, wenn deine Tagesserie in Gefahr ist.
-👋 Willkommen-zurück-Bonus: Gratis-Münzen nach einer Woche Pause.
-🎁 Dein Einladungslink am Spielende (je 50 Münzen).
-🏆 Tagesaufgabe: Gesamtwertung und Podium (+20/+10/+5).
-🌍 Schönere 3D-Globen; kleine Länder wechseln die Farbe.
-🗺️ Story-Modus: Leben aufladen, Sternentore, 500 Level, 3D-Tiere.
-🔊 Schwebender Sound-Button, klarerer Sprach-Button.</de-DE>
+👋 Willkommen-zurück-Bonus nach einer Woche Pause.
+🎁 Einladungslink am Spielende (je 50 Münzen).
+🏆 Tagesaufgabe: Gesamtwertung.
+🌍 Schönere 3D-Globen, neu gezeichnetes Israel, besser gerahmte Regionen.
+🗺️ Story-Modus: Leben, Sternentore, 500 Level.
+🏁 Hauptstädte und Flaggen: gleicher Endbildschirm wie die anderen Modi.</de-DE>
 
-<it-IT>⚔️ Sfida un amico: condividi il punteggio, giocherà la stessa modalità nel browser.
-🔥 Promemoria serale se la tua serie giornaliera è a rischio.
-👋 Bonus di ritorno: monete dopo una settimana di assenza.
-🎁 Il tuo link d'invito a fine partita (50 monete ciascuno).
-🏆 Sfida del giorno: classifica generale e podio (+20/+10/+5).
-🌍 Globi 3D più belli; i paesi piccoli cambiano colore.
-🗺️ Modalità Storia: ricarica vite, portali, 500 livelli e animali 3D.
-🔊 Pulsante audio mobile e lingua più chiara.</it-IT>
+<it-IT>⚔️ Sfida un amico: condividi il punteggio, giocherà nel browser.
+🔥 Promemoria serale se la tua serie è a rischio.
+👋 Bonus di ritorno dopo una settimana di assenza.
+🎁 Link d'invito a fine partita (50 monete ciascuno).
+🏆 Sfida del giorno: classifica generale.
+🌍 Globi 3D più belli, Israele ridisegnato, regioni meglio inquadrate.
+🗺️ Modalità Storia: vite, portali, 500 livelli.
+🏁 Capitali e Bandiere: stessa schermata finale degli altri modi.</it-IT>

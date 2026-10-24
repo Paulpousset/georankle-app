@@ -23,6 +23,7 @@ import VersusCapitals from './screens/VersusCapitals';
 import GuessCountryGame from './screens/GuessCountryGame';
 import HigherLowerGame from './screens/HigherLowerGame';
 import SilhouetteGame from './screens/SilhouetteGame';
+import ScaleGame from './screens/ScaleGame';
 import PinpointGame from './screens/PinpointGame';
 import LanguagesFlow from './screens/LanguagesFlow';
 import BordersGame from './screens/BordersGame';
@@ -70,6 +71,7 @@ const DIRECT_SOLO_MODES = new Set<GameMode>([
   'streak',
   'higherlower',
   'silhouette',
+  'scale',
   'pinpoint',
   'borders',
   'guess',
@@ -176,6 +178,11 @@ export function Router({
   const soloReview = (mode: GameMode) =>
     matchData || !reviewIds?.length ? null : reviewIds;
   const leaveGame = (mode: GameMode) => {
+    // Back to the menu from a game that actually ran (not from the solo launch
+    // screen) → a natural break: maybe show one interstitial (flag-gated,
+    // ≥ 6 min apart). Fire and forget so navigation proceeds behind it.
+    const played = gameMode !== 'menu' && (!DIRECT_SOLO_MODES.has(gameMode) || startedMode === gameMode);
+    if (mode === 'menu' && played) void maybeShowInterstitial();
     setReviewIds(null);
     resetMatchState();
     setGameMode(mode);
@@ -235,7 +242,7 @@ export function Router({
         onPlayDaily={(mode) => setDaily({ mode, date: getTodayUTC() })}
         onExit={() => {
           // Leaving a finished daily → a natural break: maybe show one
-          // (flag-gated, frequency-capped) interstitial. Fire and forget so
+          // (flag-gated, ≥ 6 min apart) interstitial. Fire and forget so
           // navigation proceeds behind it.
           void maybeShowInterstitial();
           setDaily(null);
@@ -484,7 +491,11 @@ export function Router({
             resetMatchState();
             setReplayMatch(played);
           }}
-          onExit={resetMatchState}
+          onExit={() => {
+            // Leaving a finished match's results → natural break.
+            void maybeShowInterstitial();
+            resetMatchState();
+          }}
         />
       </SafeAreaProvider>
     );
@@ -604,6 +615,20 @@ export function Router({
           scope={soloScope('silhouette')}
           training={soloTraining('silhouette')}
           reviewIds={soloReview('silhouette')}
+        />
+      </SafeAreaProvider>
+    );
+  }
+
+  if (gameMode === 'scale') {
+    return (
+      <SafeAreaProvider>
+        <ScaleGame
+          setGameMode={leaveGame}
+          user={user}
+          matchData={matchData}
+          onRoundComplete={matchData ? handleRoundComplete : undefined}
+          training={soloTraining('scale')}
         />
       </SafeAreaProvider>
     );

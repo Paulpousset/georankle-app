@@ -46,7 +46,8 @@ import { loadAdsSdk, type AdsSdk } from './adsSdk';
 import { initWebAds, showWebInterstitial, showWebRewardedAd, webAdsSupported } from './adsWeb';
 import { supabase } from './supabase';
 import { isFeatureEnabled } from './featureFlags';
-import { recordGameAndShouldShow } from './interstitialGate';
+import { shouldShowAtBreak } from './interstitialGate';
+import { announceAdBreak } from './adBreak';
 import { track } from './analytics';
 import { log } from './log';
 import { RECORDING_MODE } from './recordingMode';
@@ -93,16 +94,23 @@ const REWARDED_AD_UNIT_IDS: Record<string, string> = {
   ios: 'ca-app-pub-2429865520138981/2431633897',
 };
 
-// Interstitial ad-unit ids. ⚠️ Paul must create an INTERSTITIAL unit per platform
-// in the AdMob console and paste the ids here; until then we fall back to Google
-// TEST ids so the flow is exercisable without serving real (policy-violating) ads.
+// Real AdMob interstitial ad-unit ids (2026-10-17). An empty id falls back to
+// Google TEST ids.
 const INTERSTITIAL_AD_UNIT_IDS: Record<string, string> = {
-  android: '',
-  ios: '',
+  android: 'ca-app-pub-2429865520138981/3126283756',
+  ios: 'ca-app-pub-2429865520138981/6631423650',
+};
+
+// Real AdMob banner ad-unit ids (2026-10-17).
+const BANNER_AD_UNIT_IDS: Record<string, string> = {
+  android: 'ca-app-pub-2429865520138981/4468294740',
+  ios: 'ca-app-pub-2429865520138981/4481482048',
 };
 
 /** How long to wait for an ad to load before giving up. */
 const AD_LOAD_TIMEOUT_MS = 15000;
+/** After show(): how long the interstitial gets to actually open. */
+const AD_OPEN_TIMEOUT_MS = 5000;
 
 let initPromise: Promise<void> | null = null;
 
@@ -299,10 +307,12 @@ export async function claimRewardedAd(): Promise<RewardedAdResult> {
 // ── Interstitial ads (flag-gated, frequency-capped) ──────────────────────────
 // Unlike rewarded ads, interstitials are shown proactively at natural breaks
 // (leaving a finished game) and grant nothing — so there's no server claim, just
-// the ad. The frequency gate (interstitialGate.ts) protects retention.
+// the ad. The frequency gate (interstitialGate.ts: one per 6 min of play,
+// daily cap) protects retention. Skippability (a skip button after ~5 s on
+// video creatives) is decided by the ad network, not by us.
 
 /** Load + show one interstitial; resolves when it closes (or fails). */
-function loadAndShowInterstitial(sdk: AdsSdk): Promise<void> {
+function loadAndShowInterstitial(sdk: AdsSdk, loadTimeoutMs = AD_LOAD_TIMEOUT_MS): Promise<void> {
   const configured = INTERSTITIAL_AD_UNIT_IDS[Platform.OS];
   const unitId = configured && configured.length > 0 ? configured : sdk.TestIds.INTERSTITIAL;
   const ad = sdk.InterstitialAd.createForAdRequest(unitId);
@@ -316,15 +326,26 @@ function loadAndShowInterstitial(sdk: AdsSdk): Promise<void> {
       subs.forEach((off) => off());
       fn();
     };
-    const timer = setTimeout(
+    let timer = setTimeout(
       () => settle(() => reject(new Error('interstitial load timeout'))),
-      AD_LOAD_TIMEOUT_MS,
+      loadTimeoutMs,
     );
     subs.push(
       ad.addAdEventListener(sdk.AdEventType.LOADED, () => {
         clearTimeout(timer);
-        ad.show().catch((e) => settle(() => reject(e)));
+        // Only once an ad is actually in hand: warn the player (3-2-1), then show.
+        void announceAdBreak().then(() => {
+          if (settled) return;
+          // If the ad never opens (iOS refusing to present it, for one), give
+          // up rather than wait forever on a CLOSED that will never come.
+          timer = setTimeout(
+            () => settle(() => reject(new Error('interstitial did not open'))),
+            AD_OPEN_TIMEOUT_MS,
+          );
+          ad.show().catch((e) => settle(() => reject(e)));
+        });
       }),
+      ad.addAdEventListener(sdk.AdEventType.OPENED, () => clearTimeout(timer)),
       ad.addAdEventListener(sdk.AdEventType.CLOSED, () => settle(() => resolve())),
       ad.addAdEventListener(sdk.AdEventType.ERROR, (e) => settle(() => reject(e))),
     );
@@ -333,21 +354,23 @@ function loadAndShowInterstitial(sdk: AdsSdk): Promise<void> {
 }
 
 /**
- * Maybe show an interstitial at a natural break. Call this once per finished
- * game — it records the play and decides internally whether to actually show
- * (flag off, or under the per-N-games / daily-cap threshold → no-op). Fire and
+ * Maybe show an interstitial at a natural break. Call this when the player
+ * leaves a game — it decides internally whether to actually show (flag off,
+ * less than 6 min since the last ad / app launch, or daily cap hit → no-op). Fire and
  * forget: navigation can proceed behind the ad. Never throws.
  */
-export async function maybeShowInterstitial(): Promise<void> {
+export async function maybeShowInterstitial(
+  { loadTimeoutMs = AD_LOAD_TIMEOUT_MS }: { loadTimeoutMs?: number } = {},
+): Promise<void> {
   // Mode tournage : aucune pub ne doit couvrir une vidéo.
   if (RECORDING_MODE) return;
-  if (!(await isFeatureEnabled('interstitial_ads'))) return;
+  if (!(await isFeatureEnabled('interstitial_ads_v2'))) return;
   // Web needs its own flag too — checked BEFORE the gate so an off switch
   // doesn't burn gate credits.
   const web = Platform.OS === 'web';
   if (web && !(webAdsSupported() && (await isFeatureEnabled('web_ads')))) return;
-  // Count the game & consult the gate BEFORE touching the SDK.
-  if (!(await recordGameAndShouldShow())) return;
+  // Consult the gate BEFORE touching the SDK.
+  if (!(await shouldShowAtBreak())) return;
   if (web) {
     const shown = await showWebInterstitial();
     track(shown ? 'interstitial_shown' : 'interstitial_failed', {});
@@ -357,10 +380,58 @@ export async function maybeShowInterstitial(): Promise<void> {
   if (!sdk) return;
   try {
     await initAdsOnce(sdk);
-    await loadAndShowInterstitial(sdk);
+    await loadAndShowInterstitial(sdk, loadTimeoutMs);
     track('interstitial_shown', {});
   } catch (e) {
     log.warn('interstitial failed', e);
     track('interstitial_failed', {});
   }
+}
+
+/** Between two games the player is waiting on the tap: give a slow ad less time. */
+const BETWEEN_GAMES_LOAD_TIMEOUT_MS = 5000;
+let betweenGamesBusy = false;
+
+/**
+ * Wrap a "next game" action (replay, new game, next level, next daily) so an
+ * interstitial can show first — players often chain games without ever going
+ * back to the menu. Unlike the menu break, the next game must NOT start behind
+ * the ad (its timer would run), so this waits for the ad to close, then runs
+ * `start`. Taps while an ad break is in progress are ignored.
+ */
+export function afterAdBreak(start: () => void): () => void {
+  return () => {
+    if (betweenGamesBusy) return;
+    betweenGamesBusy = true;
+    void maybeShowInterstitial({ loadTimeoutMs: BETWEEN_GAMES_LOAD_TIMEOUT_MS }).finally(() => {
+      betweenGamesBusy = false;
+      start();
+    });
+  };
+}
+
+// ── Banner ads (flag-gated) ──────────────────────────────────────────────────
+// A small anchored banner at the bottom of calm screens (menu, results) —
+// never during a game. Native only: on web the desktop side rails are the
+// display ads.
+
+/**
+ * The SDK + unit id to render a banner with, once the `banner_ads` flag is on
+ * and the SDK is started; null otherwise (web, jest, flag off, init failure).
+ */
+export async function bannerAdConfig(): Promise<{ sdk: AdsSdk; unitId: string } | null> {
+  if (RECORDING_MODE) return null;
+  if (Platform.OS === 'web') return null;
+  if (!(await isFeatureEnabled('banner_ads'))) return null;
+  const sdk = loadAdsSdk();
+  if (!sdk) return null;
+  try {
+    await initAdsOnce(sdk);
+  } catch (e) {
+    log.warn('ads init failed (banner)', e);
+    return null;
+  }
+  const configured = BANNER_AD_UNIT_IDS[Platform.OS];
+  const unitId = configured && configured.length > 0 ? configured : sdk.TestIds.ADAPTIVE_BANNER;
+  return { sdk, unitId };
 }

@@ -7,7 +7,7 @@
  * that actually matter, rendered as a short checklist under the blurb.
  */
 import type { ComponentType } from 'react';
-import { Flag, Globe, Info, Landmark, Languages, LayoutGrid, Map, MapPin, Monitor, Puzzle, Route, Swords, TrendingUp, Zap } from 'lucide-react-native';
+import { Flag, Globe, Info, Landmark, Languages, LayoutGrid, Map, MapPin, Monitor, Puzzle, Route, Ruler, Swords, TrendingUp, Zap } from 'lucide-react-native';
 
 import { PALETTE } from '../theme/colors';
 import type { GameMode } from '../types';
@@ -73,6 +73,19 @@ export const MODE_INTROS: Partial<Record<GameMode, ModeIntro>> = {
       { fr: 'Observez les côtes, les péninsules et les îles : ce sont les meilleurs indices.', en: 'Look at coastlines, peninsulas and islands — they are the best clues.' },
       { fr: 'DUO = 1 pt, CARRÉ = 3 pts, CASH = 5 pts : plus c’est risqué, plus ça rapporte.', en: 'DUO = 1 pt, CARRÉ = 3 pts, CASH = 5 pts: the riskier the call, the bigger the reward.' },
       { fr: 'Les mauvaises réponses viennent souvent du même continent : méfiez-vous des voisins !', en: 'Wrong options often come from the same continent — beware of neighbours!' },
+    ],
+  },
+  scale: {
+    icon: Ruler,
+    accent: PALETTE.sand,
+    titleFr: 'À l’échelle',
+    titleEn: 'To Scale',
+    bodyFr: 'Deux pays côte à côte. Celui de gauche est à la bonne taille ; celui de droite est trop grand ou trop petit. Avec le curseur, agrandissez-le ou réduisez-le jusqu’à ce que les deux soient à la même échelle.',
+    bodyEn: 'Two countries side by side. The left one is drawn to scale; the right one is too big or too small. Use the slider to grow or shrink it until both share the same scale.',
+    tips: [
+      { fr: 'Le curseur ne commence jamais au bon endroit, et le milieu n’est pas la réponse.', en: 'The slider never starts at the answer, and the middle isn’t the answer either.' },
+      { fr: 'Jusqu’à 200 pts par paire : plus vous êtes proche de la vraie taille, plus vous marquez.', en: 'Up to 200 pts per pair: the closer to the real size, the more you score.' },
+      { fr: 'Après validation, les pointillés verts montrent la vraie taille.', en: 'Once you submit, the green dashes show the real size.' },
     ],
   },
   pinpoint: {

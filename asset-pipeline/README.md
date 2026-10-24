@@ -43,7 +43,8 @@ crédits payants — sinon modélisation directe via MCP (pyramides, ponts, tour
 | `npm run textures` | Télécharge/convertit les textures Terre → `assets/textures/` + CREDITS.md |
 | `npm run ids` | Catalogue TS → `ids.json` (consommé par rigbuild + render_layers.py) |
 | `blender -b -P rigbuild/build_all.py` | Reconstruit TOUT `avatar_rig.blend` depuis le code |
-| `node gen_cosmos_textures.mjs` | Fonds cosmos 2D → `out/cosmos_*.png` |
+| `node gen_cosmos_textures.mjs` | Fonds cosmos 2D → `out/cosmos_*.png` (512², listes) + `out/cosmos_*_hd.png` (2048², fonds plein cadre des scènes 3D) |
+| `node render_live_layers.mjs --ids globe_a,globe_b` | Couche `globe_*` rendue SANS Blender par la scène three.js live (Chromium Playwright) → `out/<id>.png` |
 | `blender -b avatar_rig.blend -P render_layers.py -- --ids all --out ./out` | Rendu batch PNG des couches |
 | `node convert.mjs --dir ./out ../assets/cosmetics` | PNG → WebP q80 |
 | `npm run manifest` | Régénère `src/data/cosmeticLayers.gen.ts` (require map Metro) |

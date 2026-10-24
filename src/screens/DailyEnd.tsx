@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Ellipse } from 'react-native-svg';
 import { ChevronRight, ListChecks, Share2, X } from 'lucide-react-native';
 
+import { AdBanner } from '../components/AdBanner';
 import type { GameMode, Language } from '../types';
 import { DAILY_MODES, dailyModeLabel, getLocalState, getPuzzleNumber, msUntilNextPuzzle, type DailyResult } from '../lib/daily';
 import { useMyGameGlobe } from '../lib/myGlobe';
@@ -387,6 +388,7 @@ export default function DailyEnd({ result, streak, streakIncreased, onNext, onSh
           </View>
         </View>
       </ScrollView>
+      <AdBanner />
     </SafeAreaView>
   );
 }

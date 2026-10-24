@@ -4,7 +4,7 @@
  * Bands are baked at a 390×1180-logical reference (one biome band = 10 levels,
  * @2x webp) with the river following the SHARED sinusoid: 2 full periods per
  * band (see riverX in StoryMap — phase 2π/5 per row), so a single image per
- * biome tiles the whole 300-level map and always matches the computed node
+ * biome tiles the whole 1000-level map and always matches the computed node
  * positions. Re-render via asset-pipeline/render_story_kit.py, then convert
  * with asset-pipeline/convert_story.mjs.
  */

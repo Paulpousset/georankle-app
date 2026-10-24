@@ -33,7 +33,7 @@ for (const part of needsRender) {
 
 const knownNames = new Set(
   needsRender.flatMap((p) => [
-    `${p.id}.webp`, `${p.id}_back.webp`, `${p.id}_front.webp`, `${p.id}_sprite.webp`,
+    `${p.id}.webp`, `${p.id}_back.webp`, `${p.id}_front.webp`, `${p.id}_sprite.webp`, `${p.id}_hd.webp`,
   ]),
 );
 const orphans = files.filter((f) => !knownNames.has(f));

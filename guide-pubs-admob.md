@@ -66,3 +66,11 @@ L'app est déjà en ligne : la version actuelle n'a pas le SDK, rien à faire de
 | E : déclarations stores + liaison fiches | Paul (à la soumission) | pubs servies à 100 % |
 | Flip du flag `rewarded_ads` | moi (1 SQL, réversible) | visibilité joueurs |
 | F : micro-entreprise + RIB | Paul (à ~70 € de solde) | encaisser |
+
+---
+
+## Bannière (2026-10-17)
+Petite bannière AdMob ancrée en bas du **menu principal** et des **écrans de résultats** (fin de match en ligne, fin de défi du jour), jamais en jeu. IDs réels dans `BANNER_AD_UNIT_IDS` ([src/lib/monetization.ts](src/lib/monetization.ts)). Flag `banner_ads` créé OFF par la migration `supabase/migrations/20261017_01_banner_ads.sql`. Activation, une fois le build qui l'embarque en ligne :
+```sql
+update public.feature_flags set enabled = true, updated_at = now() where key = 'banner_ads';
+```

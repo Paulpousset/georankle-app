@@ -112,6 +112,14 @@ export function simulateBotRound(
       }
       break;
     }
+    case 'scale': {
+      // Per pair: 0..200 from how close the resize lands (raw max n×200).
+      for (let i = 0; i < n; i++) {
+        score += Math.round(200 * clamp(p - 0.1 + (rng() - 0.5) * 0.5, 0, 1));
+        ms += 3000 + rng() * 4000;
+      }
+      break;
+    }
     case 'guess': {
       // One mystery country; better skill → fewer guesses → higher calcScore.
       let guesses = 1;

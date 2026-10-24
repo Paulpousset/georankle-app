@@ -46,7 +46,11 @@ export interface Challenge {
   titleEn: string;
   subtitleFr: string;
   subtitleEn: string;
-  /** The per-question instruction, e.g. "Quel est le numéro de ce département ?". */
+  /**
+   * The per-question instruction, naming the owning country so a subdivision is
+   * never ambiguous, e.g. "Quel est le numéro de ce département français {0} ?".
+   * `{0}` is filled with `emoji`.
+   */
   questionFr: string;
   questionEn: string;
   promptKind: ChallengePromptKind;
@@ -298,8 +302,8 @@ export const CHALLENGES: Challenge[] = [
     titleEn: 'Department number',
     subtitleFr: 'Trouve le numéro à partir du nom',
     subtitleEn: 'Find the number from the name',
-    questionFr: 'Quel est le numéro de ce département ?',
-    questionEn: 'What is this department’s number?',
+    questionFr: 'Quel est le numéro de ce département français {0} ?',
+    questionEn: 'What is the number of this French department {0}?',
     promptKind: 'text',
     answerKind: 'number',
     entities: frDeptEntities,
@@ -312,8 +316,8 @@ export const CHALLENGES: Challenge[] = [
     titleEn: 'Regional capitals',
     subtitleFr: 'Trouve le chef-lieu de chaque région',
     subtitleEn: 'Find each region’s capital',
-    questionFr: 'Quel est le chef-lieu de cette région ?',
-    questionEn: 'What is this region’s capital?',
+    questionFr: 'Quel est le chef-lieu de cette région française {0} ?',
+    questionEn: 'What is the capital of this French region {0}?',
     promptKind: 'text',
     answerKind: 'name',
     entities: capitalEntities('FR-R', FR_REGIONS),
@@ -326,8 +330,8 @@ export const CHALLENGES: Challenge[] = [
     titleEn: 'State flags',
     subtitleFr: "Trouve l'État à partir de son drapeau",
     subtitleEn: 'Find the state from its flag',
-    questionFr: 'Quel est cet État ?',
-    questionEn: 'Which state is this?',
+    questionFr: 'Quel est cet État américain {0} ?',
+    questionEn: 'Which US state is this {0}?',
     promptKind: 'flag',
     answerKind: 'name',
     entities: usStateEntities,
@@ -340,8 +344,8 @@ export const CHALLENGES: Challenge[] = [
     titleEn: 'State capitals',
     subtitleFr: 'Trouve la capitale de chaque État',
     subtitleEn: 'Find each state’s capital',
-    questionFr: 'Quelle est la capitale de cet État ?',
-    questionEn: 'What is this state’s capital?',
+    questionFr: 'Quelle est la capitale de cet État américain {0} ?',
+    questionEn: 'What is the capital of this US state {0}?',
     promptKind: 'text',
     answerKind: 'name',
     entities: capitalEntities('US-C', US_CAPITALS),
@@ -354,8 +358,8 @@ export const CHALLENGES: Challenge[] = [
     titleEn: 'Länder capitals',
     subtitleFr: 'Trouve la capitale de chaque Land',
     subtitleEn: 'Find each Land’s capital',
-    questionFr: 'Quelle est la capitale de ce Land ?',
-    questionEn: 'What is this Land’s capital?',
+    questionFr: 'Quelle est la capitale de ce Land allemand {0} ?',
+    questionEn: 'What is the capital of this German Land {0}?',
     promptKind: 'text',
     answerKind: 'name',
     entities: capitalEntities('DE-L', DE_LAENDER),
@@ -368,8 +372,8 @@ export const CHALLENGES: Challenge[] = [
     titleEn: 'Community capitals',
     subtitleFr: 'Trouve la capitale de chaque communauté autonome',
     subtitleEn: 'Find each autonomous community’s capital',
-    questionFr: 'Quelle est la capitale de cette communauté ?',
-    questionEn: 'What is this community’s capital?',
+    questionFr: 'Quelle est la capitale de cette communauté espagnole {0} ?',
+    questionEn: 'What is the capital of this Spanish community {0}?',
     promptKind: 'text',
     answerKind: 'name',
     entities: capitalEntities('ES-C', ES_COMUNIDADES),
@@ -382,8 +386,8 @@ export const CHALLENGES: Challenge[] = [
     titleEn: 'Regional capitals',
     subtitleFr: 'Trouve le chef-lieu de chaque région',
     subtitleEn: 'Find each region’s capital',
-    questionFr: 'Quel est le chef-lieu de cette région ?',
-    questionEn: 'What is this region’s capital?',
+    questionFr: 'Quel est le chef-lieu de cette région italienne {0} ?',
+    questionEn: 'What is the capital of this Italian region {0}?',
     promptKind: 'text',
     answerKind: 'name',
     entities: capitalEntities('IT-R', IT_REGIONS),
@@ -396,8 +400,8 @@ export const CHALLENGES: Challenge[] = [
     titleEn: 'Provincial capitals',
     subtitleFr: 'Trouve la capitale de chaque province et territoire',
     subtitleEn: 'Find each province and territory’s capital',
-    questionFr: 'Quelle est la capitale de cette province ?',
-    questionEn: 'What is this province’s capital?',
+    questionFr: 'Quelle est la capitale de cette province canadienne {0} ?',
+    questionEn: 'What is the capital of this Canadian province {0}?',
     promptKind: 'text',
     answerKind: 'name',
     entities: capitalEntities('CA-P', CA_PROVINCES),

@@ -23,6 +23,7 @@ import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { NetworkProvider } from './src/contexts/NetworkContext';
 import { ToastProvider } from './src/components/ToastProvider';
 import { AlertHost } from './src/components/AlertHost';
+import { AdBreakNotice } from './src/components/AdBreakNotice';
 import { LanguagePickerModal } from './src/components/LanguagePickerModal';
 import { OfflineBanner } from './src/components/OfflineBanner';
 import { useMatchEngine } from './src/hooks/useMatchEngine';
@@ -36,6 +37,7 @@ import { ScreenErrorBoundary } from './src/components/ScreenErrorBoundary';
 import { SwipeBack } from './src/components/SwipeBack';
 import { ModeIntroGate } from './src/components/ModeIntroModal';
 import { UsernameGate } from './src/components/UsernameGate';
+import { ForceUpdateGate } from './src/components/ForceUpdateGate';
 import { IncomingInviteModal } from './src/components/IncomingInviteModal';
 import { SideRailAds } from './src/components/SideRailAds';
 import { DesktopStage } from './src/components/DesktopStage';
@@ -72,6 +74,8 @@ function stageModeLabel(mode: GameMode, language: Language): string {
       return tr(language, 'Drapeaux', 'Flags');
     case 'local-builder':
       return tr(language, 'Partie perso', 'Custom game');
+    case 'scale':
+      return tr(language, 'À l’échelle', 'To Scale');
     default:
       return modeLabel(mode, language);
   }
@@ -423,7 +427,11 @@ function App() {
                   {/* Les confirmations du web (showAlert) : la boîte du
                       navigateur remplacée par une modale au thème de l'app. */}
                   <AlertHost />
+                  {/* « Pub dans 3, 2, 1 » juste avant un interstitiel. */}
+                  <AdBreakNotice />
                   {!introDone && <LaunchIntro onDone={() => setIntroDone(true)} />}
+                  {/* Mise à jour OTA en attente : appliquée tout de suite, pas au prochain lancement. */}
+                  <ForceUpdateGate />
                 </ToastProvider>
               </NetworkProvider>
             </AuthProvider>

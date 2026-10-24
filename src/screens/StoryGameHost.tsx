@@ -9,12 +9,14 @@ import type { RecordLevelResult } from '../lib/story';
 import { variantForSeed } from '../lib/languages';
 import { pickBandCountries } from '../lib/matchCountries';
 import { track } from '../lib/analytics';
+import { afterAdBreak } from '../lib/monetization';
 
 import { ClassicGame } from './ClassicGame';
 import StreakGame from './StreakGame';
 import HigherLowerGame from './HigherLowerGame';
 import SilhouetteGame from './SilhouetteGame';
 import PinpointGame from './PinpointGame';
+import ScaleGame from './ScaleGame';
 import LanguagesGame from './LanguagesGame';
 import BordersGame from './BordersGame';
 import GuessCountryGame from './GuessCountryGame';
@@ -24,7 +26,7 @@ import StoryLevelEnd from './StoryLevelEnd';
 
 interface StoryGameHostProps {
   level: StoryLevel;
-  /** Vies restantes (déjà décomptée pour ce niveau) — pour « Rejouer ». */
+  /** Vies restantes (une vie en moins si le niveau est raté) — pour « Réessayer ». */
   lives: number;
   /** Plus haut niveau réussi avant cette partie (progression de la collection). */
   maxLevelBefore: number;
@@ -48,8 +50,8 @@ interface StoryGameHostProps {
  * (niveau suivant, rejouer, carte). L'enregistrement part tout de suite ; sa
  * réponse remplit les pièces quand elle arrive.
  *
- * Quitting mid-level = a fail for that attempt (the life was already spent when
- * the level was launched from the map).
+ * Quitting mid-level = a fail for that attempt: the map spends the life when
+ * the host exits before the end screen. A cleared level costs no life.
  */
 export default function StoryGameHost({
   level,
@@ -86,8 +88,8 @@ export default function StoryGameHost({
           maxLevelBefore={maxLevelBefore}
           lives={lives}
           signedIn={signedIn}
-          onNext={() => onPlayLevel(level.level + 1)}
-          onReplay={() => onPlayLevel(level.level)}
+          onNext={afterAdBreak(() => onPlayLevel(level.level + 1))}
+          onReplay={afterAdBreak(() => onPlayLevel(level.level))}
           onMap={onExit}
         />
       </SafeAreaProvider>
@@ -144,6 +146,16 @@ export default function StoryGameHost({
     case 'pinpoint':
       screen = (
         <PinpointGame
+          setGameMode={quit as (m: GameMode) => void}
+          user={null}
+          matchData={match}
+          onRoundComplete={handleComplete}
+        />
+      );
+      break;
+    case 'scale':
+      screen = (
+        <ScaleGame
           setGameMode={quit as (m: GameMode) => void}
           user={null}
           matchData={match}
