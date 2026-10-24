@@ -8,6 +8,9 @@
  *  - Level completions go through `complete_story_level` with a timeout, and are
  *    queued (syncQueue) on failure — idempotent per (user, level), so replays are
  *    safe and never double-award coins.
+ *  - A life is only lost when a level is FAILED (0 star) or abandoned — a
+ *    cleared level costs nothing. The running attempt is kept in AsyncStorage
+ *    so a level left by killing the app still counts as a fail on next open.
  *  - Lives regenerate over time. The regeneration math is duplicated here (as in
  *    computeStreak) for instant UI; the server value is adopted as authoritative
  *    when available.
@@ -28,6 +31,7 @@ const RPC_TIMEOUT_MS = 8000;
 
 const PROGRESS_KEY = 'story:progress';
 const LIVES_KEY = 'story:lives';
+const ATTEMPT_KEY = 'story:attempt';
 
 // ── Stored shapes ──────────────────────────────────────────────────────────────
 
@@ -267,7 +271,7 @@ export async function getStorySnapshot(user: User | null): Promise<StorySnapshot
 }
 
 /**
- * Spend one life to start a level. Optimistically decrements the local cache;
+ * Spend one life (a failed level). Optimistically decrements the local cache;
  * when signed in, the server RPC is authoritative and its value is adopted.
  * Returns whether a life was available.
  */
@@ -298,6 +302,44 @@ export async function consumeLife(user: User | null): Promise<{ ok: boolean; liv
     }
   }
   return { ok: true, lives: lives.lives };
+}
+
+// ── Attempts: a life is lost on a fail, not on launch ──────────────────────────
+
+/** Mark a level as being played. A still-pending attempt is settled as a fail first. */
+export async function beginAttempt(user: User | null, level: number): Promise<void> {
+  await settleAbandonedAttempt(user);
+  try {
+    await AsyncStorage.setItem(ATTEMPT_KEY, JSON.stringify({ level, startedAt: Date.now() }));
+  } catch {
+    // ignore — worst case a killed app doesn't cost a life
+  }
+}
+
+/**
+ * Close the running attempt. A failed (or abandoned) one spends a life; a
+ * cleared one is free. No-op when nothing is pending, so a second call (end
+ * screen, then leaving to the map) never charges twice.
+ */
+export async function endAttempt(
+  user: User | null,
+  passed: boolean,
+): Promise<{ lostLife: boolean; lives: number }> {
+  let pending: string | null = null;
+  try {
+    pending = await AsyncStorage.getItem(ATTEMPT_KEY);
+    if (pending) await AsyncStorage.removeItem(ATTEMPT_KEY);
+  } catch {
+    pending = null;
+  }
+  if (!pending || passed) return { lostLife: false, lives: settleLives(await readLives()).lives };
+  const spent = await consumeLife(user);
+  return { lostLife: spent.ok, lives: spent.lives };
+}
+
+/** An attempt left pending by a previous session (app killed mid-level) is a fail. */
+export async function settleAbandonedAttempt(user: User | null): Promise<void> {
+  await endAttempt(user, false);
 }
 
 /** Refill every life after a watched rewarded ad (server-capped). Returns new count. */
@@ -484,4 +526,4 @@ export async function getFriendsPositions(user: User | null): Promise<FriendPosi
 }
 
 // ── Test hooks ─────────────────────────────────────────────────────────────────
-export const _internal = { settleLives, nextRegenMs, levelsToBackfill };
+export const _internal = { settleLives, nextRegenMs, levelsToBackfill, ATTEMPT_KEY };

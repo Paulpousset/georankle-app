@@ -11,7 +11,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /** Minimum time between two interstitials (and from app launch to the first). */
-export const MIN_INTERVAL_MS = 12 * 60 * 1000;
+export const MIN_INTERVAL_MS = 6 * 60 * 1000;
 /** Never show more than this many interstitials in a single UTC day. */
 export const DAILY_CAP = 10;
 
