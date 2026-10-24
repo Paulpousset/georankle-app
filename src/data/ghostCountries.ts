@@ -14,7 +14,7 @@
  * comble le trou au milieu de la Yougoslavie (sommets repris des voisins, donc
  * jointif).
  */
-import type { Language } from '../types';
+import type { GameMode, Language } from '../types';
 
 export interface GhostCountry {
   /** Identifiant stable (pas un cca3 : ces pays n'en ont plus). */
@@ -31,6 +31,12 @@ export interface GhostCountry {
   names: Record<Language, string>;
   /** Orthographes acceptées en plus des noms (sigles, variantes). */
   aliases?: string[];
+  /**
+   * La capitale de l'époque, pour « Capitales fantômes » : le cca3 d'un pays
+   * actuel qui a gardé la même capitale (noms dans les seize langues), ou un nom
+   * écrit à la main quand elle a changé. Absent : pas de capitale fixe (Kalmar).
+   */
+  capital?: { cca3: string } | { fr: string; en: string; aliases?: string[] };
 }
 
 /** Le Kosovo, absent du fond de carte, découpé sur les sommets de ses voisins. */
@@ -45,6 +51,7 @@ const KOSOVO: number[][] = [
 export const GHOST_COUNTRIES: GhostCountry[] = [
   {
     id: 'ussr',
+    capital: { cca3: 'RUS' },
     members: ['RUS', 'UKR', 'BLR', 'EST', 'LVA', 'LTU', 'MDA', 'GEO', 'ARM', 'AZE', 'KAZ', 'UZB', 'TKM', 'KGZ', 'TJK'],
     years: '1922–1991',
     names: {
@@ -56,6 +63,7 @@ export const GHOST_COUNTRIES: GhostCountry[] = [
   },
   {
     id: 'yugoslavia',
+    capital: { cca3: 'SRB' },
     members: ['SVN', 'HRV', 'BIH', 'SRB', 'MNE', 'MKD'],
     patches: [KOSOVO],
     years: '1918–1992',
@@ -67,6 +75,7 @@ export const GHOST_COUNTRIES: GhostCountry[] = [
   },
   {
     id: 'czechoslovakia',
+    capital: { cca3: 'CZE' },
     members: ['CZE', 'SVK'],
     years: '1918–1992',
     names: {
@@ -77,6 +86,7 @@ export const GHOST_COUNTRIES: GhostCountry[] = [
   },
   {
     id: 'gran-colombia',
+    capital: { cca3: 'COL' },
     members: ['COL', 'VEN', 'ECU', 'PAN'],
     years: '1819–1831',
     names: {
@@ -87,6 +97,7 @@ export const GHOST_COUNTRIES: GhostCountry[] = [
   },
   {
     id: 'uar',
+    capital: { cca3: 'EGY' },
     members: ['EGY', 'SYR'],
     years: '1958–1961',
     names: {
@@ -100,6 +111,7 @@ export const GHOST_COUNTRIES: GhostCountry[] = [
   },
   {
     id: 'mali-federation',
+    capital: { cca3: 'SEN' },
     members: ['SEN', 'MLI'],
     years: '1959–1960',
     names: {
@@ -111,6 +123,7 @@ export const GHOST_COUNTRIES: GhostCountry[] = [
   },
   {
     id: 'central-america',
+    capital: { cca3: 'GTM' },
     members: ['GTM', 'SLV', 'HND', 'NIC', 'CRI'],
     years: '1823–1841',
     names: {
@@ -127,6 +140,7 @@ export const GHOST_COUNTRIES: GhostCountry[] = [
   },
   {
     id: 'sweden-norway',
+    capital: { cca3: 'SWE' },
     members: ['SWE', 'NOR'],
     maxLat: 75,
     years: '1814–1905',
@@ -151,6 +165,7 @@ export const GHOST_COUNTRIES: GhostCountry[] = [
   },
   {
     id: 'rhodesia-nyasaland',
+    capital: { fr: 'Salisbury', en: 'Salisbury', aliases: ['Harare'] },
     members: ['ZWE', 'ZMB', 'MWI'],
     years: '1953–1963',
     names: {
@@ -167,6 +182,7 @@ export const GHOST_COUNTRIES: GhostCountry[] = [
   },
   {
     id: 'zaire',
+    capital: { cca3: 'COD' },
     members: ['COD'],
     years: '1971–1997',
     names: {
@@ -176,6 +192,7 @@ export const GHOST_COUNTRIES: GhostCountry[] = [
   },
   {
     id: 'ceylon',
+    capital: { fr: 'Colombo', en: 'Colombo' },
     members: ['LKA'],
     years: '1948–1972',
     names: {
@@ -185,6 +202,7 @@ export const GHOST_COUNTRIES: GhostCountry[] = [
   },
   {
     id: 'persia',
+    capital: { cca3: 'IRN' },
     members: ['IRN'],
     years: '→ 1935',
     names: {
@@ -194,6 +212,7 @@ export const GHOST_COUNTRIES: GhostCountry[] = [
   },
   {
     id: 'siam',
+    capital: { cca3: 'THA' },
     members: ['THA'],
     years: '→ 1939',
     names: {
@@ -203,6 +222,7 @@ export const GHOST_COUNTRIES: GhostCountry[] = [
   },
   {
     id: 'upper-volta',
+    capital: { cca3: 'BFA' },
     members: ['BFA'],
     years: '1958–1984',
     names: {
@@ -213,6 +233,7 @@ export const GHOST_COUNTRIES: GhostCountry[] = [
   },
   {
     id: 'dahomey',
+    capital: { cca3: 'BEN' },
     members: ['BEN'],
     years: '1958–1975',
     names: {
@@ -223,6 +244,7 @@ export const GHOST_COUNTRIES: GhostCountry[] = [
   },
   {
     id: 'gold-coast',
+    capital: { cca3: 'GHA' },
     members: ['GHA'],
     years: '1867–1957',
     names: {
@@ -233,6 +255,7 @@ export const GHOST_COUNTRIES: GhostCountry[] = [
   },
   {
     id: 'tanganyika',
+    capital: { fr: 'Dar es Salam', en: 'Dar es Salaam', aliases: ['Dar-es-Salaam'] },
     members: ['TZA'],
     years: '1961–1964',
     names: {
@@ -244,8 +267,22 @@ export const GHOST_COUNTRIES: GhostCountry[] = [
 ];
 
 /**
- * Les jours (UTC, comme le défi du jour) où le slot « Silhouette » devient
- * « Pays fantômes ». Le score part dans le même classement quotidien que la
- * Silhouette : aucune migration serveur, et le défi s'éteint tout seul le 2/11.
+ * Le programme d'Halloween (jours UTC, comme le défi du jour) : chaque jour, un
+ * ou plusieurs défis du jour passent en version « pays fantômes ». Le score part
+ * dans le classement quotidien du mode : aucune migration de jeu, et tout
+ * s'éteint seul le 1/11. Le 31, la grande nuit : les quatre à la fois.
  */
-export const GHOST_DAYS: readonly string[] = ['2026-10-29', '2026-10-30', '2026-10-31', '2026-11-01'];
+export const GHOST_SCHEDULE: Readonly<Record<string, readonly GameMode[]>> = {
+  '2026-10-25': ['silhouette'],
+  '2026-10-26': ['challenge'],
+  '2026-10-27': ['pinpoint'],
+  '2026-10-28': ['scale'],
+  '2026-10-29': ['silhouette'],
+  '2026-10-30': ['pinpoint'],
+  '2026-10-31': ['silhouette', 'challenge', 'pinpoint', 'scale'],
+};
+
+/** Ce mode du défi du jour est-il en version « pays fantômes » ce jour-là ? */
+export function isGhostDaily(date: string | undefined, mode: GameMode): boolean {
+  return !!date && (GHOST_SCHEDULE[date]?.includes(mode) ?? false);
+}

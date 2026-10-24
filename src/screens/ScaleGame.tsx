@@ -44,6 +44,7 @@ import { awardSoloCoins } from '../lib/coins';
 import { earnsCoins, saveSoloScore } from '../lib/soloResult';
 import { OffLeaderboardNotice } from '../components/OffLeaderboardNotice';
 import { CountryFactCard } from '../components/CountryFactCard';
+import { isGhostId } from '../lib/ghostCountries';
 import { ZoomSlider } from '../components/ZoomSlider';
 import { useToast } from '../components/ToastProvider';
 import type { GameMode, Language, Match } from '../types';
@@ -106,6 +107,8 @@ interface ScaleGameProps {
    * reveal offers the country's fact sheet.
    */
   training?: boolean;
+  /** Halloween « Fantômes à l'échelle »: a vanished country on the left of every pair. */
+  ghost?: boolean;
 }
 
 /** The two countries of a pair, the right one at `zoom` × its true scale. */
@@ -170,6 +173,7 @@ export default function ScaleGame({
   onShare,
   onDailyScoreChange,
   training = false,
+  ghost = false,
 }: ScaleGameProps) {
   const { isDarkMode, setIsDarkMode } = useTheme();
   const { language, openLanguagePicker } = useLanguage();
@@ -193,6 +197,7 @@ export default function ScaleGame({
           ? matchData.game_data.seed + (currentRound - 1)
           : Math.floor(Math.random() * 2147483647)),
       numPairs,
+      { ghost },
     ),
   );
   const [questionIndex, setQuestionIndex] = useState(0);
@@ -350,7 +355,9 @@ export default function ScaleGame({
           >
             <Home color={c.accent} size={18} />
           </TouchableOpacity>
-          <Text style={[styles.title, { color: c.text }]}>{tr(language, 'À l’échelle', 'To Scale')}</Text>
+          <Text style={[styles.title, { color: ghost ? '#ff7a18' : c.text }]}>
+            {ghost ? tr(language, 'Fantômes à l’échelle', 'Ghosts to Scale') : tr(language, 'À l’échelle', 'To Scale')}
+          </Text>
         </View>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -401,7 +408,7 @@ export default function ScaleGame({
           )}
         >
           <View style={styles.namesRow}>
-            <Text style={[styles.countryName, { color: c.accent, flex: LEFT_W }]} numberOfLines={1}>
+            <Text style={[styles.countryName, { color: ghost ? '#ff7a18' : c.accent, flex: LEFT_W }]} numberOfLines={1}>
               {leftName}
             </Text>
             <Text style={[styles.countryName, { color: rightColor, flex: RIGHT_W }]} numberOfLines={1}>
@@ -413,7 +420,7 @@ export default function ScaleGame({
               q={question}
               zoom={zoom}
               reveal={!!feedback}
-              leftColor={c.accent}
+              leftColor={ghost ? '#ff7a18' : c.accent}
               rightColor={rightColor}
               dividerColor={c.border}
             />
@@ -554,7 +561,7 @@ export default function ScaleGame({
                           q={q}
                           zoom={1}
                           reveal={false}
-                          leftColor={c.accent}
+                          leftColor={ghost ? '#ff7a18' : c.accent}
                           rightColor={rightColor}
                           dividerColor={c.border}
                         />
@@ -600,7 +607,8 @@ export default function ScaleGame({
         </View>
       )}
 
-      <CountryFactCard cca3={factsFor} onClose={() => setFactsFor(null)} />
+      {/* A ghost has no fact sheet: it has no cca3 left. */}
+      <CountryFactCard cca3={factsFor && !isGhostId(factsFor) ? factsFor : null} onClose={() => setFactsFor(null)} />
     </SafeAreaView>
   );
 }

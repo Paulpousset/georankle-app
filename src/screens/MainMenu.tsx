@@ -57,7 +57,7 @@ import { tr } from '../i18n';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getLocalState, getTodayUTC } from '../lib/daily';
-import { isGhostDay } from '../lib/ghostCountries';
+import { GHOST_SCHEDULE } from '../data/ghostCountries';
 import { getStorySnapshot } from '../lib/story';
 import { STORY_LEVEL_COUNT } from '../data/story';
 import { a11yButton, a11yImage, ICON_HIT_SLOP } from '../lib/a11y';
@@ -909,8 +909,8 @@ export function MainMenu({
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               {dailyStreak > 0 && <AtlasFlame color={DAILY_FLAME} size={11} />}
               <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 10 }}>
-                {isGhostDay(getTodayUTC())
-                  ? tr(language, '🎃 Spécial Halloween : Pays fantômes', '🎃 Halloween special: Ghost Countries')
+                {GHOST_SCHEDULE[getTodayUTC()]
+                  ? tr(language, '🎃 Spécial Halloween : pays fantômes', '🎃 Halloween special: ghost countries')
                   : dailyStreak > 0
                     ? tr(language, 'Série de {0} · 8 modes', '{0}-day streak · 8 modes', [dailyStreak])
                     : tr(language, 'Un puzzle par mode, chaque jour', 'One puzzle per mode, every day')}

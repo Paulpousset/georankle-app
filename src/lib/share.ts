@@ -9,7 +9,7 @@
 import type { Language } from '../types';
 import type { DailyResult } from './daily';
 import { dailyModeLabel, getPuzzleNumber } from './daily';
-import { isGhostDay } from './ghostCountries';
+import { isGhostDaily } from '../data/ghostCountries';
 import { playLink } from './links';
 import { tr } from '../i18n';
 
@@ -51,7 +51,7 @@ export function buildShareMessage(
   refCode?: string | null,
 ): string {
   const puzzle = getPuzzleNumber(new Date(result.date + 'T00:00:00Z'));
-  const ghost = result.mode === 'silhouette' && isGhostDay(result.date);
+  const ghost = isGhostDaily(result.date, result.mode);
   const title = `${ghost ? '🎃' : '🌍'} GeoG — ${dailyModeLabel(result.mode, language, result.date)} #${puzzle}`;
 
   const body = result.grid

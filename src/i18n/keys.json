@@ -562,6 +562,18 @@
     ]
   },
   {
+    "key": "A point on the globe: which vanished country was it in?",
+    "fr": "Un point sur le globe : à quel pays disparu appartenait-il ?",
+    "en": "A point on the globe: which vanished country was it in?",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/DailyHub.tsx"
+    ]
+  },
+  {
     "key": "A quiz on a country’s subdivisions: French department numbers, US state capitals, state flags, German Länder capitals, Italian regional capitals… Pick a difficulty each question — DUO (2 options), CARRÉ (4 options) or CASH (type it).",
     "fr": "Un quiz sur les subdivisions d’un pays : numéros de département français, capitales des États américains, drapeaux des États, capitales des Länder, des régions italiennes… Choisissez votre difficulté à chaque question — DUO (2 choix), CARRÉ (4 choix) ou CASH (à écrire).",
     "en": "A quiz on a country’s subdivisions: French department numbers, US state capitals, state flags, German Länder capitals, Italian regional capitals… Pick a difficulty each question — DUO (2 options), CARRÉ (4 options) or CASH (type it).",
@@ -5425,6 +5437,18 @@
     ]
   },
   {
+    "key": "Find the capitals of vanished countries.",
+    "fr": "Retrouve la capitale des pays disparus.",
+    "en": "Find the capitals of vanished countries.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/DailyHub.tsx"
+    ]
+  },
+  {
     "key": "Find the number from the name",
     "fr": "Trouve le numéro à partir du nom",
     "en": "Find the number from the name",
@@ -6238,6 +6262,18 @@
     ]
   },
   {
+    "key": "Ghost Capitals 👻",
+    "fr": "Capitales fantômes 👻",
+    "en": "Ghost Capitals 👻",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/lib/daily.ts"
+    ]
+  },
+  {
     "key": "Ghost Countries",
     "fr": "Pays fantômes",
     "en": "Ghost Countries",
@@ -6253,6 +6289,42 @@
     "key": "Ghost Countries 👻",
     "fr": "Pays fantômes 👻",
     "en": "Ghost Countries 👻",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/lib/daily.ts"
+    ]
+  },
+  {
+    "key": "Ghost capitals",
+    "fr": "Capitales fantômes",
+    "en": "Ghost capitals",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/lib/ghostCountries.ts"
+    ]
+  },
+  {
+    "key": "Ghosts to Scale",
+    "fr": "Fantômes à l’échelle",
+    "en": "Ghosts to Scale",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/ScaleGame.tsx"
+    ]
+  },
+  {
+    "key": "Ghosts to Scale 👻",
+    "fr": "Fantômes à l’échelle 👻",
+    "en": "Ghosts to Scale 👻",
     "count": 1,
     "kinds": [
       "call"
@@ -6540,6 +6612,18 @@
     ]
   },
   {
+    "key": "HALLOWEEN CHALLENGE",
+    "fr": "DÉFI HALLOWEEN",
+    "en": "HALLOWEEN CHALLENGE",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/DailyHub.tsx"
+    ]
+  },
+  {
     "key": "HEAD TO HEAD",
     "fr": "FACE À FACE",
     "en": "HEAD TO HEAD",
@@ -6588,15 +6672,27 @@
     ]
   },
   {
-    "key": "Halloween challenge: Ghost Countries",
-    "fr": "Défi Halloween : Pays fantômes",
-    "en": "Halloween challenge: Ghost Countries",
-    "count": 2,
+    "key": "Haunted Globe",
+    "fr": "Globe hanté",
+    "en": "Haunted Globe",
+    "count": 1,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/screens/DailyHub.tsx"
+      "src/screens/PinpointGame.tsx"
+    ]
+  },
+  {
+    "key": "Haunted Globe 👻",
+    "fr": "Globe hanté 👻",
+    "en": "Haunted Globe 👻",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/lib/daily.ts"
     ]
   },
   {
@@ -11402,6 +11498,18 @@
     ]
   },
   {
+    "key": "Put vanished countries to scale against today’s.",
+    "fr": "Mets les pays disparus à l’échelle de ceux d’aujourd’hui.",
+    "en": "Put vanished countries to scale against today’s.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/DailyHub.tsx"
+    ]
+  },
+  {
     "key": "Pyramids of Giza",
     "fr": "Pyramides de Gizeh",
     "en": "Pyramids of Giza",
@@ -14630,6 +14738,18 @@
     ]
   },
   {
+    "key": "The capitals of vanished countries",
+    "fr": "La capitale des pays disparus",
+    "en": "The capitals of vanished countries",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/lib/ghostCountries.ts"
+    ]
+  },
+  {
     "key": "The daily quiz changes every day and is the same for everyone.",
     "fr": "Le quiz du jour change chaque jour et il est le même pour tout le monde.",
     "en": "The daily quiz changes every day and is the same for everyone.",
@@ -16245,6 +16365,18 @@
     ]
   },
   {
+    "key": "What was the capital of this vanished country {0}?",
+    "fr": "Quelle était la capitale de ce pays disparu {0} ?",
+    "en": "What was the capital of this vanished country {0}?",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/lib/ghostCountries.ts"
+    ]
+  },
+  {
     "key": "What you'll compare",
     "fr": "Ce que vous allez comparer",
     "en": "What you'll compare",
@@ -16339,6 +16471,18 @@
     ],
     "files": [
       "src/screens/SilhouetteGame.tsx"
+    ]
+  },
+  {
+    "key": "Which vanished country was this point in? 👻",
+    "fr": "Dans quel pays disparu était ce point ? 👻",
+    "en": "Which vanished country was this point in? 👻",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/PinpointGame.tsx"
     ]
   },
   {
@@ -18858,9 +19002,9 @@
     ]
   },
   {
-    "key": "🎃 Halloween special: Ghost Countries",
-    "fr": "🎃 Spécial Halloween : Pays fantômes",
-    "en": "🎃 Halloween special: Ghost Countries",
+    "key": "🎃 Halloween special: ghost countries",
+    "fr": "🎃 Spécial Halloween : pays fantômes",
+    "en": "🎃 Halloween special: ghost countries",
     "count": 1,
     "kinds": [
       "call"

@@ -23,7 +23,7 @@ import { supabase } from './supabase';
 import { enqueue } from './syncQueue';
 import { track } from './analytics';
 import { tr } from '../i18n';
-import { GHOST_DAYS } from '../data/ghostCountries';
+import { isGhostDaily } from '../data/ghostCountries';
 
 /** Shape of the `complete_daily` RPC payload (returned as JSONB). */
 interface CompleteDailyResult {
@@ -319,10 +319,22 @@ export async function syncOnLogin(_user: User): Promise<void> {
 
 /**
  * Short title for a daily mode card (FR/EN), matching MainMenu's wording.
- * `date` (a daily puzzle's UTC date) lets the Silhouette slot read « Pays
- * fantômes » on the Halloween days; without it, the plain mode name.
+ * `date` (a daily puzzle's UTC date) gives the Halloween « pays fantômes »
+ * name on the days that mode is haunted; without it, the plain mode name.
  */
 export function dailyModeLabel(mode: GameMode, language: Language, date?: string): string {
+  if (isGhostDaily(date, mode)) {
+    switch (mode) {
+      case 'silhouette':
+        return tr(language, 'Pays fantômes 👻', 'Ghost Countries 👻');
+      case 'challenge':
+        return tr(language, 'Capitales fantômes 👻', 'Ghost Capitals 👻');
+      case 'pinpoint':
+        return tr(language, 'Globe hanté 👻', 'Haunted Globe 👻');
+      case 'scale':
+        return tr(language, 'Fantômes à l’échelle 👻', 'Ghosts to Scale 👻');
+    }
+  }
   switch (mode) {
     case 'classic':
       return 'Rankle';
@@ -341,9 +353,7 @@ export function dailyModeLabel(mode: GameMode, language: Language, date?: string
     case 'higherlower':
       return tr(language, 'Plus ou Moins', 'Higher or Lower');
     case 'silhouette':
-      return date && GHOST_DAYS.includes(date)
-        ? tr(language, 'Pays fantômes 👻', 'Ghost Countries 👻')
-        : 'Silhouette';
+      return 'Silhouette';
     case 'scale':
       return tr(language, 'À l’échelle', 'To Scale');
     case 'pinpoint':
