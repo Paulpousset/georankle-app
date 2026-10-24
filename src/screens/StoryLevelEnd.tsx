@@ -21,7 +21,7 @@ import { playSfx } from '../lib/sfx';
 import { ChevronRight, Heart, Map as MapIcon, RotateCcw, Star } from 'lucide-react-native';
 
 import type { StoryLevel } from '../data/story';
-import { STAR_THRESHOLDS, STORY_LEVEL_COUNT } from '../data/story';
+import { STAR_THRESHOLDS, STORY_LEVEL_COUNT, nextCoinLevel } from '../data/story';
 import { biomeForTier } from '../data/biomes';
 import { RARITY_META, STORY_COSMETIC_UNLOCKS, getPartById } from '../data/cosmetics';
 import type { RecordLevelResult } from '../lib/story';
@@ -154,6 +154,7 @@ export default function StoryLevelEnd({
   const justUnlocked = record?.unlockedItemId ? getPartById(record.unlockedItemId) : undefined;
   const hasNext = passed && level.level < STORY_LEVEL_COUNT;
   const canReplay = lives > 0;
+  const nextCoins = nextCoinLevel(Math.max(level.level, maxLevelBefore) + 1);
 
   const btn = (
     key: string,
@@ -298,7 +299,14 @@ export default function StoryLevelEnd({
           </View>
 
           <Reveal at={COINS_AT} kind="pop" style={{ marginTop: 12 }}>
-            {signedIn ? (
+            {signedIn && passed && record?.synced && record.coins === 0 ? (
+              // Coins only come with a world's défi now — say when the next ones are.
+              <Text style={{ color: c.textMuted, fontFamily: FONTS.mono, fontSize: 12, textAlign: 'center' }}>
+                {nextCoins != null
+                  ? tr(language, 'Prochaines pièces au niveau {0}', 'Next coins at level {0}', [nextCoins])
+                  : tr(language, 'Aucune pièce cette fois', 'No coins this time')}
+              </Text>
+            ) : signedIn ? (
               <SoloCoinReward
                 coinsEarned={record ? record.coins : null}
                 coinsCapped={record ? record.coins === 0 && passed && !record.firstClear : false}
@@ -374,6 +382,11 @@ export default function StoryLevelEnd({
                   {btn('next', tr(language, 'Niveau {0}', 'Level {0}', [level.level + 1]), ChevronRight, onNext, 'primary')}
                 </View>
               ) : !passed ? (
+                <Text style={{ color: PALETTE.dangerRed, fontFamily: FONTS.monoBold, fontSize: 11, textAlign: 'center' }}>
+                  {tr(language, 'Niveau raté : −1 vie', 'Level failed: −1 life')}
+                </Text>
+              ) : null}
+              {!passed ? (
                 <View style={{ flexDirection: 'row' }}>
                   {btn(
                     'retry',
