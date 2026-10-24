@@ -53,6 +53,8 @@ export interface GlobeStyle {
   corona?: boolean;
   /** Glowing plankton dots in the ocean + phosphorescent coasts (biolum). */
   biolum?: boolean;
+  /** Plankton dot colour (defaults to biolum's teal). */
+  plankton?: string;
   /** Atmosphere halo colour — undefined disables the halo for this style. */
   atmo?: string;
   /** Day/night terminator shading. */
@@ -96,6 +98,14 @@ export const GLOBE_STYLES: Record<string, GlobeStyle> = {
   st_fractured: { ocean: ['#243a5c', '#132038', '#070d1a'], land: '#16263f', stroke: '#ff7a3a', grat: '#1a2c48', rift: true, riftColor: '#ff8a3a', atmo: '#ff7a3a', terminator: true },
   st_galaxy:    { ocean: ['#241a52', '#140f2e', '#060418'], land: 'none', stroke: '#b8a0ff', grat: '#2a1f5a', wire: true, galaxy: true, galaxyColor: '#d8c8ff', atmo: '#9a7cff' },
   st_crowned:   { ocean: ['#ffe7a4', '#e0a93a', '#8a5a14'], land: '#caa23a', stroke: '#7a5212', grat: '#8a5a14', atmo: '#ffd700', terminator: true, sparkle: true, crown: true },
+  st_obsidian:  { ocean: ['#2c2644', '#18142a', '#0a0812'], land: '#15121e', stroke: '#ffc85a', grat: '#241e38', rift: true, riftColor: '#ffcf5a', atmo: '#ffc85a', terminator: true },
+  // ── Nouveaux mondes (2026-10) ──
+  jungle:    { ocean: ['#3cc4b0', '#1a8a80', '#0d4a46'], land: '#2f9a3e', stroke: '#14501e', grat: '#0d4a46', atmo: '#7fe0a0', terminator: true, clouds: true },
+  desert:    { ocean: ['#5ad6e0', '#2a9cbc', '#105a76'], land: '#ecc06a', stroke: '#9a6626', grat: '#105a76', atmo: '#ffd9a0', terminator: true, clouds: true },
+  candy:     { ocean: ['#ffc6e6', '#f09ccc', '#c85a9c'], land: '#a4f2d4', stroke: '#ffffff', grat: '#f09ccc', atmo: '#ffb0dc', sparkle: true },
+  neptune:   { ocean: ['#6a9cff', '#3a5ad0', '#14206a'], land: '#a8dcff', stroke: '#3456c8', grat: '#14206a', atmo: '#8ab4ff', terminator: true },
+  toxic:     { ocean: ['#1c3012', '#0e1a08', '#050b04'], land: '#1d2e12', stroke: '#a6ff3e', grat: '#16260f', biolum: true, plankton: '#c4ff52', atmo: '#a6ff3e' },
+  diamond:   { ocean: ['#eaf8ff', '#bfe2f4', '#7ab4d8'], land: '#ffffff', stroke: '#76b2dc', grat: '#bfe2f4', atmo: '#d8f4ff', terminator: true, sparkle: true },
 };
 
 export const POLITICAL_PALETTE = [
@@ -490,6 +500,11 @@ function WorldAvatarBase({ config, size, style, animate = false, round = false, 
       case 'goldrain': return ['#141024', '#060410'];
       case 'st_aurorastorm': return ['#062a3a', '#02101e'];
       case 'st_embersky': return ['#1a0a08', '#050202'];
+      case 'dusk': return ['#f4a0b4', '#3a1a4a'];
+      case 'deepsea': return ['#0a4a6a', '#020c18'];
+      case 'ringedplanet': return ['#241a4a', '#06040f'];
+      case 'synthwave': return ['#5a1a6a', '#0a0418'];
+      case 'st_celestial': return ['#14204a', '#03050f'];
       default: return ['#0b1230', '#05060f'];
     }
   })();
@@ -987,7 +1002,7 @@ function WorldAvatarBase({ config, size, style, animate = false, round = false, 
                 <Path key={`lv${i}`} d={d} fill="none" stroke="#ff8a3a" strokeWidth={1.1} strokeOpacity={0.9} />
               ))}
               {gs.biolum && fills.map((d, i) => (
-                <Path key={`bl${i}`} d={d} fill="none" stroke="#2ff0c0" strokeWidth={1} strokeOpacity={0.8} />
+                <Path key={`bl${i}`} d={d} fill="none" stroke={gs.stroke} strokeWidth={1} strokeOpacity={0.8} />
               ))}
             </>
           )}
@@ -997,7 +1012,7 @@ function WorldAvatarBase({ config, size, style, animate = false, round = false, 
             <Path key={`ck${i}`} d={d} fill="none" stroke="#ffb03a" strokeWidth={1.2} strokeOpacity={0.85} strokeLinecap="round" />
           ))}
           {surfaceDeco.dots.map((p, i) => (
-            <Circle key={`sd${i}`} cx={p.x} cy={p.y} r={p.rad} fill={gs.cyber ? '#3af0a0' : '#5affd8'} fillOpacity={p.o} />
+            <Circle key={`sd${i}`} cx={p.x} cy={p.y} r={p.rad} fill={gs.cyber ? '#3af0a0' : gs.plankton ?? '#5affd8'} fillOpacity={p.o} />
           ))}
 
           {/* story-exclusive: fractured rifts (glow under + bright core) */}
