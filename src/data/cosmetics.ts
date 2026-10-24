@@ -230,24 +230,25 @@ export function getPartById(id: string): CosmeticPart | undefined {
 /**
  * Story-mode reward schedule: which exclusive cosmetic is granted at the first
  * clear of a given level. MUST stay in sync with the CASE mapping in
- * `complete_story_level` (story_mode.sql). Client uses it only to show the
+ * `complete_story_level` (migrations/20261024_01_story_1000.sql). Spread over
+ * the 1000 levels with widening gaps — rewards come less often as you climb. Client uses it only to show the
  * unlock's name in the toast; the server is authoritative for the grant.
  */
 export const STORY_COSMETIC_UNLOCKS: { level: number; itemId: string }[] = [
-  { level: 30, itemId: 'emblem_st_star' },
-  { level: 60, itemId: 'sat_st_moon' },
-  { level: 75, itemId: 'globe_st_fractured' },
-  { level: 90, itemId: 'emblem_st_summit' },
-  { level: 100, itemId: 'orbit_st_laurel' },
-  { level: 125, itemId: 'cosmos_st_aurorastorm' },
-  { level: 150, itemId: 'emblem_st_worldtree' },
-  { level: 170, itemId: 'sat_st_ship' },
-  { level: 180, itemId: 'globe_st_galaxy' },
-  { level: 200, itemId: 'sat_st_comet' },
-  { level: 225, itemId: 'orbit_st_compass' },
-  { level: 250, itemId: 'emblem_st_laurel' },
-  { level: 275, itemId: 'cosmos_st_embersky' },
-  { level: 300, itemId: 'globe_st_crowned' },
+  { level: 40, itemId: 'emblem_st_star' },
+  { level: 90, itemId: 'sat_st_moon' },
+  { level: 150, itemId: 'globe_st_fractured' },
+  { level: 220, itemId: 'emblem_st_summit' },
+  { level: 290, itemId: 'orbit_st_laurel' },
+  { level: 360, itemId: 'cosmos_st_aurorastorm' },
+  { level: 430, itemId: 'emblem_st_worldtree' },
+  { level: 500, itemId: 'sat_st_ship' },
+  { level: 575, itemId: 'globe_st_galaxy' },
+  { level: 650, itemId: 'sat_st_comet' },
+  { level: 725, itemId: 'orbit_st_compass' },
+  { level: 800, itemId: 'emblem_st_laurel' },
+  { level: 900, itemId: 'cosmos_st_embersky' },
+  { level: 1000, itemId: 'globe_st_crowned' },
 ];
 
 // ── Boutique 2.0 : badge NEW, vitrine du jour, packs ──────────────────────────

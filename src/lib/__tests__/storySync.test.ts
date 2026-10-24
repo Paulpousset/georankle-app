@@ -32,7 +32,7 @@ jest.mock('@react-native-async-storage/async-storage', () => {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
-import { _internal, getStorySnapshot, recordLevel } from '../story';
+import { _internal, beginAttempt, endAttempt, getStorySnapshot, recordLevel, settleAbandonedAttempt, MAX_LIVES } from '../story';
 import type { SupabaseMock } from '../../../test-utils/supabaseMock';
 
 const sb = supabase as unknown as SupabaseMock;
@@ -98,5 +98,30 @@ describe('getStorySnapshot backfill', () => {
     await flush();
 
     expect(sb.rpc.mock.calls.filter(([name]) => name === 'complete_story_level')).toHaveLength(1);
+  });
+});
+
+describe('lives: only a failed level costs one', () => {
+  const livesLeft = async () => JSON.parse((await AsyncStorage.getItem('story:lives')) ?? 'null')?.lives ?? MAX_LIVES;
+
+  it('a cleared level keeps every life', async () => {
+    await beginAttempt(null, 1);
+    const res = await endAttempt(null, true);
+    expect(res.lostLife).toBe(false);
+    expect(await livesLeft()).toBe(MAX_LIVES);
+  });
+
+  it('a failed level costs exactly one, even when closed twice', async () => {
+    await beginAttempt(null, 1);
+    expect((await endAttempt(null, false)).lostLife).toBe(true);
+    expect((await endAttempt(null, false)).lostLife).toBe(false);
+    expect(await livesLeft()).toBe(MAX_LIVES - 1);
+  });
+
+  it('a level left pending (app killed) counts as a fail on next open', async () => {
+    await beginAttempt(null, 3);
+    await settleAbandonedAttempt(null);
+    expect(await livesLeft()).toBe(MAX_LIVES - 1);
+    expect(await AsyncStorage.getItem(_internal.ATTEMPT_KEY)).toBeNull();
   });
 });
