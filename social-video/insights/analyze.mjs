@@ -34,6 +34,9 @@ for (const [concept, byLang] of Object.entries(DEFAULT.hooks)) {
   }
 }
 const rules = { ...DEFAULT.rules, ...prev.rules };
+rules.priorPosts ??= 4;
+rules.inertia ??= 0.5;
+rules.mixCap ??= 0.4;
 const ATLAS = Object.keys(DEFAULT.mix);
 
 const all = JSON.parse(readFileSync(join(OUT, 'posts.json'), 'utf8'));
@@ -65,6 +68,23 @@ function stats(rs) {
 // Note d'une vidéo : la part regardée (ce que TikTok et Instagram récompensent),
 // un peu relevée par les likes et les partages.
 const score = (s) => (s.watchPct == null ? null : s.watchPct * (1 + 5 * (s.likeRate ?? 0) + 10 * (s.shareRate ?? 0)));
+// Contre le surapprentissage (demande de Paul, 24/10 : « sans overfit sur une
+// vidéo qui fait un peu plus ») : on note chaque vidéo séparément, on prend la
+// MÉDIANE d'un groupe (une vidéo qui décolle ne tire pas tout le groupe), puis
+// on la tire vers la médiane de toutes les vidéos tant que le groupe est petit
+// (priorPosts vidéos « moyennes » fictives). Les poids bougent ensuite par
+// demi-pas depuis le relevé précédent (inertia) et aucun ne dépasse mixCap.
+const videoScore = (r) => (r.watchPct == null ? null : r.watchPct * (1 + 5 * (r.views ? (r.likes ?? 0) / r.views : 0) + 10 * (r.views ? (r.shares ?? 0) / r.views : 0)));
+const median = (xs) => {
+  const v = xs.filter((x) => x != null).sort((a, b) => a - b);
+  return v.length ? (v.length % 2 ? v[(v.length - 1) / 2] : (v[v.length / 2 - 1] + v[v.length / 2]) / 2) : null;
+};
+const shrink = (rs, prior, k) => {
+  const m = median(rs.map(videoScore));
+  const n = rs.filter((r) => videoScore(r) != null).length;
+  return m == null || prior == null ? m : (n * m + k * prior) / (n + k);
+};
+const blend = (prevW, nextW, inertia) => Object.fromEntries(Object.keys(nextW).map((k) => [k, prevW?.[k] == null ? nextW[k] : inertia * prevW[k] + (1 - inertia) * nextW[k]]));
 const groupBy = (rs, f) => rs.reduce((acc, r) => ((acc[f(r)] ||= []).push(r), acc), {});
 
 // ───────────────────────────── Constats ─────────────────────────────
@@ -107,12 +127,13 @@ for (const { k, tt: s, ig: i } of cfTable) findings.push(...diagnose(k, s.n ? s 
 // Mélange des concepts : au prorata de leur note, chacun gardant au moins
 // mixFloor pour continuer à être testé. Peu de données : poids précédent.
 const want = prev.short ?? DEFAULT.short ? 'court' : 'long';
+const globalScore = median(tt.filter((r) => ATLAS.includes(r.concept)).map(videoScore));
 const conceptScore = {};
 for (const c of ATLAS) {
   const rs = tt.filter((r) => r.concept === c && r.format !== 'app');
   const same = rs.filter((r) => r.format === want);
-  const s = stats(same.length >= rules.minPosts ? same : rs);
-  conceptScore[c] = s.n >= rules.minPosts ? score(s) : null;
+  const pick = same.length >= rules.minPosts ? same : rs;
+  conceptScore[c] = pick.length >= rules.minPosts ? shrink(pick, globalScore, rules.priorPosts) : null;
 }
 const prevMix = prev.mix ?? DEFAULT.mix;
 const prevTotal = Object.values(prevMix).reduce((a, b) => a + b, 0) || 1;
@@ -120,7 +141,10 @@ const known = Object.values(conceptScore).filter((x) => x != null);
 const rawMix = Object.fromEntries(ATLAS.map((c) => [c, conceptScore[c] ?? (known.length ? Math.max(...known) * (prevMix[c] ?? 0) / prevTotal * ATLAS.length : prevMix[c] ?? 0)]));
 const totalRaw = Object.values(rawMix).reduce((a, b) => a + b, 0) || 1;
 // Un concept mis à zéro à la main (ex. Rankle) le reste.
-const mix = Object.fromEntries(ATLAS.map((c) => [c, (prevMix[c] ?? 0) === 0 ? 0 : Math.max(rules.mixFloor, rawMix[c] / totalRaw)]));
+const prevShare = Object.fromEntries(ATLAS.map((c) => [c, (prevMix[c] ?? 0) / prevTotal]));
+const target = Object.fromEntries(ATLAS.map((c) => [c, (prevMix[c] ?? 0) === 0 ? 0 : Math.min(rules.mixCap, Math.max(rules.mixFloor, rawMix[c] / totalRaw))]));
+const mix = blend(prevShare, target, rules.inertia);
+for (const c of ATLAS) if ((prevMix[c] ?? 0) === 0) mix[c] = 0;
 const mixTotal = Object.values(mix).reduce((a, b) => a + b, 0) || 1;
 for (const c of ATLAS) mix[c] = Math.round((mix[c] / mixTotal) * 100) / 100;
 
@@ -136,6 +160,14 @@ const short = court.n >= rules.minPosts && long.n >= rules.minPosts ? (court.wat
 const hookWeights = {};
 const needsNewHooks = [];
 const hookTable = [];
+// Type d'intro (style de l'accroche : defi, question, course, teaser), tous
+// concepts et langues confondus : c'est là qu'on a assez de vidéos pour
+// conclure. Une accroche peu testée part de la note de son type.
+const styleOf = (r) => hooks[r.concept]?.[r.lang]?.find((h) => h.id === r.hook)?.style ?? null;
+const styleRows = groupBy(tt.filter((r) => ATLAS.includes(r.concept) && styleOf(r)), styleOf);
+const styleRowsIg = groupBy(ig.filter((r) => ATLAS.includes(r.concept) && styleOf(r)), styleOf);
+const styleScore = Object.fromEntries(Object.entries(styleRows).map(([st, rs]) => [st, rs.length >= rules.minPosts ? shrink(rs, globalScore, rules.priorPosts) : null]));
+const styleTable = [...new Set([...Object.keys(styleRows), ...Object.keys(styleRowsIg)])].sort().map((st) => ({ st, s: stats(styleRows[st] ?? []), ig: stats(styleRowsIg[st] ?? []), score: styleScore[st] }));
 for (const [concept, byLang] of Object.entries(hooks)) {
   for (const [lang, list] of Object.entries(byLang)) {
     // L'accroche se juge sur les 3 premières secondes : la part qui ne fait pas
@@ -144,9 +176,10 @@ for (const [concept, byLang] of Object.entries(hooks)) {
     const per = Object.fromEntries(list.map((h) => [h.id, stats(mine(tt, h.id))]));
     const perIg = Object.fromEntries(list.map((h) => [h.id, stats(mine(ig, h.id))]));
     const bySkip = list.some((h) => perIg[h.id].n >= rules.minPosts && perIg[h.id].skipRate != null);
+    const styleFor = (id) => styleScore[list.find((h) => h.id === id)?.style] ?? null;
     const hookScore = (id) => (bySkip
       ? (perIg[id].n >= rules.minPosts && perIg[id].skipRate != null ? 1 - perIg[id].skipRate : null)
-      : (per[id].n >= rules.minPosts ? score(per[id]) : null));
+      : (per[id].n >= rules.minPosts ? shrink(mine(tt, id), styleFor(id) ?? globalScore, rules.priorPosts) : null));
     const scored = list.map((h) => [h.id, hookScore(h.id)]);
     const best = Math.max(0, ...scored.map(([, x]) => x ?? 0));
     const w = {};
@@ -158,12 +191,14 @@ for (const [concept, byLang] of Object.entries(hooks)) {
         || (i.n >= rules.minPosts && i.skipRate != null && i.skipRate > rules.hookFailSkipRate);
       if (fail) failing++;
       // Une accroche qui ne retient pas garde la moitié de sa note : les nouvelles passent devant.
-      w[id] = fail ? (sc ?? 0) * 0.5 : sc ?? (best || 1);
+      w[id] = fail ? (sc ?? 0) * 0.5 : sc ?? styleFor(id) ?? (best || 1);
       hookTable.push({ concept, lang, id, text: list.find((h) => h.id === id).text.join(' '), s, ig: i, fail });
     }
     const total = Object.values(w).reduce((a, b) => a + b, 0) || 1;
-    for (const id of Object.keys(w)) w[id] = Math.round(Math.max(rules.hookFloor, w[id] / total) * 100) / 100;
-    hookWeights[concept] = { ...hookWeights[concept], [lang]: w };
+    for (const id of Object.keys(w)) w[id] = Math.max(rules.hookFloor, w[id] / total);
+    const smooth = blend(prev.hookWeights?.[concept]?.[lang], w, rules.inertia);
+    for (const id of Object.keys(smooth)) smooth[id] = Math.round(smooth[id] * 100) / 100;
+    hookWeights[concept] = { ...hookWeights[concept], [lang]: smooth };
     // Toutes les accroches testées et aucune ne fait mieux que l'accroche d'origine
     // de plus de 10 %, ou une accroche retire les gens trop tôt : il en faut d'autres.
     const tested = scored.filter(([, x]) => x != null);
@@ -182,6 +217,7 @@ const tuning = {
   hooks,
   hookWeights,
   needsNewHooks,
+  styles: Object.fromEntries(styleTable.map((x) => [x.st, { n: x.s.n, nIg: x.ig.n, score: x.score }])),
   findings,
 };
 writeFileSync(join(OUT, 'tuning.json'), JSON.stringify(tuning, null, 2));
@@ -202,6 +238,9 @@ for (const { k, tt: s, ig: i } of cfTable) {
 md.push('', '## Accroches', '');
 md.push('| Concept | Langue | Accroche | Vidéos | Durée vue TT | Part vue TT | Partis avant 3 s (Insta) | Poids |', '|---|---|---|---|---|---|---|---|');
 for (const h of hookTable) md.push(`| ${h.concept} | ${h.lang} | ${h.text.replace(/\|/g, '/')} | ${h.s.n} | ${sec(h.s.avgWatchS)} | ${pct(h.s.watchPct)} | ${pct(h.ig.skipRate)} | ${pct(hookWeights[h.concept][h.lang][h.id])}${h.fail ? ' ⚠️' : ''} |`);
+md.push('', '## Types d\'intro (tous concepts confondus)', '');
+md.push('| Intro | Vidéos TT | Durée vue TT | Part vue TT | Vidéos Insta | Partis avant 3 s (Insta) | Note (médiane ajustée) |', '|---|---|---|---|---|---|---|');
+for (const x of styleTable) md.push(`| ${x.st} | ${x.s.n} | ${sec(x.s.avgWatchS)} | ${pct(x.s.watchPct)} | ${x.ig.n} | ${pct(x.ig.skipRate)} | ${x.score == null ? `— (moins de ${rules.minPosts} vidéos)` : x.score.toFixed(3)} |`);
 md.push('', '## Prochain lot', '');
 md.push(`- Mélange : ${ATLAS.map((c) => `${c} ${pct(mix[c])}`).join(', ')}.`);
 md.push(`- Format : ${short ? 'court (~20 s)' : 'long'}${court.n && long.n ? ` (part vue court ${pct(court.watchPct)}, long ${pct(long.watchPct)})` : ''}.`);

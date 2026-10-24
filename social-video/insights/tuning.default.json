@@ -1,5 +1,5 @@
 {
-  "_comment": "Réglages des vidéos concepts, ajustés par analyze.mjs après chaque relevé de stats. La version vivante est tuning.json dans la release shorts-state ; ce fichier sert de départ et d'ajout d'accroches (une accroche ajoutée ici rejoint la version vivante au relevé suivant). hooks : accroche à l'écran (text, deux lignes) + première phrase de la voix off (say). Variables : {a} et {b} = départ et arrivée (Frontières, déjà écrits sous l'accroche), {n} = nombre d'essais (Devine). Une ligne de plus de 20 caractères une fois remplie est sautée. Pas de faux chiffres (« 99 % se trompent ») : on promet un défi, pas une statistique.",
+  "_comment": "Réglages des vidéos concepts, ajustés par analyze.mjs après chaque relevé de stats. La version vivante est tuning.json dans la release shorts-state ; ce fichier sert de départ et d'ajout d'accroches (une accroche ajoutée ici rejoint la version vivante au relevé suivant). hooks : accroche à l'écran (text, deux lignes) + première phrase de la voix off (say). Variables : {a} et {b} = départ et arrivée (Frontières, déjà écrits sous l'accroche) ou les deux premiers pays (Plus ou moins), {n} = nombre d'essais (Devine). Une ligne de plus de 20 caractères une fois remplie est sautée. style : type d'intro (defi, question, course, teaser), comparé tous concepts confondus pour ne pas conclure sur une seule vidéo. Pas de faux chiffres (« 99 % se trompent ») : on promet un défi, pas une statistique.",
   "rules": {
     "minAgeHours": 48,
     "minPosts": 3,
@@ -18,50 +18,54 @@
   "hooks": {
     "frontieres": {
       "fr": [
-        { "id": "h0", "text": ["Quels pays", "traverser ? 🧭"], "say": "Quels pays faut-il traverser ?" },
-        { "id": "h1", "text": ["Sans avion,", "tu passes par où ? 🧭"], "say": "Sans avion, tu passes par où ?" },
-        { "id": "h2", "text": ["Trouve le chemin", "avant la carte ⏱️"], "say": "Trouve le chemin avant que la carte le dessine." }
+        { "id": "h0", "text": ["Quels pays", "traverser ? 🧭"], "say": "Quels pays faut-il traverser ?", "style": "question" },
+        { "id": "h1", "text": ["Sans avion,", "tu passes par où ? 🧭"], "say": "Sans avion, tu passes par où ?", "style": "question" },
+        { "id": "h2", "text": ["Trouve le chemin", "avant la carte ⏱️"], "say": "Trouve le chemin avant que la carte le dessine.", "style": "course" },
+        { "id": "h3", "text": ["Prouve que tu", "connais ta carte 🧭"], "say": "Prouve que tu connais ta carte.", "style": "defi" }
       ],
       "en": [
-        { "id": "h0", "text": ["Which countries", "do you cross? 🧭"], "say": "Which countries do you have to cross?" },
-        { "id": "h1", "text": ["No flying.", "Which way? 🧭"], "say": "No flying. Which way do you go?" },
-        { "id": "h2", "text": ["Find the route", "before the map ⏱️"], "say": "Find the route before the map draws it." }
+        { "id": "h0", "text": ["Which countries", "do you cross? 🧭"], "say": "Which countries do you have to cross?", "style": "question" },
+        { "id": "h1", "text": ["No flying.", "Which way? 🧭"], "say": "No flying. Which way do you go?", "style": "question" },
+        { "id": "h2", "text": ["Find the route", "before the map ⏱️"], "say": "Find the route before the map draws it.", "style": "course" },
+        { "id": "h3", "text": ["Prove you know", "your map 🧭"], "say": "Prove you know your map.", "style": "defi" }
       ]
     },
     "plus-ou-moins": {
       "fr": [
-        { "id": "h0", "text": ["Tiens 5 manches", "sans erreur 🔥"], "say": "Tiens cinq manches sans te tromper." },
-        { "id": "h1", "text": ["Je craque à", "quelle manche ? 😬"], "say": "Devine à quelle manche je craque." },
-        { "id": "h2", "text": ["Plus ou moins ?", "Réponds avant moi ⏱️"], "say": "Plus ou moins ? Réponds avant moi." }
+        { "id": "h0", "text": ["Tiens 5 manches", "sans erreur 🔥"], "say": "Tiens cinq manches sans te tromper.", "style": "defi" },
+        { "id": "h1", "text": ["Je craque à", "quelle manche ? 😬"], "say": "Devine à quelle manche je craque.", "style": "teaser" },
+        { "id": "h2", "text": ["Plus ou moins ?", "Réponds avant moi ⏱️"], "say": "Plus ou moins ? Réponds avant moi.", "style": "course" },
+        { "id": "h3", "text": ["{b} : plus", "ou moins ? 🤔"], "say": "{b}, plus ou moins que {a} ?", "style": "question" }
       ],
       "en": [
-        { "id": "h0", "text": ["Survive 5 rounds", "no mistakes 🔥"], "say": "Survive five rounds without a mistake." },
-        { "id": "h1", "text": ["Guess the round", "I crack on 😬"], "say": "Guess which round I crack on." },
-        { "id": "h2", "text": ["Higher or lower?", "Beat me to it ⏱️"], "say": "Higher or lower? Answer before I do." }
+        { "id": "h0", "text": ["Survive 5 rounds", "no mistakes 🔥"], "say": "Survive five rounds without a mistake.", "style": "defi" },
+        { "id": "h1", "text": ["Guess the round", "I crack on 😬"], "say": "Guess which round I crack on.", "style": "teaser" },
+        { "id": "h2", "text": ["Higher or lower?", "Beat me to it ⏱️"], "say": "Higher or lower? Answer before I do.", "style": "course" },
+        { "id": "h3", "text": ["{b}: higher", "or lower? 🤔"], "say": "{b}: higher or lower than {a}?", "style": "question" }
       ]
     },
     "echelle": {
       "fr": [
-        { "id": "h0", "text": ["Remets ces pays", "à la même échelle 📏"], "say": "Remets ces deux pays à la même échelle." },
-        { "id": "h1", "text": ["Tu as l'œil", "pour les tailles ? 📏"], "say": "Tu as l'œil pour la taille des pays ?" },
-        { "id": "h2", "text": ["Même échelle ?", "Réponds avant moi ⏱️"], "say": "Même échelle ? Réponds avant moi." }
+        { "id": "h0", "text": ["Remets ces pays", "à la même échelle 📏"], "say": "Remets ces deux pays à la même échelle.", "style": "defi" },
+        { "id": "h1", "text": ["Tu as l'œil", "pour les tailles ? 📏"], "say": "Tu as l'œil pour la taille des pays ?", "style": "question" },
+        { "id": "h2", "text": ["Même échelle ?", "Réponds avant moi ⏱️"], "say": "Même échelle ? Réponds avant moi.", "style": "course" }
       ],
       "en": [
-        { "id": "h0", "text": ["Put these countries", "to scale 📏"], "say": "Resize these two countries to the same scale." },
-        { "id": "h1", "text": ["Got an eye", "for size? 📏"], "say": "Do you have an eye for country sizes?" },
-        { "id": "h2", "text": ["Same scale?", "Beat me to it ⏱️"], "say": "Same scale? Answer before I do." }
+        { "id": "h0", "text": ["Put these countries", "to scale 📏"], "say": "Resize these two countries to the same scale.", "style": "defi" },
+        { "id": "h1", "text": ["Got an eye", "for size? 📏"], "say": "Do you have an eye for country sizes?", "style": "question" },
+        { "id": "h2", "text": ["Same scale?", "Beat me to it ⏱️"], "say": "Same scale? Answer before I do.", "style": "course" }
       ]
     },
     "devine": {
       "fr": [
-        { "id": "h0", "text": ["Trouve ce pays", "avant moi 🕵️"], "say": "Trouve ce pays avant moi." },
-        { "id": "h1", "text": ["Moi : {n} essais.", "Et toi ? 🕵️"], "say": "Il me faut {n} essais. Tu fais mieux ?" },
-        { "id": "h2", "text": ["Quel pays", "se cache ici ? 🤔"], "say": "Quel pays se cache derrière ces indices ?" }
+        { "id": "h0", "text": ["Trouve ce pays", "avant moi 🕵️"], "say": "Trouve ce pays avant moi.", "style": "course" },
+        { "id": "h1", "text": ["Moi : {n} essais.", "Et toi ? 🕵️"], "say": "Il me faut {n} essais. Tu fais mieux ?", "style": "defi" },
+        { "id": "h2", "text": ["Quel pays", "se cache ici ? 🤔"], "say": "Quel pays se cache derrière ces indices ?", "style": "question" }
       ],
       "en": [
-        { "id": "h0", "text": ["Find this country", "before I do 🕵️"], "say": "Find this country before I do." },
-        { "id": "h1", "text": ["Me: {n} guesses.", "You? 🕵️"], "say": "It takes me {n} guesses. Can you beat that?" },
-        { "id": "h2", "text": ["Which country", "is hiding here? 🤔"], "say": "Which country is hiding behind these clues?" }
+        { "id": "h0", "text": ["Find this country", "before I do 🕵️"], "say": "Find this country before I do.", "style": "course" },
+        { "id": "h1", "text": ["Me: {n} guesses.", "You? 🕵️"], "say": "It takes me {n} guesses. Can you beat that?", "style": "defi" },
+        { "id": "h2", "text": ["Which country", "is hiding here? 🤔"], "say": "Which country is hiding behind these clues?", "style": "question" }
       ]
     }
   }

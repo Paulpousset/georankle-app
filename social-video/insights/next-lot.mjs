@@ -8,7 +8,8 @@
 //                                         # numérotées à la suite, et à la fin de
 //                                         # l'ordre de /hq (order.json)
 //
-// Variables : GITHUB_REPOSITORY, GH_TOKEN, TARGET, DRY_RUN (1 = ne rien envoyer).
+// Variables : GITHUB_REPOSITORY, GH_TOKEN, TARGET, DRY_RUN (1 = ne rien envoyer),
+// FRONT (1 = le lot passe en tête de l'ordre de /hq).
 import { execFileSync } from 'node:child_process';
 import { copyFileSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -82,7 +83,8 @@ if (DRY) {
 gh('release', 'upload', 'shorts-next', ...files, '--repo', REPO, '--clobber');
 // Relu juste avant d'écrire : /hq a pu changer l'ordre pendant le rendu.
 const fresh = await stateFile('order.json', { pinned: [], skipped: [] });
-fresh.pinned = [...new Set([...(fresh.pinned ?? []), ...keys])];
+// FRONT=1 : en tête de l'ordre (lot de test à publier avant le reste de la file).
+fresh.pinned = process.env.FRONT === '1' ? [...new Set([...keys, ...(fresh.pinned ?? [])])] : [...new Set([...(fresh.pinned ?? []), ...keys])];
 writeFileSync(join(work, 'order.json'), JSON.stringify(fresh, null, 2));
 gh('release', 'upload', 'shorts-state', join(work, 'order.json'), '--repo', REPO, '--clobber');
 console.log(`${keys.length} vidéo(s) ajoutée(s) à shorts-next et à l'ordre de /hq.`);

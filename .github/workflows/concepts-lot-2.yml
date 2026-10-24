@@ -1,8 +1,10 @@
-name: Concepts lot 2 avec À l'échelle (temporaire)
+name: Lot test des intros avec À l'échelle (temporaire)
 
-# Lot de 12 vidéos courtes par langue (4 À l'échelle, 3 Plus ou moins,
-# 3 Frontières, 2 Devine), voix off comprise, dans des pré-versions
-# concepts-lot-2-<langue>. Rien n'est publié. Fichier à supprimer ensuite.
+# Lot de test de 12 vidéos courtes par langue : 4 modes (À l'échelle, Plus ou
+# moins, Frontières, Devine) × 3 types d'intro (défi, question, course), une
+# vidéo par case et par langue, voix off comprise. Ajouté EN TÊTE de la file
+# de publication (shorts-next, ordre de /hq) pour être publié en premier et
+# mesuré par le relevé de stats. Fichier à supprimer ensuite.
 on:
   push:
     branches: [claude/project-thread-c1ro1a]
@@ -19,11 +21,12 @@ concurrency:
 env:
   LANGS: fr en
   COUNT: '12'
-  SEED: '24'
+  SEED: '31'
   TUNING: 'true'
   SHORT: 'true'
-  QUEUE: 'false'
-  MIX: echelle:4,plus-ou-moins:3,frontieres:3,devine:2
+  QUEUE: 'true'
+  FRONT: '1'
+  MIX: echelle:1,plus-ou-moins:1,frontieres:1,devine:1
 
 jobs:
   setup:
@@ -72,10 +75,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release download shorts-state --repo "$GITHUB_REPOSITORY" --pattern tuning.json --dir /tmp --clobber \
-            || cp social-video/insights/tuning.default.json /tmp/tuning.json
-          # Accroches du nouveau concept, pas encore dans la version vivante.
-          jq --slurpfile d social-video/insights/tuning.default.json '.hooks.echelle = $d[0].hooks.echelle' /tmp/tuning.json > /tmp/t.json && mv /tmp/t.json /tmp/tuning.json
+          # Lot de test : les accroches du dépôt (avec leur type d'intro), une
+          # par type pour chaque mode, à poids égal.
+          jq '.hookWeights = ({frontieres: {h0: 1, h1: 0, h2: 1, h3: 1}, "plus-ou-moins": {h0: 1, h1: 0, h2: 1, h3: 1}, echelle: {h0: 1, h1: 1, h2: 1}, devine: {h0: 1, h1: 1, h2: 1}} | map_values({fr: ., en: .}))' \
+            social-video/insights/tuning.default.json > /tmp/tuning.json
           jq '{mix, short, hookWeights}' /tmp/tuning.json
       - name: Fiches et voix
         working-directory: social-video/composer
@@ -87,7 +90,7 @@ jobs:
           XI_MODEL: ${{ vars.XI_MODEL }}
         run: |
           npm ci --no-audit --no-fund
-          args="--batch ${{ matrix.count }} --seed $SEED --lang ${{ matrix.lang }}"
+          args="--batch ${{ matrix.count }} --seed $SEED --lang ${{ matrix.lang }} --hook-shift ${{ matrix.lang == 'en' && 1 || 0 }}"
           if [ "$TUNING" = true ]; then args="$args --tuning /tmp/tuning.json --mix $MIX"; elif [ "$SHORT" = true ]; then args="$args --short"; fi
           node concepts.mjs $args
           node voice.mjs
@@ -144,6 +147,8 @@ jobs:
     if: always() && needs.setup.outputs.plans != '[]'
     runs-on: ubuntu-latest
     strategy:
+      # Une langue après l'autre : chacune réécrit order.json.
+      max-parallel: 1
       matrix:
         include: ${{ fromJson(needs.setup.outputs.plans) }}
     steps:

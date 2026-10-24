@@ -87,7 +87,9 @@ export const Hook = ({ lines, y = 170, size = 92, delay = 0 }: { lines: string[]
         <div key={li}>
           {words.map((x, i) => {
             if (x.li !== li) return null;
-            const s = spring({ frame: frame - delay - i * 3, fps, config: { damping: 11, stiffness: 180 } });
+            // Lisible dès la première image (c'est elle qui décide du swipe) :
+            // les mots partent déjà à moitié posés, une image d'écart chacun.
+            const s = spring({ frame: frame - delay - i + 5, fps, config: { damping: 11, stiffness: 180 } });
             const last = i === words.length - 1;
             return (
               <span

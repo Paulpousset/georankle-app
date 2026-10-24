@@ -175,6 +175,20 @@ Dans l'ordre. Après ça, une fournée de shorts sort chaque lundi à 5 h UTC da
 | `concept-devine` | `DevineConcept` | « Devine le pays » joué : six indices qui se retournent par essai, compte à rebours, révélation |
 | `concept-frontieres` | `FrontieresConcept` | Relier deux pays par le moins de frontières (chemin calculé sur `src/data/borders.ts`) |
 | `concept-rankle` | `RankleConcept` | Six pays posés dans six thèmes, rang mondial qui défile, le dernier tombe mal |
+| `court-NN-plusmoins-…` (lot) | `PlusOuMoinsConcept` | Cinq manches population ou superficie, sceau 3-2-1, la série casse à la dernière |
+| `court-NN-echelle-…` (lot) | `EchelleConcept` | Mode « À l'échelle » : trois paires, curseur qui règle le pays de droite, pointillés verts de la vraie taille, la dernière ratée |
+
+Un lot : `node concepts.mjs --batch 12 --short --mix echelle:1,plus-ou-moins:1,frontieres:1,devine:1`
+(`--tuning` pour les accroches et leurs poids, `--hook-shift 1` pour que la
+même partie sorte avec une autre accroche dans l'autre langue).
+
+**Intros testées sans surapprentissage.** Chaque accroche a un type d'intro
+(`style` dans `insights/tuning.default.json` : défi, question, course contre
+moi). `analyze.mjs` note chaque vidéo, prend la médiane d'un groupe (une vidéo
+qui décolle ne fait pas gagner son accroche), la tire vers la moyenne générale
+tant que le groupe est petit, compare les types d'intro tous modes confondus,
+puis ne déplace les poids que d'un demi-pas par relevé, sans dépasser 40 % pour
+un mode.
 
 ```bash
 cd social-video/composer

@@ -686,7 +686,10 @@ function pickHook(concept, vars) {
   if (!list?.length) return null;
   const weights = TUNING.hookWeights?.[concept]?.[LANG] ?? {};
   const fill = (t) => t.replace(/\{(\w+)\}/g, (_, k) => (k === 'n' ? String(vars.n) : say(String(vars[k] ?? ''))));
-  const uses = (hookUses[concept] ||= {});
+  // --hook-shift N : le tourniquet commence N accroches plus loin. Avec la même
+  // graine dans les deux langues, chaque partie sort avec une accroche
+  // différente en FR et en EN : on compare les intros sur les mêmes parties.
+  const uses = (hookUses[concept] ||= Object.fromEntries(list.filter((h) => (weights[h.id] ?? 1) > 0).slice(0, Number(arg('hook-shift', 0))).map((h) => [h.id, 1])));
   const total = Object.values(uses).reduce((a, b) => a + b, 0);
   const ranked = list
     .map((h) => ({ ...h, w: weights[h.id] ?? 1 / list.length }))
@@ -765,7 +768,7 @@ if (REDO) {
       echelle(`${prefix}-${num}-echelle-${slug(fr(pairs[0].left))}${hook ? `-${hook.id}` : ''}`, pairs, hook);
     } else if (kind === 'plus-ou-moins') {
       const pm = randomPlusOuMoins(i);
-      const hook = pickHook('plus-ou-moins', {});
+      const hook = pickHook('plus-ou-moins', { a: fr(pm.chain[0]), b: fr(pm.chain[1]) });
       plusOuMoins(`${prefix}-${num}-plusmoins-${slug(fr(pm.chain[0]))}${hook ? `-${hook.id}` : ''}`, pm, hook);
     } else {
       const { themes, play } = randomRankle();
