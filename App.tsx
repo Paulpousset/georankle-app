@@ -37,6 +37,7 @@ import { ScreenErrorBoundary } from './src/components/ScreenErrorBoundary';
 import { SwipeBack } from './src/components/SwipeBack';
 import { ModeIntroGate } from './src/components/ModeIntroModal';
 import { UsernameGate } from './src/components/UsernameGate';
+import { ForceUpdateGate } from './src/components/ForceUpdateGate';
 import { IncomingInviteModal } from './src/components/IncomingInviteModal';
 import { SideRailAds } from './src/components/SideRailAds';
 import { DesktopStage } from './src/components/DesktopStage';
@@ -429,6 +430,8 @@ function App() {
                   {/* « Pub dans 3, 2, 1 » juste avant un interstitiel. */}
                   <AdBreakNotice />
                   {!introDone && <LaunchIntro onDone={() => setIntroDone(true)} />}
+                  {/* Mise à jour OTA en attente : appliquée tout de suite, pas au prochain lancement. */}
+                  <ForceUpdateGate />
                 </ToastProvider>
               </NetworkProvider>
             </AuthProvider>

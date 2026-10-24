@@ -71,9 +71,11 @@ export async function sendBroadcast(
   title: string,
   body: string,
   segment: Segment,
+  /** Version par langue ({ fr: { title, body }, en: … }) ; chaque joueur reçoit la sienne, repli en → fr → title/body. */
+  i18n?: Record<string, { title: string; body: string }> | null,
 ): Promise<{ recipients: number; sent: number }> {
   const { data, error } = await supabase.functions.invoke<BroadcastResponse>('admin-broadcast', {
-    body: { title, body, segment },
+    body: { title, body, segment, ...(i18n ? { i18n } : {}) },
   });
   if (error) throw error;
   if (data?.error) throw new Error(data.error);
