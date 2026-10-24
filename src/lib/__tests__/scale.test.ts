@@ -8,6 +8,8 @@ import {
   zoomAt,
   SCALE_MAX_POINTS,
 } from '../scale';
+import { normalizeRoundScore } from '../score';
+import { simulateBotRound } from '../bot';
 
 describe('buildScaleRun', () => {
   it('is deterministic for a given seed and varies across seeds', () => {
@@ -85,5 +87,24 @@ describe('true scale', () => {
     const fra = shapeGeometry('FRA')!;
     const bra = shapeGeometry('BRA')!;
     expect(Math.max(bra.width, bra.height)).toBeGreaterThan(Math.max(fra.width, fra.height) * 3);
+  });
+});
+
+describe('scale across surfaces', () => {
+  it('normalizes a round on 200 points a pair, whatever maxPointsPerQuestion says', () => {
+    expect(normalizeRoundScore('scale', 1000, { numQuestions: 5, maxPointsPerQuestion: 5 })).toBe(1000);
+    expect(normalizeRoundScore('scale', 500, { numQuestions: 5 })).toBe(500);
+    expect(normalizeRoundScore('scale', 400, { numQuestions: 2 })).toBe(1000);
+  });
+
+  it('simulates a bot on the same 0..n×200 scale, never auto-maxed', () => {
+    let seed = 1;
+    const rng = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    for (const rating of [800, 1400, 2400]) {
+      const { score } = simulateBotRound('scale', { roundsPerSet: 5 }, rating, rng);
+      expect(score).toBeGreaterThanOrEqual(0);
+      expect(score).toBeLessThanOrEqual(1000);
+      expect(normalizeRoundScore('scale', score, { numQuestions: 5, maxPointsPerQuestion: 5 })).toBeLessThan(1000);
+    }
   });
 });

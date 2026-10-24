@@ -108,7 +108,7 @@ export interface Selection {
 export type SelectionMap = Record<string, Selection>;
 
 export type GameMode = 'menu' | 'classic' | 'streak' | 'versus' | 'guess' | 'globe' | 'regions' | 'challenge' | 'quiz-capital' | 'quiz-flag' | 'higherlower' | 'silhouette' | 'pinpoint' | 'borders' | 'languages' | 'local-builder' | 'scale';
-export type MatchMode = 'classic' | 'streak' | 'versus' | 'globe' | 'guess' | 'regions' | 'challenge' | 'higherlower' | 'silhouette' | 'pinpoint' | 'borders' | 'languages';
+export type MatchMode = 'classic' | 'streak' | 'versus' | 'globe' | 'guess' | 'regions' | 'challenge' | 'higherlower' | 'silhouette' | 'pinpoint' | 'borders' | 'languages' | 'scale';
 export type MatchStatus = 'waiting' | 'in_progress' | 'completed' | 'cancelled';
 
 /**

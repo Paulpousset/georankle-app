@@ -6,8 +6,9 @@
  * error, see src/lib/scale.ts), so a 5-pair run lands on 0..1000 — already the
  * normalized scale that coins expect.
  *
- * Solo only for now (no daily / online surface). Mirrors SilhouetteGame's solo
- * wiring: score save, coins, end-of-run recap.
+ * Mirrors SilhouetteGame's solo / daily / match wiring: pairs, slider range
+ * and start are seeded, so daily and online rounds are identical for everyone
+ * sharing the seed.
  */
 import { showAlert } from '../lib/alert';
 import { useState, useEffect, useRef } from 'react';
@@ -34,6 +35,7 @@ import {
   type ScaleQuestion,
 } from '../lib/scale';
 import { fmtArea } from '../lib/format';
+import { normalizeRoundScore } from '../lib/score';
 import { track } from '../lib/analytics';
 import { awardSoloCoins } from '../lib/coins';
 import { earnsCoins, saveSoloScore } from '../lib/soloResult';
@@ -41,7 +43,7 @@ import { OffLeaderboardNotice } from '../components/OffLeaderboardNotice';
 import { CountryFactCard } from '../components/CountryFactCard';
 import { ZoomSlider } from '../components/ZoomSlider';
 import { useToast } from '../components/ToastProvider';
-import type { GameMode, Language } from '../types';
+import type { GameMode, Language, Match } from '../types';
 import { PALETTE, getColors } from '../theme/colors';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -84,6 +86,18 @@ function offsetLabel(zoom: number, language: Language): string {
 interface ScaleGameProps {
   setGameMode: (mode: GameMode) => void;
   user: User | null;
+  matchData?: Match | null;
+  onRoundComplete?: (score: number) => void;
+  /** Daily challenge: deterministic seed for today's puzzle (overrides random). */
+  dailySeed?: number;
+  /** Daily challenge: fired once at game-over with the score + emoji grid. */
+  onDailyComplete?: (score: number, grid?: string) => void;
+  /** Daily challenge: replaces "Retry" with "Share" and skips score saving. */
+  isDaily?: boolean;
+  /** Daily challenge: invoked by the "Share" button on the game-over overlay. */
+  onShare?: () => void;
+  /** Daily challenge: reports the live score so a mid-game quit can lock it in. */
+  onDailyScoreChange?: (score: number) => void;
   /**
    * Entraînement: nothing is recorded (no coins, no leaderboard) and each
    * reveal offers the country's fact sheet.
@@ -142,7 +156,18 @@ function PairBoard({
   );
 }
 
-export default function ScaleGame({ setGameMode, user, training = false }: ScaleGameProps) {
+export default function ScaleGame({
+  setGameMode,
+  user,
+  matchData,
+  onRoundComplete,
+  dailySeed,
+  onDailyComplete,
+  isDaily,
+  onShare,
+  onDailyScoreChange,
+  training = false,
+}: ScaleGameProps) {
   const { isDarkMode, setIsDarkMode } = useTheme();
   const { language, openLanguagePicker } = useLanguage();
   const toast = useToast();
@@ -150,8 +175,22 @@ export default function ScaleGame({ setGameMode, user, training = false }: Scale
   // Distinct from the left country's accent so the two never read as one shape.
   const rightColor = isDarkMode ? PALETTE.sand : PALETTE.oceanBlue;
 
+  // Session length: per-round config (custom matches) > match-level > 5.
+  const currentRound = matchData?.current_round ?? 1;
+  const numPairs =
+    (matchData?.game_data?.rounds?.[currentRound - 1]?.count as number | undefined) ??
+    (matchData?.game_data?.roundsPerSet as number | undefined) ??
+    NUM_PAIRS;
+  const isOnline = !!matchData && !!onRoundComplete;
+
   const [run, setRun] = useState<ScaleQuestion[]>(() =>
-    buildScaleRun(Math.floor(Math.random() * 2147483647), NUM_PAIRS),
+    buildScaleRun(
+      dailySeed ??
+        (matchData?.game_data?.seed
+          ? matchData.game_data.seed + (currentRound - 1)
+          : Math.floor(Math.random() * 2147483647)),
+      numPairs,
+    ),
   );
   const [questionIndex, setQuestionIndex] = useState(0);
   const question = run[questionIndex] ?? null;
@@ -169,8 +208,14 @@ export default function ScaleGame({ setGameMode, user, training = false }: Scale
   const { config: myGlobe } = useMyGameGlobe();
   const awardedRef = useRef(false);
 
+  // Surface the running score so the daily host can lock it in on a quit.
   useEffect(() => {
-    track('game_started', { mode: 'scale' });
+    if (isDaily) onDailyScoreChange?.(score);
+  }, [isDaily, score, onDailyScoreChange]);
+
+  useEffect(() => {
+    if (!matchData && !isDaily) track('game_started', { mode: 'scale' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const zoom = question ? zoomAt(question, pos) : 1;
@@ -192,9 +237,25 @@ export default function ScaleGame({ setGameMode, user, training = false }: Scale
     setFeedback({ points, zoom });
   };
 
-  const finishRun = (finalScore: number) => {
+  const finishRun = (finalScore: number, finalGrid: string) => {
+    if (isOnline) {
+      if (!awardedRef.current) {
+        awardedRef.current = true;
+        onRoundComplete!(
+          normalizeRoundScore('scale', finalScore, {
+            numQuestions: run.length,
+            maxPointsPerQuestion: SCALE_MAX_POINTS,
+          }),
+        );
+      }
+      return;
+    }
     setGameOver(true);
     announce(tr(language, 'Partie terminée. Score {0}.', 'Game over. Score {0}.', [finalScore]));
+    if (isDaily) {
+      onDailyComplete?.(finalScore, finalGrid);
+      return;
+    }
     track('game_completed', { mode: 'scale', score: finalScore });
     if (user && !awardedRef.current) {
       awardedRef.current = true;
@@ -204,8 +265,13 @@ export default function ScaleGame({ setGameMode, user, training = false }: Scale
           tr(language, "Impossible d'enregistrer ton score.", 'Could not save your score.'),
         ),
       );
-      // The run already scores on the 0..1000 scale coins are computed from.
-      if (earnsCoins({ training })) awardSoloCoins('scale', finalScore).then((res) => {
+      if (earnsCoins({ training })) awardSoloCoins(
+        'scale',
+        normalizeRoundScore('scale', finalScore, {
+          numQuestions: run.length,
+          maxPointsPerQuestion: SCALE_MAX_POINTS,
+        }),
+      ).then((res) => {
         setCoinsEarned(res.coinsAwarded);
         setCoinsCapped(res.capped);
         setCoinsSyncFailed(!res.synced);
@@ -224,7 +290,7 @@ export default function ScaleGame({ setGameMode, user, training = false }: Scale
 
   const next = () => {
     if (questionIndex + 1 >= run.length) {
-      finishRun(score);
+      finishRun(score, grid);
       return;
     }
     const nq = run[questionIndex + 1];
@@ -253,7 +319,7 @@ export default function ScaleGame({ setGameMode, user, training = false }: Scale
 
   /** Nouveau tirage. */
   const resetGame = () => {
-    const fresh = buildScaleRun(Math.floor(Math.random() * 2147483647), NUM_PAIRS);
+    const fresh = buildScaleRun(Math.floor(Math.random() * 2147483647), numPairs);
     setRun(fresh);
     restartRun(fresh);
   };
@@ -430,7 +496,7 @@ export default function ScaleGame({ setGameMode, user, training = false }: Scale
         )}
       </ScrollView>
 
-      {gameOver && (
+      {gameOver && !matchData && (
         <View
           style={[
             styles.gameOverOverlay,
@@ -444,7 +510,7 @@ export default function ScaleGame({ setGameMode, user, training = false }: Scale
               accent={GOOD}
               animate
               style={{ marginBottom: 10 }}
-              record={{ mode: 'scale', score, ctx: { training } }}
+              record={isDaily ? undefined : { mode: 'scale', score, ctx: { training } }}
             />
             <Reveal at={END_CHOREO.verdict}>
               <ResultGrid grid={grid} style={{ marginBottom: 10 }} />
@@ -452,7 +518,7 @@ export default function ScaleGame({ setGameMode, user, training = false }: Scale
               <Text style={{ color: c.textMuted, fontFamily: FONTS.mono, fontSize: 14, marginBottom: 16, textAlign: 'center' }}>
                 {tr(language, 'sur {0}', 'out of {0}', [run.length * SCALE_MAX_POINTS])}
               </Text>
-              <OffLeaderboardNotice run={{ training }} color={c.textMuted} />
+              {!isDaily && <OffLeaderboardNotice run={{ training }} color={c.textMuted} />}
             </Reveal>
 
             <Reveal at={END_CHOREO.detail}>
@@ -510,7 +576,7 @@ export default function ScaleGame({ setGameMode, user, training = false }: Scale
             </Reveal>
 
             <Reveal at={END_CHOREO.actions}>
-              {!user && (
+              {!user && !isDaily && (
                 <Text style={{ color: c.textMuted, fontFamily: FONTS.mono, fontSize: 12, textAlign: 'center', marginBottom: 12 }}>
                   {tr(
                     language,
@@ -520,8 +586,9 @@ export default function ScaleGame({ setGameMode, user, training = false }: Scale
                 </Text>
               )}
               <SoloEndActions
-                onReplaySame={replaySameGame}
-                onNewGame={resetGame}
+                onShare={isDaily ? onShare : undefined}
+                onReplaySame={isDaily ? undefined : replaySameGame}
+                onNewGame={isDaily ? undefined : resetGame}
                 share={{ mode: 'scale', summary: `${score}/${run.length * SCALE_MAX_POINTS}` }}
                 onMenu={() => setGameMode('menu')}
               />

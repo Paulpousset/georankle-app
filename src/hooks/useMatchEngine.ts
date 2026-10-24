@@ -30,6 +30,7 @@ const MODE_LABELS: Record<MatchMode, [string, string]> = {
   higherlower: ['Plus ou Moins', 'Higher or Lower'],
   silhouette: ['Silhouette', 'Silhouette'],
   pinpoint: ['Point sur le Globe', 'Pin on the Globe'],
+  scale: ['À l’échelle', 'To Scale'],
   borders: ['Frontières', 'Borders'],
   languages: ['Langues', 'Languages'],
 };

@@ -49,6 +49,7 @@ export const DAILY_MODES: GameMode[] = [
   // capitals, Länder…): the day's seed picks which one, the same for everyone.
   'challenge',
   'pinpoint',
+  'scale',
 ];
 
 /** Day index 0 maps to this UTC date — only affects the displayed "#N". */

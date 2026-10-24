@@ -623,7 +623,13 @@ export function Router({
   if (gameMode === 'scale') {
     return (
       <SafeAreaProvider>
-        <ScaleGame setGameMode={leaveGame} user={user} training={soloTraining('scale')} />
+        <ScaleGame
+          setGameMode={leaveGame}
+          user={user}
+          matchData={matchData}
+          onRoundComplete={matchData ? handleRoundComplete : undefined}
+          training={soloTraining('scale')}
+        />
       </SafeAreaProvider>
     );
   }

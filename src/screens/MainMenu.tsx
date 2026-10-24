@@ -1520,6 +1520,17 @@ export function MainMenu({
                 onLeaderboard={() => onOpenOnlineModeLeaderboard('pinpoint', isDarkMode ? PALETTE.chartBlue : PALETTE.vermilion)}
                 notify={incomingInviteMode === 'pinpoint'}
               />
+              <ModeCard
+                icon={Ruler}
+                accent={PALETTE.sand}
+                tint={isDarkMode ? 'rgba(196,135,42,0.15)' : 'rgba(196,135,42,0.10)'}
+                title={tr(language, 'À l’échelle', 'To Scale')}
+                subtitle={tr(language, 'Les mêmes paires pour les deux joueurs', 'Same pairs for both players')}
+                isDarkMode={isDarkMode}
+                onPress={() => onPlayOnline('scale')}
+                onLeaderboard={() => onOpenOnlineModeLeaderboard('scale', PALETTE.sand)}
+                notify={incomingInviteMode === 'scale'}
+              />
               {languagesMode && (
                 <ModeCard
                   icon={Languages}
