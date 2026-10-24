@@ -149,4 +149,9 @@ describe('modeLabel', () => {
     expect(modeLabel('guess', 'fr')).toBe('Devine le Pays');
     expect(modeLabel('guess', 'en')).toBe('Guess Country');
   });
+
+  it('falls back to the raw id for a mode this build does not know', () => {
+    // A match created by a newer client (e.g. 5.5.0 meeting a pinpoint match).
+    expect(modeLabel('teleport' as MatchMode, 'fr')).toBe('teleport');
+  });
 });
