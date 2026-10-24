@@ -192,5 +192,8 @@ export function modeLabel(mode: MatchMode, lang: Language): string {
     borders: ['Frontières', 'Borders'],
     languages: ['Langues', 'Languages'],
   };
-  return tr(lang, labels[mode][0], labels[mode][1]);
+  // `mode` often comes from the server (match rows, ranked sequences): a mode
+  // added after this build shipped must not crash the screen that names it.
+  const label = labels[mode];
+  return label ? tr(lang, label[0], label[1]) : mode;
 }

@@ -300,7 +300,7 @@ export function Router({
     );
   }
 
-  if (currentPage?.name === 'friends') {
+  if (currentPage?.name === 'friends' && user) {
     return (
       <SafeAreaProvider>
         <Friends
