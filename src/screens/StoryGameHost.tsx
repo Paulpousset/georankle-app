@@ -16,6 +16,7 @@ import StreakGame from './StreakGame';
 import HigherLowerGame from './HigherLowerGame';
 import SilhouetteGame from './SilhouetteGame';
 import PinpointGame from './PinpointGame';
+import ScaleGame from './ScaleGame';
 import LanguagesGame from './LanguagesGame';
 import BordersGame from './BordersGame';
 import GuessCountryGame from './GuessCountryGame';
@@ -145,6 +146,16 @@ export default function StoryGameHost({
     case 'pinpoint':
       screen = (
         <PinpointGame
+          setGameMode={quit as (m: GameMode) => void}
+          user={null}
+          matchData={match}
+          onRoundComplete={handleComplete}
+        />
+      );
+      break;
+    case 'scale':
+      screen = (
+        <ScaleGame
           setGameMode={quit as (m: GameMode) => void}
           user={null}
           matchData={match}

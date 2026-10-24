@@ -41,6 +41,7 @@ import StreakGame from './StreakGame';
 import HigherLowerGame from './HigherLowerGame';
 import SilhouetteGame from './SilhouetteGame';
 import PinpointGame from './PinpointGame';
+import ScaleGame from './ScaleGame';
 import LanguagesGame from './LanguagesGame';
 import BordersGame from './BordersGame';
 import GuessCountryGame from './GuessCountryGame';
@@ -186,6 +187,10 @@ export default function MatchReplay({ match, onExit }: MatchReplayProps) {
     case 'pinpoint':
       return (
         <PinpointGame key={key} setGameMode={quit} user={null} matchData={solo} onRoundComplete={handleRoundComplete} />
+      );
+    case 'scale':
+      return (
+        <ScaleGame key={key} setGameMode={quit} user={null} matchData={solo} onRoundComplete={handleRoundComplete} />
       );
     case 'languages':
       return (
