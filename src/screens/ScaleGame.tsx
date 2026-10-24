@@ -30,8 +30,11 @@ import {
   sliderPosOf,
   trueUnitPx,
   zoomAt,
+  BOARD_H,
+  BOARD_W,
+  LEFT_W,
+  RIGHT_W,
   SCALE_MAX_POINTS,
-  SCALE_SIDE,
   type ScaleQuestion,
 } from '../lib/scale';
 import { fmtArea } from '../lib/format';
@@ -63,7 +66,7 @@ import { TopInsetBar } from '../components/TopInsetBar';
 import { isMobileLayout as isMobile } from '../lib/layout';
 
 const NUM_PAIRS = 5;
-const HALF = SCALE_SIDE / 2;
+const MID_Y = BOARD_H / 2;
 const GOOD = '#2a6e3f';
 const BAD = '#8b1a1a';
 
@@ -123,17 +126,17 @@ function PairBoard({
   dividerColor: string;
 }) {
   const unit = trueUnitPx(q);
-  const left = scaledPath(q.left, unit, HALF, HALF);
-  const right = scaledPath(q.right, unit * zoom, SCALE_SIDE + HALF, HALF);
-  const truth = reveal ? scaledPath(q.right, unit, SCALE_SIDE + HALF, HALF) : null;
+  const left = scaledPath(q.left, unit, LEFT_W / 2, MID_Y);
+  const right = scaledPath(q.right, unit * zoom, LEFT_W + RIGHT_W / 2, MID_Y);
+  const truth = reveal ? scaledPath(q.right, unit, LEFT_W + RIGHT_W / 2, MID_Y) : null;
   return (
-    <Svg width="100%" height="100%" viewBox={`0 0 ${SCALE_SIDE * 2} ${SCALE_SIDE}`}>
+    <Svg width="100%" height="100%" viewBox={`0 0 ${BOARD_W} ${BOARD_H}`}>
       <Defs>
         <ClipPath id="scale-clip-l">
-          <Rect x={0} y={0} width={SCALE_SIDE} height={SCALE_SIDE} />
+          <Rect x={0} y={0} width={LEFT_W} height={BOARD_H} />
         </ClipPath>
         <ClipPath id="scale-clip-r">
-          <Rect x={SCALE_SIDE} y={0} width={SCALE_SIDE} height={SCALE_SIDE} />
+          <Rect x={LEFT_W} y={0} width={RIGHT_W} height={BOARD_H} />
         </ClipPath>
       </Defs>
       <G clipPath="url(#scale-clip-l)">{left && <Path d={left} fill={leftColor} />}</G>
@@ -144,10 +147,10 @@ function PairBoard({
         )}
       </G>
       <Line
-        x1={SCALE_SIDE}
+        x1={LEFT_W}
         y1={6}
-        x2={SCALE_SIDE}
-        y2={SCALE_SIDE - 6}
+        x2={LEFT_W}
+        y2={BOARD_H - 6}
         stroke={dividerColor}
         strokeWidth={0.6}
         strokeDasharray="2 2"
@@ -398,10 +401,10 @@ export default function ScaleGame({
           )}
         >
           <View style={styles.namesRow}>
-            <Text style={[styles.countryName, { color: c.accent }]} numberOfLines={1}>
+            <Text style={[styles.countryName, { color: c.accent, flex: LEFT_W }]} numberOfLines={1}>
               {leftName}
             </Text>
-            <Text style={[styles.countryName, { color: rightColor }]} numberOfLines={1}>
+            <Text style={[styles.countryName, { color: rightColor, flex: RIGHT_W }]} numberOfLines={1}>
               {rightName}
             </Text>
           </View>
@@ -417,10 +420,10 @@ export default function ScaleGame({
           </View>
           {feedback && (
             <View style={styles.namesRow}>
-              <Text style={[styles.areaText, { color: c.textMuted }]}>
+              <Text style={[styles.areaText, { color: c.textMuted, flex: LEFT_W }]}>
                 {leftArea ? fmtArea(leftArea, language) : ''}
               </Text>
-              <Text style={[styles.areaText, { color: c.textMuted }]}>
+              <Text style={[styles.areaText, { color: c.textMuted, flex: RIGHT_W }]}>
                 {rightArea ? fmtArea(rightArea, language) : ''}
               </Text>
             </View>
@@ -632,9 +635,9 @@ const styles = StyleSheet.create({
   },
   cardLight: { backgroundColor: '#e8d9b8', borderColor: '#c4a87a', elevation: 4, shadowOpacity: 0.1 },
   namesRow: { flexDirection: 'row', width: '100%' },
-  countryName: { flex: 1, textAlign: 'center', fontSize: 16, fontFamily: FONTS.headingBlack, paddingHorizontal: 4 },
-  areaText: { flex: 1, textAlign: 'center', fontSize: 12, fontFamily: FONTS.mono },
-  board: { width: '100%', aspectRatio: 2, marginVertical: 6 },
+  countryName: { textAlign: 'center', fontSize: 16, fontFamily: FONTS.headingBlack, paddingHorizontal: 4 },
+  areaText: { textAlign: 'center', fontSize: 12, fontFamily: FONTS.mono },
+  board: { width: '100%', aspectRatio: BOARD_W / BOARD_H, marginVertical: 6 },
   instruction: { fontSize: 13, fontFamily: FONTS.mono, marginTop: 8, textAlign: 'center' },
 
   feedbackCard: { padding: 24, borderRadius: 24, alignItems: 'center', width: '100%', maxWidth: 500 },
@@ -665,6 +668,6 @@ const styles = StyleSheet.create({
   gameOverScore: { fontSize: 48, fontFamily: FONTS.headingBlack, marginBottom: 4, textAlign: 'center' },
   recapCard: { alignSelf: 'stretch', borderRadius: 16, borderWidth: 1, paddingHorizontal: 14, marginBottom: 16 },
   recapRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
-  recapShape: { width: 64, height: 32 },
+  recapShape: { width: 64, height: 45 },
   recapName: { fontSize: 14, fontFamily: FONTS.heading },
 });

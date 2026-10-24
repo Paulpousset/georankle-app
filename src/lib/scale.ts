@@ -21,16 +21,23 @@ interface StatEntry {
 }
 const AREA_BY_ID = new Map((rawCountriesStats as StatEntry[]).map((s) => [s.cca3, s.area]));
 
-/** Each half of the board is a SIDE×SIDE square in the SVG viewBox. */
-export const SCALE_SIDE = 100;
-/** At the true scale, the bigger of the two countries spans this much of its half. */
-const FIT = 84;
+/**
+ * Board in SVG viewBox units: the left (reference) column is narrower than the
+ * right one, which has to hold its country up to the slider's maximum zoom.
+ */
+export const BOARD_W = 200;
+export const BOARD_H = 140;
+export const LEFT_W = 80;
+export const RIGHT_W = BOARD_W - LEFT_W;
+/** Margin kept inside each column so a shape never touches its edge. */
+const LEFT_FILL = 0.9;
+const RIGHT_FILL = 0.94;
 
 /**
- * Pair bounds on the linear size ratio (right ÷ left). Past 3× the smaller
+ * Pair bounds on the linear size ratio (right ÷ left). Past 2.5× the smaller
  * shape shrinks to a few pixels; under 1.25× there is nothing to judge.
  */
-const MAX_RATIO = 3;
+const MAX_RATIO = 2.5;
 const MIN_RATIO = 1.25;
 
 /** The starting zoom is at least this far (×) from the answer, either way. */
@@ -113,7 +120,8 @@ export function buildScaleRun(seed: number, count = 5): ScaleQuestion[] {
 
     // log-space range with the answer (1) somewhere in its middle third.
     const below = 1.8 + rng() * 1.7;
-    const above = 1.8 + rng() * 1.7;
+    // Kept lower than `below`: the right column must fit the country at max zoom.
+    const above = 1.7 + rng() * 0.7;
     const minZoom = 1 / below;
     const maxZoom = above;
     // Start on a random side, far enough from the answer to have to work.
@@ -166,9 +174,24 @@ export function scaledPath(cca3: string, unitPx: number, cx: number, cy: number)
     .join('');
 }
 
-/** viewBox units per projected unit at the TRUE scale for a pair. */
+/** Largest scale at which a country fits a w×h box. */
+function fitUnit(cca3: string, w: number, h: number): number {
+  const g = shapeGeometry(cca3);
+  if (!g) return Infinity;
+  return Math.min(w / Math.max(g.width, 1e-9), h / Math.max(g.height, 1e-9));
+}
+
+/**
+ * viewBox units per projected unit at the TRUE scale for a pair: as large as
+ * possible while the left country fits its column AND the right one still fits
+ * its own column at the slider's maximum zoom (no shape ever leaves the frame).
+ */
 export function trueUnitPx(q: ScaleQuestion): number {
-  return FIT / Math.max(extent(q.left), extent(q.right), 1e-9);
+  const u = Math.min(
+    fitUnit(q.left, LEFT_W, BOARD_H) * LEFT_FILL,
+    (fitUnit(q.right, RIGHT_W, BOARD_H) * RIGHT_FILL) / q.maxZoom,
+  );
+  return Number.isFinite(u) ? u : 1;
 }
 
 /** Localized name (shared with Silhouette). */
