@@ -13,7 +13,7 @@
     "mixFloor": 0.15,
     "hookFloor": 0.1
   },
-  "mix": { "frontieres": 2, "devine": 1, "plus-ou-moins": 1, "rankle": 0 },
+  "mix": { "frontieres": 2, "devine": 1, "plus-ou-moins": 1, "rankle": 0, "echelle": 1 },
   "short": true,
   "hooks": {
     "frontieres": {
@@ -38,6 +38,18 @@
         { "id": "h0", "text": ["Survive 5 rounds", "no mistakes 🔥"], "say": "Survive five rounds without a mistake." },
         { "id": "h1", "text": ["Guess the round", "I crack on 😬"], "say": "Guess which round I crack on." },
         { "id": "h2", "text": ["Higher or lower?", "Beat me to it ⏱️"], "say": "Higher or lower? Answer before I do." }
+      ]
+    },
+    "echelle": {
+      "fr": [
+        { "id": "h0", "text": ["Remets ces pays", "à la même échelle 📏"], "say": "Remets ces deux pays à la même échelle." },
+        { "id": "h1", "text": ["Tu as l'œil", "pour les tailles ? 📏"], "say": "Tu as l'œil pour la taille des pays ?" },
+        { "id": "h2", "text": ["Même échelle ?", "Réponds avant moi ⏱️"], "say": "Même échelle ? Réponds avant moi." }
+      ],
+      "en": [
+        { "id": "h0", "text": ["Put these countries", "to scale 📏"], "say": "Resize these two countries to the same scale." },
+        { "id": "h1", "text": ["Got an eye", "for size? 📏"], "say": "Do you have an eye for country sizes?" },
+        { "id": "h2", "text": ["Same scale?", "Beat me to it ⏱️"], "say": "Same scale? Answer before I do." }
       ]
     },
     "devine": {

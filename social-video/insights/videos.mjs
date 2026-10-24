@@ -10,6 +10,7 @@ const CONCEPTS = [
   ['rankle', /rankle/],
   ['globe', /^globe/],
   ['plus-ou-moins', /plusmoins|higher-lower/],
+  ['echelle', /echelle|to-scale/],
   ['capitales', /capitals|capitales/],
   ['drapeaux', /flags|drapeaux/],
   ['silhouettes', /silhouette|shapes/],

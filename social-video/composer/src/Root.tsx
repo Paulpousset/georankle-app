@@ -6,6 +6,7 @@ import { QUIZ_FPS, QuizTV, quizTVSeconds, type QuizTVProps } from './QuizTV';
 import { FPS, Short, endCardSeconds, type ShortProps } from './Short';
 import { AppTrailer, appTrailerSeconds, type AppTrailerProps } from './concepts/AppTrailer';
 import { DevineConcept, devineSeconds, type DevineProps } from './concepts/DevineConcept';
+import { EchelleConcept, echelleSeconds, type EchelleProps } from './concepts/EchelleConcept';
 import { FrontieresConcept, frontieresSeconds, type FrontieresProps } from './concepts/FrontieresConcept';
 import { FPS as CONCEPT_FPS } from './concepts/kit';
 import { PlusOuMoinsConcept, plusOuMoinsConceptSeconds, type PlusOuMoinsConceptProps } from './concepts/PlusOuMoinsConcept';
@@ -141,12 +142,31 @@ const plusOuMoinsDefaults: PlusOuMoinsConceptProps = {
   rounds: [{ higher: true, pick: true }, { higher: false, pick: true }],
 };
 
+const echelleDefaults: EchelleProps = {
+  hook: ['Remets ces pays', 'à la même échelle 📏'],
+  title: 'À l’échelle',
+  pairLabel: 'PAIRE',
+  hint: 'Agrandis ou rétrécis le pays de droite pour qu’il soit à la même échelle que celui de gauche.',
+  truthHint: 'Pointillés verts : la vraie taille.',
+  slider: 'plus petit · plus grand',
+  submit: 'VALIDER',
+  fail: 'Raté !',
+  rounds: [],
+  total: 0,
+  max: 600,
+  outro: 'Tu fais mieux ?',
+  outroSub: 'Ton score en commentaire 👇',
+  cta: 'Gratuit sur iOS et Android',
+  icon: 'icon.png',
+};
+
 const concepts = [
   { id: 'AppTrailer', component: AppTrailer, seconds: appTrailerSeconds, defaults: trailerDefaults },
   { id: 'DevineConcept', component: DevineConcept, seconds: devineSeconds, defaults: devineDefaults },
   { id: 'FrontieresConcept', component: FrontieresConcept, seconds: frontieresSeconds, defaults: frontieresDefaults },
   { id: 'RankleConcept', component: RankleConcept, seconds: rankleSeconds, defaults: rankleDefaults },
   { id: 'PlusOuMoinsConcept', component: PlusOuMoinsConcept, seconds: plusOuMoinsConceptSeconds, defaults: plusOuMoinsDefaults },
+  { id: 'EchelleConcept', component: EchelleConcept, seconds: echelleSeconds, defaults: echelleDefaults },
 ] as const;
 
 export const Root = () => (

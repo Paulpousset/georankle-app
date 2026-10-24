@@ -1,0 +1,173 @@
+name: Concepts lot 2 avec À l'échelle (temporaire)
+
+# Lot de 12 vidéos courtes par langue (4 À l'échelle, 3 Plus ou moins,
+# 3 Frontières, 2 Devine), voix off comprise, dans des pré-versions
+# concepts-lot-2-<langue>. Rien n'est publié. Fichier à supprimer ensuite.
+on:
+  push:
+    branches: [claude/project-thread-c1ro1a]
+    paths:
+      - .github/workflows/concepts-lot-2.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: concepts-lot-2
+  cancel-in-progress: false
+
+env:
+  LANGS: fr en
+  COUNT: '12'
+  SEED: '24'
+  TUNING: 'true'
+  SHORT: 'true'
+  QUEUE: 'false'
+  MIX: echelle:4,plus-ou-moins:3,frontieres:3,devine:2
+
+jobs:
+  setup:
+    name: Combien de vidéos
+    runs-on: ubuntu-latest
+    outputs:
+      plans: ${{ steps.n.outputs.plans }}
+      renders: ${{ steps.n.outputs.renders }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - id: n
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          plans='[]'
+          for lang in $LANGS; do
+            n=$COUNT
+            [ "$n" = 0 ] && n=$(node social-video/insights/next-lot.mjs count "$lang")
+            [ "$n" -gt 0 ] && plans=$(jq -c --arg l "$lang" --argjson n "$n" '. + [{lang: $l, count: $n}]' <<<"$plans")
+          done
+          echo "plans=$plans" >> "$GITHUB_OUTPUT"
+          # Jusqu'à 4 rendus en parallèle par langue (jamais plus que de vidéos).
+          echo "renders=$(jq -c '[.[] | .lang as $l | ([.count, 4] | min) as $n | range($n) | {lang: $l, shard: ., of: $n}]' <<<"$plans")" >> "$GITHUB_OUTPUT"
+          echo "Lot : $plans"
+
+  plan:
+    name: Fiches + voix off (${{ matrix.lang }})
+    needs: setup
+    if: needs.setup.outputs.plans != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        include: ${{ fromJson(needs.setup.outputs.plans) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - name: Réglages
+        if: env.TUNING == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download shorts-state --repo "$GITHUB_REPOSITORY" --pattern tuning.json --dir /tmp --clobber \
+            || cp social-video/insights/tuning.default.json /tmp/tuning.json
+          # Accroches du nouveau concept, pas encore dans la version vivante.
+          jq --slurpfile d social-video/insights/tuning.default.json '.hooks.echelle = $d[0].hooks.echelle' /tmp/tuning.json > /tmp/t.json && mv /tmp/t.json /tmp/tuning.json
+          jq '{mix, short, hookWeights}' /tmp/tuning.json
+      - name: Fiches et voix
+        working-directory: social-video/composer
+        env:
+          XI_API_KEY: ${{ secrets.XI_API_KEY }}
+          XI_VOICE: ${{ vars.XI_VOICE }}
+          XI_VOICE_FR: ${{ vars.XI_VOICE_FR }}
+          XI_VOICE_EN: ${{ vars.XI_VOICE_EN }}
+          XI_MODEL: ${{ vars.XI_MODEL }}
+        run: |
+          npm ci --no-audit --no-fund
+          args="--batch ${{ matrix.count }} --seed $SEED --lang ${{ matrix.lang }}"
+          if [ "$TUNING" = true ]; then args="$args --tuning /tmp/tuning.json --mix $MIX"; elif [ "$SHORT" = true ]; then args="$args --short"; fi
+          node concepts.mjs $args
+          node voice.mjs
+          mkdir -p public/voice
+      - uses: actions/upload-artifact@v4
+        with:
+          name: concepts-plan-${{ matrix.lang }}
+          path: |
+            social-video/out/episodes/
+            social-video/composer/public/voice/
+          include-hidden-files: true
+
+  render:
+    name: Rendu ${{ matrix.lang }} ${{ matrix.shard }}/${{ matrix.of }}
+    needs: [setup, plan]
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.setup.outputs.renders) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-color-emoji ffmpeg
+      - uses: actions/download-artifact@v4
+        with:
+          name: concepts-plan-${{ matrix.lang }}
+          path: social-video
+      - name: Rendu
+        working-directory: social-video/composer
+        env:
+          SHARD: ${{ matrix.shard }}/${{ matrix.of }}
+        run: |
+          npm ci --no-audit --no-fund
+          node concepts.mjs --assets
+          node render.mjs
+          # Ré-encodage H.264 classique : accepté tel quel par TikTok et Instagram.
+          cd ../out/final
+          for f in *.mp4; do
+            ffmpeg -y -loglevel error -i "$f" -c:v libx264 -crf 18 -pix_fmt yuv420p -c:a copy -movflags +faststart "tmp-$f"
+            mv "tmp-$f" "$f"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: concepts-final-${{ matrix.lang }}-${{ matrix.shard }}
+          path: social-video/out/final/
+
+  release:
+    name: Envoi (${{ matrix.lang }})
+    needs: [setup, render]
+    if: always() && needs.setup.outputs.plans != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include: ${{ fromJson(needs.setup.outputs.plans) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: concepts-final-${{ matrix.lang }}-*
+          merge-multiple: true
+          path: final
+      - name: File de publication ou pré-version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          files=(final/*.mp4 final/*.txt)
+          [ ${#files[@]} -gt 0 ] || { echo "Aucune vidéo"; exit 1; }
+          if [ "$QUEUE" = true ]; then
+            node social-video/insights/next-lot.mjs queue ${{ matrix.lang }} final
+          else
+            tag="concepts-lot-2-${{ matrix.lang }}"
+            gh release create "$tag" "${files[@]}" --repo "$GITHUB_REPOSITORY" --target "${{ github.sha }}" \
+              --prerelease --title "Concepts lot 2 avec À l'échelle (${{ matrix.lang }})" \
+              --notes "Lot de vidéos concepts avec voix off. Chaque .txt contient le texte à coller sous la vidéo du même nom. Rien n'est publié automatiquement."
+          fi

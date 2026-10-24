@@ -4,13 +4,16 @@
 //
 //   node concepts.mjs                     # les 4 vidéos vitrine → ../out/episodes/concept-*.json
 //   node concepts.mjs --batch 24 --seed 7 # un lot : Devine, Frontières, Rankle en alternance
+//   node concepts.mjs --batch 12 --short --mix echelle:4,plus-ou-moins:3,frontieres:3,devine:2
 //   node voice.mjs && node render.mjs
 //   node concepts.mjs --assets            # seulement public/ (captures, bruitages)
 //
 // - bande-annonce : présentation de l'app, un mode par plan (captures de l'app actuelle) ;
 // - devine        : « Devine le pays » joué, indices qui se retournent ;
 // - frontieres    : relier deux pays par le moins de frontières ;
-// - rankle        : chaque pays dans sa meilleure catégorie, rang mondial.
+// - rankle        : chaque pays dans sa meilleure catégorie, rang mondial ;
+// - plus-ou-moins : cinq manches population / superficie, la série casse à la fin ;
+// - echelle       : mode « À l'échelle », trois paires remises à la même échelle.
 import { copyFileSync, cpSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -514,6 +517,150 @@ function plusOuMoins(name, { themeId, chain, value }, hook = null) {
   });
 }
 
+// ───────────────────────────── À l'échelle ─────────────────────────────
+// Mode « À l'échelle » de l'app (src/lib/scale.ts) : le pays de gauche est à la
+// vraie échelle, le joueur agrandit ou rétrécit celui de droite au curseur, puis
+// les pointillés verts montrent la vraie taille. Même projection que l'app
+// (projectedRings : une unité ≈ un degré de latitude sur les deux axes), donc le
+// vrai rapport entre deux pays est celui de leurs emprises.
+// Mêmes durées que src/concepts/EchelleConcept.tsx (placement de la voix off).
+const EC = { START: 0.3, PAIR: 5.6, SUBMIT: 2.75, REVEAL: 3.3, OUTRO: 2.6 };
+const EC_PAIRS = 3;
+const EC_MAX_POINTS = 200;
+const polygons = Object.fromEntries(JSON.parse(readFileSync(join(ROOT, 'assets', 'world_polygons.json'), 'utf8')).map((p) => [p.id, p.r]));
+// Copie de drawableRings + projectedRings (src/lib/silhouette.ts).
+function scaleShape(c) {
+  const raw = polygons[c];
+  if (!raw?.length) return null;
+  const unwrap = (ring) => {
+    const out = [[ring[0][0], ring[0][1]]];
+    let prev = ring[0][0];
+    for (let i = 1; i < ring.length; i++) {
+      let lng = ring[i][0];
+      while (lng - prev > 180) lng -= 360;
+      while (lng - prev < -180) lng += 360;
+      out.push([lng, ring[i][1]]);
+      prev = lng;
+    }
+    return out;
+  };
+  const centroid = (ring) => [ring.reduce((a, p) => a + p[0], 0) / ring.length, ring.reduce((a, p) => a + p[1], 0) / ring.length];
+  const unwrapped = raw.map(unwrap);
+  const main = unwrapped.reduce((a, b) => (b.length > a.length ? b : a), unwrapped[0]);
+  if (main.length < 22) return null;
+  const [mx, my] = centroid(main);
+  const rings = unwrapped
+    .map((ring) => {
+      const shift = Math.round((mx - centroid(ring)[0]) / 360) * 360;
+      return shift ? ring.map(([lng, lat]) => [lng + shift, lat]) : ring;
+    })
+    .filter((ring) => Math.hypot(centroid(ring)[0] - mx, centroid(ring)[1] - my) <= 25);
+  const lats = rings.flat().map((p) => p[1]);
+  const kx = Math.max(0.2, Math.cos((((Math.min(...lats) + Math.max(...lats)) / 2) * Math.PI) / 180));
+  const pts = rings.map((ring) => ring.map(([lng, lat]) => [lng * kx, -lat]));
+  const xs = pts.flat().map((p) => p[0]);
+  const ys = pts.flat().map((p) => p[1]);
+  const [minX, minY] = [Math.min(...xs), Math.min(...ys)];
+  const width = Math.max(...xs) - minX;
+  const height = Math.max(...ys) - minY;
+  // Tracé en unités de projection, origine au coin de l'emprise (le rendu le met à l'échelle).
+  const d = pts.map((ring) => ring.map(([x, y], i) => `${i ? 'L' : 'M'}${(x - minX).toFixed(2)} ${(y - minY).toFixed(2)}`).join('') + 'Z').join('');
+  return { d, width, height };
+}
+const ecPoints = (zoom) => Math.round(EC_MAX_POINTS * Math.max(0, 1 - Math.abs(Math.log(zoom)) / Math.log(2.5)));
+const ecUsed = {};
+// Trois paires de pays connus (rapport d'emprise entre 1,25 et 2,5, comme
+// l'app), chacune jouée par « moi » : deux bons réglages, puis la chute.
+function randomEchelle() {
+  const pool = KNOWN.filter((c) => scaleShape(c) && cca2[c] && stats[c]?.area && (ecUsed[c] ?? 0) < 1);
+  const ext = (c) => {
+    const s = scaleShape(c);
+    return Math.max(s.width, s.height);
+  };
+  const pairs = [];
+  for (let tries = 0; pairs.length < EC_PAIRS && tries < 5000; tries++) {
+    const [l, r] = [pick(pool), pick(pool)];
+    if (l === r || pairs.some((p) => [p.left, p.right].some((c) => c === l || c === r))) continue;
+    const ratio = ext(r) / ext(l);
+    const lin = ratio >= 1 ? ratio : 1 / ratio;
+    if (lin < 1.25 || lin > 2.5) continue;
+    pairs.push({ left: l, right: r });
+  }
+  if (pairs.length < EC_PAIRS) throw new Error('aucune partie À l’échelle trouvée');
+  for (const p of pairs) ecUsed[p.left] = ecUsed[p.right] = 1;
+  // Réglage final du joueur : à 4-12 % puis 10-22 % de la vraie taille, et la
+  // dernière manche 1,9 à 2,2 fois à côté (le tampon « Raté »).
+  const offs = [0.04 + rand() * 0.08, 0.1 + rand() * 0.12, Math.log(1.9 + rand() * 0.3)];
+  return pairs.map((p, i) => {
+    const sign = rand() < 0.5 ? 1 : -1;
+    const guess = i < EC_PAIRS - 1 ? Math.exp(sign * Math.log(1 + offs[i])) : Math.exp(sign * offs[i]);
+    // Départ franchement à côté, du côté opposé au réglage final quand c'est possible.
+    const start = Math.exp(-Math.sign(Math.log(guess)) * Math.log(1.6 + rand() * 0.6));
+    return { ...p, guess, start };
+  });
+}
+function echelle(name, pairs, hook = null) {
+  const box = { LW: 80, RW: 120, H: 140 }; // plateau de l'app (scale.ts), en unités du viewBox
+  const rounds = pairs.map(({ left, right, guess, start }) => {
+    const L0 = scaleShape(left);
+    const R0 = scaleShape(right);
+    // Overshoot du curseur (le joueur dépasse puis revient) : il doit tenir dans la colonne.
+    const over = Math.exp(Math.log(guess) + (Math.log(guess) - Math.log(start)) * 0.18);
+    const maxZoom = Math.max(1, start, guess, over);
+    const fit = (s, w) => Math.min(w / s.width, box.H / s.height);
+    const unit = Math.min(fit(L0, box.LW) * 0.9, (fit(R0, box.RW) * 0.94) / maxZoom);
+    const pct = Math.round(Math.abs(guess - 1) * 100);
+    return {
+      left: { cc: cca2[left], name: fr(left), area: km2(stats[left].area), ...L0 },
+      right: { cc: cca2[right], name: fr(right), area: km2(stats[right].area), ...R0 },
+      unit, start, guess, over,
+      points: ecPoints(guess),
+      verdict: pct <= 2 ? L('Pile à l’échelle !', 'Spot on!') : guess > 1 ? L(`${pct} % trop grand`, `${pct}% too big`) : L(`${pct} % trop petit`, `${pct}% too small`),
+    };
+  });
+  const at = (i) => EC.START + i * EC.PAIR;
+  const n = rounds.length;
+  const end = at(n - 1) + EC.PAIR + EC.OUTRO;
+  const total = rounds.reduce((a, r) => a + r.points, 0);
+  const voice = [{ text: hook?.say ?? L('Remets ces deux pays à la même échelle.', 'Resize these two countries to the same scale.'), at: 0 }];
+  rounds.forEach((r, i) => {
+    if (i > 0) voice.push({ text: `${say(r.left.name)}, ${say(r.right.name)}.`, at: at(i) + 0.1, maxLate: 0.6 });
+    if (i === n - 1) voice.push({ text: L('Celui-là, je le sens bien…', 'I’ve got a good feeling about this one…'), at: at(i) + 1.2, maxLate: 0.6 });
+    const big = r.guess > 1;
+    const line = i < n - 1
+      ? (r.points >= 170 ? L(pick(['Presque parfait !', 'Pas mal du tout !', 'Juste à côté !']), pick(['Almost perfect!', 'Not bad at all!', 'So close!']))
+        : L(big ? 'Un peu trop grand.' : 'Un peu trop petit.', big ? 'A bit too big.' : 'A bit too small.'))
+      : L(big ? 'Quoi ? Deux fois trop grand !' : 'Quoi ? Deux fois trop petit !', big ? 'What? Twice too big!' : 'What? Half the size!');
+    voice.push({ text: line, at: at(i) + EC.REVEAL + 0.1, maxLate: 0.8 });
+  });
+  voice.push({ text: L(`${total} points. Tu fais mieux ?`, `${total} points. Can you beat it?`), at: at(n - 1) + EC.PAIR + 0.2, maxLate: 1 });
+  voice.push({ text: END_LINE, at: end + 0.4, maxLate: 1 });
+  console.log('  ', rounds.map((r) => `${r.left.name} / ${r.right.name} ${r.verdict} +${r.points}`).join(' · '), '=', total);
+  const last = rounds[n - 1];
+  write(name, {
+    composition: 'EchelleConcept',
+    hook: hook?.text ?? L(['Remets ces pays', 'à la même échelle 📏'], ['Put these countries', 'to scale 📏']),
+    title: L('À l’échelle', 'To Scale'),
+    pairLabel: L('PAIRE', 'PAIR'),
+    hint: L('Agrandis ou rétrécis le pays de droite pour qu’il soit à la même échelle que celui de gauche.', 'Grow or shrink the right country so it matches the scale of the left one.'),
+    truthHint: L('Pointillés verts : la vraie taille.', 'Green dashes: the real size.'),
+    slider: L('plus petit · plus grand', 'smaller · bigger'),
+    submit: L('VALIDER', 'SUBMIT'),
+    fail: L('Raté !', 'Missed!'),
+    rounds,
+    total,
+    max: EC_MAX_POINTS * n,
+    outro: L('Tu fais mieux ?', 'Can you beat it?'),
+    outroSub: L('Ton score en commentaire 👇', 'Drop your score 👇'),
+    ...COMMON,
+    voice,
+    post: L(
+      `${last.left.name} et ${last.right.name} à la même échelle : tu aurais réglé comment ? 📏 Nouveau mode « À l'échelle » dans GeoG.\n\n${POST_TAGS}`,
+      `${last.left.name} and ${last.right.name} to scale: how would you size it? 📏 New “To Scale” mode in GeoG.\n\n${POST_TAGS}`,
+    ),
+  });
+}
+
 // ───────────────────────────── Réglages (--tuning) ─────────────────────────────
 // Ordre des concepts d'un lot au prorata de tuning.mix, bien réparti (tourniquet
 // pondéré : à chaque vidéo, le concept le plus en retard sur sa part).
@@ -595,7 +742,9 @@ if (REDO) {
   const targets = shuffle(KNOWN.filter((c) => c !== 'MNG'));
   const usedPairs = new Set(['FRACHN', 'CANARG']);
   let ti = 0;
-  const kinds = TUNING ? mixSequence(TUNING.mix, BATCH) : null;
+  // --mix « echelle:4,plus-ou-moins:3,… » : mélange imposé (prioritaire sur --tuning).
+  const MIX = arg('mix') ? Object.fromEntries(arg('mix').split(',').map((x) => [x.split(':')[0], Number(x.split(':')[1] ?? 1)])) : TUNING?.mix;
+  const kinds = MIX ? mixSequence(MIX, BATCH) : null;
   for (let i = 0; i < BATCH; i++) {
     const num = String(i + 1).padStart(2, '0');
     const kind = kinds ? kinds[i] : (SHORT ? ['frontieres', 'devine', 'frontieres'] : ['devine', 'frontieres', 'rankle'])[i % 3];
@@ -610,6 +759,10 @@ if (REDO) {
       const r2 = SHORT ? null : randomFrontier(7, 10, 'EXPERT', usedPairs);
       const hook = pickHook('frontieres', { a: r1.path[0].name, b: r1.path[r1.path.length - 1].name });
       frontieres(`${prefix}-${num}-frontieres-${slug(r1.path[0].name)}${hook ? `-${hook.id}` : ''}`, r2 ? [r1, r2] : [r1], hook);
+    } else if (kind === 'echelle') {
+      const pairs = randomEchelle();
+      const hook = pickHook('echelle', {});
+      echelle(`${prefix}-${num}-echelle-${slug(fr(pairs[0].left))}${hook ? `-${hook.id}` : ''}`, pairs, hook);
     } else if (kind === 'plus-ou-moins') {
       const pm = randomPlusOuMoins(i);
       const hook = pickHook('plus-ou-moins', {});
