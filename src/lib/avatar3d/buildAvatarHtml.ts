@@ -402,7 +402,7 @@ function setToonClouds(on){
 var texLoader=new THREE.TextureLoader();
 function loadUri(uri,cb){texLoader.load(uri,function(t){t.colorSpace=THREE.SRGBColorSpace;cb(t);});}
 // Styles sombres du pack : texture auto-éclairée (unlit) + rim seul.
-var GLOBE_DARK={night:1,lava:1,eclipse:1,biolum:1,hologram:1,cyber:1,st_galaxy:1,st_fractured:1};
+var GLOBE_DARK={night:1,lava:1,eclipse:1,biolum:1,hologram:1,cyber:1,st_galaxy:1,st_fractured:1,toxic:1,st_obsidian:1};
 // Relief 3D des continents (GLB partagé) ; mars/st_galaxy n'ont pas de continents.
 var NO_RELIEF={mars:1,st_galaxy:1};
 // Reflet / luminosité / contre-jour par planète (src/lib/globe3d/skinLook.ts).
@@ -772,8 +772,9 @@ function applyEmblem(emblemId){
 function paintCosmos(cosmosId,tint){
   var meta=D.cosmosMeta[cosmosId]||{style:'gradient',swatch:'#0b1230'};
   var base=tint||meta.swatch,style=meta.style;
-  var s=512,cv=document.createElement('canvas');cv.width=s;cv.height=s;
-  var ctx=cv.getContext('2d'),rnd=rng(4242);
+  // Grille d'auteur 512, rastérisée à 2× (1024²) : net en fond plein cadre.
+  var s=512,cv=document.createElement('canvas');cv.width=s*2;cv.height=s*2;
+  var ctx=cv.getContext('2d'),rnd=rng(4242);ctx.scale(2,2);
   var g=ctx.createRadialGradient(s/2,s*0.38,s*0.05,s/2,s/2,s*0.75);
   g.addColorStop(0,shade(base,0.18));g.addColorStop(0.55,base);g.addColorStop(1,shade(base,-0.5));
   ctx.fillStyle=g;ctx.fillRect(0,0,s,s);
@@ -835,13 +836,24 @@ function applyCosmos(cosmosId,tint){
   // Fond du PACK (webp) quand dispo ; bluenight (teintable) reste procédural.
   if(assets.cosmosTex){
     loadUri(assets.cosmosTex,function(t){
-      var o2=scene.background;scene.background=t;
+      var o2=scene.background;scene.background=t;coverBackground();
       if(o2&&o2.dispose&&o2!==t)o2.dispose();needsRender=true;});
     return;
   }
   var old=scene.background;
-  scene.background=paintCosmos(cosmosId,tint);
+  scene.background=paintCosmos(cosmosId,tint);coverBackground();
   if(old&&old.dispose)old.dispose();
+}
+// Un fond est plaqué sur tout le canvas quelle que soit sa forme : le ciel
+// carré sortait étiré dans le héros du profil (cadre large). On le recadre
+// comme un background-size:cover CSS (relancé à chaque resize).
+function coverBackground(){
+  var b=scene.background;
+  if(!b||!b.isTexture||!b.image||!W||!H)return;
+  var ia=(b.image.width||1)/(b.image.height||1),ca=W/H;
+  if(ca>ia){b.repeat.set(1,ia/ca);b.offset.set(0,(1-ia/ca)/2);}
+  else{b.repeat.set(ca/ia,1);b.offset.set((1-ca/ia)/2,0);}
+  b.matrixAutoUpdate=true;needsRender=true;
 }
 
 // ── Config plumbing ──────────────────────────────────────────────────────────
@@ -997,7 +1009,7 @@ frame();
 window.addEventListener('resize',function(){
   W=window.innerWidth;H=window.innerHeight;
   camera.aspect=W/H;camera.updateProjectionMatrix();renderer.setSize(W,H);
-  if(post)post.setSize(W,H);needsRender=true;});
+  if(post)post.setSize(W,H);coverBackground();needsRender=true;});
 postMsg({type:'ready'});
 </script>
 </body></html>`;

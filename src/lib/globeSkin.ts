@@ -167,6 +167,7 @@ const COATS: Record<string, 'outline' | 'fill'> = {
   eclipse: 'outline',
   // White land with pale blue borders: under the sun they vanish.
   ice: 'outline',
+  diamond: 'outline',
 };
 
 /**
@@ -175,6 +176,7 @@ const COATS: Record<string, 'outline' | 'fill'> = {
  */
 const UNLIT_SKINS = new Set([
   'night', 'lava', 'eclipse', 'biolum', 'hologram', 'cyber', 'st_galaxy', 'st_fractured',
+  'toxic', 'st_obsidian',
 ]);
 
 const LAND_INK: Record<string, string> = {
@@ -182,6 +184,8 @@ const LAND_INK: Record<string, string> = {
   political: '#253037', vintage: '#2c2b2f', gold: '#302d28', night: '#11192d', ice: '#333846',
   lava: '#12131f', blueprint: '#111c35', cyber: '#0e1323', hologram: '#0e1727', biolum: '#0e1823',
   eclipse: '#0e1221', relief: '#2b2a2e', st_fractured: '#11182b', st_crowned: '#302d28',
+  jungle: '#1b2f22', desert: '#33302a', candy: '#3a2f3c', neptune: '#1a2240', toxic: '#0e160a',
+  diamond: '#2e3644', st_obsidian: '#100e18',
 };
 
 /** Build the 3D descriptor for a style key, given its resolved rig asset URIs. */
@@ -541,7 +545,7 @@ export async function loadSkinForKey(
       moduleToWebViewUri(texMod),
       uri(withRig ? COSMETIC_MODELS.globe_land : undefined),
       uri(withRig && withProps ? COSMETIC_MODELS[`globe_${key}_props`] : undefined),
-      uri(cosmosId ? COSMETIC_LAYERS[cosmosId]?.main : undefined),
+      uri(cosmosId ? COSMETIC_LAYERS[cosmosId]?.hd ?? COSMETIC_LAYERS[cosmosId]?.main : undefined),
       uri(satId ? COSMETIC_MODELS[satId] : undefined),
     ]);
     return buildGameGlobeSkin(key, texture, {

@@ -55,6 +55,14 @@ const STYLES = {
   st_fractured: { ocean: ['#2c4a74', '#0a1226'], land: '#1c3050', halo: 'rgba(255,122,58,0.3)', line: '#ff8a3a', grat: 'rgba(40,60,96,0.5)', cracks: '#ff8a3a' },
   st_galaxy:    { ocean: ['#2a1e5e', '#08051c'], land: null, halo: 'rgba(184,160,255,0.35)', line: '#b8a0ff', grat: 'rgba(184,160,255,0.3)', plankton: '#d8c8ff' },
   st_crowned:   { ocean: ['#ffe08a', '#c8871e'], land: '#e0b23e', halo: 'rgba(255,246,200,0.7)', line: '#7a5212', grat: 'rgba(122,82,18,0.3)', sparkle: true },
+  // ── Vague « Nouveaux mondes » (24/10/2026) ──
+  jungle:   { ocean: ['#3cc4b0', '#0d6660'], land: '#2f9a3e', halo: 'rgba(214,255,200,0.55)', line: '#14501e', grat: 'rgba(255,255,255,0.16)', canopy: '#1f7a2e' },
+  desert:   { ocean: ['#5ad6e0', '#167e9e'], land: '#ecc06a', halo: 'rgba(255,244,210,0.75)', line: '#9a6626', grat: 'rgba(255,255,255,0.18)', dunes: '#c9913e' },
+  candy:    { ocean: ['#ffc6e6', '#e57cbc'], land: '#a4f2d4', halo: 'rgba(255,255,255,0.9)', line: '#ffffff', grat: 'rgba(255,255,255,0.35)', sprinkles: true },
+  neptune:  { ocean: ['#6a9cff', '#1c2c8e'], land: '#a8dcff', halo: 'rgba(220,240,255,0.6)', line: '#3456c8', grat: 'rgba(255,255,255,0.18)', bands: 'rgba(200,225,255,0.16)' },
+  toxic:    { ocean: ['#16260f', '#050b04'], land: '#1d2e12', halo: 'rgba(156,255,58,0.35)', line: '#a6ff3e', grat: 'rgba(156,255,58,0.16)', plankton: '#c4ff52' },
+  diamond:  { ocean: ['#eaf8ff', '#8cc6e8'], land: '#ffffff', halo: 'rgba(255,255,255,0.9)', line: '#76b2dc', grat: 'rgba(255,255,255,0.4)', facets: 'rgba(118,178,220,0.45)', sparkle: true },
+  st_obsidian:  { ocean: ['#2c2644', '#0a0812'], land: '#15121e', halo: 'rgba(255,200,90,0.3)', line: '#ffc85a', grat: 'rgba(64,54,96,0.5)', cracks: '#ffcf5a' },
 };
 
 function rngFactory(seed) {
@@ -102,6 +110,13 @@ function buildSvg(name, st) {
     svg.push(`<line x1="0" y1="${py(la)}" x2="${W}" y2="${py(la)}" stroke="${st.grat}" stroke-width="2"/>`);
   for (let lo = -150; lo <= 180; lo += 30)
     svg.push(`<line x1="${px(lo)}" y1="${H * 0.03}" x2="${px(lo)}" y2="${H * 0.97}" stroke="${st.grat}" stroke-width="2"/>`);
+  if (st.bands) {
+    // Bandes nuageuses de géante gazeuse, sous les continents.
+    for (let k = 0; k < 14; k++) {
+      const y = H * 0.06 + rnd() * H * 0.88, h = 12 + rnd() * 46;
+      svg.push(`<rect x="0" y="${y.toFixed(0)}" width="${W}" height="${h.toFixed(0)}" fill="${st.bands}"/>`);
+    }
+  }
   if (st.craters) {
     for (let i = 0; i < 90; i++) {
       const x = rnd() * W, y = H * 0.08 + rnd() * H * 0.84, r = 6 + rnd() * 40;
@@ -115,6 +130,33 @@ function buildSvg(name, st) {
       const dash = st.dash ? ' stroke-dasharray="10,8"' : '';
       return `<path d="${d}" fill="${fill}" stroke="${st.line ?? 'none'}" stroke-width="${LINE_W}" stroke-linejoin="round"${dash}/>`;
     }));
+  }
+  if (st.canopy || st.dunes || st.facets) {
+    // Motifs CLIPPÉS À LA TERRE (comme les fissures) : canopée, dunes, facettes.
+    svg.push(`<defs><clipPath id="landclip2">${landPaths((d) => `<path d="${d}"/>`)}</clipPath></defs>`);
+    svg.push(`<g clip-path="url(#landclip2)">`);
+    if (st.canopy) for (let k = 0; k < 900; k++)
+      svg.push(`<circle cx="${(rnd() * W).toFixed(0)}" cy="${(rnd() * H).toFixed(0)}" r="${(5 + rnd() * 9).toFixed(1)}" fill="${st.canopy}" opacity="${(0.35 + rnd() * 0.4).toFixed(2)}"/>`);
+    if (st.dunes) for (let k = 0; k < 420; k++) {
+      const x = rnd() * W, y = rnd() * H, w = 16 + rnd() * 26;
+      svg.push(`<path d="M${(x - w).toFixed(0)},${y.toFixed(0)} q${w.toFixed(0)},-${(w * 0.45).toFixed(0)} ${(w * 2).toFixed(0)},0" fill="none" stroke="${st.dunes}" stroke-width="2.5" opacity="0.6" stroke-linecap="round"/>`);
+    }
+    if (st.facets) {
+      // Maillage triangulaire fixe : la terre taillée comme une gemme.
+      const step = 64;
+      for (let y = 0; y <= H; y += step) for (let x = 0; x <= W; x += step) {
+        const jx = (rnd() - 0.5) * 18, jy = (rnd() - 0.5) * 18;
+        svg.push(`<path d="M${x + jx},${y + jy}L${x + step},${y}L${x},${y + step}Z" fill="rgba(255,255,255,${(rnd() * 0.25).toFixed(2)})" stroke="${st.facets}" stroke-width="1.5"/>`);
+      }
+    }
+    svg.push('</g>');
+  }
+  if (st.sprinkles) {
+    const COLORS = ['#ff5aa8', '#ffd84a', '#5ad1ff', '#9a7cff', '#ffffff'];
+    for (let k = 0; k < 340; k++) {
+      const x = rnd() * W, y = H * 0.04 + rnd() * H * 0.92, a = rnd() * 180;
+      svg.push(`<rect x="${(x - 6).toFixed(0)}" y="${(y - 2).toFixed(0)}" width="12" height="4" rx="2" fill="${COLORS[k % COLORS.length]}" transform="rotate(${a.toFixed(0)} ${x.toFixed(0)} ${y.toFixed(0)})"/>`);
+    }
   }
   if (st.cities) for (const [lon, lat] of CITY_LIGHTS) {
     svg.push(`<circle cx="${px(lon)}" cy="${py(lat)}" r="7" fill="#ffd89a" opacity="0.95"/>
