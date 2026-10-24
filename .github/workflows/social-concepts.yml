@@ -42,11 +42,6 @@ on:
         description: Ajouter à la file de publication (shorts-next)
         type: boolean
         default: false
-  push:
-    branches: [claude/project-thread-l5zx7r]
-    paths:
-      - .github/workflows/social-concepts.yml
-      - social-video/composer/concepts.mjs
 
 permissions:
   contents: write
