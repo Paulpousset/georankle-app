@@ -1,0 +1,56 @@
+{
+  "_comment": "Réglages des vidéos concepts, ajustés par analyze.mjs après chaque relevé de stats. La version vivante est tuning.json dans la release shorts-state ; ce fichier sert de départ et d'ajout d'accroches (une accroche ajoutée ici rejoint la version vivante au relevé suivant). hooks : accroche à l'écran (text, deux lignes) + première phrase de la voix off (say). Variables : {a} et {b} = départ et arrivée (Frontières, déjà écrits sous l'accroche), {n} = nombre d'essais (Devine). Une ligne de plus de 20 caractères une fois remplie est sautée. Pas de faux chiffres (« 99 % se trompent ») : on promet un défi, pas une statistique.",
+  "rules": {
+    "minAgeHours": 48,
+    "minPosts": 3,
+    "hookFailWatchS": 3,
+    "hookFailSkipRate": 0.5,
+    "midDropWatchPct": 0.35,
+    "endDropWatchPct": 0.5,
+    "endDropCompletion": 0.08,
+    "lowLikeRate": 0.03,
+    "lowFollowRate": 0.002,
+    "mixFloor": 0.15,
+    "hookFloor": 0.1
+  },
+  "mix": { "frontieres": 2, "devine": 1, "plus-ou-moins": 1, "rankle": 0 },
+  "short": true,
+  "hooks": {
+    "frontieres": {
+      "fr": [
+        { "id": "h0", "text": ["Quels pays", "traverser ? 🧭"], "say": "Quels pays faut-il traverser ?" },
+        { "id": "h1", "text": ["Sans avion,", "tu passes par où ? 🧭"], "say": "Sans avion, tu passes par où ?" },
+        { "id": "h2", "text": ["Trouve le chemin", "avant la carte ⏱️"], "say": "Trouve le chemin avant que la carte le dessine." }
+      ],
+      "en": [
+        { "id": "h0", "text": ["Which countries", "do you cross? 🧭"], "say": "Which countries do you have to cross?" },
+        { "id": "h1", "text": ["No flying.", "Which way? 🧭"], "say": "No flying. Which way do you go?" },
+        { "id": "h2", "text": ["Find the route", "before the map ⏱️"], "say": "Find the route before the map draws it." }
+      ]
+    },
+    "plus-ou-moins": {
+      "fr": [
+        { "id": "h0", "text": ["Tiens 5 manches", "sans erreur 🔥"], "say": "Tiens cinq manches sans te tromper." },
+        { "id": "h1", "text": ["Je craque à", "quelle manche ? 😬"], "say": "Devine à quelle manche je craque." },
+        { "id": "h2", "text": ["Plus ou moins ?", "Réponds avant moi ⏱️"], "say": "Plus ou moins ? Réponds avant moi." }
+      ],
+      "en": [
+        { "id": "h0", "text": ["Survive 5 rounds", "no mistakes 🔥"], "say": "Survive five rounds without a mistake." },
+        { "id": "h1", "text": ["Guess the round", "I crack on 😬"], "say": "Guess which round I crack on." },
+        { "id": "h2", "text": ["Higher or lower?", "Beat me to it ⏱️"], "say": "Higher or lower? Answer before I do." }
+      ]
+    },
+    "devine": {
+      "fr": [
+        { "id": "h0", "text": ["Trouve ce pays", "avant moi 🕵️"], "say": "Trouve ce pays avant moi." },
+        { "id": "h1", "text": ["Moi : {n} essais.", "Et toi ? 🕵️"], "say": "Il me faut {n} essais. Tu fais mieux ?" },
+        { "id": "h2", "text": ["Quel pays", "se cache ici ? 🤔"], "say": "Quel pays se cache derrière ces indices ?" }
+      ],
+      "en": [
+        { "id": "h0", "text": ["Find this country", "before I do 🕵️"], "say": "Find this country before I do." },
+        { "id": "h1", "text": ["Me: {n} guesses.", "You? 🕵️"], "say": "It takes me {n} guesses. Can you beat that?" },
+        { "id": "h2", "text": ["Which country", "is hiding here? 🤔"], "say": "Which country is hiding behind these clues?" }
+      ]
+    }
+  }
+}

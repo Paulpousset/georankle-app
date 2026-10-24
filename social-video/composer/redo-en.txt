@@ -1,0 +1,17 @@
+01-court-frontieres-ethiopia-en-v1|Éthiopie|Arabie Saoudite
+02-court-frontieres-syria-en-v1|Syrie|Serbie
+03-court-frontieres-algeria-en-v1|Algérie|Angola
+04-court-frontieres-sweden-en-v1|Suède|Serbie
+05-court-frontieres-pakistan-en-v1|Pakistan|Indonésie
+06-court-frontieres-russia-en-v1|Russie|Italie
+07-court-frontieres-portugal-en-v1|Portugal|Tunisie
+08-court-frontieres-south-africa-en-v1|Afrique du Sud|Kenya
+09-court-frontieres-india-en-v1|Inde|Jordanie
+10-court-frontieres-greece-en-v1|Grèce|Italie
+11-court-frontieres-uruguay-en-v1|Uruguay|Équateur
+12-court-frontieres-morocco-en-v1|Maroc|Ghana
+13-court-devine-madagascar-en-v1|devine|Madagascar
+14-court-devine-angola-en-v1|devine|Angola
+15-court-devine-morocco-en-v1|devine|Maroc
+16-court-devine-switzerland-en-v1|devine|Suisse
+17-court-devine-senegal-en-v1|devine|Sénégal
