@@ -21,6 +21,7 @@ import StreakGame from './StreakGame';
 import HigherLowerGame from './HigherLowerGame';
 import SilhouetteGame from './SilhouetteGame';
 import PinpointGame from './PinpointGame';
+import ScaleGame from './ScaleGame';
 import LanguagesFlow from './LanguagesFlow';
 import BordersGame from './BordersGame';
 import GuessCountryGame from './GuessCountryGame';
@@ -217,6 +218,15 @@ export default function DailyGameHost({
   } else if (mode === 'pinpoint') {
     screen = (
       <PinpointGame
+        setGameMode={exitOnMenu}
+        user={user}
+        onDailyScoreChange={reportScore}
+        {...common}
+      />
+    );
+  } else if (mode === 'scale') {
+    screen = (
+      <ScaleGame
         setGameMode={exitOnMenu}
         user={user}
         onDailyScoreChange={reportScore}

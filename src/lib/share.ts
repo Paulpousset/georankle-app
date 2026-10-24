@@ -22,6 +22,7 @@ function scoreLine(result: DailyResult, language: Language): string {
       return tr(language, 'Série de {0}', 'Streak of {0}', [result.score]);
     case 'silhouette':
     case 'pinpoint':
+    case 'scale':
     case 'languages':
     case 'challenge':
       // DUO/CARRÉ/CASH points (the 🟩/🟥 grid already shows how many were right).

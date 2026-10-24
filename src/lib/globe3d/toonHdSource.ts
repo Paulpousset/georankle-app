@@ -131,8 +131,8 @@ var REGISTRY=[];
 function specScale(k){REGISTRY.forEach(function(m){if(m.uniforms&&m.uniforms.uSpecK)m.uniforms.uSpecK.value=m.userData.specK0*k;});}
 function cfg(){return CFG||(CFG={diffuseAlbedo:0.8,ramp:[[0.06,[0.0423,0.0497,0.2582]],[0.26,[0.62,0.62,0.68]],[0.42,[1,1,1]],[0.9,[1.12,1.12,1.08]]],
   spec:{threshold:[0.35,0.6],strength:0.45,roughness:0.35},rim:{color:'#7fe8ff',power:3.5,strength:0.55,blend:0.45},
-  clouds:{styles:['classic','pastel','gaia','satellite','political','vintage'],seed:11,count:9,radius:[1.06,1.09],size:[0.05,0.11],squash:0.7},
-  atmosphere:{radius:1.035,color:'#7fe8ff',power:6,strength:3},darkStyles:['night','eclipse','lava','cyber','hologram','biolum','st_fractured','st_galaxy'],
+  clouds:{styles:['classic','pastel','gaia','satellite','political','vintage','jungle','desert'],seed:11,count:9,radius:[1.06,1.09],size:[0.05,0.11],squash:0.7},
+  atmosphere:{radius:1.035,color:'#7fe8ff',power:6,strength:3},darkStyles:['night','eclipse','lava','cyber','hologram','biolum','st_fractured','st_galaxy','toxic','st_obsidian'],
   darkEmissive:0.9,bloom:{threshold:1,strength:0.3,radius:0.6}});}
 function configure(toon){CFG=toon||null;return cfg();}
 // Blender's Layer Weight « blend » remap (node_layer_weight): 0.45 → 0.9.

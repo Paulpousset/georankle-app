@@ -40,7 +40,10 @@ async function resolveAssets(c: AvatarConfig): Promise<AvatarLiveAssets> {
     landModel: COSMETIC_MODELS.globe_land,
     globePropsModel: COSMETIC_MODELS[`globe_${globeStyle}_props`],
     globeTex: GLOBE_TEXTURES[globeStyle],
-    cosmosTex: cosmosId && cosmosId !== 'cosmos_bluenight' ? COSMETIC_LAYERS[cosmosId]?.main : undefined,
+    // Full-frame sky: the HD render (the 512² main is sized for list avatars).
+    cosmosTex: cosmosId && cosmosId !== 'cosmos_bluenight'
+      ? COSMETIC_LAYERS[cosmosId]?.hd ?? COSMETIC_LAYERS[cosmosId]?.main
+      : undefined,
   };
   const keys = Object.keys(mods) as (keyof AvatarLiveAssets)[];
   const uris = await Promise.all(

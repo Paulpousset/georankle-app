@@ -37,7 +37,7 @@ import type { GameMode, MatchMode } from '../../types';
 const PLAYABLE: GameMode[] = [
   'classic', 'streak', 'versus', 'guess', 'globe', 'regions', 'challenge',
   'quiz-capital', 'quiz-flag', 'higherlower', 'silhouette', 'pinpoint', 'borders',
-  'languages', 'local-builder',
+  'languages', 'local-builder', 'scale',
 ];
 
 describe('mode registries stay in sync', () => {

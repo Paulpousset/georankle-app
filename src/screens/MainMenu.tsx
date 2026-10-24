@@ -21,6 +21,7 @@ import {
   MapPin,
   Puzzle,
   Route,
+  Ruler,
   SlidersHorizontal,
   Sun,
   Swords,
@@ -1105,6 +1106,17 @@ export function MainMenu({
                 onHelp={() => setHelpMode('silhouette')}
               />
               <ModeTile
+                icon={Ruler}
+                accent={PALETTE.sand}
+                tint={isDarkMode ? 'rgba(196,135,42,0.15)' : 'rgba(196,135,42,0.10)'}
+                title={tr(language, 'À l’échelle', 'To Scale')}
+                subtitle={tr(language, 'Mettez deux pays à la même échelle', 'Put two countries at the same scale')}
+                isDarkMode={isDarkMode}
+                onPress={() => onPlay('scale')}
+                worldOnly={worldOnly('scale')}
+                onHelp={() => setHelpMode('scale')}
+              />
+              <ModeTile
                 icon={MapPin}
                 accent={isDarkMode ? PALETTE.chartBlue : PALETTE.vermilion}
                 tint={isDarkMode ? 'rgba(74,158,255,0.12)' : 'rgba(192,74,26,0.10)'}
@@ -1507,6 +1519,17 @@ export function MainMenu({
                 onPress={() => onPlayOnline('pinpoint')}
                 onLeaderboard={() => onOpenOnlineModeLeaderboard('pinpoint', isDarkMode ? PALETTE.chartBlue : PALETTE.vermilion)}
                 notify={incomingInviteMode === 'pinpoint'}
+              />
+              <ModeCard
+                icon={Ruler}
+                accent={PALETTE.sand}
+                tint={isDarkMode ? 'rgba(196,135,42,0.15)' : 'rgba(196,135,42,0.10)'}
+                title={tr(language, 'À l’échelle', 'To Scale')}
+                subtitle={tr(language, 'Les mêmes paires pour les deux joueurs', 'Same pairs for both players')}
+                isDarkMode={isDarkMode}
+                onPress={() => onPlayOnline('scale')}
+                onLeaderboard={() => onOpenOnlineModeLeaderboard('scale', PALETTE.sand)}
+                notify={incomingInviteMode === 'scale'}
               />
               {languagesMode && (
                 <ModeCard

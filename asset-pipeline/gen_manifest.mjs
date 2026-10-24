@@ -19,11 +19,13 @@ for (const part of ALL_PARTS) {
   const back = `${part.id}_back.webp`;
   const front = `${part.id}_front.webp`;
   const sprite = `${part.id}_sprite.webp`;
+  const hd = `${part.id}_hd.webp`;
   const fields = [];
   if (files.has(main)) fields.push(`main: require('../../assets/cosmetics/${main}')`);
   if (files.has(back)) fields.push(`back: require('../../assets/cosmetics/${back}')`);
   if (files.has(front)) fields.push(`front: require('../../assets/cosmetics/${front}')`);
   if (files.has(sprite)) fields.push(`sprite: require('../../assets/cosmetics/${sprite}')`);
+  if (files.has(hd)) fields.push(`hd: require('../../assets/cosmetics/${hd}')`);
   if (fields.length) entries.push(`  ${part.id}: { ${fields.join(', ')} },`);
 }
 
@@ -39,6 +41,8 @@ export interface CosmeticLayerSources {
   front?: number;
   /** Tight solo render (live-preview sprite planted at real coordinates). */
   sprite?: number;
+  /** Full-frame backdrop (cosmos) for the three.js scenes — main stays small for lists. */
+  hd?: number;
 }
 
 export const COSMETIC_LAYERS: Record<string, CosmeticLayerSources> = {

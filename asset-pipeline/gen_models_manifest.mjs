@@ -15,7 +15,7 @@ const glbDir = join(here, '..', 'assets', 'models3d');
 const outTs = join(here, '..', 'src', 'data', 'cosmeticModels.gen.ts');
 
 mkdirSync(texDst, { recursive: true });
-const styles = [];
+mkdirSync(texSrc, { recursive: true });
 for (const f of readdirSync(texSrc).filter((f) => f.endsWith('.png')).sort()) {
   const style = f.replace('.png', '');
   // Native render size, no downscale: these textures are no longer only worn by
@@ -24,8 +24,11 @@ for (const f of readdirSync(texSrc).filter((f) => f.endsWith('.png')).sort()) {
   // compresses well, so quality 76 buys the resolution back at ~220 KB each.
   await sharp(join(texSrc, f)).webp({ quality: 76 }).toFile(
     join(texDst, `globe_${style}.webp`));
-  styles.push(style);
 }
+// The manifest lists every texture already shipped, not just this run's PNGs:
+// textures_globe/ only holds the styles just (re)generated.
+const styles = readdirSync(texDst).filter((f) => /^globe_.+\.webp$/.test(f)).sort()
+  .map((f) => f.replace(/^globe_/, '').replace('.webp', ''));
 
 const models = readdirSync(glbDir).filter((f) => f.endsWith('.glb')).sort()
   .map((f) => f.replace('.glb', ''));

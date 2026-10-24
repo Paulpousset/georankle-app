@@ -645,8 +645,19 @@ function applyCosmos(){
   if(!SKIN||!SKIN.cosmos)return; // free procedural night → keep the theme colour
   new THREE.TextureLoader().load(SKIN.cosmos,function(t){
     t.colorSpace=THREE.SRGBColorSpace;
-    scene.background=t;needsRender=true;
+    scene.background=t;coverBackground();needsRender=true;
   },undefined,function(){});
+}
+// A background texture is drawn over the whole canvas whatever its shape: the
+// square sky came out stretched ~2× on a portrait phone. Crop it like CSS
+// background-size:cover instead (re-run on every resize).
+function coverBackground(){
+  var b=scene&&scene.background;
+  if(!b||!b.isTexture||!b.image||!W||!H)return;
+  var ia=(b.image.width||1)/(b.image.height||1),ca=W/H;
+  if(ca>ia){b.repeat.set(1,ia/ca);b.offset.set(0,(1-ia/ca)/2);}
+  else{b.repeat.set(ca/ia,1);b.offset.set((1-ca/ia)/2,0);}
+  b.matrixAutoUpdate=true;needsRender=true;
 }
 
 // ── Satellite: the equipped one, on the rig's own orbit ─────────────────────
@@ -983,7 +994,7 @@ function setup(){
 window.addEventListener('resize',function(){
   if(!renderer)return;
   W=window.innerWidth;H=window.innerHeight;baseR=Math.min(W,H)/2*D.initial.fit;
-  camera.aspect=W/H;renderer.setSize(W,H);if(post)post.setSize(W,H);updateCamera();});
+  camera.aspect=W/H;renderer.setSize(W,H);if(post)post.setSize(W,H);coverBackground();updateCamera();});
 ${gameJs}
 requestAnimationFrame(setup);
 </script>

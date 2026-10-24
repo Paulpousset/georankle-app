@@ -18,7 +18,7 @@ import { StatusBar } from 'expo-status-bar';
 import Svg, { Circle, Defs, Ellipse, G, LinearGradient, Path, Polygon, Rect, Stop } from 'react-native-svg';
 import {
   ArrowLeft, Check, Crown, Flag, Gift, Globe, Heart, Info, LayoutGrid, List, Lock, Map as MapIcon,
-  Plus, MapPin, Puzzle, Route, Star, TrendingUp, X, Zap, type LucideIcon,
+  Plus, MapPin, Puzzle, Route, Ruler, Star, TrendingUp, X, Zap, type LucideIcon,
 } from 'lucide-react-native';
 import type { User } from '@supabase/supabase-js';
 
@@ -117,6 +117,7 @@ const MODE_ICON: Record<string, LucideIcon> = {
   globe: Globe,
   silhouette: Puzzle,
   pinpoint: MapPin,
+  scale: Ruler,
   borders: Route,
   higherlower: TrendingUp,
   streak: Zap,

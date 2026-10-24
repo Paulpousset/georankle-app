@@ -18,5 +18,7 @@ export interface SkinLook {
 
 export const SKIN_LOOK: Record<string, SkinLook> = {
   ice: { specK: 0.15, val: 0.93 },
+  // Same white-planet burn-out as Ice: the facets vanished under the glint.
+  diamond: { specK: 0.15, val: 0.9 },
   mars: { specK: 0.2, rim: '#ffb27a' },
 };

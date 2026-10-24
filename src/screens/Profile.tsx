@@ -51,7 +51,7 @@ interface ProfileProps {
   onOpenAdmin?: () => void;
 }
 
-const MODES: MatchMode[] = ['classic', 'streak', 'versus', 'globe', 'guess', 'higherlower', 'silhouette', 'pinpoint', 'borders', 'languages'];
+const MODES: MatchMode[] = ['classic', 'streak', 'versus', 'globe', 'guess', 'higherlower', 'silhouette', 'pinpoint', 'scale', 'borders', 'languages'];
 
 type ModeStat = { wins: number; total: number };
 
