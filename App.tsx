@@ -76,6 +76,8 @@ function stageModeLabel(mode: GameMode, language: Language): string {
       return tr(language, 'Partie perso', 'Custom game');
     case 'scale':
       return tr(language, 'À l’échelle', 'To Scale');
+    case 'split':
+      return tr(language, 'Partage équitable', 'Fair Split');
     default:
       return modeLabel(mode, language);
   }
