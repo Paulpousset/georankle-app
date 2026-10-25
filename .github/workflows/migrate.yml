@@ -9,6 +9,7 @@ name: Migrations Supabase
 #
 # Secret requis : SUPABASE_DB_URL (Supabase → Settings → Database → URI,
 # mot de passe inclus ; préférer le pooler en mode session, port 5432).
+# Sans ce secret, le job échoue (rouge) au lieu de passer sans rien appliquer.
 on:
   push:
     branches: [master]

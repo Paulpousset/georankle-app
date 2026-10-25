@@ -12,7 +12,10 @@ DRY=0
 
 if [ -z "${SUPABASE_DB_URL:-}" ]; then
   echo "SUPABASE_DB_URL manquant : rien n'est appliqué." >&2
-  # Pas une erreur : le secret n'est simplement pas encore posé.
+  # En CI c'est une erreur : un run vert sans rien appliquer laisse livrer un
+  # client contre un serveur non migré (« bad game mode », ops de la file de
+  # synchro perdues). En local, simple avertissement.
+  [ "${GITHUB_ACTIONS:-}" = "true" ] && exit 1
   exit 0
 fi
 
