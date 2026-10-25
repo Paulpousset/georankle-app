@@ -6,7 +6,7 @@ import { AtlasFlame } from './AtlasIcons';
 
 import type { Language } from '../types';
 import type { DailyResult } from '../lib/daily';
-import { dailyModeLabel, getPuzzleNumber, msUntilNextPuzzle } from '../lib/daily';
+import { DAILY_MODES, dailyModeLabel, getPuzzleNumber, msUntilNextPuzzle } from '../lib/daily';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getColors } from '../theme/colors';
@@ -144,7 +144,7 @@ export function DailyResultCard({
             </View>
             <View style={{ alignItems: 'center' }}>
               <Text style={{ fontFamily: FONTS.headingBlack, color: c.accent, fontSize: 22 }}>
-                {todayCount}/8
+                {todayCount}/{DAILY_MODES.length}
               </Text>
               <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 9 }}>
                 {tr(language, "AUJOURD'HUI", 'TODAY')}
