@@ -13,7 +13,7 @@
     "mixFloor": 0.15,
     "hookFloor": 0.1
   },
-  "mix": { "frontieres": 2, "devine": 1, "plus-ou-moins": 1, "rankle": 0, "echelle": 1 },
+  "mix": { "frontieres": 2, "devine": 1, "plus-ou-moins": 1, "rankle": 0, "echelle": 1, "partage": 1 },
   "short": true,
   "hooks": {
     "frontieres": {
@@ -54,6 +54,18 @@
         { "id": "h0", "text": ["Put these countries", "to scale 📏"], "say": "Resize these two countries to the same scale.", "style": "defi" },
         { "id": "h1", "text": ["Got an eye", "for size? 📏"], "say": "Do you have an eye for country sizes?", "style": "question" },
         { "id": "h2", "text": ["Same scale?", "Beat me to it ⏱️"], "say": "Same scale? Answer before I do.", "style": "course" }
+      ]
+    },
+    "partage": {
+      "fr": [
+        { "id": "h0", "text": ["Coupe cette carte", "en deux ✂️"], "say": "Coupe cette carte en deux : autant d'habitants de chaque côté.", "style": "defi" },
+        { "id": "h1", "text": ["Autant d'habitants", "de chaque côté ? ✂️"], "say": "Autant d'habitants de chaque côté : tu couperais où ?", "style": "question" },
+        { "id": "h2", "text": ["Coupe à parts", "égales avant moi ⏱️"], "say": "Coupe la carte à parts égales avant moi.", "style": "course" }
+      ],
+      "en": [
+        { "id": "h0", "text": ["Cut this map", "in half ✂️"], "say": "Cut this map in half: same population on each side.", "style": "defi" },
+        { "id": "h1", "text": ["Where would", "you cut? ✂️"], "say": "Same population on each side: where would you cut?", "style": "question" },
+        { "id": "h2", "text": ["Split it fair", "before I do ⏱️"], "say": "Split this map fairly before I do.", "style": "course" }
       ]
     },
     "devine": {

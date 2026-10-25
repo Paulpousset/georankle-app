@@ -9,6 +9,7 @@ import { DevineConcept, devineSeconds, type DevineProps } from './concepts/Devin
 import { EchelleConcept, echelleSeconds, type EchelleProps } from './concepts/EchelleConcept';
 import { FrontieresConcept, frontieresSeconds, type FrontieresProps } from './concepts/FrontieresConcept';
 import { FPS as CONCEPT_FPS } from './concepts/kit';
+import { PartageConcept, partageSeconds, type PartageProps } from './concepts/PartageConcept';
 import { PlusOuMoinsConcept, plusOuMoinsConceptSeconds, type PlusOuMoinsConceptProps } from './concepts/PlusOuMoinsConcept';
 import { RankleConcept, rankleSeconds, type RankleProps } from './concepts/RankleConcept';
 
@@ -160,6 +161,26 @@ const echelleDefaults: EchelleProps = {
   icon: 'icon.png',
 };
 
+const partageDefaults: PartageProps = {
+  hook: ['Coupe cette carte', 'en deux ✂️'],
+  title: 'Partage équitable',
+  mapLabel: 'CARTE',
+  partsLabel: ['', '', 'EN DEUX', 'EN TROIS', 'EN QUATRE'],
+  totalLabel: 'Population des villes : {0}',
+  hints: ['', '', 'Trace un trait qui coupe la population des villes en deux parts égales.', '', ''],
+  partsHint: 'Chaque couleur est une part.',
+  target: 'Objectif : {0} % chacune',
+  submit: 'VALIDER',
+  fail: 'Raté !',
+  rounds: [],
+  total: 0,
+  max: 600,
+  outro: 'Tu fais mieux ?',
+  outroSub: 'Ton score en commentaire 👇',
+  cta: 'Gratuit sur iOS et Android',
+  icon: 'icon.png',
+};
+
 const concepts = [
   { id: 'AppTrailer', component: AppTrailer, seconds: appTrailerSeconds, defaults: trailerDefaults },
   { id: 'DevineConcept', component: DevineConcept, seconds: devineSeconds, defaults: devineDefaults },
@@ -167,6 +188,7 @@ const concepts = [
   { id: 'RankleConcept', component: RankleConcept, seconds: rankleSeconds, defaults: rankleDefaults },
   { id: 'PlusOuMoinsConcept', component: PlusOuMoinsConcept, seconds: plusOuMoinsConceptSeconds, defaults: plusOuMoinsDefaults },
   { id: 'EchelleConcept', component: EchelleConcept, seconds: echelleSeconds, defaults: echelleDefaults },
+  { id: 'PartageConcept', component: PartageConcept, seconds: partageSeconds, defaults: partageDefaults },
 ] as const;
 
 export const Root = () => (

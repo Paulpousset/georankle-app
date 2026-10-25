@@ -1,6 +1,6 @@
 // Ce qu'on sait d'une vidéo publiée à partir de son nom de fichier
 // (clé de posted.json, ex. shorts-next/44-court-frontieres-maroc-h2-fr-v1.mp4).
-//   concept : frontieres, devine, rankle, globe, plus-ou-moins, capitales, drapeaux…
+//   concept : frontieres, devine, rankle, globe, plus-ou-moins, echelle, partage, capitales, drapeaux…
 //   format  : court (~20 s), long (lot de 26 à 42 s), app (tournage de l'app)
 //   hook    : accroche testée (h0 = accroche d'origine, h1, h2… = tuning.json ;
 //             v1 / v2 pour les vidéos de l'app)
@@ -11,6 +11,7 @@ const CONCEPTS = [
   ['globe', /^globe/],
   ['plus-ou-moins', /plusmoins|higher-lower/],
   ['echelle', /echelle|to-scale/],
+  ['partage', /partage|fair-split/],
   ['capitales', /capitals|capitales/],
   ['drapeaux', /flags|drapeaux/],
   ['silhouettes', /silhouette|shapes/],
