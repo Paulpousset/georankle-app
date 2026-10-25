@@ -31,7 +31,7 @@ import { DailyQuests } from '../components/DailyQuests';
 import type { ComponentType } from 'react';
 import type { User } from '@supabase/supabase-js';
 
-import type { GameMode } from '../types';
+import type { GameMode, Language } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import {
@@ -46,6 +46,7 @@ import {
   type DailyState,
 } from '../lib/daily';
 import { variantForSeed } from '../lib/languages';
+import { GHOST_SCHEDULE, isGhostDaily } from '../data/ghostCountries';
 import { claimDailyOverallNotices, DAILY_OVERALL_PRIZES } from '../lib/dailyOverall';
 import { challengeForSeed, challengeLabel } from '../data/challenges';
 import { prefetchReferralCode, shareDailyResult } from '../lib/shareDaily';
@@ -56,7 +57,7 @@ import { commonStyles as styles } from '../theme/commonStyles';
 import { PALETTE, getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
 import { tr } from '../i18n';
-import { a11yButton, a11yImage, ICON_HIT_SLOP } from '../lib/a11y';
+import { a11yButton, a11yHidden, a11yImage, ICON_HIT_SLOP } from '../lib/a11y';
 import { ScoreText } from '../components/ScoreText';
 import { DailyResultCard } from '../components/DailyResultCard';
 import { DailyLeaderboardModal } from '../components/DailyLeaderboardModal';
@@ -83,6 +84,37 @@ export const MODE_META: Record<string, { icon: ComponentType<{ color: string; si
   languages: { icon: Languages, accent: PALETTE.oceanBlue },
   challenge: { icon: Landmark, accent: PALETTE.chartBlue },
 };
+
+/** The day's Halloween « pays fantômes » modes (none outside the event). */
+function ghostModesFor(date: string): readonly GameMode[] {
+  return GHOST_SCHEDULE[date] ?? [];
+}
+
+/** One line selling each haunted mode on its Halloween card. */
+function ghostPitch(mode: GameMode, language: Language): string {
+  switch (mode) {
+    case 'challenge':
+      return tr(language, 'Retrouve la capitale des pays disparus.', 'Find the capitals of vanished countries.');
+    case 'pinpoint':
+      return tr(
+        language,
+        'Un point sur le globe : à quel pays disparu appartenait-il ?',
+        'A point on the globe: which vanished country was it in?',
+      );
+    case 'scale':
+      return tr(
+        language,
+        'Mets les pays disparus à l’échelle de ceux d’aujourd’hui.',
+        'Put vanished countries to scale against today’s.',
+      );
+    default:
+      return tr(
+        language,
+        'URSS, Yougoslavie, Zaïre… Reconnais les pays disparus.',
+        'USSR, Yugoslavia, Zaire… Spot the countries that vanished.',
+      );
+  }
+}
 
 interface DailyHubProps {
   user: User | null;
@@ -308,6 +340,47 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
         {/* Daily quests (signed-in only — progress lives server-side) */}
         {user && <DailyQuests />}
 
+        {/* Halloween: the haunted modes of the day, surfaced on top so the event
+            is the first thing a push or a menu tap lands on. */}
+        {ghostModesFor(todayUTC).map((mode) => {
+          const ghostResult = state?.results[mode];
+          return (
+            <TouchableOpacity
+              key={`ghost-${mode}`}
+              onPress={() => (ghostResult ? setViewing(ghostResult) : onPlayDaily(mode))}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 14,
+                backgroundColor: '#1b1030',
+                borderRadius: 16,
+                borderWidth: 2,
+                borderColor: '#ff7a18',
+                paddingVertical: 14,
+                paddingHorizontal: 16,
+                marginTop: 8,
+              }}
+              {...a11yButton(dailyModeLabel(mode, language, todayUTC))}
+            >
+              <Text style={{ fontSize: 34 }} {...a11yHidden}>🎃</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: FONTS.mono, color: '#d9cdf0', fontSize: 9 }}>
+                  {tr(language, 'DÉFI HALLOWEEN', 'HALLOWEEN CHALLENGE')}
+                </Text>
+                <Text style={{ fontFamily: FONTS.heading, color: '#ff7a18', fontSize: 16 }}>
+                  {dailyModeLabel(mode, language, todayUTC)}
+                </Text>
+                <Text style={{ fontFamily: FONTS.mono, color: '#d9cdf0', fontSize: 11, marginTop: 3 }}>
+                  {ghostResult
+                    ? `${tr(language, 'Fait', 'Done')} · ${shortScore(ghostResult)}`
+                    : ghostPitch(mode, language)}
+                </Text>
+              </View>
+              <Play color="#ff7a18" size={20} />
+            </TouchableOpacity>
+          );
+        })}
+
         <Text
           style={{
             fontFamily: FONTS.mono,
@@ -330,7 +403,7 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
               <TouchableOpacity
                 key={mode}
                 onPress={() => (done ? setViewing(result) : onPlayDaily(mode))}
-                {...a11yButton(dailyModeLabel(mode, language), {
+                {...a11yButton(dailyModeLabel(mode, language, todayUTC), {
                   hint: done
                     ? tr(language, 'Voir votre résultat', 'View your result')
                     : tr(language, 'Démarrer ce mode', 'Start this mode'),
@@ -366,7 +439,7 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
                       { fontSize: 16, textAlign: 'left' },
                     ]}
                   >
-                    {dailyModeLabel(mode, language)}
+                    {dailyModeLabel(mode, language, todayUTC)}
                   </Text>
                   {done ? (
                     <Text style={{ fontFamily: FONTS.mono, color: c.textFaint, fontSize: 11 }}>
@@ -382,7 +455,7 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
                         ? variantForSeed(seedFor(todayUTC, mode)) === 'audio'
                           ? tr(language, ' · à l’oreille', ' · by ear')
                           : tr(language, ' · à l’écrit', ' · written')
-                        : mode === 'challenge'
+                        : mode === 'challenge' && !isGhostDaily(todayUTC, mode)
                           ? ` · ${challengeLabel(challengeForSeed(seedFor(todayUTC, mode)), language)}`
                           : ''}
                     </Text>
@@ -393,7 +466,7 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
                     onPress={() => setHelpMode(mode)}
                     style={{ padding: 8 }}
                     hitSlop={ICON_HIT_SLOP}
-                    {...a11yButton(tr(language, 'Comment jouer à {0}', 'How to play {0}', [dailyModeLabel(mode, language)]), {
+                    {...a11yButton(tr(language, 'Comment jouer à {0}', 'How to play {0}', [dailyModeLabel(mode, language, todayUTC)]), {
                       hint: tr(language, 'Voir les règles de ce mode', 'See this mode’s rules'),
                     })}
                   >

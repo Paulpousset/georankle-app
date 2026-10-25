@@ -1795,6 +1795,15 @@ window.showResult=function(correct,picked){
   if(picked&&picked!==correct)list.push({id:picked,fill:PAL.badF,stroke:PAL.badS,lw:3.4});
   setOverlayStates(list);
   needsRender=true;};
+// Halloween « Globe hanté »: the answer is a vanished country, painted as all
+// of today's countries that made it up (same for a wrong pick).
+window.showResultMany=function(ok,bad){
+  resultOn=true;
+  var list=[];
+  for(var i=0;i<ok.length;i++)list.push({id:ok[i],fill:PAL.okF,stroke:PAL.okS,lw:3.4});
+  for(var j=0;j<bad.length;j++)list.push({id:bad[j],fill:PAL.badF,stroke:PAL.badS,lw:3.4});
+  setOverlayStates(list);
+  needsRender=true;};
 window.resetRound=function(){resultOn=false;setOverlayStates([]);needsRender=true;};
 window.__recenter=function(){framePin();needsRender=true;};`;
   return core(

@@ -195,12 +195,37 @@ export function projectedRings(cca3: string): [number, number][][] | null {
   if (!entry || entry.r.length === 0) return null;
   const rings = drawableRings(entry);
   if (rings.length === 0) return null;
+  return projectLngLatRings(rings);
+}
 
+/** Same projection as `projectedRings`, for arbitrary [lng, lat] rings. */
+export function projectLngLatRings(rings: number[][][]): [number, number][][] {
   const allLats = rings.flatMap((ring) => ring.map((p) => p[1]));
   const midLat = (Math.min(...allLats) + Math.max(...allLats)) / 2;
   const kx = Math.max(0.2, Math.cos((midLat * Math.PI) / 180));
   const project = ([lng, lat]: number[]): [number, number] => [lng * kx, -lat];
   return rings.map((ring) => ring.map(project));
+}
+
+/**
+ * The [lng, lat] rings drawn for a union of countries (« Pays fantômes »):
+ * each member's drawable rings, shifted by whole turns next to the first
+ * member so a union straddling the antimeridian (the USSR) stays in one piece.
+ */
+export function unionLngLatRings(cca3s: string[]): number[][][] {
+  const out: number[][][] = [];
+  let refLng: number | null = null;
+  for (const cca3 of cca3s) {
+    const entry = POLY_BY_ID.get(cca3);
+    if (!entry || entry.r.length === 0) continue;
+    for (const ring of drawableRings(entry)) {
+      const [cx] = centroid(ring);
+      if (refLng === null) refLng = cx;
+      const shift = Math.round((refLng - cx) / 360) * 360;
+      out.push(shift ? ring.map(([lng, lat]) => [lng + shift, lat]) : ring);
+    }
+  }
+  return out;
 }
 
 /**
@@ -211,6 +236,11 @@ export function projectedRings(cca3: string): [number, number][][] | null {
 export function silhouettePath(cca3: string, size = 100): string | null {
   const projected = projectedRings(cca3);
   if (!projected) return null;
+  return fitPath(projected, size);
+}
+
+/** Fit projected rings into a `size`×`size` viewBox as one SVG path. */
+export function fitPath(projected: [number, number][][], size = 100): string {
   const xs = projected.flatMap((ring) => ring.map((p) => p[0]));
   const ys = projected.flatMap((ring) => ring.map((p) => p[1]));
   const minX = Math.min(...xs);

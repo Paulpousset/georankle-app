@@ -23,6 +23,7 @@ import { supabase } from './supabase';
 import { enqueue } from './syncQueue';
 import { track } from './analytics';
 import { tr } from '../i18n';
+import { isGhostDaily } from '../data/ghostCountries';
 
 /** Shape of the `complete_daily` RPC payload (returned as JSONB). */
 interface CompleteDailyResult {
@@ -316,8 +317,24 @@ export async function syncOnLogin(_user: User): Promise<void> {
 
 // ── Display helpers ──────────────────────────────────────────────────────────
 
-/** Short title for a daily mode card (FR/EN), matching MainMenu's wording. */
-export function dailyModeLabel(mode: GameMode, language: Language): string {
+/**
+ * Short title for a daily mode card (FR/EN), matching MainMenu's wording.
+ * `date` (a daily puzzle's UTC date) gives the Halloween « pays fantômes »
+ * name on the days that mode is haunted; without it, the plain mode name.
+ */
+export function dailyModeLabel(mode: GameMode, language: Language, date?: string): string {
+  if (isGhostDaily(date, mode)) {
+    switch (mode) {
+      case 'silhouette':
+        return tr(language, 'Pays fantômes 👻', 'Ghost Countries 👻');
+      case 'challenge':
+        return tr(language, 'Capitales fantômes 👻', 'Ghost Capitals 👻');
+      case 'pinpoint':
+        return tr(language, 'Globe hanté 👻', 'Haunted Globe 👻');
+      case 'scale':
+        return tr(language, 'Fantômes à l’échelle 👻', 'Ghosts to Scale 👻');
+    }
+  }
   switch (mode) {
     case 'classic':
       return 'Rankle';

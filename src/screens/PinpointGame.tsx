@@ -48,6 +48,13 @@ import {
   type PinpointQuestion,
 } from '../lib/pinpoint';
 import { buildPinpointEarthHtml } from '../lib/globe3d/buildEarthHtml';
+import {
+  buildGhostPinpointRun,
+  ghostAcceptedAnswers,
+  ghostMembers,
+  ghostName,
+  type GhostPinpointQuestion,
+} from '../lib/ghostCountries';
 import { getMapPalette } from '../theme/mapPalette';
 import rawWorldPolygons from '../../assets/world_polygons.json';
 import { isAnswerClose } from '../lib/answerMatch';
@@ -122,6 +129,11 @@ interface PinpointGameProps {
   scope?: ContinentId | null;
   /** Review run: countries to ask about first (see lib/reviewPool). */
   reviewIds?: string[] | null;
+  /**
+   * Halloween « Globe hanté »: the point lies in a country of today, the answer
+   * is the vanished country it belonged to (src/data/ghostCountries.ts).
+   */
+  ghost?: boolean;
 }
 
 export default function PinpointGame({
@@ -136,6 +148,7 @@ export default function PinpointGame({
   onDailyScoreChange,
   scope = null,
   reviewIds = null,
+  ghost = false,
   training = false,
 }: PinpointGameProps) {
   const { isDarkMode, setIsDarkMode } = useTheme();
@@ -162,9 +175,20 @@ export default function PinpointGame({
         ? matchData.game_data.seed + (currentRound - 1)
         : Math.floor(Math.random() * 2147483647)),
   );
-  const [run, setRun] = useState<PinpointQuestion[]>(() =>
-    buildPinpointRun(seed, numQuestions, { continent: scope, reviewIds }),
-  );
+  // Ghost runs swap the questions, names and reveal; the board is the same.
+  const buildRun = (s: number): PinpointQuestion[] =>
+    ghost ? buildGhostPinpointRun(s, numQuestions) : buildPinpointRun(s, numQuestions, { continent: scope, reviewIds });
+  const nameOf = (id: string) => (ghost ? ghostName(id, language) : pinpointCountryName(id, language));
+  /** The page call that paints the reveal (a ghost: every member country). */
+  const resultJs = (answer: string, pickedId: string | null) =>
+    ghost
+      ? `window.showResultMany(${JSON.stringify(ghostMembers(answer))},${JSON.stringify(
+          pickedId && pickedId !== answer ? ghostMembers(pickedId) : [],
+        )});true;`
+      : `window.showResult('${answer}',${pickedId ? `'${pickedId}'` : 'null'});true;`;
+  /** The country the camera frames: the answer, or the ghost member holding the point. */
+  const frameOf = (q: PinpointQuestion) => (ghost ? (q as GhostPinpointQuestion).frame : q.answer);
+  const [run, setRun] = useState<PinpointQuestion[]>(() => buildRun(seed));
   const [runSeed, setRunSeed] = useState(seed);
 
   const [questionIndex, setQuestionIndex] = useState(0);
@@ -234,7 +258,7 @@ export default function PinpointGame({
   };
 
   const question = run[questionIndex] ?? null;
-  const correctName = question ? pinpointCountryName(question.answer, language) : '';
+  const correctName = question ? nameOf(question.answer) : '';
 
   // Drive the page: drop the pin on every question (and again on a reloaded
   // page), and replay the reveal if one is showing.
@@ -243,12 +267,10 @@ export default function PinpointGame({
     const wv = webViewRef.current;
     if (!wv) return;
     wv.injectJavaScript(
-      `window.setPin(${question.lat},${question.lng},'${question.answer}');true;`,
+      `window.setPin(${question.lat},${question.lng},'${frameOf(question)}');true;`,
     );
     if (feedback) {
-      wv.injectJavaScript(
-        `window.showResult('${question.answer}',${picked ? `'${picked}'` : 'null'});true;`,
-      );
+      wv.injectJavaScript(resultJs(question.answer, picked));
     }
     // The reveal is replayed only when the page reloads mid-feedback; a fresh
     // reveal is injected by resolve().
@@ -306,15 +328,17 @@ export default function PinpointGame({
     );
     setFeedback({ correct, points, answer: correctName });
     // The borders appear only now, around the point.
-    webViewRef.current?.injectJavaScript(
-      `window.showResult('${question.answer}',${pickedCca3 ? `'${pickedCca3}'` : 'null'});true;`,
-    );
+    webViewRef.current?.injectJavaScript(resultJs(question.answer, pickedCca3));
   };
 
   const submitCash = () => {
     if (!question || !cashInput.trim()) return;
     resolve(
-      isAnswerClose(cashInput, correctName, pinpointAcceptedAnswers(question.answer)),
+      isAnswerClose(
+        cashInput,
+        correctName,
+        ghost ? ghostAcceptedAnswers(question.answer) : pinpointAcceptedAnswers(question.answer),
+      ),
       null,
       cashInput.trim(),
     );
@@ -353,8 +377,8 @@ export default function PinpointGame({
       'pinpoint',
       run.map((q, i) => ({
         cca3: q.answer,
-        prompt: pinpointCountryName(q.answer, language),
-        correctAnswer: pinpointCountryName(q.answer, language),
+        prompt: nameOf(q.answer),
+        correctAnswer: nameOf(q.answer),
         ok: !!history[i]?.correct,
       })),
     );
@@ -422,7 +446,7 @@ export default function PinpointGame({
     // changes, so re-drop the pin by hand.
     if (run[0]) {
       webViewRef.current?.injectJavaScript(
-        `window.setPin(${run[0].lat},${run[0].lng},'${run[0].answer}');true;`,
+        `window.setPin(${run[0].lat},${run[0].lng},'${frameOf(run[0])}');true;`,
       );
     }
   };
@@ -434,7 +458,7 @@ export default function PinpointGame({
   const resetGame = () => {
     const fresh = Math.floor(Math.random() * 2147483647);
     setRunSeed(fresh);
-    setRun(buildPinpointRun(fresh, numQuestions, { continent: scope, reviewIds }));
+    setRun(buildRun(fresh));
     restartRun();
   };
 
@@ -448,7 +472,7 @@ export default function PinpointGame({
     cca3: q.answer,
     prompt: tr(language, 'Point n°{0}', 'Point #{0}', [i + 1]),
     yourAnswer: history[i]?.correct ? undefined : history[i]?.yourAnswer,
-    correctAnswer: pinpointCountryName(q.answer, language),
+    correctAnswer: nameOf(q.answer),
     ok: !!history[i]?.correct,
   }));
 
@@ -471,7 +495,7 @@ export default function PinpointGame({
             <Home color={c.accent} size={18} />
           </TouchableOpacity>
           <Text style={[styles.title, { color: c.text }]} numberOfLines={1}>
-            {tr(language, 'Point sur le Globe', 'Pin on the Globe')}
+            {ghost ? tr(language, 'Globe hanté', 'Haunted Globe') : tr(language, 'Point sur le Globe', 'Pin on the Globe')}
           </Text>
         </View>
 
@@ -550,7 +574,9 @@ export default function PinpointGame({
         <View style={styles.promptRow}>
           <MapPin color={PALETTE.vermilion} size={16} {...a11yHidden} />
           <Text style={[styles.instruction, { color: c.textMuted }]}>
-            {tr(language, 'Dans quel pays est ce point ?', 'Which country is this point in?')}
+            {ghost
+              ? tr(language, 'Dans quel pays disparu était ce point ? 👻', 'Which vanished country was this point in? 👻')
+              : tr(language, 'Dans quel pays est ce point ?', 'Which country is this point in?')}
           </Text>
         </View>
 
@@ -623,12 +649,12 @@ export default function PinpointGame({
                 key={cca3}
                 style={[styles.optionBtn, !isDarkMode && styles.optionBtnLight]}
                 onPress={() =>
-                  resolve(cca3 === question.answer, cca3, pinpointCountryName(cca3, language))
+                  resolve(cca3 === question.answer, cca3, nameOf(cca3))
                 }
-                {...a11yButton(pinpointCountryName(cca3, language))}
+                {...a11yButton(nameOf(cca3))}
               >
                 <Text style={[styles.optionText, { color: c.text }]}>
-                  {pinpointCountryName(cca3, language)}
+                  {nameOf(cca3)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -750,7 +776,8 @@ export default function PinpointGame({
       </KeyboardAvoidingView>
 
       {/* Mounted once at the top level so it opens from a training reveal. */}
-      <CountryFactCard cca3={factsFor} onClose={() => setFactsFor(null)} />
+      {/* A ghost has no fact sheet: it has no cca3 left. */}
+      <CountryFactCard cca3={ghost ? null : factsFor} onClose={() => setFactsFor(null)} />
     </SafeAreaView>
   );
 }

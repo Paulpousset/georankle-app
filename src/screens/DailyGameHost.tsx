@@ -8,6 +8,8 @@ import type { GameMode } from '../types';
 import { completeDaily, getLocalState, seedFor, type DailyResult } from '../lib/daily';
 import { variantForSeed } from '../lib/languages';
 import { challengeForSeed } from '../data/challenges';
+import { isGhostDaily } from '../data/ghostCountries';
+import { ghostCapitalsChallenge } from '../lib/ghostCountries';
 import { prefetchReferralCode, shareDailyResult } from '../lib/shareDaily';
 import { track } from '../lib/analytics';
 import { maybeAskForReview } from '../lib/reviewPrompt';
@@ -212,6 +214,9 @@ export default function DailyGameHost({
         setGameMode={exitOnMenu}
         user={user}
         onDailyScoreChange={reportScore}
+        // Halloween: on its haunted days the slot plays « Pays fantômes » —
+        // same seed, same leaderboard, no server change. Same for the 3 below.
+        ghost={isGhostDaily(date, mode)}
         {...common}
       />
     );
@@ -221,6 +226,7 @@ export default function DailyGameHost({
         setGameMode={exitOnMenu}
         user={user}
         onDailyScoreChange={reportScore}
+        ghost={isGhostDaily(date, mode)}
         {...common}
       />
     );
@@ -230,6 +236,7 @@ export default function DailyGameHost({
         setGameMode={exitOnMenu}
         user={user}
         onDailyScoreChange={reportScore}
+        ghost={isGhostDaily(date, mode)}
         {...common}
       />
     );
@@ -286,7 +293,7 @@ export default function DailyGameHost({
         // Which of the country quizzes is played is derived from the day's seed,
         // NOT chosen by the player — same puzzle for everyone, like the variant
         // in Langues. The quiz's own questions are then seeded from that seed.
-        challenge={challengeForSeed(seed)}
+        challenge={isGhostDaily(date, mode) ? ghostCapitalsChallenge() : challengeForSeed(seed)}
         onExit={requestExit}
         onDailyScoreChange={reportScore}
         dailySeed={seed}

@@ -13,7 +13,9 @@
 import type { Language } from '../types';
 import rawCountriesStats from '../../assets/countries_stats.json';
 import { createSeededRng, seededShuffle } from './rng';
-import { projectedRings, silhouetteCountries, silhouetteCountryName } from './silhouette';
+import { projectLngLatRings, projectedRings, silhouetteCountries, silhouetteCountryName } from './silhouette';
+import { ghostArea, ghostLngLatRings, ghostName, isGhostId } from './ghostCountries';
+import { GHOST_COUNTRIES } from '../data/ghostCountries';
 
 interface StatEntry {
   cca3: string;
@@ -58,10 +60,14 @@ export interface ShapeGeometry {
 
 const geometryCache = new Map<string, ShapeGeometry | null>();
 
-/** Projected rings + bounding box of a country, or null with no polygon. */
+/**
+ * Projected rings + bounding box of a country, or null with no polygon. Also
+ * takes a Halloween ghost id (« Fantômes à l'échelle »): same projection.
+ */
 export function shapeGeometry(cca3: string): ShapeGeometry | null {
   if (geometryCache.has(cca3)) return geometryCache.get(cca3)!;
-  const rings = projectedRings(cca3);
+  const ghostRings = isGhostId(cca3) ? ghostLngLatRings(cca3) : null;
+  const rings = ghostRings ? (ghostRings.length ? projectLngLatRings(ghostRings) : null) : projectedRings(cca3);
   let geo: ShapeGeometry | null = null;
   if (rings) {
     const xs = rings.flatMap((ring) => ring.map((p) => p[0]));
@@ -97,13 +103,17 @@ export interface ScaleQuestion {
  * slider range is randomized per pair so the answer never sits at the same spot
  * on the track (otherwise "drag to the middle" would win).
  */
-export function buildScaleRun(seed: number, count = 5): ScaleQuestion[] {
+export function buildScaleRun(seed: number, count = 5, opts: { ghost?: boolean } = {}): ScaleQuestion[] {
   const rng = createSeededRng(seed);
-  const pool = seededShuffle(silhouetteCountries(), rng);
+  // Halloween: every pair puts a vanished country on the left, against a
+  // country of today (or another ghost) on the right.
+  const ghostIds = opts.ghost ? GHOST_COUNTRIES.map((g) => g.id) : [];
+  const pool = seededShuffle([...silhouetteCountries(), ...ghostIds], rng);
+  const lefts = opts.ghost ? seededShuffle(ghostIds, rng) : pool;
   const used = new Set<string>();
   const run: ScaleQuestion[] = [];
 
-  for (const left of pool) {
+  for (const left of lefts) {
     if (run.length >= count) break;
     if (used.has(left)) continue;
     const el = extent(left);
@@ -194,13 +204,14 @@ export function trueUnitPx(q: ScaleQuestion): number {
   return Number.isFinite(u) ? u : 1;
 }
 
-/** Localized name (shared with Silhouette). */
+/** Localized name (shared with Silhouette; a ghost id gives its old name). */
 export function scaleCountryName(cca3: string, lang: Language): string {
-  return silhouetteCountryName(cca3, lang);
+  return isGhostId(cca3) ? ghostName(cca3, lang) : silhouetteCountryName(cca3, lang);
 }
 
-/** Official surface area in km², when known. */
+/** Official surface area in km², when known (a ghost: its members' sum). */
 export function countryArea(cca3: string): number | null {
+  if (isGhostId(cca3)) return ghostArea(cca3);
   const a = AREA_BY_ID.get(cca3);
   return typeof a === 'number' && a > 0 ? a : null;
 }

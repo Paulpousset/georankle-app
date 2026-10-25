@@ -34,6 +34,12 @@ export interface ChallengeEntity {
   flagSlug?: string;
   /** Extra accepted spellings for CASH (e.g. the other language's name). */
   aliases?: string[];
+  /**
+   * Per-language prompt / answer, preferred over the FR/EN pair when present
+   * (the Halloween ghost capitals carry names in all sixteen languages).
+   */
+  promptI18n?: Partial<Record<Language, string>>;
+  answerI18n?: Partial<Record<Language, string>>;
 }
 
 export interface Challenge {
@@ -482,10 +488,11 @@ export function challengesByCountry(): { country: string; emoji: string; items: 
 // ── Per-entity accessors (language-aware) ────────────────────────────────────
 
 export function entityAnswer(e: ChallengeEntity, lang: Language): string {
-  return tr(lang, e.answerFr, e.answerEn);
+  return e.answerI18n?.[lang] || tr(lang, e.answerFr, e.answerEn);
 }
 
 export function entityPrompt(e: ChallengeEntity, lang: Language): string {
+  if (e.promptI18n?.[lang]) return e.promptI18n[lang]!;
   return e.promptFr ? tr(lang, e.promptFr, e.promptEn ?? e.promptFr) : '';
 }
 
@@ -495,7 +502,13 @@ export function entityFlagUrl(e: ChallengeEntity): string | null {
 
 /** Every accepted spelling for a CASH answer (both languages + aliases). */
 export function entityAcceptedAnswers(e: ChallengeEntity): string[] {
-  return Array.from(new Set([e.answerFr, e.answerEn, ...(e.aliases ?? [])].filter(Boolean)));
+  return Array.from(
+    new Set(
+      [e.answerFr, e.answerEn, ...Object.values(e.answerI18n ?? {}), ...(e.aliases ?? [])].filter(
+        (a): a is string => !!a,
+      ),
+    ),
+  );
 }
 
 /**
