@@ -1,16 +1,18 @@
 /**
  * « Partage équitable » — a country with its regions and its biggest cities,
- * named but with no figures (the populations show once the split is in). The
- * player draws straight lines across
- * the map (one for halves, two for thirds or quarters) so that the population
- * of the cities shown ends up in equal parts. Each map scores 0..200 from how
+ * named but with no figures. The player draws straight lines across the map
+ * (one for halves, two for thirds or quarters) so that the whole population
+ * of the area (every town and village, the cities are only landmarks) ends
+ * up in equal parts. Each map scores 0..200 from how
  * close the split gets to equal shares, counted from the best split straight
  * lines can reach on that map (see src/lib/split.ts), so a 5-map run lands on
  * 0..1000 — already the normalized scale that coins expect.
  *
- * A line is drawn by dragging across the map; its two ends can then be dragged
- * to adjust it. The cities take the colour of their part as the lines move,
- * but the shares stay hidden until the split is submitted.
+ * A line is drawn by dragging across the map; it can then be moved whole by
+ * dragging it, or turned by dragging one of its ends. Once every line is
+ * drawn, a new one replaces the oldest. The cities take the colour of their
+ * part as the lines move, but the shares stay hidden until the split is
+ * submitted.
  */
 import { showAlert } from '../lib/alert';
 import { useState, useEffect, useLayoutEffect, useRef } from 'react';
@@ -84,6 +86,8 @@ const BAD = '#8b1a1a';
 const MIN_DRAW = 8;
 /** A touch this close to a line's end grabs that end. */
 const HANDLE_HIT = 9;
+/** A touch this close to a line (and not to an end) moves the whole line. */
+const LINE_HIT = 6;
 /** Tall countries (Chile-like boards) are capped at this height, in px. */
 const BOARD_MAX_H = 520;
 
@@ -120,21 +124,21 @@ function instruction(q: SplitQuestion, language: Language): string {
   if (q.parts === 2) {
     return tr(
       language,
-      'Trace un trait qui coupe la population des villes en deux parts égales.',
-      'Draw a line that splits the population of the cities into two equal halves.',
+      'Trace un trait qui coupe la population en deux parts égales.',
+      'Draw a line that splits the population into two equal halves.',
     );
   }
   if (q.parts === 3) {
     return tr(
       language,
-      'Trace deux traits qui coupent la population des villes en 3 parts égales.',
-      'Draw two lines that split the population of the cities into 3 equal parts.',
+      'Trace deux traits qui coupent la population en 3 parts égales.',
+      'Draw two lines that split the population into 3 equal parts.',
     );
   }
   return tr(
     language,
-    'Trace deux traits qui se croisent pour couper la population des villes en 4 parts égales.',
-    'Draw two crossing lines that split the population of the cities into 4 equal parts.',
+    'Trace deux traits qui se croisent pour couper la population en 4 parts égales.',
+    'Draw two crossing lines that split the population into 4 equal parts.',
   );
 }
 
@@ -154,7 +158,6 @@ function SplitBoard({
   lines,
   draft,
   labels,
-  showPop = false,
   handles,
   isDarkMode,
   colors,
@@ -164,8 +167,6 @@ function SplitBoard({
   /** Line being drawn (dashed), drawn over `lines`. */
   draft?: SplitLine | null;
   labels: boolean;
-  /** Add each city's population to its label (once the split is in). */
-  showPop?: boolean;
   /** Show the draggable ends of the lines. */
   handles: boolean;
   isDarkMode: boolean;
@@ -232,7 +233,7 @@ function SplitBoard({
           strokeWidth={0.5}
         />
       ))}
-      {labels && <CityLabels map={map} land={land} ink={ink} showPop={showPop} />}
+      {labels && <CityLabels map={map} land={land} ink={ink} />}
       {handles &&
         lines.flatMap((l, i) =>
           [l.a, l.b].map((p, k) => (
@@ -243,17 +244,11 @@ function SplitBoard({
   );
 }
 
-/**
- * « Lyon » next to every dot (« Lyon 1,4 M » once revealed), with a halo so it
- * reads over the lines.
- */
-function CityLabels({ map, land, ink, showPop }: { map: SplitMap; land: string; ink: string; showPop: boolean }) {
+/** « Lyon » next to every dot, with a halo so it reads over the lines. */
+function CityLabels({ map, land, ink }: { map: SplitMap; land: string; ink: string }) {
   const { language } = useLanguage();
   const names = map.cities.map((c) => splitCityName(c, language));
-  const full = map.cities.map((c, i) => `${names[i]} ${fmtCount(c.pop, language)}`);
-  // Placed for the revealed text, so labels stay put when the figures appear.
-  const spots = placeLabels(map, full);
-  const shown = showPop ? full : names;
+  const spots = placeLabels(map, names);
   return (
     <>
       {[true, false].map((halo) =>
@@ -270,7 +265,7 @@ function CityLabels({ map, land, ink, showPop }: { map: SplitMap; land: string; 
             strokeWidth={halo ? 1.1 : undefined}
             strokeLinejoin="round"
           >
-            {shown[i]}
+            {names[i]}
           </SvgText>
         )),
       )}
@@ -322,8 +317,12 @@ export default function SplitGame({ setGameMode, user, training = false }: Split
       maxLines: question?.lines ?? 1,
       locked: !!feedback,
       unit: 1,
-      /** What the current drag moves: a line's end, or a new line from `origin`. */
-      grab: null as null | { kind: 'end'; line: number; end: 'a' | 'b'; origin: Pt } | { kind: 'new'; slot: number; origin: Pt },
+      /** What the current drag moves: a line's end, a whole line, or a new line from `origin`. */
+      grab: null as
+        | null
+        | { kind: 'end'; line: number; end: 'a' | 'b'; origin: Pt }
+        | { kind: 'move'; line: number; from: SplitLine }
+        | { kind: 'new'; origin: Pt },
       draft: null as SplitLine | null,
     },
   }));
@@ -362,14 +361,43 @@ export default function SplitGame({ setGameMode, user, training = false }: Split
             }
           }
         }
-        // A new line; once every line is drawn, it replaces the last one.
-        s.grab = { kind: 'new', slot: Math.min(s.lines.length, s.maxLines - 1), origin: p };
+        // On a line (closest first): move it whole.
+        let near = -1;
+        let nearDist = LINE_HIT;
+        s.lines.forEach((l, i) => {
+          const len = Math.hypot(l.b.x - l.a.x, l.b.y - l.a.y) || 1;
+          const dist = Math.abs((l.b.x - l.a.x) * (p.y - l.a.y) - (l.b.y - l.a.y) * (p.x - l.a.x)) / len;
+          if (dist <= nearDist) {
+            near = i;
+            nearDist = dist;
+          }
+        });
+        if (near >= 0) {
+          s.grab = { kind: 'move', line: near, from: s.lines[near] };
+          return;
+        }
+        // A new line; once every line is drawn, it replaces the oldest one.
+        s.grab = { kind: 'new', origin: p };
         s.draft = { a: p, b: p };
       },
       onPanResponderMove: (_evt, g) => {
         const s = live.current;
         const grab = s.grab;
         if (!grab) return;
+        if (grab.kind === 'move') {
+          const m = s.map;
+          const { a, b } = grab.from;
+          // The whole line slides, both ends kept on the board.
+          const dx = m
+            ? Math.max(-Math.min(a.x, b.x), Math.min(m.width - Math.max(a.x, b.x), g.dx * s.unit))
+            : g.dx * s.unit;
+          const dy = m
+            ? Math.max(-Math.min(a.y, b.y), Math.min(m.height - Math.max(a.y, b.y), g.dy * s.unit))
+            : g.dy * s.unit;
+          const moved = { a: { x: a.x + dx, y: a.y + dy }, b: { x: b.x + dx, y: b.y + dy } };
+          setLines((prev) => prev.map((l, i) => (i === grab.line ? moved : l)));
+          return;
+        }
         const p = clampPt({ x: grab.origin.x + g.dx * s.unit, y: grab.origin.y + g.dy * s.unit });
         if (grab.kind === 'end') {
           setLines((prev) =>
@@ -389,11 +417,8 @@ export default function SplitGame({ setGameMode, user, training = false }: Split
         setDragging(false);
         setDraft(null);
         if (grab?.kind === 'new' && d && Math.hypot(d.b.x - d.a.x, d.b.y - d.a.y) >= MIN_DRAW) {
-          setLines((prev) => {
-            const next = prev.slice(0, grab.slot);
-            next[grab.slot] = d;
-            return next;
-          });
+          const max = s.maxLines;
+          setLines((prev) => [...prev, d].slice(-max));
           Haptics.selectionAsync().catch(() => {});
         }
       },
@@ -559,7 +584,7 @@ export default function SplitGame({ setGameMode, user, training = false }: Split
             {countryName}
           </Text>
           <Text style={[styles.totalText, { color: c.textMuted }]}>
-            {tr(language, 'Population des villes : {0}', 'Population of the cities: {0}', [
+            {tr(language, 'Population de la zone : {0}', 'Population of the area: {0}', [
               fmtCount(map.total, language),
             ])}
           </Text>
@@ -574,10 +599,10 @@ export default function SplitGame({ setGameMode, user, training = false }: Split
             <View style={StyleSheet.absoluteFill} {...a11yHidden}>
               <SplitBoard
                 map={map}
-                lines={lines}
+                // A new line drawn once every line is there replaces the oldest: hide it meanwhile.
+                lines={draft && lines.length >= question.lines ? lines.slice(1) : lines}
                 draft={draft}
                 labels
-                showPop={!!feedback}
                 handles={!feedback}
                 isDarkMode={isDarkMode}
                 colors={colors}
@@ -599,7 +624,17 @@ export default function SplitGame({ setGameMode, user, training = false }: Split
             <Text style={[styles.hint, { color: c.textMuted }]}>
               {partsLeft > 0
                 ? tr(language, 'Encore un trait à tracer.', 'One more line to draw.')
-                : tr(language, 'Fais glisser les ronds blancs pour ajuster.', 'Drag the white dots to adjust.')}
+                : question.lines > 1
+                  ? tr(
+                      language,
+                      'Glisse un trait pour le déplacer, un rond blanc pour le tourner. Un nouveau trait remplace le plus ancien.',
+                      'Drag a line to move it, a white dot to turn it. A new line replaces the oldest.',
+                    )
+                  : tr(
+                      language,
+                      'Glisse le trait pour le déplacer, un rond blanc pour le tourner.',
+                      'Drag the line to move it, a white dot to turn it.',
+                    )}
             </Text>
           )}
         </View>
@@ -638,7 +673,10 @@ export default function SplitGame({ setGameMode, user, training = false }: Split
               {partShares(map, lines).map((p) => (
                 <View key={p.key} style={[styles.shareChip, { borderColor: colors[p.key] }]}>
                   <View style={[styles.shareDot, { backgroundColor: colors[p.key] }]} />
-                  <ScoreText style={[styles.shareText, { color: c.text }]}>{`${Math.round(p.share * 100)} %`}</ScoreText>
+                  <View>
+                    <ScoreText style={[styles.shareText, { color: c.text }]}>{`${Math.round(p.share * 100)} %`}</ScoreText>
+                    <Text style={[styles.sharePop, { color: c.textMuted }]}>{fmtCount(p.pop, language)}</Text>
+                  </View>
                 </View>
               ))}
             </View>
@@ -843,6 +881,7 @@ const styles = StyleSheet.create({
   },
   shareDot: { width: 10, height: 10, borderRadius: 5 },
   shareText: { fontFamily: FONTS.monoBold, fontSize: 16 },
+  sharePop: { fontFamily: FONTS.mono, fontSize: 11 },
   learnBtn: { borderWidth: 1, borderRadius: 10, paddingVertical: 7, paddingHorizontal: 14, marginTop: 10 },
   learnBtnText: { fontFamily: FONTS.monoBold, fontSize: 11.5 },
   nextBtn: {

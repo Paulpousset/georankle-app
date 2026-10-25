@@ -4,19 +4,22 @@
  * A country (or a group of countries: Benelux, Scandinavia, a whole
  * continent…) is drawn with its borders and its biggest cities, named but
  * with no figures: knowing which ones are big is the game. The player draws
- * one or two straight lines across the map so that the population of the
- * cities shown is split into equal parts
- * (2 parts with one line; 3 or 4 with two). The score is how close the split
+ * one or two straight lines across the map so that the whole population of
+ * the area drawn (every town and village, not only the cities shown) is split
+ * into equal parts (2 parts with one line; 3 or 4 with two). The score is how close the split
  * gets to equal shares, measured against the best split straight lines can
  * reach on that map — a country whose capital outweighs the rest can still
  * score full marks.
  *
  * Maps come from the region shapes (assets/regions), the globe's country
  * outlines (assets/world_polygons.json) for multi-country maps, and the city
- * table built by scripts/build_split_data.mjs. Everything is seeded: same seed, same maps.
+ * table and the population grid (assets/split_population.json: every
+ * GeoNames place binned into cells and scaled to the country's population),
+ * both built by scripts/build_split_data.mjs. Everything is seeded: same seed, same maps.
  */
 import type { Language } from '../types';
 import rawSplitCities from '../../assets/split_cities.json';
+import rawSplitPopulation from '../../assets/split_population.json';
 import rawWorldPolygons from '../../assets/world_polygons.json';
 import rawCountriesStats from '../../assets/countries_stats.json';
 import { BUNDLED_REGIONS } from '../../assets/regions';
@@ -31,6 +34,8 @@ const CITY_TABLE = rawSplitCities as unknown as Record<string, CityRow[]>;
 const WORLD_RINGS = new Map(
   (rawWorldPolygons as { id: string; r: number[][][] }[]).map((p) => [p.id, p.r]),
 );
+/** Per country, flat [lat·100, lng·100, thousands of people] triples. */
+const POP_TABLE = rawSplitPopulation as unknown as Record<string, number[]>;
 const STATS = rawCountriesStats as { cca3: string; region?: string; subregion?: string }[];
 
 /** Board width in SVG viewBox units; the height follows the country's shape. */
@@ -59,10 +64,21 @@ const PARTS_PLAN: SplitParts[] = [2, 2, 3, 3, 4];
 /**
  * A map is only asked for a number of parts when straight lines can get this
  * close to equal shares on it (total variation distance, see `splitError`).
- * Halves are looser: no line can cut Paris off alone, so France's best is
- * 61/39 — still a fair map, since points are counted from that best.
+ * With every inhabitant counted the grid is fine and nearly every map
+ * qualifies; a city-state whose people sit in one cell would not.
  */
 const MAX_BEST_ERROR: Record<SplitParts, number> = { 2: 0.12, 3: 0.06, 4: 0.06 };
+
+/** Directions tried when looking for the best split (see `bestSplitError`). */
+const BEST_ANGLES = 90;
+/** Fewer for quarters: every pair of directions is tried. */
+const BEST_PAIR_ANGLES = 60;
+/**
+ * Grid cells closer than this on the board (viewBox units) are merged: finer
+ * than any line a finger can place, and it keeps a continent to a few
+ * thousand cells.
+ */
+const PEOPLE_BIN = 1.5;
 
 export type SplitParts = 2 | 3 | 4;
 
@@ -75,6 +91,13 @@ export interface SplitCity {
   y: number;
 }
 
+/** A cell of the population grid: where its people live on the board. */
+export interface SplitPeople {
+  x: number;
+  y: number;
+  pop: number;
+}
+
 export interface SplitMap {
   /** A country's cca3, or a group's id (see SPLIT_GROUPS). */
   id: string;
@@ -82,7 +105,11 @@ export interface SplitMap {
   height: number;
   /** One SVG path per region or country (the land drawn is their union). */
   regions: string[];
+  /** The cities named on the map (landmarks: they don't weigh on the score). */
   cities: SplitCity[];
+  /** Everyone living in the area drawn, as grid cells: what the lines split. */
+  people: SplitPeople[];
+  /** Population of the whole area drawn (sum of `people`). */
   total: number;
 }
 
@@ -194,7 +221,7 @@ export function splitMap(id: string): SplitMap | null {
       .flatMap((c) => (WORLD_RINGS.has(c) || BUNDLED_REGIONS[c] ? CITY_TABLE[c] ?? [] : []))
       .filter(([, lat, lng]) => lng >= west && lng <= east && lat >= south && lat <= north)
       .sort((a, b) => b[3] - a[3]);
-    map = buildMap(id, shapes, { west, south, east, north }, rows);
+    map = buildMap(id, shapes, { west, south, east, north }, rows, members);
   } else {
     const file = BUNDLED_REGIONS[id];
     const rows = CITY_TABLE[id];
@@ -212,7 +239,7 @@ export function splitMap(id: string): SplitMap | null {
             if (lat < south) south = lat;
             if (lat > north) north = lat;
           }
-      map = buildMap(id, core.map((r) => r.r), { west, south, east, north }, rows);
+      map = buildMap(id, core.map((r) => r.r), { west, south, east, north }, rows, [id]);
     }
   }
   mapCache.set(id, map);
@@ -245,14 +272,17 @@ function continuous(ring: number[][], lng0: number): number[][] {
 /**
  * Fits a frame (in degrees, `west` may run past ±180 for a country straddling
  * the antimeridian) into the board, draws the shapes (each a list of [lng, lat]
- * rings) and keeps the biggest cities of `rows` (sorted by population) that
- * fall inside the frame and clear each other.
+ * rings), keeps the biggest cities of `rows` (sorted by population) that
+ * fall inside the frame and clear each other, and places the population grid
+ * of `members` (cells outside the frame, such as overseas territories, are
+ * not part of the map).
  */
 function buildMap(
   id: string,
   shapes: number[][][][],
   frame: { west: number; south: number; east: number; north: number },
   rows: CityRow[],
+  members: string[],
 ): SplitMap | null {
   const lng0 = (frame.west + frame.east) / 2;
   const wrap = (lng: number) => lng0 + ((((lng - lng0) % 360) + 540) % 360) - 180;
@@ -292,7 +322,32 @@ function buildMap(
     cities.push({ name, names, pop, x: p.x, y: p.y });
   }
   if (cities.length < MIN_CITIES) return null;
-  return { id, width: BOARD_W, height, regions, cities, total: cities.reduce((s, c) => s + c.pop, 0) };
+
+  const bins = new Map<number, SplitPeople>();
+  for (const c of members) {
+    const flat = POP_TABLE[c];
+    if (!flat) continue;
+    for (let i = 0; i < flat.length; i += 3) {
+      const lat = flat[i] / 100;
+      const lng = flat[i + 1] / 100;
+      if (lat < frame.south || lat > frame.north) continue;
+      const p = toBoard(lng, lat);
+      if (p.x < 0 || p.x > BOARD_W || p.y < 0 || p.y > height) continue;
+      const pop = flat[i + 2] * 1000;
+      const key = Math.floor(p.x / PEOPLE_BIN) * 10000 + Math.floor(p.y / PEOPLE_BIN);
+      const bin = bins.get(key);
+      if (!bin) bins.set(key, { x: p.x * pop, y: p.y * pop, pop });
+      else {
+        bin.x += p.x * pop;
+        bin.y += p.y * pop;
+        bin.pop += pop;
+      }
+    }
+  }
+  const people = [...bins.values()].map((b) => ({ x: b.x / b.pop, y: b.y / b.pop, pop: b.pop }));
+  const total = people.reduce((s, p) => s + p.pop, 0);
+  if (!total) return null;
+  return { id, width: BOARD_W, height, regions, cities, people, total };
 }
 
 /** Which side of a line a point falls on (true = left of a→b). */
@@ -305,15 +360,26 @@ function sideOf(line: SplitLine, p: Pt): boolean {
  * gives parts 0/1 and two lines 0..3. Cities sharing a key are in one part.
  */
 export function cityParts(map: SplitMap, lines: SplitLine[]): number[] {
-  return map.cities.map((c) => lines.reduce((key, l, i) => key | (sideOf(l, c) ? 1 << i : 0), 0));
+  return map.cities.map((c) => partKey(lines, c));
 }
 
-/** Population share of each non-empty part, biggest first. */
-export function partShares(map: SplitMap, lines: SplitLine[]): { key: number; share: number }[] {
+function partKey(lines: SplitLine[], p: Pt): number {
+  return lines.reduce((key, l, i) => key | (sideOf(l, p) ? 1 << i : 0), 0);
+}
+
+/**
+ * Population of each non-empty part, biggest first: everyone in the area
+ * drawn counts, not only the cities named (`pop` in people, `share` of the
+ * total).
+ */
+export function partShares(map: SplitMap, lines: SplitLine[]): { key: number; share: number; pop: number }[] {
   const sums = new Map<number, number>();
-  cityParts(map, lines).forEach((key, i) => sums.set(key, (sums.get(key) ?? 0) + map.cities[i].pop));
+  for (const p of map.people) {
+    const key = partKey(lines, p);
+    sums.set(key, (sums.get(key) ?? 0) + p.pop);
+  }
   return [...sums.entries()]
-    .map(([key, s]) => ({ key, share: s / map.total }))
+    .map(([key, pop]) => ({ key, pop, share: pop / map.total }))
     .sort((a, b) => b.share - a.share);
 }
 
@@ -333,67 +399,68 @@ export function splitError(shares: number[], parts: SplitParts): number {
 }
 
 /**
- * Every way one straight line can split the cities, as bitmasks of the cities
- * on one side. The line through two cities, nudged so each of the two falls on
- * either side, reaches every split a line can make; the empty mask stands for
- * a line drawn off the map.
+ * Parallel lines of one direction (normal at `angle`) cutting the population
+ * at the cumulative shares `targets` (ascending), each cut sitting between the
+ * two cells whose running share comes closest to it: the part of every cell,
+ * 0 before the first cut up to targets.length after the last.
  */
-function lineSplits(cities: Pt[]): number[] {
-  const n = cities.length;
-  const full = (1 << n) - 1;
-  const masks = new Set<number>([0]);
-  for (let i = 0; i < n; i++)
-    for (let j = i + 1; j < n; j++) {
-      const a = cities[i];
-      const b = cities[j];
-      let base = 0;
-      for (let k = 0; k < n; k++) {
-        if (k === i || k === j) continue;
-        const cross = (b.x - a.x) * (cities[k].y - a.y) - (b.y - a.y) * (cities[k].x - a.x);
-        if (cross > 0) base |= 1 << k;
-      }
-      for (const extra of [0, 1 << i, 1 << j, (1 << i) | (1 << j)]) {
-        // A split and its mirror are the same two parts: keep the one without city 0.
-        const m = base | extra;
-        masks.add(m & 1 ? full ^ m : m);
-      }
-    }
-  return [...masks];
+function quantileParts(people: SplitPeople[], total: number, angle: number, targets: number[]): Uint8Array {
+  const nx = Math.cos(angle);
+  const ny = Math.sin(angle);
+  const proj = people.map((p) => p.x * nx + p.y * ny);
+  const order = Array.from(people.keys()).sort((i, j) => proj[i] - proj[j]);
+  const cuts = targets.map(() => ({ at: 0, gap: Infinity }));
+  let run = 0;
+  order.forEach((i, k) => {
+    run += people[i].pop / total;
+    targets.forEach((t, c) => {
+      if (Math.abs(run - t) < cuts[c].gap) cuts[c] = { at: k + 1, gap: Math.abs(run - t) };
+    });
+  });
+  const parts = new Uint8Array(people.length);
+  order.forEach((i, k) => (parts[i] = cuts.reduce((n, c) => n + (k >= c.at ? 1 : 0), 0)));
+  return parts;
 }
 
 const bestCache = new Map<string, number>();
 
 /**
- * The smallest error (see `splitError`) any `lines` straight lines can reach
- * on a map when `parts` equal parts are asked: exhaustive over every split one
- * line can make (two lines: every pair of them, which covers crossing and
- * parallel lines alike).
+ * The smallest error (see `splitError`) `lines` straight lines can reach on a
+ * map when `parts` equal parts are asked, searched over BEST_ANGLES
+ * directions: halves cut at the median, thirds by two parallel lines at the
+ * thirds, quarters by every pair of median lines. Close to the true best
+ * (the grid is fine), and a player who beats it simply scores full marks.
  */
 export function bestSplitError(map: SplitMap, parts: SplitParts, lines: 1 | 2): number {
   const cacheKey = `${map.id}:${parts}:${lines}`;
   if (bestCache.has(cacheKey)) return bestCache.get(cacheKey)!;
-  const n = map.cities.length;
-  const full = (1 << n) - 1;
-  const sum = new Float64Array(1 << n);
-  for (let m = 1; m <= full; m++) {
-    const low = m & -m;
-    sum[m] = sum[m ^ low] + map.cities[31 - Math.clz32(low)].pop / map.total;
-  }
-  const splits = lineSplits(map.cities);
+  const { people, total } = map;
+  const w = people.map((p) => p.pop / total);
+  const sums = [0, 0, 0, 0];
+  // A split this close to equal can't be told apart from a perfect one.
+  const enough = 1e-3;
   let best = Infinity;
-  if (lines === 1) {
-    for (const m of splits) best = Math.min(best, splitError([sum[m], sum[full ^ m]], parts));
-  } else {
-    for (let i = 0; i < splits.length; i++) {
-      const m1 = splits[i];
-      const r1 = full ^ m1;
-      for (let j = i; j < splits.length; j++) {
-        const m2 = splits[j];
-        const r2 = full ^ m2;
-        const err = splitError([sum[m1 & m2], sum[m1 & r2], sum[r1 & m2], sum[r1 & r2]], parts);
-        if (err < best) best = err;
-      }
+  if (lines === 1 || parts === 3) {
+    const targets = lines === 1 ? [0.5] : [1 / 3, 2 / 3];
+    for (let a = 0; a < BEST_ANGLES && best > enough; a++) {
+      const keys = quantileParts(people, total, (a * Math.PI) / BEST_ANGLES, targets);
+      sums.fill(0);
+      for (let k = 0; k < w.length; k++) sums[keys[k]] += w[k];
+      best = Math.min(best, splitError(sums.slice(0, targets.length + 1), parts));
     }
+  }
+  if (lines === 2 && parts !== 3) {
+    const medians = Array.from({ length: BEST_PAIR_ANGLES }, (_, a) =>
+      quantileParts(people, total, (a * Math.PI) / BEST_PAIR_ANGLES, [0.5]),
+    );
+    for (let i = 0; i < medians.length && best > enough; i++)
+      for (let j = i + 1; j < medians.length; j++) {
+        sums.fill(0);
+        const mi = medians[i];
+        const mj = medians[j];
+        for (let k = 0; k < w.length; k++) sums[mi[k] | (mj[k] << 1)] += w[k];
+        best = Math.min(best, splitError(sums, parts));
+      }
   }
   bestCache.set(cacheKey, best);
   return best;
@@ -435,8 +502,8 @@ export function buildSplitRun(seed: number, count = 5): SplitQuestion[] {
 
 /**
  * Points for a split: 200 at the best error straight lines can reach, falling
- * linearly to 0 when the error reaches 60 % of the worst possible one (every
- * city in one part) — 80/20 halves, 65/20/15 thirds.
+ * linearly to 0 when the error reaches 60 % of the worst possible one (everyone
+ * in one part) — 80/20 halves, 65/20/15 thirds.
  */
 export function splitPoints(error: number, q: Pick<SplitQuestion, 'parts' | 'best'>): number {
   if (!Number.isFinite(error)) return 0;
