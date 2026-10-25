@@ -1,6 +1,7 @@
 /**
  * « Partage équitable » — a country with its regions and its biggest cities,
- * each labelled with its population. The player draws straight lines across
+ * named but with no figures (the populations show once the split is in). The
+ * player draws straight lines across
  * the map (one for halves, two for thirds or quarters) so that the population
  * of the cities shown ends up in equal parts. Each map scores 0..200 from how
  * close the split gets to equal shares, counted from the best split straight
@@ -26,7 +27,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
 import { playSfx } from '../lib/sfx';
-import Svg, { Circle, ClipPath, Defs, G, Line, Path, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, ClipPath, Defs, G, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 import { Moon, Sun, Home, ChevronRight, Eraser } from 'lucide-react-native';
 import type { User } from '@supabase/supabase-js';
 
@@ -40,8 +41,9 @@ import {
   placeLabels,
   scoreLines,
   splitCityName,
-  splitCountryName,
+  splitMapName,
   splitMap,
+  isSplitGroup,
   LABEL_SIZE,
   SPLIT_MAX_POINTS,
   type Pt,
@@ -152,6 +154,7 @@ function SplitBoard({
   lines,
   draft,
   labels,
+  showPop = false,
   handles,
   isDarkMode,
   colors,
@@ -161,6 +164,8 @@ function SplitBoard({
   /** Line being drawn (dashed), drawn over `lines`. */
   draft?: SplitLine | null;
   labels: boolean;
+  /** Add each city's population to its label (once the split is in). */
+  showPop?: boolean;
   /** Show the draggable ends of the lines. */
   handles: boolean;
   isDarkMode: boolean;
@@ -175,16 +180,21 @@ function SplitBoard({
   return (
     <Svg width="100%" height="100%" viewBox={`0 0 ${map.width} ${map.height}`}>
       <Defs>
-        <ClipPath id={`split-clip-${map.cca3}`}>
+        <ClipPath id={`split-clip-${map.id}`}>
           {map.regions.map((d, i) => (
             <Path key={i} d={d} />
           ))}
         </ClipPath>
+        {/* A group's frame cuts through countries (Russia on Europe): keep them on the board. */}
+        <ClipPath id={`split-board-${map.id}`}>
+          <Rect x={0} y={0} width={map.width} height={map.height} />
+        </ClipPath>
       </Defs>
+      <G clipPath={`url(#split-board-${map.id})`}>
       {map.regions.map((d, i) => (
         <Path key={`f${i}`} d={d} fill={land} />
       ))}
-      <G clipPath={`url(#split-clip-${map.cca3})`}>
+      <G clipPath={`url(#split-clip-${map.id})`}>
         {cells.map((c) => (
           <Path key={c.key} d={c.path} fill={colors[c.key]} opacity={0.22} />
         ))}
@@ -192,6 +202,7 @@ function SplitBoard({
       {map.regions.map((d, i) => (
         <Path key={`s${i}`} d={d} fill="none" stroke={border} strokeWidth={0.35} />
       ))}
+      </G>
       {all.map((l, i) => {
         const seg = clipToBoard(l, map.width, map.height);
         if (!seg) return null;
@@ -221,7 +232,7 @@ function SplitBoard({
           strokeWidth={0.5}
         />
       ))}
-      {labels && <CityLabels map={map} land={land} ink={ink} />}
+      {labels && <CityLabels map={map} land={land} ink={ink} showPop={showPop} />}
       {handles &&
         lines.flatMap((l, i) =>
           [l.a, l.b].map((p, k) => (
@@ -232,11 +243,17 @@ function SplitBoard({
   );
 }
 
-/** « Lyon 1,4 M » next to every dot, with a halo so it reads over the lines. */
-function CityLabels({ map, land, ink }: { map: SplitMap; land: string; ink: string }) {
+/**
+ * « Lyon » next to every dot (« Lyon 1,4 M » once revealed), with a halo so it
+ * reads over the lines.
+ */
+function CityLabels({ map, land, ink, showPop }: { map: SplitMap; land: string; ink: string; showPop: boolean }) {
   const { language } = useLanguage();
-  const full = map.cities.map((c) => `${splitCityName(c, language)} ${fmtCount(c.pop, language)}`);
+  const names = map.cities.map((c) => splitCityName(c, language));
+  const full = map.cities.map((c, i) => `${names[i]} ${fmtCount(c.pop, language)}`);
+  // Placed for the revealed text, so labels stay put when the figures appear.
   const spots = placeLabels(map, full);
+  const shown = showPop ? full : names;
   return (
     <>
       {[true, false].map((halo) =>
@@ -253,7 +270,7 @@ function CityLabels({ map, land, ink }: { map: SplitMap; land: string; ink: stri
             strokeWidth={halo ? 1.1 : undefined}
             strokeLinejoin="round"
           >
-            {full[i]}
+            {shown[i]}
           </SvgText>
         )),
       )}
@@ -273,7 +290,7 @@ export default function SplitGame({ setGameMode, user, training = false }: Split
   );
   const [questionIndex, setQuestionIndex] = useState(0);
   const question = run[questionIndex] ?? null;
-  const map = question ? splitMap(question.cca3) : null;
+  const map = question ? splitMap(question.id) : null;
   const [lines, setLines] = useState<SplitLine[]>([]);
   const [draft, setDraft] = useState<SplitLine | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -389,7 +406,7 @@ export default function SplitGame({ setGameMode, user, training = false }: Split
     });
   });
 
-  const countryName = question ? splitCountryName(question.cca3, language) : '';
+  const countryName = question ? splitMapName(question.id, language) : '';
   const ready = !!question && lines.length >= question.lines;
 
   const validate = () => {
@@ -560,6 +577,7 @@ export default function SplitGame({ setGameMode, user, training = false }: Split
                 lines={lines}
                 draft={draft}
                 labels
+                showPop={!!feedback}
                 handles={!feedback}
                 isDarkMode={isDarkMode}
                 colors={colors}
@@ -630,10 +648,10 @@ export default function SplitGame({ setGameMode, user, training = false }: Split
             <Text style={[styles.feedbackSub, { color: c.text }]}>
               {`+${feedback.points} / ${SPLIT_MAX_POINTS}`}
             </Text>
-            {training && (
+            {training && !isSplitGroup(question.id) && (
               <TouchableOpacity
                 style={[styles.learnBtn, { borderColor: c.accent }]}
-                onPress={() => setFactsFor(question.cca3)}
+                onPress={() => setFactsFor(question.id)}
                 {...a11yButton(tr(language, 'En savoir plus sur ce pays', 'Learn more about this country'))}
               >
                 <Text style={[styles.learnBtnText, { color: c.accent }]}>
@@ -696,15 +714,18 @@ export default function SplitGame({ setGameMode, user, training = false }: Split
               <View style={[styles.recapCard, { backgroundColor: c.card, borderColor: c.border }]}>
                 {run.map((q, i) => {
                   const h = history[i];
-                  const m = splitMap(q.cca3);
+                  const m = splitMap(q.id);
                   const ok = !!h && h.points >= SPLIT_MAX_POINTS * 0.6;
+                  // A group of countries has no fact sheet to open.
+                  const group = isSplitGroup(q.id);
                   return (
                     <TouchableOpacity
-                      key={q.cca3}
-                      onPress={() => setFactsFor(q.cca3)}
+                      key={q.id}
+                      onPress={() => setFactsFor(q.id)}
+                      disabled={group}
                       style={[styles.recapRow, i > 0 && { borderTopWidth: 1, borderTopColor: c.border }]}
-                      {...a11yButton(`${splitCountryName(q.cca3, language)}, +${h?.points ?? 0}`, {
-                        hint: tr(language, 'Voir la fiche du pays', 'See the country facts'),
+                      {...a11yButton(`${splitMapName(q.id, language)}, +${h?.points ?? 0}`, {
+                        hint: group ? undefined : tr(language, 'Voir la fiche du pays', 'See the country facts'),
                       })}
                     >
                       {m && (
@@ -721,7 +742,7 @@ export default function SplitGame({ setGameMode, user, training = false }: Split
                       )}
                       <View style={{ flex: 1 }}>
                         <Text style={[styles.recapName, { color: c.text }]} numberOfLines={1}>
-                          {splitCountryName(q.cca3, language)}
+                          {splitMapName(q.id, language)}
                         </Text>
                         {h && (
                           <Text style={{ color: c.textMuted, fontFamily: FONTS.mono, fontSize: 11 }}>

@@ -8,6 +8,10 @@ import {
   placeLabels,
   scoreLines,
   splitCountries,
+  splitGroups,
+  splitMapName,
+  isSplitGroup,
+  SPLIT_GROUPS,
   splitError,
   splitMap,
   splitPoints,
@@ -46,6 +50,36 @@ describe('splitMap', () => {
   it('localizes city names', () => {
     const deu = splitMap('DEU')!;
     expect(deu.cities.find((c) => c.name === 'Cologne')?.names?.de).toBe('Köln');
+  });
+});
+
+describe('multi-country maps', () => {
+  it('builds every group, cities from several members and inside the board', () => {
+    const groups = splitGroups();
+    expect(groups.length).toBe(SPLIT_GROUPS.length);
+    for (const id of groups) {
+      const m = splitMap(id)!;
+      expect(isSplitGroup(id)).toBe(true);
+      expect(m.regions.length).toBeGreaterThan(1);
+      for (const c of m.cities) {
+        expect(c.x).toBeGreaterThanOrEqual(0);
+        expect(c.x).toBeLessThanOrEqual(m.width);
+      }
+    }
+    const names = splitMap('europe')!.cities.map((c) => c.name);
+    expect(names).toEqual(expect.arrayContaining(['Paris', 'London', 'Moscow']));
+    expect(splitMapName('benelux', 'fr')).toBe('Benelux');
+    expect(splitMapName('africa', 'fr')).toBe('Afrique');
+    expect(splitMapName('FRA', 'fr')).toBe('France');
+  });
+
+  it('keeps Russia whole across the antimeridian on the map of Europe', () => {
+    const m = splitMap('europe')!;
+    // A ring split at ±180° would jump across the whole board in one step.
+    for (const ring of m.regions.join('').split('M').filter(Boolean)) {
+      const xs = [...('M' + ring).matchAll(/[ML](-?[\d.]+) /g)].map((x) => Number(x[1]));
+      for (let i = 1; i < xs.length; i++) expect(Math.abs(xs[i] - xs[i - 1])).toBeLessThan(m.width / 2);
+    }
   });
 });
 
@@ -102,7 +136,7 @@ describe('lines and parts', () => {
   });
 
   it('no drawn line beats the computed best split', () => {
-    const q = { cca3: 'USA', parts: 2 as const, lines: 1 as const, best: bestSplitError(m, 2, 1) };
+    const q = { id: 'USA', parts: 2 as const, lines: 1 as const, best: bestSplitError(m, 2, 1) };
     for (let x = 0; x <= m.width; x += 2) {
       const { error, points } = scoreLines(q, [vertical(x)]);
       expect(error).toBeGreaterThanOrEqual(q.best - 1e-9);
@@ -117,12 +151,19 @@ describe('buildSplitRun', () => {
     expect(JSON.stringify(buildSplitRun(1))).not.toBe(JSON.stringify(buildSplitRun(2)));
   });
 
-  it('asks halves, then thirds, then quarters, on distinct splittable countries', () => {
+  it('puts a group of countries on maps 2 and 4', () => {
+    for (const seed of [1, 7, 99, 12345]) {
+      const run = buildSplitRun(seed, 5);
+      expect(run.map((q) => isSplitGroup(q.id))).toEqual([false, true, false, true, false]);
+    }
+  });
+
+  it('asks halves, then thirds, then quarters, on distinct splittable maps', () => {
     for (const seed of [1, 7, 99, 12345]) {
       const run = buildSplitRun(seed, 5);
       expect(run.map((q) => q.parts)).toEqual([2, 2, 3, 3, 4]);
       expect(run.map((q) => q.lines)).toEqual([1, 1, 2, 2, 2]);
-      expect(new Set(run.map((q) => q.cca3)).size).toBe(5);
+      expect(new Set(run.map((q) => q.id)).size).toBe(5);
       for (const q of run) expect(q.best).toBeLessThanOrEqual(q.parts === 2 ? 0.12 : 0.06);
     }
   });
