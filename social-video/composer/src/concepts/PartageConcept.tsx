@@ -2,8 +2,9 @@
  * « Partage équitable » version atlas, d'après l'écran de l'app (src/screens/SplitGame.tsx) :
  * une carte et ses grandes villes, nommées sans chiffres. Le doigt trace un
  * trait (deux pour quatre parts), les villes prennent la couleur de leur part
- * en direct, le rond blanc règle le trait, « Valider », puis les populations,
- * les parts et les points. Un pays en deux, un continent en deux, puis la
+ * en direct, le rond blanc règle le trait, « Valider », puis la part de toute
+ * la population de la zone de chaque côté (en % et en habitants) et les points.
+ * Les villes ne sont que des repères : elles n'ont jamais de chiffres. Un pays en deux, un continent en deux, puis la
  * chute : quatre parts coupées au milieu de la carte, sans regarder qui y vit.
  * Les moments de chaque carte viennent de la fiche (concepts.mjs).
  */
@@ -14,7 +15,7 @@ import { C, EndCard, FPS, Hook, Paper, Progress, Sfx, Stamp, VoiceTrack, app, cl
 type Pt = { x: number; y: number };
 type Line = { a: Pt; b: Pt };
 /** Une ville : son point (x, y) et son étiquette (lx, ly, anchor : placeLabels de split.ts). */
-export type PtCity = { x: number; y: number; name: string; pop: string; lx: number; ly: number; anchor: 'start' | 'end' | 'middle' };
+export type PtCity = { x: number; y: number; name: string; lx: number; ly: number; anchor: 'start' | 'end' | 'middle' };
 export type PtRound = {
   name: string;
   parts: number;
@@ -25,7 +26,7 @@ export type PtRound = {
   cities: PtCity[];
   lines: Line[];
   before: Line;
-  shares: { key: number; pct: number }[];
+  shares: { key: number; pct: number; pop: string }[];
   points: number;
   verdict: string;
   t: { start: number; draw: [number, number][]; adjust: [number, number]; submit: number; reveal: number; end: number };
@@ -242,7 +243,7 @@ export function PartageConcept(p: PartageProps) {
                   const key = all.length ? partOf(all, c) : -1;
                   return <circle key={`c${i}`} cx={c.x} cy={c.y} r={2.2 * (1 + 0.25 * Math.sin(popIn * Math.PI))} fill={key < 0 ? ink : PART_COLORS[key]} stroke={land} strokeWidth={0.5} />;
                 })}
-                {/* « Lyon » puis « Lyon 1.4 M » une fois validé, avec un halo pour passer sur les traits. */}
+                {/* « Lyon » à côté de chaque point, avec un halo pour passer sur les traits. */}
                 {[true, false].map((halo) =>
                   r.cities.map((c, i) => {
                     return (
@@ -260,7 +261,6 @@ export function PartageConcept(p: PartageProps) {
                         strokeLinejoin="round"
                       >
                         {c.name}
-                        {revealed ? <tspan fill={halo ? land : C.vermilion} opacity={popIn}> {c.pop}</tspan> : null}
                       </text>
                     );
                   }),
@@ -299,9 +299,12 @@ export function PartageConcept(p: PartageProps) {
                 <div style={{ fontFamily: serif, fontWeight: 900, fontSize: 76, color: C.sepia, marginTop: 20 }}>{r.verdict}</div>
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginTop: 14 }}>
                   {r.shares.map((sh) => (
-                    <div key={sh.key} style={{ display: 'flex', alignItems: 'center', gap: 14, border: `4px solid ${PART_COLORS[sh.key]}`, borderRadius: 22, padding: '6px 22px', background: C.card }}>
-                      <span style={{ width: 28, height: 28, borderRadius: 14, background: PART_COLORS[sh.key] }} />
-                      <span style={{ fontFamily: mono, fontWeight: 700, fontSize: 48, color: C.sepia }}>{Math.round(sh.pct * count)} %</span>
+                    <div key={sh.key} style={{ border: `4px solid ${PART_COLORS[sh.key]}`, borderRadius: 22, padding: '6px 20px', background: C.card }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+                        <span style={{ width: 26, height: 26, borderRadius: 13, background: PART_COLORS[sh.key] }} />
+                        <span style={{ fontFamily: mono, fontWeight: 700, fontSize: r.shares.length > 2 ? 44 : 48, color: C.sepia }}>{Math.round(sh.pct * count)} %</span>
+                      </div>
+                      <div style={{ fontFamily: mono, fontSize: 28, color: C.brown, opacity: count }}>{sh.pop}</div>
                     </div>
                   ))}
                 </div>

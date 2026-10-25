@@ -665,8 +665,9 @@ function echelle(name, pairs, hook = null) {
 
 // ───────────────────────────── Partage équitable ─────────────────────────────
 // Mode « Partage équitable » de l'app (src/lib/split.ts) : une carte et ses
-// grandes villes, nommées sans chiffres ; un trait (ou deux) pour couper leur
-// population en parts égales, puis les populations et les parts. split.ts est
+// grandes villes, nommées sans chiffres (des repères) ; un trait (ou deux) pour
+// couper toute la population de la zone en parts égales, puis la part de
+// chacun en % et en habitants. split.ts est
 // compilé tel quel (esbuild, déjà là pour Remotion) : mêmes cartes, mêmes
 // villes, même barème que l'app.
 const { build: esbuild } = await import('esbuild');
@@ -719,7 +720,8 @@ function spLines(q, lo, hi, middle = false) {
       lines.push(second);
     }
     const shares = SPLIT.partShares(map, lines);
-    if (shares.length < q.parts) continue;
+    // Une part à « 0 % » se lit comme un bug : chaque part garde au moins 2 %.
+    if (shares.length < q.parts || shares.some((x) => x.share < 0.02)) continue;
     const { points } = SPLIT.scoreLines(q, lines);
     if (points < lo || points > hi) continue;
     found.push({ lines, points, shares, off: Math.hypot(p.x - mid.x, p.y - mid.y) });
@@ -772,9 +774,7 @@ function partage(name, plays, hook = null) {
   const rounds = plays.map(({ q, lines, points, shares }, i) => {
     const map = SPLIT.splitMap(q.id);
     const names = map.cities.map((c) => SPLIT.splitCityName(c, lang));
-    const pops = map.cities.map((c) => SPLIT.fmtCount(c.pop, lang));
-    // Étiquettes placées pour le texte révélé, comme dans l'app : elles ne bougent pas.
-    const labels = SPLIT.placeLabels(map, names.map((n, k) => `${n} ${pops[k]}`));
+    const labels = SPLIT.placeLabels(map, names);
     // Moments de la carte (secondes depuis le début de la vidéo).
     const t0 = clock;
     const draw = [];
@@ -795,11 +795,11 @@ function partage(name, plays, hook = null) {
       width: map.width,
       height: map.height,
       regions: map.regions,
-      cities: map.cities.map((c, k) => ({ x: r1(c).x, y: r1(c).y, name: names[k], pop: pops[k], lx: r1(labels[k]).x, ly: r1(labels[k]).y, anchor: labels[k].anchor })),
+      cities: map.cities.map((c, k) => ({ x: r1(c).x, y: r1(c).y, name: names[k], lx: r1(labels[k]).x, ly: r1(labels[k]).y, anchor: labels[k].anchor })),
       lines: lines.map((l) => ({ a: r1(l.a), b: r1(l.b) })),
       // Le dernier trait est d'abord tracé un peu de travers, puis réglé par son rond blanc.
       before: { a: r1(lines[last].a), b: r1(spBefore(lines[last]).b) },
-      shares: shares.map((s) => ({ key: s.key, pct: Math.round(s.share * 100) })),
+      shares: shares.map((s) => ({ key: s.key, pct: Math.round(s.share * 100), pop: SPLIT.fmtCount(s.pop, lang) })),
       points,
       verdict: points >= 180 ? L('Partage parfait !', 'Perfect split!') : points >= 120 ? L('Presque équitable', 'Nearly fair') : points >= 60 ? L('Un peu déséquilibré', 'A bit lopsided') : L('Très déséquilibré', 'Very lopsided'),
       t: { start: t0, draw, adjust, submit, reveal, end: clock },
@@ -826,10 +826,10 @@ function partage(name, plays, hook = null) {
     title: L('Partage équitable', 'Fair Split'),
     mapLabel: L('CARTE', 'MAP'),
     partsLabel: L(['', '', 'EN DEUX', 'EN TROIS', 'EN QUATRE'], ['', '', 'HALVES', 'THIRDS', 'QUARTERS']),
-    totalLabel: L('Population des villes : {0}', 'Population of the cities: {0}'),
+    totalLabel: L('Population de la zone : {0}', 'Population of the area: {0}'),
     hints: L(
-      ['', '', 'Trace un trait qui coupe la population des villes en deux parts égales.', '', 'Trace deux traits qui se croisent pour couper la population des villes en 4 parts égales.'],
-      ['', '', 'Draw a line that splits the population of the cities into two equal halves.', '', 'Draw two crossing lines that split the population of the cities into 4 equal parts.'],
+      ['', '', 'Trace un trait qui coupe la population en deux parts égales.', '', 'Trace deux traits qui se croisent pour couper la population en 4 parts égales.'],
+      ['', '', 'Draw a line that splits the population into two equal halves.', '', 'Draw two crossing lines that split the population into 4 equal parts.'],
     ),
     partsHint: L('Chaque couleur est une part.', 'Each colour is one part.'),
     target: L('Objectif : {0} % chacune', 'Target: {0}% each'),
