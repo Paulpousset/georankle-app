@@ -22,6 +22,7 @@ import {
   Puzzle,
   Route,
   Ruler,
+  Scissors,
   SlidersHorizontal,
   Sun,
   Swords,
@@ -1115,6 +1116,17 @@ export function MainMenu({
                 onPress={() => onPlay('scale')}
                 worldOnly={worldOnly('scale')}
                 onHelp={() => setHelpMode('scale')}
+              />
+              <ModeTile
+                icon={Scissors}
+                accent={PALETTE.forestGreen}
+                tint={isDarkMode ? 'rgba(42,110,63,0.15)' : 'rgba(42,110,63,0.10)'}
+                title={tr(language, 'Partage équitable', 'Fair Split')}
+                subtitle={tr(language, 'Coupez un pays en parts de population égales', 'Cut a country into equal population shares')}
+                isDarkMode={isDarkMode}
+                onPress={() => onPlay('split')}
+                worldOnly={worldOnly('split')}
+                onHelp={() => setHelpMode('split')}
               />
               <ModeTile
                 icon={MapPin}

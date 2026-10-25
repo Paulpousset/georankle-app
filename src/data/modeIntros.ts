@@ -7,7 +7,7 @@
  * that actually matter, rendered as a short checklist under the blurb.
  */
 import type { ComponentType } from 'react';
-import { Flag, Globe, Info, Landmark, Languages, LayoutGrid, Map, MapPin, Monitor, Puzzle, Route, Ruler, Swords, TrendingUp, Zap } from 'lucide-react-native';
+import { Flag, Globe, Info, Landmark, Languages, LayoutGrid, Map, MapPin, Monitor, Puzzle, Route, Ruler, Scissors, Swords, TrendingUp, Zap } from 'lucide-react-native';
 
 import { PALETTE } from '../theme/colors';
 import type { GameMode } from '../types';
@@ -86,6 +86,19 @@ export const MODE_INTROS: Partial<Record<GameMode, ModeIntro>> = {
       { fr: 'Le curseur ne commence jamais au bon endroit, et le milieu n’est pas la réponse.', en: 'The slider never starts at the answer, and the middle isn’t the answer either.' },
       { fr: 'Jusqu’à 200 pts par paire : plus vous êtes proche de la vraie taille, plus vous marquez.', en: 'Up to 200 pts per pair: the closer to the real size, the more you score.' },
       { fr: 'Après validation, les pointillés verts montrent la vraie taille.', en: 'Once you submit, the green dashes show the real size.' },
+    ],
+  },
+  split: {
+    icon: Scissors,
+    accent: PALETTE.forestGreen,
+    titleFr: 'Partage équitable',
+    titleEn: 'Fair Split',
+    bodyFr: 'Une carte, ses régions et ses grandes villes avec leur population. Tracez un ou deux traits droits pour couper la population de ces villes en parts égales : deux moitiés, puis trois tiers, puis quatre quarts.',
+    bodyEn: 'A map with its regions and its big cities, each with its population. Draw one or two straight lines to cut the population of those cities into equal parts: two halves, then thirds, then quarters.',
+    tips: [
+      { fr: 'Faites glisser votre doigt sur la carte pour tracer un trait, puis déplacez ses ronds blancs pour l’ajuster.', en: 'Drag across the map to draw a line, then move its white dots to fine-tune it.' },
+      { fr: 'Les villes prennent la couleur de leur part, mais les pourcentages ne s’affichent qu’après validation.', en: 'Cities take the colour of their part, but the percentages only show once you submit.' },
+      { fr: 'Jusqu’à 200 pts par carte, comptés depuis le meilleur partage possible : même quand la capitale pèse lourd, le sans-faute reste atteignable.', en: 'Up to 200 pts per map, counted from the best split possible: even when the capital weighs a lot, a perfect score is still reachable.' },
     ],
   },
   pinpoint: {

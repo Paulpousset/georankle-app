@@ -24,6 +24,7 @@ import GuessCountryGame from './screens/GuessCountryGame';
 import HigherLowerGame from './screens/HigherLowerGame';
 import SilhouetteGame from './screens/SilhouetteGame';
 import ScaleGame from './screens/ScaleGame';
+import SplitGame from './screens/SplitGame';
 import PinpointGame from './screens/PinpointGame';
 import LanguagesFlow from './screens/LanguagesFlow';
 import BordersGame from './screens/BordersGame';
@@ -72,6 +73,7 @@ const DIRECT_SOLO_MODES = new Set<GameMode>([
   'higherlower',
   'silhouette',
   'scale',
+  'split',
   'pinpoint',
   'borders',
   'guess',
@@ -630,6 +632,14 @@ export function Router({
           onRoundComplete={matchData ? handleRoundComplete : undefined}
           training={soloTraining('scale')}
         />
+      </SafeAreaProvider>
+    );
+  }
+
+  if (gameMode === 'split') {
+    return (
+      <SafeAreaProvider>
+        <SplitGame setGameMode={leaveGame} user={user} training={soloTraining('split')} />
       </SafeAreaProvider>
     );
   }

@@ -35,6 +35,7 @@ const BOOTABLE: ReadonlySet<string> = new Set<GameMode>([
   'higherlower',
   'silhouette',
   'scale',
+  'split',
   'pinpoint',
   'borders',
 ]);
