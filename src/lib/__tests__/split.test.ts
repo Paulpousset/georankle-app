@@ -31,7 +31,9 @@ describe('splitMap', () => {
       const m = splitMap(cca3)!;
       expect(m).not.toBeNull();
       expect(m.cities.length).toBeGreaterThanOrEqual(7);
-      expect(m.total).toBe(m.cities.reduce((s, c) => s + c.pop, 0));
+      // The whole area counts, not only the cities named on it.
+      expect(m.total).toBe(m.people.reduce((s, p) => s + p.pop, 0));
+      expect(m.total).toBeGreaterThan(m.cities.reduce((s, c) => s + c.pop, 0));
       for (const c of m.cities) {
         expect(c.x).toBeGreaterThanOrEqual(0);
         expect(c.x).toBeLessThanOrEqual(m.width);
@@ -39,6 +41,23 @@ describe('splitMap', () => {
         expect(c.y).toBeLessThanOrEqual(m.height);
       }
     }
+  });
+
+  it('counts everyone living in the area, around and between the cities', () => {
+    const fr = splitMap('FRA')!;
+    // Metropolitan France: some 66 M people, far more than its 14 cities.
+    expect(fr.total).toBeGreaterThan(60e6);
+    expect(fr.total).toBeLessThan(70e6);
+    for (const p of fr.people) {
+      expect(p.x).toBeGreaterThanOrEqual(0);
+      expect(p.x).toBeLessThanOrEqual(fr.width);
+    }
+    // Brittany's tip holds no named city, yet its people count.
+    const tip = { a: { x: 30, y: 0 }, b: { x: 30, y: 1 } };
+    expect(new Set(cityParts(fr, [tip])).size).toBe(1);
+    const shares = partShares(fr, [tip]);
+    expect(shares).toHaveLength(2);
+    expect(shares[1].pop).toBeGreaterThan(0);
   });
 
   it('leaves out territories the map does not draw', () => {

@@ -93,12 +93,12 @@ export const MODE_INTROS: Partial<Record<GameMode, ModeIntro>> = {
     accent: PALETTE.forestGreen,
     titleFr: 'Partage équitable',
     titleEn: 'Fair Split',
-    bodyFr: 'Un pays, un groupe de pays ou un continent, avec ses grandes villes. Tracez un ou deux traits droits pour couper la population de ces villes en parts égales : deux moitiés, puis trois tiers, puis quatre quarts. À vous de savoir quelles villes pèsent lourd !',
-    bodyEn: 'A country, a group of countries or a continent, with its big cities. Draw one or two straight lines to cut the population of those cities into equal parts: two halves, then thirds, then quarters. It’s up to you to know which cities weigh the most!',
+    bodyFr: 'Un pays, un groupe de pays ou un continent, avec ses grandes villes en repères. Tracez un ou deux traits droits pour couper toute sa population (villes, villages, campagnes) en parts égales : deux moitiés, puis trois tiers, puis quatre quarts. À vous de savoir où vivent les gens !',
+    bodyEn: 'A country, a group of countries or a continent, with its big cities as landmarks. Draw one or two straight lines to cut its whole population (cities, towns, countryside) into equal parts: two halves, then thirds, then quarters. It’s up to you to know where people live!',
     tips: [
-      { fr: 'Faites glisser votre doigt sur la carte pour tracer un trait, puis déplacez ses ronds blancs pour l’ajuster.', en: 'Drag across the map to draw a line, then move its white dots to fine-tune it.' },
-      { fr: 'Les villes prennent la couleur de leur part ; leur population et les pourcentages ne s’affichent qu’après validation.', en: 'Cities take the colour of their part; their populations and the percentages only show once you submit.' },
-      { fr: 'Jusqu’à 200 pts par carte, comptés depuis le meilleur partage possible : même quand la capitale pèse lourd, le sans-faute reste atteignable.', en: 'Up to 200 pts per map, counted from the best split possible: even when the capital weighs a lot, a perfect score is still reachable.' },
+      { fr: 'Faites glisser votre doigt sur la carte pour tracer un trait. Glissez ensuite le trait pour le déplacer, ou un de ses ronds blancs pour le tourner ; un nouveau trait remplace le plus ancien.', en: 'Drag across the map to draw a line. Then drag the line to move it, or one of its white dots to turn it; a new line replaces the oldest.' },
+      { fr: 'Les villes prennent la couleur de leur part ; la population de chaque part ne s’affiche qu’après validation.', en: 'Cities take the colour of their part; the population of each part only shows once you submit.' },
+      { fr: 'Jusqu’à 200 pts par carte, comptés depuis le meilleur partage possible : le sans-faute est toujours atteignable.', en: 'Up to 200 pts per map, counted from the best split possible: a perfect score is always reachable.' },
     ],
   },
   pinpoint: {
