@@ -1,41 +1,33 @@
 <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-  <!-- Favicon : la boussole de l'icône, agrandie et simplifiée pour rester
-       lisible à 16–48 px (Google, onglets). Fond plein, sans coins
-       transparents : Google recadre en cercle et noircit la transparence. -->
+  <!-- Favicon : la même icône, recadrée sur le G et avec un trait plus épais
+       pour rester lisible à 16–48 px (Google, onglets). Fond plein, sans
+       coins transparents : Google recadre en cercle et noircit la
+       transparence. -->
   <defs>
-    <radialGradient id="parch" cx="42%" cy="36%" r="75%">
-      <stop offset="0%" stop-color="#f8f2e3"/>
-      <stop offset="55%" stop-color="#f2e8d0"/>
-      <stop offset="100%" stop-color="#e3d2ac"/>
+    <radialGradient id="parch" cx="40%" cy="32%" r="80%">
+      <stop offset="0" stop-color="#f8f2e3"/>
+      <stop offset="1" stop-color="#e3d2ac"/>
     </radialGradient>
-    <linearGradient id="navy" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#2d4a70"/>
-      <stop offset="100%" stop-color="#132040"/>
-    </linearGradient>
-    <linearGradient id="ochre" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#d99a3c"/>
-      <stop offset="100%" stop-color="#b06d1f"/>
-    </linearGradient>
   </defs>
   <rect width="512" height="512" fill="url(#parch)"/>
-  <g transform="translate(256,256) scale(0.78)">
-    <circle r="300" fill="none" stroke="#c4872a" stroke-width="22"/>
-    <g fill="url(#ochre)">
-      <polygon points="-30,-30 190,-190 30,30" transform="rotate(0)"/>
-      <polygon points="-30,-30 190,-190 30,30" transform="rotate(90)"/>
-      <polygon points="-30,-30 190,-190 30,30" transform="rotate(180)"/>
-      <polygon points="-30,-30 190,-190 30,30" transform="rotate(270)"/>
+  <g transform="translate(256 256) scale(0.56)">
+    <path d="M213.4 -304.7 A372 372 0 1 0 372 0" fill="none" stroke="#c4872a" stroke-width="56"/>
+    <rect x="230.6" y="-28" width="169.4" height="56" fill="#c4872a"/>
+    <g fill="#d99a3c">
+      <polygon points="0,-215 40,0 0,24 -40,0" transform="rotate(45)"/>
+      <polygon points="0,-215 40,0 0,24 -40,0" transform="rotate(135)"/>
+      <polygon points="0,-215 40,0 0,24 -40,0" transform="rotate(225)"/>
+      <polygon points="0,-215 40,0 0,24 -40,0" transform="rotate(315)"/>
     </g>
-    <g fill="url(#navy)">
-      <polygon points="0,-270 56,0 -56,0" transform="rotate(90)"/>
-      <polygon points="0,-270 56,0 -56,0" transform="rotate(180)"/>
-      <polygon points="0,-270 56,0 -56,0" transform="rotate(270)"/>
+    <g fill="#132040">
+      <polygon points="0,-330 76,0 -76,0" transform="rotate(90)"/>
+      <polygon points="0,-330 76,0 -76,0" transform="rotate(180)"/>
+      <polygon points="0,-330 76,0 -76,0" transform="rotate(270)"/>
     </g>
-    <polygon points="0,-270 56,0 -56,0" fill="#2a6e3f"/>
-    <polygon points="0,-270 0,0 -56,0" fill="#1d5430"/>
-    <polygon points="0,-270 22,-196 -22,-196" fill="#8b1a1a"/>
-    <circle r="64" fill="#f8f2e3" stroke="#c4872a" stroke-width="10"/>
-    <circle r="38" fill="url(#navy)"/>
-    <circle r="15" fill="#c4872a"/>
+    <polygon points="0,-330 76,0 -76,0" fill="#2a6e3f"/>
+    <polygon points="0,-330 0,0 -76,0" fill="#1d5430"/>
+    <polygon points="0,-330 24,-230 -24,-230" fill="#8b1a1a"/>
+    <circle r="80" fill="#f8f2e3" stroke="#c4872a" stroke-width="18"/>
+    <circle r="36" fill="#132040"/>
   </g>
 </svg>
