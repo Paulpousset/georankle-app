@@ -26,13 +26,14 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { CONTENT } from './paths.mjs';
 import { PLACEHOLDERS } from './constants.mjs';
-import { href, RANKLE_IDS } from './routes.mjs';
+import { href, route, RANKLE_IDS } from './routes.mjs';
 import { strings } from './strings.mjs';
 import { TABLES, rankleExample } from './tables.mjs';
 import { countriesOf } from './continents.mjs';
 import { countryName } from './data.mjs';
 import { modeById, playQuery } from './modes.mjs';
 import { itemList } from './jsonld.mjs';
+import { countryFacts, countryList } from './countryPage.mjs';
 import { languageSwitch } from './layout.mjs';
 import { generatedPage } from './generated.mjs';
 import { BOOTABLE_MODES } from './data.mjs';
@@ -140,6 +141,16 @@ export function interpolate(body, { locale, file, routeId }) {
           default:
             throw new Error(`${file} : chiffre inconnu dans ${match}`);
         }
+      }
+      case 'country': {
+        // {{country:facts}} : le tableau du pays de la route ; {{country:list}} : les fiches publiées.
+        if (args[0] === 'list') return countryList(locale);
+        if (args[0] === 'facts') {
+          const cca3 = route(routeId).cca3;
+          if (!cca3) throw new Error(`${file} : {{country:facts}} hors d'une fiche pays`);
+          return countryFacts(cca3, locale).html;
+        }
+        throw new Error(`${file} : directive inconnue ${match}`);
       }
       case 'table': {
         const [family, scope = 'all'] = args;

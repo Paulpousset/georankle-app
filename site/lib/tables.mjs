@@ -607,7 +607,273 @@ export function smallestTable(scope, locale) {
   };
 }
 
+const SUBREGION_LABELS = {
+  'Southeast Europe': { fr: 'Europe du Sud-Est', en: 'Southeast Europe' },
+  'Southern Europe': { fr: 'Europe du Sud', en: 'Southern Europe' },
+  'Central Europe': { fr: 'Europe centrale', en: 'Central Europe' },
+  'Western Europe': { fr: 'Europe de l’Ouest', en: 'Western Europe' },
+  'Eastern Europe': { fr: 'Europe de l’Est', en: 'Eastern Europe' },
+  'Northern Europe': { fr: 'Europe du Nord', en: 'Northern Europe' },
+  'Western Africa': { fr: 'Afrique de l’Ouest', en: 'Western Africa' },
+  'Eastern Africa': { fr: 'Afrique de l’Est', en: 'Eastern Africa' },
+  'Middle Africa': { fr: 'Afrique centrale', en: 'Middle Africa' },
+  'Southern Africa': { fr: 'Afrique australe', en: 'Southern Africa' },
+  'Northern Africa': { fr: 'Afrique du Nord', en: 'Northern Africa' },
+  'Western Asia': { fr: 'Asie occidentale', en: 'Western Asia' },
+  'South-Eastern Asia': { fr: 'Asie du Sud-Est', en: 'South-Eastern Asia' },
+  'Southern Asia': { fr: 'Asie du Sud', en: 'Southern Asia' },
+  'Eastern Asia': { fr: 'Asie de l’Est', en: 'Eastern Asia' },
+  'Central Asia': { fr: 'Asie centrale', en: 'Central Asia' },
+};
+
+/** Les capitales d'un continent regroupées par sous-région : les « blocs » de révision. */
+export function capitalBlocksTable(scope, locale) {
+  const list = scopeCountries(scope);
+  const groups = new Map();
+  for (const c of list) {
+    if (!groups.has(c.subregion)) groups.set(c.subregion, []);
+    groups.get(c.subregion).push(c);
+  }
+  const blocks = [...groups.entries()].sort((a, b) => b[1].length - a[1].length);
+  const rows = blocks.map(([sub, cs]) => {
+    const label = SUBREGION_LABELS[sub]?.[locale] ?? sub;
+    const sorted = [...cs].sort((a, b) => b.population - a.population);
+    return (
+      cell(`<strong>${label}</strong>`) +
+      cell(String(cs.length)) +
+      cell(sorted.map((c) => `${capitalName(c, locale)} (${countryName(c, locale)})`).join(', '))
+    );
+  });
+  return {
+    html: table(
+      locale === 'fr' ? ['Bloc', 'Pays', 'Capitales, du pays le plus peuplé au moins peuplé'] : ['Block', 'Countries', 'Capitals, from the most to the least populous country'],
+      rows,
+    ),
+    items: blocks.map(([sub]) => SUBREGION_LABELS[sub]?.[locale] ?? sub),
+    name: locale === 'fr' ? 'Les capitales par bloc' : 'Capitals by block',
+  };
+}
+
+/** Les drapeaux des pays les moins connus du jeu, avec leur rang de notoriété. */
+export function flagsNotorietyTable(scope, locale) {
+  const limit = Number(scope) || 24;
+  const list = [...COUNTRIES]
+    .filter((c) => NOTORIETY[c.cca3])
+    .sort((a, b) => NOTORIETY[b.cca3].rank - NOTORIETY[a.cca3].rank)
+    .slice(0, limit);
+  const rows = list.map((c) => {
+    const continent = CONTINENTS.find((k) => k.match(c));
+    return (
+      cell(
+        `<img src="${flagUrl(c.cca3)}" alt="${attr(`${locale === 'fr' ? 'Drapeau de' : 'Flag of'} ${countryName(c, locale)}`)}" width="40" height="27" loading="lazy" decoding="async" />`,
+      ) +
+      cell(`<strong>${countryName(c, locale)}</strong>`) +
+      cell(locale === 'fr' ? continent.fr : continent.en) +
+      cell(`${NOTORIETY[c.cca3].rank}${locale === 'fr' ? 'ᵉ' : ''} / ${COUNTRIES.length}`)
+    );
+  });
+  return {
+    html: table(
+      locale === 'fr' ? ['Drapeau', 'Pays', 'Continent', 'Rang de notoriété'] : ['Flag', 'Country', 'Continent', 'Notoriety rank'],
+      rows,
+    ),
+    items: list.map((c) => countryName(c, locale)),
+    name: locale === 'fr' ? 'Les drapeaux des pays les moins connus' : 'Flags of the least familiar countries',
+  };
+}
+
+/** Les familles de drapeaux étudiées dans les guides (cca3, dans l'ordre d'affichage). */
+const FLAG_SETS = {
+  'africa-red-gold-green': {
+    codes: ['ETH', 'GHA', 'SEN', 'MLI', 'GIN', 'CMR', 'BEN', 'TGO', 'COG', 'GNB', 'STP', 'BFA', 'MRT'],
+    name: { fr: 'Les drapeaux africains rouge, or et vert', en: 'African flags in red, gold and green' },
+  },
+  'africa-pan-arab': {
+    codes: ['EGY', 'SDN', 'LBY', 'DZA', 'MAR', 'TUN'],
+    name: { fr: 'Les drapeaux du nord de l’Afrique', en: 'The flags of North Africa' },
+  },
+  nordic: {
+    codes: ['DNK', 'NOR', 'SWE', 'FIN', 'ISL'],
+    name: { fr: 'Les cinq drapeaux nordiques', en: 'The five Nordic flags' },
+  },
+  'africa-borrowed': {
+    codes: ['LBR', 'TCD', 'CIV', 'NER', 'SOM', 'DJI'],
+    name: { fr: 'Drapeaux africains à rapprocher d’autres drapeaux', en: 'African flags that echo other flags' },
+  },
+  'africa-unique': {
+    codes: ['ZAF', 'MOZ', 'KEN', 'BWA', 'UGA', 'MWI', 'ZMB', 'NAM', 'AGO', 'ERI'],
+    name: { fr: 'Dix drapeaux africains sans équivalent', en: 'Ten African flags with no equivalent' },
+  },
+};
+
+/** Drapeau → pays → capitale pour une famille de drapeaux choisie (voir FLAG_SETS). */
+export function flagSetTable(scope, locale) {
+  const set = FLAG_SETS[scope];
+  if (!set) throw new Error(`flag-set : ensemble inconnu « ${scope} »`);
+  const fr = locale === 'fr';
+  const list = set.codes.map((code) => {
+    const c = COUNTRIES.find((x) => x.cca3 === code);
+    if (!c) throw new Error(`flag-set : ${code} absent des données du jeu`);
+    return c;
+  });
+  const rows = list.map(
+    (c) =>
+      cell(
+        `<img src="${flagUrl(c.cca3)}" alt="${attr(`${fr ? 'Drapeau de' : 'Flag of'} ${countryName(c, locale)}`)}" width="40" height="27" loading="lazy" decoding="async" />`,
+      ) +
+      cell(`<strong>${countryName(c, locale)}</strong>`) +
+      cell(capitalName(c, locale)),
+  );
+  return {
+    html: table(fr ? ['Drapeau', 'Pays', 'Capitale'] : ['Flag', 'Country', 'Capital'], rows),
+    items: list.map((c) => countryName(c, locale)),
+    name: set.name[locale],
+  };
+}
+
 /** Le tableau demandé par une directive `{{table:famille:portée}}`. */
+/**
+ * Le classement des N premiers pays selon un champ (`population` ou `area`), avec
+ * la part du total des pays du jeu et la part cumulée. Le total est calculé ici,
+ * sur les pays du jeu : aucune part n'est saisie.
+ */
+function topTable(field, scope, locale) {
+  const limit = Number(scope) || 30;
+  const fr = locale === 'fr';
+  const total = COUNTRIES.reduce((sum, c) => sum + c[field], 0);
+  const list = [...COUNTRIES].sort((a, b) => b[field] - a[field]).slice(0, limit);
+  const pct = (v) => `${(Math.round(v * 1000) / 10).toLocaleString(fr ? 'fr-FR' : 'en-US', { minimumFractionDigits: 1 })} %`;
+  let cumulative = 0;
+  const rows = list.map((c, i) => {
+    cumulative += c[field];
+    const continent = CONTINENTS.find((k) => k.match(c));
+    return (
+      cell(`<strong>${i + 1}</strong>`) +
+      cell(countryName(c, locale)) +
+      cell(fr ? continent.fr : continent.en) +
+      cell(num(Math.round(c[field]), locale)) +
+      cell(pct(c[field] / total)) +
+      cell(pct(cumulative / total))
+    );
+  });
+  const unit = field === 'area' ? (fr ? 'Superficie (km²)' : 'Area (km²)') : fr ? 'Population' : 'Population';
+  return {
+    html: table(
+      ['#', fr ? 'Pays' : 'Country', fr ? 'Continent (jeu)' : 'Continent (game)', unit, fr ? 'Part du total' : 'Share of total', fr ? 'Part cumulée' : 'Cumulative'],
+      rows,
+    ),
+    items: list.map((c) => countryName(c, locale)),
+    name:
+      field === 'area'
+        ? fr ? `Les ${limit} plus vastes pays du monde` : `The ${limit} largest countries in the world`
+        : fr ? `Les ${limit} pays les plus peuplés du monde` : `The ${limit} most populous countries in the world`,
+  };
+}
+
+export const populationTopTable = (scope, locale) => topTable('population', scope, locale);
+export const areaTopTable = (scope, locale) => topTable('area', scope, locale);
+
+
+/** Les ensembles de pays dont les capitales font l'objet d'un guide dédié (cca3, dans l'ordre d'affichage). */
+const CAPITAL_SETS = {
+  'africa-namesakes': {
+    codes: ['GIN', 'GNB', 'GNQ', 'COG', 'COD', 'SDN', 'SSD', 'NER', 'NGA'],
+    name: { fr: 'Les pays africains aux noms jumeaux et leurs capitales', en: 'African countries with twin names and their capitals' },
+  },
+  'southam-andes': {
+    codes: ['VEN', 'COL', 'ECU', 'PER', 'BOL'],
+    name: { fr: 'Capitales du bloc andin et caribéen', en: 'Capitals of the Andean and Caribbean block' },
+  },
+  'southam-cone': {
+    codes: ['CHL', 'ARG', 'URY', 'PRY'],
+    name: { fr: 'Capitales du cône sud', en: 'Capitals of the Southern Cone' },
+  },
+  'southam-atlantic': {
+    codes: ['BRA', 'GUY', 'SUR'],
+    name: { fr: 'Capitales de la façade atlantique', en: 'Capitals of the Atlantic block' },
+  },
+  nordic: {
+    codes: ['DNK', 'NOR', 'SWE', 'FIN', 'ISL'],
+    name: { fr: 'Les cinq pays nordiques du jeu', en: 'The five Nordic countries in the game' },
+  },
+  'europe-borderline': {
+    codes: ['RUS', 'CYP', 'TUR', 'GEO', 'ARM', 'AZE', 'KAZ'],
+    name: { fr: 'Les sept pays à la lisière de l’Europe', en: 'The seven countries on the edge of Europe' },
+  },
+  'asia-status': {
+    codes: ['ISR', 'PSE', 'LKA', 'MYS', 'IDN', 'MMR', 'KAZ', 'ARE', 'TUR', 'IND', 'PAK'],
+    name: { fr: 'Capitales d’Asie à statut particulier', en: 'Asian capitals with a special status' },
+  },
+};
+
+/** Pays → capitale → population → superficie pour un ensemble de pays choisi (voir CAPITAL_SETS). */
+export function capitalSetTable(scope, locale) {
+  const set = CAPITAL_SETS[scope];
+  if (!set) throw new Error(`capital-set : ensemble inconnu « ${scope} »`);
+  const list = set.codes.map((code) => {
+    const c = COUNTRIES.find((x) => x.cca3 === code);
+    if (!c) throw new Error(`capital-set : ${code} absent des données du jeu`);
+    return c;
+  });
+  const rows = list.map(
+    (c) =>
+      cell(`<strong>${countryName(c, locale)}</strong>`) +
+      cell(capitalName(c, locale)) +
+      cell(num(c.population, locale)) +
+      cell(num(Math.round(c.area), locale)),
+  );
+  return {
+    html: table(
+      locale === 'fr' ? ['Pays', 'Capitale du jeu', 'Population', 'Superficie (km²)'] : ['Country', 'Capital in the game', 'Population', 'Area (km²)'],
+      rows,
+    ),
+    items: list.map((c) => `${countryName(c, locale)} — ${capitalName(c, locale)}`),
+    name: set.name[locale],
+  };
+}
+
+/** Pays d'Europe du jeu qui ne sont pas membres de l'ONU (observateur) : seul le Saint-Siège. */
+const NON_UN_EUROPE = ['VAT'];
+/** Les pays que le jeu classe en Asie mais que beaucoup de définitions rattachent à l'Europe. */
+const EUROPE_EDGE_IN_ASIA = ['TUR', 'GEO', 'ARM', 'AZE', 'KAZ'];
+
+/**
+ * Le nombre de pays d'Europe selon la définition retenue. Tous les décomptes
+ * sont calculés sur les données du jeu ; seul le Kosovo, absent du jeu, est
+ * ajouté à la main, et signalé comme tel.
+ */
+export function europeCountTable(scope, locale) {
+  const fr = locale === 'fr';
+  const eu = COUNTRIES.filter((c) => c.region === 'Europe');
+  if (scope === 'blocks') {
+    const groups = new Map();
+    for (const c of eu) groups.set(c.subregion, (groups.get(c.subregion) ?? 0) + 1);
+    const blocks = [...groups.entries()].sort((a, b) => b[1] - a[1]);
+    const rows = blocks.map(([sub, n]) => cell(`<strong>${SUBREGION_LABELS[sub]?.[locale] ?? sub}</strong>`) + cell(String(n)));
+    return {
+      html: table(fr ? ['Bloc', 'Pays dans le jeu'] : ['Block', 'Countries in the game'], rows),
+      items: blocks.map(([sub]) => SUBREGION_LABELS[sub]?.[locale] ?? sub),
+      name: fr ? 'Les pays d’Europe du jeu par bloc' : 'The game’s European countries by block',
+    };
+  }
+  const un = eu.filter((c) => !NON_UN_EUROPE.includes(c.cca3));
+  const strict = un.filter((c) => !['RUS', 'CYP'].includes(c.cca3));
+  const wide = eu.length + EUROPE_EDGE_IN_ASIA.length;
+  const scenarios = [
+    [strict.length, fr ? 'Sans la Russie ni Chypre, sans le Vatican' : 'Without Russia, Cyprus or the Vatican', fr ? 'Définition étroite : seuls les États membres de l’ONU entièrement dans le continent' : 'Narrow definition: only UN members entirely inside the continent'],
+    [un.length, fr ? 'États membres de l’ONU classés en Europe par le jeu' : 'UN member states filed under Europe by the game', fr ? 'Le chiffre de la question « combien de pays » dans son sens courant' : 'The usual answer to “how many countries”'],
+    [eu.length, fr ? 'L’Europe du jeu' : 'The game’s Europe', fr ? 'Les précédents, plus le Saint-Siège (État observateur)' : 'The above, plus the Holy See (an observer state)'],
+    [wide, fr ? 'Avec la Turquie, la Géorgie, l’Arménie, l’Azerbaïdjan et le Kazakhstan' : 'With Türkiye, Georgia, Armenia, Azerbaijan and Kazakhstan', fr ? 'Les cinq pays que le jeu classe en Asie mais que beaucoup de listes comptent aussi' : 'The five countries the game files under Asia but many lists also count'],
+    [wide + 1, fr ? 'Et le Kosovo' : 'And Kosovo', fr ? 'Absent du jeu : ajouté ici à la main, c’est le maximum des listes courantes' : 'Not in the game: added here by hand, the ceiling of common lists'],
+  ];
+  const rows = scenarios.map(([n, label, note]) => cell(`<strong>${n}</strong>`) + cell(label) + cell(note));
+  return {
+    html: table(fr ? ['Pays', 'Définition', 'Précision'] : ['Countries', 'Definition', 'Note'], rows),
+    items: scenarios.map(([n, label]) => `${n} — ${label}`),
+    name: fr ? 'Combien de pays en Europe selon la définition' : 'How many countries in Europe, by definition',
+  };
+}
+
 export const TABLES = {
   flags: flagsTable,
   capitals: capitalsTable,
@@ -625,4 +891,11 @@ export const TABLES = {
   notoriety: notorietyTable,
   landlocked: landlockedTable,
   smallest: smallestTable,
+  'capital-blocks': capitalBlocksTable,
+  'capital-set': capitalSetTable,
+  'flag-set': flagSetTable,
+  'flags-notoriety': flagsNotorietyTable,
+  'population-top': populationTopTable,
+  'area-top': areaTopTable,
+  'europe-count': europeCountTable,
 };
