@@ -1,0 +1,13 @@
+<svg width="96" height="96" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Icône de notification Android : silhouette blanche sur transparent
+       (Android ignore les couleurs). Le G et une rose à 4 branches, traits
+       épaissis pour 24 dp. -->
+  <g fill="#fff">
+    <path d="M725.4 207.3 A372 372 0 1 0 884 512" fill="none" stroke="#fff" stroke-width="80"/>
+    <rect x="712" y="472" width="212" height="80"/>
+    <g transform="translate(512 512)">
+      <polygon points="0,-300 80,0 0,300 -80,0"/>
+      <polygon points="0,-300 80,0 0,300 -80,0" transform="rotate(90)"/>
+    </g>
+  </g>
+</svg>

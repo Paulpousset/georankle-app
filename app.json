@@ -98,7 +98,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#f2e8d0"
     },
     "ios": {
       "supportsTablet": true,
@@ -117,7 +117,7 @@
       "package": "com.paulpousset.geog",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#f2e8d0"
       },
       "edgeToEdgeEnabled": true,
       "blockedPermissions": [
