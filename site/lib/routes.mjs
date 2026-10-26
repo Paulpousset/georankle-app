@@ -188,6 +188,11 @@ const THEMATIC = [
     id: 'guide-area-ranking',
     paths: { fr: '/guides/pays-par-superficie/', en: '/en/guides/countries-by-area/' },
   },
+  { id: 'guide-nordic-flags', paths: { fr: '/guides/drapeaux-nordiques/', en: '/en/guides/nordic-flags/' } },
+  {
+    id: 'guide-europe-count',
+    paths: { fr: '/guides/combien-de-pays-en-europe/', en: '/en/guides/how-many-countries-in-europe/' },
+  },
 ];
 
 /**
@@ -305,6 +310,16 @@ export const COUNTRY_PAGES = [
   { cca3: 'YEM', fr: 'yemen', en: 'yemen' },
   { cca3: 'MAR', fr: 'maroc', en: 'morocco' },
   { cca3: 'AGO', fr: 'angola', en: 'angola' },
+  { cca3: 'UKR', fr: 'ukraine', en: 'ukraine' },
+  { cca3: 'POL', fr: 'pologne', en: 'poland' },
+  { cca3: 'UZB', fr: 'ouzbekistan', en: 'uzbekistan' },
+  { cca3: 'MYS', fr: 'malaisie', en: 'malaysia' },
+  { cca3: 'SAU', fr: 'arabie-saoudite', en: 'saudi-arabia' },
+  { cca3: 'MOZ', fr: 'mozambique', en: 'mozambique' },
+  { cca3: 'GHA', fr: 'ghana', en: 'ghana' },
+  { cca3: 'PER', fr: 'perou', en: 'peru' },
+  { cca3: 'MDG', fr: 'madagascar', en: 'madagascar' },
+  { cca3: 'CIV', fr: 'cote-d-ivoire', en: 'ivory-coast' },
 ];
 
 const COUNTRY_ROUTES = COUNTRY_PAGES.map((p) => ({

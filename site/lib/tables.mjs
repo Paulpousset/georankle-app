@@ -692,6 +692,10 @@ const FLAG_SETS = {
     codes: ['EGY', 'SDN', 'LBY', 'DZA', 'MAR', 'TUN'],
     name: { fr: 'Les drapeaux du nord de l’Afrique', en: 'The flags of North Africa' },
   },
+  nordic: {
+    codes: ['DNK', 'NOR', 'SWE', 'FIN', 'ISL'],
+    name: { fr: 'Les cinq drapeaux nordiques', en: 'The five Nordic flags' },
+  },
   'africa-borrowed': {
     codes: ['LBR', 'TCD', 'CIV', 'NER', 'SOM', 'DJI'],
     name: { fr: 'Drapeaux africains à rapprocher d’autres drapeaux', en: 'African flags that echo other flags' },
@@ -788,6 +792,14 @@ const CAPITAL_SETS = {
     codes: ['BRA', 'GUY', 'SUR'],
     name: { fr: 'Capitales de la façade atlantique', en: 'Capitals of the Atlantic block' },
   },
+  nordic: {
+    codes: ['DNK', 'NOR', 'SWE', 'FIN', 'ISL'],
+    name: { fr: 'Les cinq pays nordiques du jeu', en: 'The five Nordic countries in the game' },
+  },
+  'europe-borderline': {
+    codes: ['RUS', 'CYP', 'TUR', 'GEO', 'ARM', 'AZE', 'KAZ'],
+    name: { fr: 'Les sept pays à la lisière de l’Europe', en: 'The seven countries on the edge of Europe' },
+  },
   'asia-status': {
     codes: ['ISR', 'PSE', 'LKA', 'MYS', 'IDN', 'MMR', 'KAZ', 'ARE', 'TUR', 'IND', 'PAK'],
     name: { fr: 'Capitales d’Asie à statut particulier', en: 'Asian capitals with a special status' },
@@ -820,6 +832,48 @@ export function capitalSetTable(scope, locale) {
   };
 }
 
+/** Pays d'Europe du jeu qui ne sont pas membres de l'ONU (observateur) : seul le Saint-Siège. */
+const NON_UN_EUROPE = ['VAT'];
+/** Les pays que le jeu classe en Asie mais que beaucoup de définitions rattachent à l'Europe. */
+const EUROPE_EDGE_IN_ASIA = ['TUR', 'GEO', 'ARM', 'AZE', 'KAZ'];
+
+/**
+ * Le nombre de pays d'Europe selon la définition retenue. Tous les décomptes
+ * sont calculés sur les données du jeu ; seul le Kosovo, absent du jeu, est
+ * ajouté à la main, et signalé comme tel.
+ */
+export function europeCountTable(scope, locale) {
+  const fr = locale === 'fr';
+  const eu = COUNTRIES.filter((c) => c.region === 'Europe');
+  if (scope === 'blocks') {
+    const groups = new Map();
+    for (const c of eu) groups.set(c.subregion, (groups.get(c.subregion) ?? 0) + 1);
+    const blocks = [...groups.entries()].sort((a, b) => b[1] - a[1]);
+    const rows = blocks.map(([sub, n]) => cell(`<strong>${SUBREGION_LABELS[sub]?.[locale] ?? sub}</strong>`) + cell(String(n)));
+    return {
+      html: table(fr ? ['Bloc', 'Pays dans le jeu'] : ['Block', 'Countries in the game'], rows),
+      items: blocks.map(([sub]) => SUBREGION_LABELS[sub]?.[locale] ?? sub),
+      name: fr ? 'Les pays d’Europe du jeu par bloc' : 'The game’s European countries by block',
+    };
+  }
+  const un = eu.filter((c) => !NON_UN_EUROPE.includes(c.cca3));
+  const strict = un.filter((c) => !['RUS', 'CYP'].includes(c.cca3));
+  const wide = eu.length + EUROPE_EDGE_IN_ASIA.length;
+  const scenarios = [
+    [strict.length, fr ? 'Sans la Russie ni Chypre, sans le Vatican' : 'Without Russia, Cyprus or the Vatican', fr ? 'Définition étroite : seuls les États membres de l’ONU entièrement dans le continent' : 'Narrow definition: only UN members entirely inside the continent'],
+    [un.length, fr ? 'États membres de l’ONU classés en Europe par le jeu' : 'UN member states filed under Europe by the game', fr ? 'Le chiffre de la question « combien de pays » dans son sens courant' : 'The usual answer to “how many countries”'],
+    [eu.length, fr ? 'L’Europe du jeu' : 'The game’s Europe', fr ? 'Les précédents, plus le Saint-Siège (État observateur)' : 'The above, plus the Holy See (an observer state)'],
+    [wide, fr ? 'Avec la Turquie, la Géorgie, l’Arménie, l’Azerbaïdjan et le Kazakhstan' : 'With Türkiye, Georgia, Armenia, Azerbaijan and Kazakhstan', fr ? 'Les cinq pays que le jeu classe en Asie mais que beaucoup de listes comptent aussi' : 'The five countries the game files under Asia but many lists also count'],
+    [wide + 1, fr ? 'Et le Kosovo' : 'And Kosovo', fr ? 'Absent du jeu : ajouté ici à la main, c’est le maximum des listes courantes' : 'Not in the game: added here by hand, the ceiling of common lists'],
+  ];
+  const rows = scenarios.map(([n, label, note]) => cell(`<strong>${n}</strong>`) + cell(label) + cell(note));
+  return {
+    html: table(fr ? ['Pays', 'Définition', 'Précision'] : ['Countries', 'Definition', 'Note'], rows),
+    items: scenarios.map(([n, label]) => `${n} — ${label}`),
+    name: fr ? 'Combien de pays en Europe selon la définition' : 'How many countries in Europe, by definition',
+  };
+}
+
 export const TABLES = {
   flags: flagsTable,
   capitals: capitalsTable,
@@ -843,4 +897,5 @@ export const TABLES = {
   'flags-notoriety': flagsNotorietyTable,
   'population-top': populationTopTable,
   'area-top': areaTopTable,
+  'europe-count': europeCountTable,
 };

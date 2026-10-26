@@ -23,8 +23,8 @@ pas être écrite sérieusement n'est pas publiée.
 - [x] Capitales d'Asie (12/10 : angle « blocs + onze capitales à statut particulier », tableau `capital-set` ; Nusantara non retenue, le jeu garde Jakarta) — 48 pays, les capitales déplacées (Nur-Sultan/Astana, Naypyidaw, Nusantara)
 - [x] Capitales d'Amérique du Sud (19/10 : angle « trois blocs + villes qui ne sont pas capitales », l'atlas couvrait déjà Sucre/Brasília) — 12 pays, Sucre/La Paz, Brasília
 - [x] Drapeaux d'Afrique (19/10 : l'atlas en images existait ; angle « quatre familles » avec tableaux `flag-set`, 35 pays sur 54, les 19 autres volontairement non classés) — couleurs panafricaines, comment reconnaître les familles
-- [ ] Drapeaux nordiques — la croix scandinave et ses variantes
-- [ ] Combien de pays en Europe — le débat (44 à 51), la liste du jeu
+- [x] Drapeaux nordiques (26/10 : angle « une règle sur la couleur du fond », tableaux `flag-set` et `capital-set` nordic ; Féroé et Åland hors périmètre) — la croix scandinave et ses variantes
+- [x] Combien de pays en Europe (26/10 : de 42 à 51 selon la définition, décomptes calculés par `europe-count` ; le Kosovo, absent du jeu, est le seul chiffre ajouté à la main et signalé comme tel) — le débat (44 à 51), la liste du jeu
 - [ ] Pays qui ont deux capitales (ou plus) — Bolivie, Afrique du Sud, Pays-Bas, Malaisie…
 - [ ] Le jeu du globe : apprendre à situer les pays d'Asie centrale
 - [ ] Frontières : les pays qui touchent le plus de voisins (Chine, Russie, Brésil)
@@ -32,7 +32,7 @@ pas être écrite sérieusement n'est pas publiée.
 
 ### Fiches pays (195, à raison de 10 à 20 par semaine)
 
-**Avancement : 40 / 195** (19/10 : Ouganda, Espagne, Algérie, Irak, Argentine, Afghanistan, Canada, Yémen, Maroc, Angola, rangs 31 à 40 ; prochaine fournée : le Ghana ou le suivant par la population, 41ᵉ). Avant : 30 / 195 (12/10 : Royaume-Uni, Tanzanie, France, Afrique du Sud, Italie, Kenya, Birmanie, Colombie, Corée du Sud, Soudan, rangs 21 à 30 ; prochaine fournée : l'Ouganda, 31ᵉ). Avant : 20 / 195 (05/10 : Mexique, Japon, Égypte, Philippines, RD Congo, Viêt Nam, Iran, Turquie, Allemagne, Thaïlande, ranks 11 à 20 ; prochaine fournée : le Royaume-Uni, 21ᵉ). Avancement du 29/09 : 10 / 195 (29/09, les 10 pays les plus peuplés : Inde, Chine, États-Unis, Indonésie, Pakistan, Nigéria, Brésil, Bangladesh, Russie, Éthiopie). Gabarit livré : `COUNTRY_PAGES` dans `routes.mjs`, textes dans `site/content/<langue>/country-<cca3>.html`, garde-fou `checkCountryPages` (≥ 200 mots écrits, ≤ 25 % de phrases communes entre fiches). Prochaine fournée : le Mexique (11ᵉ par la population) et suivants. Le gabarit décrit ci-dessous a servi de base (`site/lib/routes.mjs`
+**Avancement : 50 / 195** (26/10 : Ukraine, Pologne, Ouzbékistan, Malaisie, Arabie Saoudite, Mozambique, Ghana, Pérou, Madagascar, Côte d’Ivoire, rangs 41 à 50 ; prochaine fournée : le Népal, 51ᵉ). Avant : 40 / 195 (19/10 : Ouganda, Espagne, Algérie, Irak, Argentine, Afghanistan, Canada, Yémen, Maroc, Angola, rangs 31 à 40 ; prochaine fournée : le Ghana ou le suivant par la population, 41ᵉ). Avant : 30 / 195 (12/10 : Royaume-Uni, Tanzanie, France, Afrique du Sud, Italie, Kenya, Birmanie, Colombie, Corée du Sud, Soudan, rangs 21 à 30 ; prochaine fournée : l'Ouganda, 31ᵉ). Avant : 20 / 195 (05/10 : Mexique, Japon, Égypte, Philippines, RD Congo, Viêt Nam, Iran, Turquie, Allemagne, Thaïlande, ranks 11 à 20 ; prochaine fournée : le Royaume-Uni, 21ᵉ). Avancement du 29/09 : 10 / 195 (29/09, les 10 pays les plus peuplés : Inde, Chine, États-Unis, Indonésie, Pakistan, Nigéria, Brésil, Bangladesh, Russie, Éthiopie). Gabarit livré : `COUNTRY_PAGES` dans `routes.mjs`, textes dans `site/content/<langue>/country-<cca3>.html`, garde-fou `checkCountryPages` (≥ 200 mots écrits, ≤ 25 % de phrases communes entre fiches). Prochaine fournée : le Mexique (11ᵉ par la population) et suivants. Le gabarit décrit ci-dessous a servi de base (`site/lib/routes.mjs`
 kind `country`, URL `/pays/<slug>/` et `/en/country/<slug>/`, données lues dans
 `assets/countries_stats.json`, tableau des voisins, drapeau, capitale, bouton
 « Jouer » vers Devinez le pays) puis livre les 10 premières, par ordre de
@@ -95,6 +95,14 @@ Faits saillants :
 3. Les indicateurs A1/A2 (`solo_shared`, `referral_shared`, `install_cta_pressed`, `comeback_granted`) restent sans information, faute d'accès PostHog.
 
 Décision : (a) vérifier que la Routine « Contenu SEO » tourne bien le lundi (clé, droits, échecs silencieux) ; (b) fournir `POSTHOG_PERSONAL_API_KEY` à cette Routine pour mesurer l'effet des vidéos sociales sur les installs ; (c) file éditoriale non réordonnée, aucune donnée ne le justifie.
+
+### 2026-10-26 — Contenu SEO de la semaine
+
+- Base : les PR #6, #15, #33 et #55 (SEO des 29/09 au 19/10) sont encore ouvertes et empilées ; la branche fusionne #55 (qui contient les trois autres) pour réutiliser le gabarit `country` et ne reprend aucun de leurs sujets. À fusionner d'un bloc, ou dans l'ordre #6, #15, #33, #55 puis celle-ci.
+- Pages : `/guides/drapeaux-nordiques/` et `/guides/combien-de-pays-en-europe/` + EN (`/en/guides/nordic-flags/`, `/en/guides/how-many-countries-in-europe/`) ; nouveaux tableaux `europe-count` (scénarios et blocs), `flag-set:nordic`, `capital-set:nordic` et `capital-set:europe-borderline`. Ajoutées au sommaire des guides et à deux pages sœurs chacune (drapeaux : `guide-flags`, `atlas-flags-europe` ; Europe : `atlas-countries-europe`, `guide-countries-count`).
+- 10 fiches pays de plus (rangs 41 à 50 par la population), FR + EN. Total : 50.
+- Rafraîchissement : `atlas-countries-europe` (proportion de pays enclavés corrigée : l'Europe est devant l'Afrique, pas derrière ; liste des quatre micro-États précisée) et `atlas-flags-europe` (le blason n'est pas porté par la Tchéquie ; ordre des couleurs de la Serbie et de la Croatie ; croix norvégienne et islandaise décrites), FR + EN, `modified` passé au 26/10.
+- Sauté : « Pays les plus petits du monde » reste en attente d'un angle propre (voir la file).
 
 ### 2026-10-19 — Contenu SEO de la semaine
 
