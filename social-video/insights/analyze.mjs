@@ -135,7 +135,8 @@ for (const c of ATLAS) {
   const pick = same.length >= rules.minPosts ? same : rs;
   conceptScore[c] = pick.length >= rules.minPosts ? shrink(pick, globalScore, rules.priorPosts) : null;
 }
-const prevMix = prev.mix ?? DEFAULT.mix;
+// Un concept ajouté dans le dépôt depuis le relevé précédent entre avec son poids par défaut.
+const prevMix = { ...DEFAULT.mix, ...prev.mix };
 const prevTotal = Object.values(prevMix).reduce((a, b) => a + b, 0) || 1;
 const known = Object.values(conceptScore).filter((x) => x != null);
 const rawMix = Object.fromEntries(ATLAS.map((c) => [c, conceptScore[c] ?? (known.length ? Math.max(...known) * (prevMix[c] ?? 0) / prevTotal * ATLAS.length : prevMix[c] ?? 0)]));

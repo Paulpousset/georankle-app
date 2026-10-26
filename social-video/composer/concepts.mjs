@@ -5,6 +5,7 @@
 //   node concepts.mjs                     # les 4 vidéos vitrine → ../out/episodes/concept-*.json
 //   node concepts.mjs --batch 24 --seed 7 # un lot : Devine, Frontières, Rankle en alternance
 //   node concepts.mjs --batch 12 --short --mix echelle:4,plus-ou-moins:3,frontieres:3,devine:2
+//   node concepts.mjs --batch 2 --mix partage:1           # deux « Partage équitable »
 //   node voice.mjs && node render.mjs
 //   node concepts.mjs --assets            # seulement public/ (captures, bruitages)
 //
@@ -13,7 +14,8 @@
 // - frontieres    : relier deux pays par le moins de frontières ;
 // - rankle        : chaque pays dans sa meilleure catégorie, rang mondial ;
 // - plus-ou-moins : cinq manches population / superficie, la série casse à la fin ;
-// - echelle       : mode « À l'échelle », trois paires remises à la même échelle.
+// - echelle       : mode « À l'échelle », trois paires remises à la même échelle ;
+// - partage       : mode « Partage équitable », trois cartes coupées en parts de population égales.
 import { copyFileSync, cpSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -661,6 +663,192 @@ function echelle(name, pairs, hook = null) {
   });
 }
 
+// ───────────────────────────── Partage équitable ─────────────────────────────
+// Mode « Partage équitable » de l'app (src/lib/split.ts) : une carte et ses
+// grandes villes, nommées sans chiffres (des repères) ; un trait (ou deux) pour
+// couper toute la population de la zone en parts égales, puis la part de
+// chacun en % et en habitants. split.ts est
+// compilé tel quel (esbuild, déjà là pour Remotion) : mêmes cartes, mêmes
+// villes, même barème que l'app.
+const { build: esbuild } = await import('esbuild');
+const SPLIT_JS = join(HERE, 'node_modules', '.cache', 'split.mjs');
+await esbuild({
+  stdin: { contents: "export * from './src/lib/split.ts'; export { fmtCount } from './src/lib/format.ts';", resolveDir: ROOT, loader: 'ts' },
+  bundle: true, platform: 'node', format: 'esm', outfile: SPLIT_JS, logLevel: 'error',
+});
+const SPLIT = await import(SPLIT_JS);
+// Au-delà, le plateau rapetisse pour tenir à l'écran et les noms de villes deviennent illisibles.
+const SP_MAX_H = 167;
+// Pour le placement de la voix off ; les moments de chaque carte sont écrits dans la fiche.
+const SP = { START: 0.3, LEAD: 1.2, DRAW: 0.8, LINE: 1.0, GAP: 0.25, ADJUST: 0.7, SUBMIT: 0.35, REVEAL: 0.45, READ: 2.4, OUTRO: 2.6 };
+const spUsed = {};
+const spHalves = (id) => SPLIT.bestSplitError(SPLIT.splitMap(id), 2, 1);
+const spQuarters = (id) => SPLIT.bestSplitError(SPLIT.splitMap(id), 4, 2);
+const spFits = (id) => SPLIT.splitMap(id).height <= SP_MAX_H && !spUsed[id];
+
+/**
+ * Traits joués par « moi » sur une carte : tirés au hasard autour du milieu des
+ * villes, gardés si leurs points tombent dans [lo, hi]. `middle` : la chute,
+ * des traits qui coupent la carte en son milieu (sans regarder les
+ * populations), le piège du mode.
+ */
+function spLines(q, lo, hi, middle = false) {
+  const map = SPLIT.splitMap(q.id);
+  const xs = map.cities.map((c) => c.x);
+  const ys = map.cities.map((c) => c.y);
+  const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+  const mid = { x: (x0 + x1) / 2, y: (y0 + y1) / 2 };
+  // Les deux bouts du trait, en retrait des bords du plateau (où le doigt se pose).
+  const through = (p, angle) => {
+    const seg = SPLIT.clipToBoard({ a: p, b: { x: p.x + Math.cos(angle), y: p.y + Math.sin(angle) } }, map.width, map.height);
+    if (!seg) return null;
+    const at = (k) => ({ x: seg[0].x + (seg[1].x - seg[0].x) * k, y: seg[0].y + (seg[1].y - seg[0].y) * k });
+    return { a: at(0.07), b: at(0.93) };
+  };
+  const found = [];
+  for (let k = 0; k < 6000 && found.length < 40; k++) {
+    const spread = middle ? 0.12 : 0.4;
+    const p = { x: mid.x + (rand() - 0.5) * 2 * spread * (x1 - x0), y: mid.y + (rand() - 0.5) * 2 * spread * (y1 - y0) };
+    // Traits plutôt francs (vertical, horizontal, diagonale) : c'est ce qu'on trace au doigt.
+    const angle = Math.PI * rand();
+    const first = through(p, angle);
+    if (!first) continue;
+    const lines = [first];
+    if (q.lines === 2) {
+      const second = through(p, angle + Math.PI * (0.38 + rand() * 0.24));
+      if (!second) continue;
+      lines.push(second);
+    }
+    const shares = SPLIT.partShares(map, lines);
+    // Une part à « 0 % » se lit comme un bug : chaque part garde au moins 2 %.
+    if (shares.length < q.parts || shares.some((x) => x.share < 0.02)) continue;
+    const { points } = SPLIT.scoreLines(q, lines);
+    if (points < lo || points > hi) continue;
+    found.push({ lines, points, shares, off: Math.hypot(p.x - mid.x, p.y - mid.y) });
+  }
+  if (!found.length) return null;
+  if (middle) found.sort((u, v) => u.off - v.off);
+  return middle ? found[0] : pick(found);
+}
+
+// Trois cartes : un pays en deux (bien), un continent en deux (parfait), puis
+// une carte en quatre coupée en son milieu (la chute).
+function randomPartage() {
+  const plan = [
+    { pool: KNOWN.filter((c) => SPLIT.splitCountries().includes(c) && spFits(c) && spHalves(c) <= 0.06), parts: 2, lo: 125, hi: 179 },
+    { pool: SPLIT.splitGroups().filter((g) => spFits(g) && spHalves(g) <= 0.06), parts: 2, lo: 182, hi: 200 },
+    { pool: [...SPLIT.splitGroups(), ...SPLIT.splitCountries()].filter((id) => spFits(id) && spQuarters(id) <= 0.06), parts: 4, lo: 5, hi: 55, middle: true },
+  ];
+  const picked = [];
+  for (const step of plan) {
+    let play = null;
+    for (const id of shuffle(step.pool.filter((id) => !picked.some((p) => p.q.id === id)))) {
+      const lines = step.parts === 2 ? 1 : 2;
+      const q = { id, parts: step.parts, lines, best: SPLIT.bestSplitError(SPLIT.splitMap(id), step.parts, lines) };
+      const got = spLines(q, step.lo, step.hi, step.middle);
+      if (got) {
+        play = { q, ...got };
+        break;
+      }
+    }
+    if (!play) throw new Error('aucune partie Partage équitable trouvée');
+    picked.push(play);
+  }
+  // Les cartes servent une fois par lot : 4 vidéos ne montrent pas toutes l'Europe.
+  for (const p of picked) spUsed[p.q.id] = 1;
+  return picked;
+}
+
+/** Le trait avant le réglage : le second bout tourné de quelques degrés autour du premier. */
+function spBefore(line) {
+  const turn = (rand() < 0.5 ? -1 : 1) * (0.1 + rand() * 0.08);
+  const dx = line.b.x - line.a.x;
+  const dy = line.b.y - line.a.y;
+  return { a: line.a, b: { x: line.a.x + dx * Math.cos(turn) - dy * Math.sin(turn), y: line.a.y + dx * Math.sin(turn) + dy * Math.cos(turn) } };
+}
+
+function partage(name, plays, hook = null) {
+  const lang = EN ? 'en' : 'fr';
+  const r1 = (p) => ({ x: Math.round(p.x * 100) / 100, y: Math.round(p.y * 100) / 100 });
+  let clock = SP.START;
+  const rounds = plays.map(({ q, lines, points, shares }, i) => {
+    const map = SPLIT.splitMap(q.id);
+    const names = map.cities.map((c) => SPLIT.splitCityName(c, lang));
+    const labels = SPLIT.placeLabels(map, names);
+    // Moments de la carte (secondes depuis le début de la vidéo).
+    const t0 = clock;
+    const draw = [];
+    let t = t0 + (i === 0 ? SP.LEAD : 0) + SP.DRAW;
+    for (let k = 0; k < lines.length; k++) {
+      draw.push([t, t + SP.LINE]);
+      t += SP.LINE + SP.GAP;
+    }
+    const adjust = [t, t + SP.ADJUST];
+    const submit = adjust[1] + SP.SUBMIT;
+    const reveal = submit + SP.REVEAL;
+    clock = reveal + SP.READ;
+    const last = lines.length - 1;
+    return {
+      name: SPLIT.splitMapName(q.id, lang),
+      parts: q.parts,
+      total: SPLIT.fmtCount(map.total, lang),
+      width: map.width,
+      height: map.height,
+      regions: map.regions,
+      cities: map.cities.map((c, k) => ({ x: r1(c).x, y: r1(c).y, name: names[k], lx: r1(labels[k]).x, ly: r1(labels[k]).y, anchor: labels[k].anchor })),
+      lines: lines.map((l) => ({ a: r1(l.a), b: r1(l.b) })),
+      // Le dernier trait est d'abord tracé un peu de travers, puis réglé par son rond blanc.
+      before: { a: r1(lines[last].a), b: r1(spBefore(lines[last]).b) },
+      shares: shares.map((s) => ({ key: s.key, pct: Math.round(s.share * 100), pop: SPLIT.fmtCount(s.pop, lang) })),
+      points,
+      verdict: points >= 180 ? L('Partage parfait !', 'Perfect split!') : points >= 120 ? L('Presque équitable', 'Nearly fair') : points >= 60 ? L('Un peu déséquilibré', 'A bit lopsided') : L('Très déséquilibré', 'Very lopsided'),
+      t: { start: t0, draw, adjust, submit, reveal, end: clock },
+    };
+  });
+  const n = rounds.length;
+  const end = rounds[n - 1].t.end + SP.OUTRO;
+  const total = rounds.reduce((a, r) => a + r.points, 0);
+  const voice = [{ text: hook?.say ?? L('Coupe cette carte en deux : autant d’habitants de chaque côté.', 'Cut this map in half: same population on each side.'), at: 0 }];
+  rounds.forEach((r, i) => {
+    const [p0, p1] = r.shares.map((s) => s.pct);
+    if (i > 0) voice.push({ text: r.parts === 2 ? L(`${say(r.name)}, en deux.`, `${say(r.name)}, in half.`) : L(`${say(r.name)}, en quatre. Facile, je coupe au milieu.`, `${say(r.name)}, in four. Easy, I cut down the middle.`), at: r.t.start + 0.1, maxLate: 0.6 });
+    const line = i < n - 1
+      ? (r.points >= 180 ? L(`${p0}, ${p1}. Parfait !`, `${p0}, ${p1}. Perfect!`) : L(`${p0} contre ${p1}, pas mal !`, `${p0} to ${p1}, not bad!`))
+      : L(`Quoi ? ${p0} pour cent dans une seule part !`, `What? ${p0} percent in one part!`);
+    voice.push({ text: line, at: r.t.reveal + 0.1, maxLate: 0.8 });
+  });
+  voice.push({ text: L(`${total} points. Tu fais mieux ?`, `${total} points. Can you beat it?`), at: rounds[n - 1].t.end + 0.2, maxLate: 1 });
+  voice.push({ text: END_LINE, at: end + 0.4, maxLate: 1 });
+  console.log('  ', rounds.map((r) => `${r.name} ${r.shares.map((s) => s.pct).join('/')} +${r.points}`).join(' · '), '=', total);
+  write(name, {
+    composition: 'PartageConcept',
+    hook: hook?.text ?? L(['Coupe cette carte', 'en deux ✂️'], ['Cut this map', 'in half ✂️']),
+    title: L('Partage équitable', 'Fair Split'),
+    mapLabel: L('CARTE', 'MAP'),
+    partsLabel: L(['', '', 'EN DEUX', 'EN TROIS', 'EN QUATRE'], ['', '', 'HALVES', 'THIRDS', 'QUARTERS']),
+    totalLabel: L('Population de la zone : {0}', 'Population of the area: {0}'),
+    hints: L(
+      ['', '', 'Trace un trait qui coupe la population en deux parts égales.', '', 'Trace deux traits qui se croisent pour couper la population en 4 parts égales.'],
+      ['', '', 'Draw a line that splits the population into two equal halves.', '', 'Draw two crossing lines that split the population into 4 equal parts.'],
+    ),
+    partsHint: L('Chaque couleur est une part.', 'Each colour is one part.'),
+    target: L('Objectif : {0} % chacune', 'Target: {0}% each'),
+    submit: L('VALIDER', 'SUBMIT'),
+    fail: L('Raté !', 'Missed!'),
+    rounds,
+    total,
+    max: 200 * n,
+    outro: L('Tu fais mieux ?', 'Can you beat it?'),
+    outroSub: L('Ton score en commentaire 👇', 'Drop your score 👇'),
+    ...COMMON,
+    voice,
+    post: L(
+      `${rounds[1].name} en deux, autant d'habitants de chaque côté : tu aurais coupé où ? ✂️ Nouveau mode « Partage équitable » dans GeoG.\n\n${POST_TAGS}`,
+      `${rounds[1].name} in half, same population on each side: where would you cut? ✂️ New “Fair Split” mode in GeoG.\n\n${POST_TAGS}`,
+    ),
+  });
+}
+
 // ───────────────────────────── Réglages (--tuning) ─────────────────────────────
 // Ordre des concepts d'un lot au prorata de tuning.mix, bien réparti (tourniquet
 // pondéré : à chaque vidéo, le concept le plus en retard sur sa part).
@@ -766,6 +954,10 @@ if (REDO) {
       const pairs = randomEchelle();
       const hook = pickHook('echelle', {});
       echelle(`${prefix}-${num}-echelle-${slug(fr(pairs[0].left))}${hook ? `-${hook.id}` : ''}`, pairs, hook);
+    } else if (kind === 'partage') {
+      const plays = randomPartage();
+      const hook = pickHook('partage', {});
+      partage(`${prefix}-${num}-partage-${slug(SPLIT.splitMapName(plays[1].q.id, 'fr'))}${hook ? `-${hook.id}` : ''}`, plays, hook);
     } else if (kind === 'plus-ou-moins') {
       const pm = randomPlusOuMoins(i);
       const hook = pickHook('plus-ou-moins', { a: fr(pm.chain[0]), b: fr(pm.chain[1]) });
