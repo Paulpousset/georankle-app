@@ -46,7 +46,11 @@ Ton lien d'invitation est proposé en fin de partie : vous gagnez chacun 50 piè
 🏆 Défi du Jour : classement général avec podium (+20/+10/+5 pièces).
 
 🌍 Globes 3D plus beaux : Mars refait, globe glacé, et les petits pays changent enfin de couleur.
-🗺️ Mode Histoire : recharge de vies, portails d'étoiles, 500 niveaux et animaux 3D sur la carte.
+🗺️ Mode Histoire : recharge de vies, portails d'étoiles, 1000 niveaux et animaux 3D sur la carte.
+
+📏 Nouveau mode « À l'échelle » et ✂️ « Partage équitable » (couper une zone en parts de population égales).
+🎃 Halloween : un défi « pays fantômes » par jour jusqu'au 31/10.
+🎨 12 nouveaux cosmétiques (globes, fonds cosmos).
 
 🔊 Bouton son flottant et bouton de langue plus clair.
 
@@ -73,7 +77,11 @@ Your invite link is offered at the end of a game: you both earn 50 coins.
 🏆 Daily Challenge: overall ranking with podium (+20/+10/+5 coins).
 
 🌍 Nicer 3D globes: redone Mars, icy globe, and small countries finally change color.
-🗺️ Story mode: life refills, star gates, 500 levels and 3D animals on the map.
+🗺️ Story mode: life refills, star gates, 1000 levels and 3D animals on the map.
+
+📏 New "To Scale" mode and ✂️ "Fair Share" (cut an area into equal population shares).
+🎃 Halloween: one "ghost countries" challenge a day until 10/31.
+🎨 12 new cosmetics (globes, cosmos backgrounds).
 
 🔊 Floating sound button and a clearer language button.
 
@@ -87,56 +95,56 @@ Upcoming fixes will arrive without a store update.
 
 ## 3. Blocs pour `scripts/play_promote.mjs --notes` (Play, < 500 car.)
 
-<fr-FR>⚔️ Défie un ami : partage ton score, il joue dans son navigateur.
-🔥 Rappel du soir si ta série est menacée.
-👋 Bonus de retour après une semaine d'absence.
-🎁 Parrainage en fin de partie (50 pièces chacun).
-🏆 Défi du Jour : classement général.
-🌍 Globes 3D plus beaux, Israël redessiné, régions mieux cadrées.
-🗺️ Mode Histoire : vies, portails d'étoiles, 500 niveaux.
-🏁 Capitales et Drapeaux : même écran de fin que les autres modes.</fr-FR>
+<fr-FR>📏 Nouveau mode « À l'échelle » : compare la taille des pays.
+✂️ Nouveau mode « Partage équitable » : coupe une zone en parts de population égales.
+🎃 Halloween : un défi « pays fantômes » par jour jusqu'au 31/10.
+🗺️ Mode Histoire : 1000 niveaux.
+🌍 12 nouveaux cosmétiques, fonds 3D plus nets.
+⚔️ Défie un ami : partage ton score, il joue dans son navigateur.
+🔥 Rappel du soir si ta série est menacée, bonus de retour après une semaine.
+🎁 Parrainage en fin de partie (50 pièces chacun).</fr-FR>
 
-<en-US>⚔️ Challenge a friend: share your score, they play in their browser.
-🔥 Evening reminder if your streak is at risk.
-👋 Welcome-back bonus after a week away.
-🎁 Referral link at the end of a game (50 coins each).
-🏆 Daily Challenge: overall ranking.
-🌍 Nicer 3D globes, redrawn Israel, better framed regions.
-🗺️ Story mode: lives, star gates, 500 levels.
-🏁 Capitals and Flags: same end screen as the other modes.</en-US>
+<en-US>📏 New "To Scale" mode: compare the size of countries.
+✂️ New "Fair Share" mode: cut an area into equal population shares.
+🎃 Halloween: one "ghost countries" challenge a day until 10/31.
+🗺️ Story mode: 1000 levels.
+🌍 12 new cosmetics, sharper 3D backgrounds.
+⚔️ Challenge a friend: share your score, they play in their browser.
+🔥 Evening reminder if your streak is at risk, welcome-back bonus after a week.
+🎁 Referral link at the end of a game (50 coins each).</en-US>
 
-<es-ES>⚔️ Reta a un amigo: comparte tu puntuación y jugará en su navegador.
-🔥 Aviso nocturno si tu racha corre peligro.
-👋 Bono de regreso tras una semana sin jugar.
-🎁 Enlace de invitación al final de la partida (50 monedas cada uno).
-🏆 Reto diario: clasificación general.
-🌍 Globos 3D más bonitos, Israel redibujado, regiones mejor encuadradas.
-🗺️ Modo Historia: vidas, portales de estrellas, 500 niveles.
-🏁 Capitales y Banderas: misma pantalla final que los demás modos.</es-ES>
+<es-ES>📏 Nuevo modo «A escala»: compara el tamaño de los países.
+✂️ Nuevo modo «Reparto justo»: divide una zona en partes iguales de población.
+🎃 Halloween: un reto de «países fantasma» al día hasta el 31/10.
+🗺️ Modo Historia: 1000 niveles.
+🌍 12 nuevos cosméticos, fondos 3D más nítidos.
+⚔️ Reta a un amigo: comparte tu puntuación y jugará en su navegador.
+🔥 Aviso nocturno si tu racha corre peligro, bono de regreso tras una semana.
+🎁 Enlace de invitación al final de la partida (50 monedas cada uno).</es-ES>
 
-<pt-PT>⚔️ Desafia um amigo: partilha a pontuação e ele joga no browser.
-🔥 Lembrete à noite se a tua sequência estiver em risco.
-👋 Bónus de regresso após uma semana de ausência.
-🎁 Link de convite no fim do jogo (50 moedas cada).
-🏆 Desafio diário: classificação geral.
-🌍 Globos 3D mais bonitos, Israel redesenhado, regiões melhor enquadradas.
-🗺️ Modo História: vidas, portais de estrelas, 500 níveis.
-🏁 Capitais e Bandeiras: mesmo ecrã final dos outros modos.</pt-PT>
+<pt-PT>📏 Novo modo «À escala»: compara o tamanho dos países.
+✂️ Novo modo «Partilha justa»: divide uma zona em partes iguais de população.
+🎃 Halloween: um desafio de «países fantasma» por dia até 31/10.
+🗺️ Modo História: 1000 níveis.
+🌍 12 novos cosméticos, fundos 3D mais nítidos.
+⚔️ Desafia um amigo: partilha a pontuação e ele joga no browser.
+🔥 Lembrete à noite se a sequência estiver em risco, bónus de regresso após uma semana.
+🎁 Link de convite no fim do jogo (50 moedas cada).</pt-PT>
 
-<de-DE>⚔️ Fordere Freunde heraus: Score teilen, sie spielen im Browser.
-🔥 Abenderinnerung, wenn deine Tagesserie in Gefahr ist.
-👋 Willkommen-zurück-Bonus nach einer Woche Pause.
-🎁 Einladungslink am Spielende (je 50 Münzen).
-🏆 Tagesaufgabe: Gesamtwertung.
-🌍 Schönere 3D-Globen, neu gezeichnetes Israel, besser gerahmte Regionen.
-🗺️ Story-Modus: Leben, Sternentore, 500 Level.
-🏁 Hauptstädte und Flaggen: gleicher Endbildschirm wie die anderen Modi.</de-DE>
+<de-DE>📏 Neuer Modus „Im Maßstab": vergleiche die Größe von Ländern.
+✂️ Neuer Modus „Fair geteilt": teile ein Gebiet in gleich große Bevölkerungsanteile.
+🎃 Halloween: täglich eine „Geisterländer"-Aufgabe bis 31.10.
+🗺️ Story-Modus: 1000 Level.
+🌍 12 neue Kosmetika, schärfere 3D-Hintergründe.
+⚔️ Fordere Freunde heraus: Score teilen, sie spielen im Browser.
+🔥 Abenderinnerung bei gefährdeter Serie, Willkommen-zurück-Bonus nach einer Woche.
+🎁 Einladungslink am Spielende (je 50 Münzen).</de-DE>
 
-<it-IT>⚔️ Sfida un amico: condividi il punteggio, giocherà nel browser.
-🔥 Promemoria serale se la tua serie è a rischio.
-👋 Bonus di ritorno dopo una settimana di assenza.
-🎁 Link d'invito a fine partita (50 monete ciascuno).
-🏆 Sfida del giorno: classifica generale.
-🌍 Globi 3D più belli, Israele ridisegnato, regioni meglio inquadrate.
-🗺️ Modalità Storia: vite, portali, 500 livelli.
-🏁 Capitali e Bandiere: stessa schermata finale degli altri modi.</it-IT>
+<it-IT>📏 Nuova modalità «In scala»: confronta la dimensione dei paesi.
+✂️ Nuova modalità «Divisione equa»: dividi un'area in parti uguali di popolazione.
+🎃 Halloween: una sfida «paesi fantasma» al giorno fino al 31/10.
+🗺️ Modalità Storia: 1000 livelli.
+🌍 12 nuovi cosmetici, sfondi 3D più nitidi.
+⚔️ Sfida un amico: condividi il punteggio, giocherà nel browser.
+🔥 Promemoria serale se la serie è a rischio, bonus di ritorno dopo una settimana.
+🎁 Link d'invito a fine partita (50 monete ciascuno).</it-IT>
