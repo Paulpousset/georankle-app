@@ -42,6 +42,20 @@ seuil.
 
 ## Entrées
 
+### 2026-11 — Audit technique 2026-11
+
+- `playgeog.com`, l'App Store et le Play Store sont bloqués par le réseau de la session (403 sur CONNECT) : sitemap, hreflang servis, PageSpeed, liens en production, JSON-LD et pages de store **non mesurés**, pas de nouvel essai.
+
+| Mesure | Valeur |
+|---|---|
+| PageSpeed mobile (accueil FR/EN, guide, mode, continent, /play) | non mesuré (réf. : accueil 89–92, guide 97) |
+| `npm run site:check` | OK : 146 pages (52 FR, 52 EN, 3 par autre langue), 52 routes, hreflang/canonicals/titres/liens OK |
+| `npm run lint` | 0 erreur, 83 avertissements |
+| `npm run typecheck` | OK |
+| `npm test -- --ci` | 94 suites, 1111 tests OK |
+
+Anomalies trouvées : aucune dans le dépôt. Corrigées : aucune. Restantes : audit de production à refaire depuis un réseau qui atteint playgeog.com et les stores.
+
 ### 2026-10-30 — rapport hebdo (sans PostHog)
 
 - Pas de `POSTHOG_PERSONAL_API_KEY` dans la session : aucun indicateur produit mesuré. `playgeog.com` est inaccessible depuis la session (aucune réponse) : sitemap et PageSpeed non mesurés, pas de nouvel essai.
