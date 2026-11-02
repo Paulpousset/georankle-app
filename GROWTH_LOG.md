@@ -25,14 +25,14 @@ pas être écrite sérieusement n'est pas publiée.
 - [x] Drapeaux d'Afrique (19/10 : l'atlas en images existait ; angle « quatre familles » avec tableaux `flag-set`, 35 pays sur 54, les 19 autres volontairement non classés) — couleurs panafricaines, comment reconnaître les familles
 - [x] Drapeaux nordiques (26/10 : angle « une règle sur la couleur du fond », tableaux `flag-set` et `capital-set` nordic ; Féroé et Åland hors périmètre) — la croix scandinave et ses variantes
 - [x] Combien de pays en Europe (26/10 : de 42 à 51 selon la définition, décomptes calculés par `europe-count` ; le Kosovo, absent du jeu, est le seul chiffre ajouté à la main et signalé comme tel) — le débat (44 à 51), la liste du jeu
-- [ ] Pays qui ont deux capitales (ou plus) — Bolivie, Afrique du Sud, Pays-Bas, Malaisie…
-- [ ] Le jeu du globe : apprendre à situer les pays d'Asie centrale
+- [x] Pays qui ont deux capitales (ou plus) (02/11 : angle « trois familles » — partage des pouvoirs, capitale constitutionnelle/gouvernementale, capitale déplacée ; 12 pays, tableau `capital-set` ; les capitales multiples sont de la connaissance générale, le jeu ne retient qu'une capitale par pays) — Bolivie, Afrique du Sud, Pays-Bas, Malaisie…
+- [x] Le jeu du globe : apprendre à situer les pays d'Asie centrale (02/11 : trois repères et plan en deux séances, tableau `capital-set` central-asia ; chiffres de densité et parts calculés sur les données)
 - [ ] Frontières : les pays qui touchent le plus de voisins (Chine, Russie, Brésil)
 - [ ] Devinez le pays : comment lire les indices (superficie, population, PIB) comme un géographe
 
 ### Fiches pays (195, à raison de 10 à 20 par semaine)
 
-**Avancement : 50 / 195** (26/10 : Ukraine, Pologne, Ouzbékistan, Malaisie, Arabie Saoudite, Mozambique, Ghana, Pérou, Madagascar, Côte d’Ivoire, rangs 41 à 50 ; prochaine fournée : le Népal, 51ᵉ). Avant : 40 / 195 (19/10 : Ouganda, Espagne, Algérie, Irak, Argentine, Afghanistan, Canada, Yémen, Maroc, Angola, rangs 31 à 40 ; prochaine fournée : le Ghana ou le suivant par la population, 41ᵉ). Avant : 30 / 195 (12/10 : Royaume-Uni, Tanzanie, France, Afrique du Sud, Italie, Kenya, Birmanie, Colombie, Corée du Sud, Soudan, rangs 21 à 30 ; prochaine fournée : l'Ouganda, 31ᵉ). Avant : 20 / 195 (05/10 : Mexique, Japon, Égypte, Philippines, RD Congo, Viêt Nam, Iran, Turquie, Allemagne, Thaïlande, ranks 11 à 20 ; prochaine fournée : le Royaume-Uni, 21ᵉ). Avancement du 29/09 : 10 / 195 (29/09, les 10 pays les plus peuplés : Inde, Chine, États-Unis, Indonésie, Pakistan, Nigéria, Brésil, Bangladesh, Russie, Éthiopie). Gabarit livré : `COUNTRY_PAGES` dans `routes.mjs`, textes dans `site/content/<langue>/country-<cca3>.html`, garde-fou `checkCountryPages` (≥ 200 mots écrits, ≤ 25 % de phrases communes entre fiches). Prochaine fournée : le Mexique (11ᵉ par la population) et suivants. Le gabarit décrit ci-dessous a servi de base (`site/lib/routes.mjs`
+**Avancement : 60 / 195** (02/11 : Népal, Cameroun, Venezuela, Australie, Niger, Corée du Nord, Syrie, Mali, Burkina Faso, Sri Lanka, rangs 51 à 60 ; prochaine fournée : le suivant par la population, 61ᵉ). Avant : 50 / 195 (26/10 : Ukraine, Pologne, Ouzbékistan, Malaisie, Arabie Saoudite, Mozambique, Ghana, Pérou, Madagascar, Côte d’Ivoire, rangs 41 à 50 ; prochaine fournée : le Népal, 51ᵉ). Avant : 40 / 195 (19/10 : Ouganda, Espagne, Algérie, Irak, Argentine, Afghanistan, Canada, Yémen, Maroc, Angola, rangs 31 à 40 ; prochaine fournée : le Ghana ou le suivant par la population, 41ᵉ). Avant : 30 / 195 (12/10 : Royaume-Uni, Tanzanie, France, Afrique du Sud, Italie, Kenya, Birmanie, Colombie, Corée du Sud, Soudan, rangs 21 à 30 ; prochaine fournée : l'Ouganda, 31ᵉ). Avant : 20 / 195 (05/10 : Mexique, Japon, Égypte, Philippines, RD Congo, Viêt Nam, Iran, Turquie, Allemagne, Thaïlande, ranks 11 à 20 ; prochaine fournée : le Royaume-Uni, 21ᵉ). Avancement du 29/09 : 10 / 195 (29/09, les 10 pays les plus peuplés : Inde, Chine, États-Unis, Indonésie, Pakistan, Nigéria, Brésil, Bangladesh, Russie, Éthiopie). Gabarit livré : `COUNTRY_PAGES` dans `routes.mjs`, textes dans `site/content/<langue>/country-<cca3>.html`, garde-fou `checkCountryPages` (≥ 200 mots écrits, ≤ 25 % de phrases communes entre fiches). Prochaine fournée : le Mexique (11ᵉ par la population) et suivants. Le gabarit décrit ci-dessous a servi de base (`site/lib/routes.mjs`
 kind `country`, URL `/pays/<slug>/` et `/en/country/<slug>/`, données lues dans
 `assets/countries_stats.json`, tableau des voisins, drapeau, capitale, bouton
 « Jouer » vers Devinez le pays) puis livre les 10 premières, par ordre de
@@ -41,6 +41,13 @@ langue ; un garde-fou dans `site/lib/validate.mjs` refuse toute fiche sous le
 seuil.
 
 ## Entrées
+
+### 2026-11-02 — Routine « Contenu SEO »
+
+- Base : la branche `claude/seo-2026-10-26` (PR #73, non fusionnée), car les PR SEO des 29/09 au 26/10 sont toutes ouvertes et s'empilent ; cette PR les contient donc toutes. Les sujets repris sont les suivants dans la file.
+- Livré : 2 guides FR + EN (pays à plusieurs capitales ; Asie centrale sur le globe), 10 fiches pays (rangs 51 à 60), rafraîchissement de `guide-landlocked` (section Asie centrale) et `guide-renamed` (Astana/Nur-Sultan, libellés du jeu revérifiés) redatés au 02/11.
+- Sauté : « Pays les plus petits du monde » (toujours sans angle propre, voir la note du 12/10), « Frontières : les pays qui touchent le plus de voisins » et « Devinez le pays » non traités cette semaine (seuls deux sujets par semaine), à prendre ensuite.
+- Attention : cinq PR SEO ouvertes (#6, #15, #33, #55, #73) depuis cinq semaines, aucune fusionnée ; la production n'a reçu aucune page SEO.
 
 ### 2026-10-23 — rapport hebdo (sans PostHog)
 

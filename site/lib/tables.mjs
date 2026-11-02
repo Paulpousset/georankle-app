@@ -800,6 +800,14 @@ const CAPITAL_SETS = {
     codes: ['RUS', 'CYP', 'TUR', 'GEO', 'ARM', 'AZE', 'KAZ'],
     name: { fr: 'Les sept pays à la lisière de l’Europe', en: 'The seven countries on the edge of Europe' },
   },
+  'multi-capitals': {
+    codes: ['BOL', 'ZAF', 'NLD', 'MYS', 'CIV', 'BEN', 'TZA', 'LKA', 'SWZ', 'CHL', 'BDI', 'MNE'],
+    name: { fr: 'Les douze pays dont les institutions sont réparties entre plusieurs villes', en: 'Twelve countries whose institutions are spread over several cities' },
+  },
+  'central-asia': {
+    codes: ['KAZ', 'UZB', 'TKM', 'KGZ', 'TJK'],
+    name: { fr: 'Les cinq pays d’Asie centrale et leurs capitales', en: 'The five Central Asian countries and their capitals' },
+  },
   'asia-status': {
     codes: ['ISR', 'PSE', 'LKA', 'MYS', 'IDN', 'MMR', 'KAZ', 'ARE', 'TUR', 'IND', 'PAK'],
     name: { fr: 'Capitales d’Asie à statut particulier', en: 'Asian capitals with a special status' },

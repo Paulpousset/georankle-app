@@ -193,6 +193,14 @@ const THEMATIC = [
     id: 'guide-europe-count',
     paths: { fr: '/guides/combien-de-pays-en-europe/', en: '/en/guides/how-many-countries-in-europe/' },
   },
+  {
+    id: 'guide-multi-capitals',
+    paths: { fr: '/guides/pays-a-plusieurs-capitales/', en: '/en/guides/countries-with-several-capitals/' },
+  },
+  {
+    id: 'guide-central-asia',
+    paths: { fr: '/guides/asie-centrale-sur-le-globe/', en: '/en/guides/central-asia-on-the-globe/' },
+  },
 ];
 
 /**
@@ -320,6 +328,16 @@ export const COUNTRY_PAGES = [
   { cca3: 'PER', fr: 'perou', en: 'peru' },
   { cca3: 'MDG', fr: 'madagascar', en: 'madagascar' },
   { cca3: 'CIV', fr: 'cote-d-ivoire', en: 'ivory-coast' },
+  { cca3: 'NPL', fr: 'nepal', en: 'nepal' },
+  { cca3: 'CMR', fr: 'cameroun', en: 'cameroon' },
+  { cca3: 'VEN', fr: 'venezuela', en: 'venezuela' },
+  { cca3: 'AUS', fr: 'australie', en: 'australia' },
+  { cca3: 'NER', fr: 'niger', en: 'niger' },
+  { cca3: 'PRK', fr: 'coree-du-nord', en: 'north-korea' },
+  { cca3: 'SYR', fr: 'syrie', en: 'syria' },
+  { cca3: 'MLI', fr: 'mali', en: 'mali' },
+  { cca3: 'BFA', fr: 'burkina-faso', en: 'burkina-faso' },
+  { cca3: 'LKA', fr: 'sri-lanka', en: 'sri-lanka' },
 ];
 
 const COUNTRY_ROUTES = COUNTRY_PAGES.map((p) => ({
