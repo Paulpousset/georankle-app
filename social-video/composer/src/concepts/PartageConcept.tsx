@@ -29,7 +29,7 @@ export type PtRound = {
   shares: { key: number; pct: number; pop: string }[];
   points: number;
   verdict: string;
-  t: { start: number; draw: [number, number][]; adjust: [number, number]; submit: number; reveal: number; end: number };
+  t: { start: number; draw: [number, number][]; adjust: [number, number]; submit: number; reveal: number; end: number; think?: [number, number] };
 };
 export type PartageProps = {
   hook: string[];
@@ -43,6 +43,8 @@ export type PartageProps = {
   submit: string;
   fail: string;
   rounds: PtRound[];
+  /** Question du compte à rebours, quand les cartes ont un temps de réflexion (t.think). */
+  ask?: string;
   total: number;
   max: number;
   outro: string;
@@ -167,7 +169,9 @@ export function PartageConcept(p: PartageProps) {
   const outro = t >= p.rounds[n - 1].t.end;
   const lt = t - r.t.start;
   const revealed = t >= r.t.reveal;
-  const failAt = p.rounds[n - 1].t.reveal;
+  // Tampon « Raté ! » sur chaque carte ratée (avant : seulement la dernière, toujours ratée).
+  const missed = (x: PtRound) => x.points < 100;
+  const failAt = missed(r) ? r.t.reveal : Infinity;
 
   // Plateau à l'écran : même viewBox que l'app, agrandi pour tenir dans la carte.
   const s = Math.min(BOARD_MAX_W / r.width, BOARD_MAX_H / r.height);
@@ -314,6 +318,14 @@ export function PartageConcept(p: PartageProps) {
               </div>
             )}
 
+            {r.t.think && t >= r.t.think[0] && t < r.t.think[1] && p.ask ? (
+              <div style={{ position: 'absolute', left: 0, right: 0, top: CARD_Y + BOARD_Y + H - 40, display: 'flex', justifyContent: 'center' }}>
+                <div style={{ background: 'rgba(44,24,16,0.88)', color: C.parchment, borderRadius: 30, padding: '18px 36px', fontFamily: mono, fontWeight: 700, fontSize: 44, display: 'flex', gap: 24, alignItems: 'center' }}>
+                  {p.ask}
+                  <span style={{ fontFamily: serif, fontSize: 74, color: C.sand, width: 50, textAlign: 'center' }}>{Math.ceil(r.t.think[1] - t)}</span>
+                </div>
+              </div>
+            ) : null}
             {t >= failAt ? <Stamp text={p.fail} at={failAt + 0.25} color={C.red} rotate={-10} size={150} top={CARD_Y + 300} /> : null}
           </>
         ) : (
@@ -350,7 +362,8 @@ export function PartageConcept(p: PartageProps) {
             : <Sfx key={`v${i}`} at={x.t.reveal} src={sfx('gameover')} volume={0.8} />,
         ];
       })}
-      <Sfx at={failAt + 0.25} src={app('stamp')} volume={0.9} />
+      {p.rounds.filter(missed).map((x, i) => <Sfx key={`st${i}`} at={x.t.reveal + 0.25} src={app('stamp')} volume={0.9} />)}
+      {p.rounds.flatMap((x, i) => (x.t.think ? Array.from({ length: Math.ceil(x.t.think[1] - x.t.think[0]) }, (_, k) => <Sfx key={`tk${i}${k}`} at={x.t.think![0] + k} src={app('tick')} volume={0.7} />) : []))}
       <Sfx at={end} src={app('win')} volume={0.7} />
     </AbsoluteFill>
   );
