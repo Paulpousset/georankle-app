@@ -100,7 +100,7 @@ export function getBestOfForRank(rank: RankInfo): number {
   return 9; // master
 }
 
-const RANKED_MODES: MatchMode[] = ['classic', 'streak', 'versus', 'globe', 'guess', 'regions', 'higherlower', 'silhouette', 'borders', 'languages', 'challenge', 'pinpoint', 'scale'];
+const RANKED_MODES: MatchMode[] = ['classic', 'streak', 'versus', 'globe', 'guess', 'regions', 'higherlower', 'silhouette', 'borders', 'languages', 'challenge', 'pinpoint', 'scale', 'split'];
 
 /**
  * The country quiz played in a ranked `challenge` round. Unlike `regions` this
@@ -190,6 +190,7 @@ export function modeLabel(mode: MatchMode, lang: Language): string {
     silhouette: ['Silhouette', 'Silhouette'],
     pinpoint: ['Point sur le Globe', 'Pin on the Globe'],
     scale: ['À l’échelle', 'To Scale'],
+    split: ['Partage équitable', 'Fair Split'],
     borders: ['Frontières', 'Borders'],
     languages: ['Langues', 'Languages'],
   };

@@ -4884,9 +4884,9 @@
     ]
   },
   {
-    "key": "Draw two lines that split the population into 3 equal parts.",
-    "fr": "Trace deux traits qui coupent la population en 3 parts égales.",
-    "en": "Draw two lines that split the population into 3 equal parts.",
+    "key": "Draw two lines that don't cross inside the country to split the population into 3 equal parts.",
+    "fr": "Trace deux traits qui ne se croisent pas dans le pays pour couper la population en 3 parts égales.",
+    "en": "Draw two lines that don't cross inside the country to split the population into 3 equal parts.",
     "count": 1,
     "kinds": [
       "call"
@@ -5720,16 +5720,22 @@
     "key": "Fair Split",
     "fr": "Partage équitable",
     "en": "Fair Split",
-    "count": 5,
+    "count": 12,
     "kinds": [
       "label",
       "call"
     ],
     "files": [
+      "src/components/OnlineModeLeaderboardModal.tsx",
       "src/data/menuModes.ts",
       "src/data/modeIntros.ts",
+      "src/hooks/useMatchEngine.ts",
+      "src/lib/customMatch.ts",
       "src/lib/daily.ts",
+      "src/lib/ranked.ts",
       "src/screens/Leaderboard.tsx",
+      "src/screens/LocalParcours.tsx",
+      "src/screens/Matchmaking.tsx",
       "src/screens/SplitGame.tsx"
     ]
   },
@@ -13695,6 +13701,18 @@
     ]
   },
   {
+    "key": "Same maps for both players",
+    "fr": "Les mêmes cartes pour les deux joueurs",
+    "en": "Same maps for both players",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/menuModes.ts"
+    ]
+  },
+  {
     "key": "Same mystery country for both",
     "fr": "Même pays mystère pour les deux",
     "en": "Same mystery country for both",
@@ -18478,6 +18496,18 @@
     ]
   },
   {
+    "key": "Your lines cross inside the country: that makes {0} parts instead of {1}. Move a line so they no longer cross.",
+    "fr": "Tes traits se croisent dans le pays : ça fait {0} parts au lieu de {1}. Déplace un trait pour qu’ils ne se croisent plus.",
+    "en": "Your lines cross inside the country: that makes {0} parts instead of {1}. Move a line so they no longer cross.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/SplitGame.tsx"
+    ]
+  },
+  {
     "key": "Your lives are already full.",
     "fr": "Tes vies sont déjà au maximum.",
     "en": "Your lives are already full.",
@@ -18897,6 +18927,19 @@
     ],
     "files": [
       "assets/game_data.json"
+    ]
+  },
+  {
+    "key": "maps",
+    "fr": "cartes",
+    "en": "maps",
+    "count": 2,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/lib/customMatch.ts",
+      "src/screens/LocalParcours.tsx"
     ]
   },
   {

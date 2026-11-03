@@ -68,6 +68,9 @@ export const MENU_MODES: MenuModeDef[] = [
     titleEn: 'Fair Split',
     subtitleFr: 'Coupez un pays en parts de population égales',
     subtitleEn: 'Cut a country into equal population shares',
+    online: 'split',
+    onlineSubtitleFr: 'Les mêmes cartes pour les deux joueurs',
+    onlineSubtitleEn: 'Same maps for both players',
     isNew: true,
   },
   {

@@ -83,6 +83,7 @@ const ONLINE_MODES: ModeDef[] = [
   { key: 'silhouette', fr: 'Silhouette', en: 'Silhouette', icon: Puzzle, accent: () => PALETTE.forestGreen, unit: pct },
   { key: 'pinpoint', fr: 'Point sur le Globe', en: 'Pin on the Globe', icon: MapPin, accent: (d) => (d ? PALETTE.chartBlue : PALETTE.vermilion), unit: pct },
   { key: 'scale', fr: 'À l’échelle', en: 'To Scale', icon: Ruler, accent: () => PALETTE.sand, unit: pct },
+  { key: 'split', fr: 'Partage équitable', en: 'Fair Split', icon: Scissors, accent: () => PALETTE.forestGreen, unit: pct },
   { key: 'languages', fr: 'Langues', en: 'Languages', icon: Languages, accent: (d) => (d ? PALETTE.chartBlue : PALETTE.oceanBlue), unit: pct },
   { key: 'higherlower', fr: 'Plus ou Moins', en: 'Higher/Lower', icon: TrendingUp, accent: (d) => (d ? PALETTE.chartBlue : PALETTE.oceanBlue), unit: pct },
   { key: 'versus', fr: 'Versus', en: 'Versus', icon: Users, accent: (d) => (d ? PALETTE.chartBlue : PALETTE.vermilion), unit: pct },

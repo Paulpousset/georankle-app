@@ -24,6 +24,7 @@ const MODE_LABELS: Record<MatchMode, [string, string]> = {
   silhouette: ['Silhouette', 'Silhouette'],
   pinpoint: ['Point sur le Globe', 'Pin on the Globe'],
   scale: ['À l’échelle', 'To Scale'],
+  split: ['Partage équitable', 'Fair Split'],
   borders: ['Frontières', 'Borders'],
   languages: ['Langues', 'Languages'],
 };
