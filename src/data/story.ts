@@ -123,6 +123,7 @@ function unlockedModes(level: number): GameMode[] {
   if (level >= 60) modes.push('languages');
   if (level >= 70) modes.push('scale');
   if (level >= 80) modes.push('borders');
+  if (level >= 90) modes.push('split');
   if (level >= 120) modes.push('streak');
   if (level >= 160) modes.push('classic');
   return modes;
@@ -141,7 +142,7 @@ export function languageTierForLevel(level: number): 1 | 2 | 3 {
 
 /** Modes that read a question count — the only ones a défi can lengthen. */
 const COUNT_MODES: ReadonlySet<GameMode> = new Set([
-  'quiz-flag', 'quiz-capital', 'globe', 'silhouette', 'pinpoint', 'languages', 'scale',
+  'quiz-flag', 'quiz-capital', 'globe', 'silhouette', 'pinpoint', 'languages', 'scale', 'split',
 ]);
 
 /** A world's last level (from world 2 on) is its « défi ». */
@@ -187,6 +188,8 @@ function matchModeOf(mode: GameMode): MatchMode {
       return 'pinpoint';
     case 'scale':
       return 'scale';
+    case 'split':
+      return 'split';
     case 'languages':
       return 'languages';
     case 'borders':

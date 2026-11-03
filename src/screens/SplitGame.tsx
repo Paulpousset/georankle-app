@@ -13,6 +13,9 @@
  * drawn, a new one replaces the oldest. The cities take the colour of their
  * part as the lines move, but the shares stay hidden until the split is
  * submitted.
+ *
+ * Mirrors ScaleGame's solo / daily / match wiring: the maps are seeded, so
+ * daily and online rounds are identical for everyone sharing the seed.
  */
 import { showAlert } from '../lib/alert';
 import { useState, useEffect, useLayoutEffect, useRef } from 'react';
@@ -61,7 +64,9 @@ import { earnsCoins, saveSoloScore } from '../lib/soloResult';
 import { OffLeaderboardNotice } from '../components/OffLeaderboardNotice';
 import { CountryFactCard } from '../components/CountryFactCard';
 import { useToast } from '../components/ToastProvider';
-import type { GameMode, Language } from '../types';
+import type { GameMode, Language, Match } from '../types';
+import { normalizeRoundScore } from '../lib/score';
+import { useSwipeBackBlocker } from '../components/SwipeBack';
 import { PALETTE, getColors } from '../theme/colors';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -146,6 +151,18 @@ function instruction(q: SplitQuestion, language: Language): string {
 interface SplitGameProps {
   setGameMode: (mode: GameMode) => void;
   user: User | null;
+  matchData?: Match | null;
+  onRoundComplete?: (score: number) => void;
+  /** Daily challenge: deterministic seed for today's puzzle (overrides random). */
+  dailySeed?: number;
+  /** Daily challenge: fired once at game-over with the score + emoji grid. */
+  onDailyComplete?: (score: number, grid?: string) => void;
+  /** Daily challenge: replaces "Retry" with "Share" and skips score saving. */
+  isDaily?: boolean;
+  /** Daily challenge: invoked by the "Share" button on the game-over overlay. */
+  onShare?: () => void;
+  /** Daily challenge: reports the live score so a mid-game quit can lock it in. */
+  onDailyScoreChange?: (score: number) => void;
   /**
    * Entraînement: nothing is recorded (no coins, no leaderboard) and each
    * reveal offers the country's fact sheet.
@@ -274,15 +291,43 @@ function CityLabels({ map, land, ink }: { map: SplitMap; land: string; ink: stri
   );
 }
 
-export default function SplitGame({ setGameMode, user, training = false }: SplitGameProps) {
+export default function SplitGame({
+  setGameMode,
+  user,
+  matchData,
+  onRoundComplete,
+  dailySeed,
+  onDailyComplete,
+  isDaily,
+  onShare,
+  onDailyScoreChange,
+  training = false,
+}: SplitGameProps) {
   const { isDarkMode, setIsDarkMode } = useTheme();
   const { language, openLanguagePicker } = useLanguage();
   const toast = useToast();
   const c = getColors(isDarkMode);
   const colors = partColors(isDarkMode);
 
+  // Drawing a line from the screen's left edge must not read as « back ».
+  useSwipeBackBlocker();
+
+  // Session length: per-round config (custom matches) > match-level > 5.
+  const currentRound = matchData?.current_round ?? 1;
+  const numMaps =
+    (matchData?.game_data?.rounds?.[currentRound - 1]?.count as number | undefined) ??
+    (matchData?.game_data?.roundsPerSet as number | undefined) ??
+    NUM_MAPS;
+  const isOnline = !!matchData && !!onRoundComplete;
+
   const [run, setRun] = useState<SplitQuestion[]>(() =>
-    buildSplitRun(Math.floor(Math.random() * 2147483647), NUM_MAPS),
+    buildSplitRun(
+      dailySeed ??
+        (matchData?.game_data?.seed
+          ? matchData.game_data.seed + (currentRound - 1)
+          : Math.floor(Math.random() * 2147483647)),
+      numMaps,
+    ),
   );
   const [questionIndex, setQuestionIndex] = useState(0);
   const question = run[questionIndex] ?? null;
@@ -304,8 +349,14 @@ export default function SplitGame({ setGameMode, user, training = false }: Split
   const { config: myGlobe } = useMyGameGlobe();
   const awardedRef = useRef(false);
 
+  // Surface the running score so the daily host can lock it in on a quit.
   useEffect(() => {
-    track('game_started', { mode: 'split' });
+    if (isDaily) onDailyScoreChange?.(score);
+  }, [isDaily, score, onDailyScoreChange]);
+
+  useEffect(() => {
+    if (!matchData && !isDaily) track('game_started', { mode: 'split' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // The responder is created once (a new one mid-drag would reset its gesture
@@ -454,9 +505,25 @@ export default function SplitGame({ setGameMode, user, training = false }: Split
     setFeedback({ points, shares });
   };
 
-  const finishRun = (finalScore: number) => {
+  const finishRun = (finalScore: number, finalGrid: string) => {
+    if (isOnline) {
+      if (!awardedRef.current) {
+        awardedRef.current = true;
+        onRoundComplete!(
+          normalizeRoundScore('split', finalScore, {
+            numQuestions: run.length,
+            maxPointsPerQuestion: SPLIT_MAX_POINTS,
+          }),
+        );
+      }
+      return;
+    }
     setGameOver(true);
     announce(tr(language, 'Partie terminée. Score {0}.', 'Game over. Score {0}.', [finalScore]));
+    if (isDaily) {
+      onDailyComplete?.(finalScore, finalGrid);
+      return;
+    }
     track('game_completed', { mode: 'split', score: finalScore });
     if (user && !awardedRef.current) {
       awardedRef.current = true;
@@ -487,7 +554,7 @@ export default function SplitGame({ setGameMode, user, training = false }: Split
 
   const next = () => {
     if (questionIndex + 1 >= run.length) {
-      finishRun(score);
+      finishRun(score, grid);
       return;
     }
     setQuestionIndex((i) => i + 1);
@@ -512,7 +579,7 @@ export default function SplitGame({ setGameMode, user, training = false }: Split
 
   /** Nouveau tirage. */
   const resetGame = () => {
-    setRun(buildSplitRun(Math.floor(Math.random() * 2147483647), NUM_MAPS));
+    setRun(buildSplitRun(Math.floor(Math.random() * 2147483647), numMaps));
     restartRun();
   };
 
@@ -727,7 +794,7 @@ export default function SplitGame({ setGameMode, user, training = false }: Split
         )}
       </ScrollView>
 
-      {gameOver && (
+      {gameOver && !matchData && (
         <View
           style={[
             styles.gameOverOverlay,
@@ -741,7 +808,7 @@ export default function SplitGame({ setGameMode, user, training = false }: Split
               accent={GOOD}
               animate
               style={{ marginBottom: 10 }}
-              record={{ mode: 'split', score, ctx: { training } }}
+              record={isDaily ? undefined : { mode: 'split', score, ctx: { training } }}
             />
             <Reveal at={END_CHOREO.verdict}>
               <ResultGrid grid={grid} style={{ marginBottom: 10 }} />
@@ -749,7 +816,7 @@ export default function SplitGame({ setGameMode, user, training = false }: Split
               <Text style={{ color: c.textMuted, fontFamily: FONTS.mono, fontSize: 14, marginBottom: 16, textAlign: 'center' }}>
                 {tr(language, 'sur {0}', 'out of {0}', [run.length * SPLIT_MAX_POINTS])}
               </Text>
-              <OffLeaderboardNotice run={{ training }} color={c.textMuted} />
+              {!isDaily && <OffLeaderboardNotice run={{ training }} color={c.textMuted} />}
             </Reveal>
 
             <Reveal at={END_CHOREO.detail}>
@@ -812,7 +879,7 @@ export default function SplitGame({ setGameMode, user, training = false }: Split
             </Reveal>
 
             <Reveal at={END_CHOREO.actions}>
-              {!user && (
+              {!user && !isDaily && (
                 <Text style={{ color: c.textMuted, fontFamily: FONTS.mono, fontSize: 12, textAlign: 'center', marginBottom: 12 }}>
                   {tr(
                     language,
@@ -822,8 +889,9 @@ export default function SplitGame({ setGameMode, user, training = false }: Split
                 </Text>
               )}
               <SoloEndActions
-                onReplaySame={restartRun}
-                onNewGame={resetGame}
+                onShare={isDaily ? onShare : undefined}
+                onReplaySame={isDaily ? undefined : restartRun}
+                onNewGame={isDaily ? undefined : resetGame}
                 share={{ mode: 'split', summary: `${score}/${run.length * SPLIT_MAX_POINTS}` }}
                 onMenu={() => setGameMode('menu')}
               />

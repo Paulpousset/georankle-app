@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { PanResponder, View } from 'react-native';
 
 /**
@@ -21,6 +21,24 @@ interface Props {
   children: ReactNode;
 }
 
+/**
+ * Screens mounted right now that need the left edge for themselves (a drag
+ * that draws on the map, like « Partage équitable »). Read at gesture time,
+ * so it works wherever the screen is hosted: solo, daily, story, local…
+ */
+let blockers = 0;
+
+/** While the calling screen is mounted, the edge swipe never goes back. */
+export function useSwipeBackBlocker(active = true): void {
+  useEffect(() => {
+    if (!active) return;
+    blockers++;
+    return () => {
+      blockers--;
+    };
+  }, [active]);
+}
+
 const EDGE_ZONE = 30; // px from the left edge where the gesture may begin
 const DX_TRIGGER = 70; // horizontal travel that confirms a back swipe
 
@@ -29,7 +47,7 @@ export function SwipeBack({ enabled, onBack, children }: Props) {
     // Never grab on touch-down — let buttons / lists win the tap first.
     onStartShouldSetPanResponder: () => false,
     onMoveShouldSetPanResponder: (evt, g) => {
-      if (!enabled) return false;
+      if (!enabled || blockers > 0) return false;
       const startX = evt.nativeEvent.pageX - g.dx;
       return (
         startX <= EDGE_ZONE &&
