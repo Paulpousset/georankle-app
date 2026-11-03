@@ -97,12 +97,36 @@ function Round({ r, idx, total, local, ask, roundWord, look }: { r: FrontierRoun
   const solved = drawStart + r.path.length * step;
   const filled = Math.floor((local - drawStart) / step) + 1; // nb de pays du chemin déjà posés
   const centers = r.path.map((c) => path.centroid(mainland(byId.get(c.id)!)));
+  // Pays en plusieurs morceaux touché par un petit bout (Russie depuis la Pologne
+  // = Kaliningrad) : le trait passe par ce bout avant d'aller au centre du pays.
+  const via = r.path.map((c, i) => {
+    const f = byId.get(c.id)!;
+    if (i === 0 || f.geometry.type !== 'MultiPolygon') return null;
+    const prev = centers[i - 1];
+    const pieces = (f.geometry as MultiPolygon).coordinates.map((co) => path.centroid({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: co } } as Feature<Polygon>));
+    const d = (q: [number, number]) => Math.hypot(q[0] - prev[0], q[1] - prev[1]);
+    const near = pieces.reduce((x, y) => (d(y) < d(x) ? y : x));
+    return d(near) < d(centers[i] as [number, number]) * 0.35 ? (near as [number, number]) : null;
+  });
+  const at = (k: number, f: number): [number, number] => {
+    const a0 = centers[k];
+    const b0 = centers[k + 1];
+    const v = via[k + 1];
+    if (!v) return [a0[0] + (b0[0] - a0[0]) * f, a0[1] + (b0[1] - a0[1]) * f];
+    return f < 0.5 ? [a0[0] + (v[0] - a0[0]) * f * 2, a0[1] + (v[1] - a0[1]) * f * 2] : [v[0] + (b0[0] - v[0]) * (f - 0.5) * 2, v[1] + (b0[1] - v[1]) * (f - 0.5) * 2];
+  };
   const lineLen = interpolate(local, [drawStart, drawStart + r.path.length * step], [0, r.path.length - 1], clamp);
   const pts: [number, number][] = [];
-  for (let i = 0; i <= Math.floor(lineLen); i++) pts.push(centers[i] as [number, number]);
+  for (let i = 0; i <= Math.floor(lineLen); i++) {
+    if (i > 0 && via[i]) pts.push(via[i]!);
+    pts.push(centers[i] as [number, number]);
+  }
   const frac = lineLen % 1;
   const k = Math.floor(lineLen);
-  if (k < centers.length - 1 && frac > 0) pts.push([centers[k][0] + (centers[k + 1][0] - centers[k][0]) * frac, centers[k][1] + (centers[k + 1][1] - centers[k][1]) * frac]);
+  if (k < centers.length - 1 && frac > 0) {
+    if (via[k + 1] && frac >= 0.5) pts.push(via[k + 1]!);
+    pts.push(at(k, frac));
+  }
   const intro = spring({ frame: Math.round(local * fps), fps, config: { damping: 12 } });
   // Titres longs (« Thaïlande → Arabie Saoudite ») : plus petit, sur une ligne.
   const chars = first.name.length + last.name.length;

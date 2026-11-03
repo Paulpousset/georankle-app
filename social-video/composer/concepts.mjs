@@ -355,15 +355,34 @@ function frontieres(name, rounds, hook = null, opts = {}) {
     post: opts.post ? `${opts.post}\n\n${POST_TAGS}` : L(`${first[0].name} → ${first[first.length - 1].name} sans avion : quels pays faut-il traverser ? 🧭\n\n${POST_TAGS}`, `${first[0].name} → ${first[first.length - 1].name} without flying: which countries do you have to cross? 🧭\n\n${POST_TAGS}`),
   });
 }
+// Manche facile : départ, arrivée et pays du milieu que tout le monde connaît.
+const FAMOUS = 'FRA DEU ITA ESP PRT BEL NLD CHE AUT POL USA CAN MEX BRA ARG CHL PER COL CHN IND PAK EGY MAR DZA TUN LBY SAU TUR GRC NOR SWE FIN'.split(' ');
+// Nombre de plus courts chemins : une partie n'est gardée que s'il n'y en a
+// qu'un (sinon « et par la Suisse, ça marche aussi ? » en commentaire).
+function shortestCount(from, to) {
+  const dist = { [from]: 0 };
+  const ways = { [from]: 1 };
+  const q = [from];
+  while (q.length) {
+    const c = q.shift();
+    for (const n of adj[c] ?? []) {
+      if (!(n in dist)) { dist[n] = dist[c] + 1; ways[n] = 0; q.push(n); }
+      if (dist[n] === dist[c] + 1) ways[n] += ways[c];
+    }
+  }
+  return ways[to] ?? 0;
+}
 // Pays déjà traversés dans le lot : on évite de repasser toujours par la Russie et l'Allemagne (on tolère un pays déjà vu de plus tous les 1000 essais).
 const crossed = {};
-function randomFrontier(minLen, maxLen, level, avoid) {
+function randomFrontier(minLen, maxLen, level, avoid, pool = KNOWN) {
   for (let tries = 0; tries < 5000; tries++) {
-    const a = pick(KNOWN);
-    const b = pick(KNOWN);
+    const a = pick(pool);
+    const b = pick(pool);
     if (a === b || avoid.has(a + b)) continue;
     const path = shortest(a, b);
     if (!path || path.length < minLen || path.length > maxLen || path.some((c) => !atlasId(c))) continue;
+    if (shortestCount(a, b) !== 1) continue;
+    if (pool !== KNOWN && path.some((c) => !pool.includes(c))) continue;
     // Pas d'aller-retour par la Russie d'un bout à l'autre de l'Eurasie : la carte serait illisible.
     const lngs = path.map((c) => stats[c].lng);
     if (Math.max(...lngs) - Math.min(...lngs) > 150) continue;
@@ -754,7 +773,9 @@ function randomPartage() {
   const plan = [
     { pool: KNOWN.filter((c) => SPLIT.splitCountries().includes(c) && spFits(c) && spHalves(c) <= 0.06), parts: 2, lo: 125, hi: 179 },
     { pool: SPLIT.splitGroups().filter((g) => spFits(g) && spHalves(g) <= 0.06), parts: 2, lo: 182, hi: 200 },
-    { pool: [...SPLIT.splitGroups(), ...SPLIT.splitCountries()].filter((id) => spFits(id) && spQuarters(id) <= 0.06), parts: 4, lo: 5, hi: 55, middle: true },
+    // Plus de quatre parts (choix de Paul, 03/11) : la chute est une carte en
+    // deux coupée en son milieu, sur un pays où la population est d'un seul côté.
+    { pool: SPLIT.splitCountries().filter((id) => spFits(id) && spHalves(id) <= 0.06), parts: 2, lo: 5, hi: 60, middle: true },
   ];
   const picked = [];
   for (const step of plan) {
@@ -957,6 +978,11 @@ if (process.argv.includes('--variantes')) {
     }
     throw new Error(`Partage : rien entre ${lo} et ${hi} pour ${id}`);
   };
+  // Demande de Paul (03/11) : pas de piège, une manche facile puis une dure,
+  // du genre « la Pologne touche la Russie » (Kaliningrad), en lofi.
+  frontieres('var-f6-facile-dur-lofi', [fr3('ESP', 'DEU', 'FACILE'), fr3('FRA', 'CHN', 'DIFFICILE')],
+    hk(['Un facile,', 'puis un dur 🧭'], 'Un facile, puis un difficile.'),
+    { think: 4.5, hold: 2.6, step: 0.7, bar: true, sound: 'lofi', outro: 'Tu as eu le difficile\u00a0?', outroSay: 'Tu avais trouvé le difficile ? Dis-le en commentaire.', post: 'France → Chine sans avion : seulement 3 pays à traverser. Lesquels ? 🧭' });
   const p1 = [spPlay('FRA', 140, 179), spPlay('europe', 184, 200), spPlay('AUS', 5, 60, true)];
   for (const sound of SOUNDS)
     partage(`var-p1-trois-moities${sound ? `-${sound}` : ''}`, p1,
@@ -1013,7 +1039,10 @@ if (REDO) {
   const usedPairs = new Set(['FRACHN', 'CANARG']);
   let ti = 0;
   // --mix « echelle:4,plus-ou-moins:3,… » : mélange imposé (prioritaire sur --tuning).
-  const MIX = arg('mix') ? Object.fromEntries(arg('mix').split(',').map((x) => [x.split(':')[0], Number(x.split(':')[1] ?? 1)])) : TUNING?.mix;
+  // Choix de Paul (03/11) : les lots ne font plus que Frontières (facile puis
+  // dur) et Partage équitable (en deux), en lofi, en attendant d'autres stats.
+  // --mix reste prioritaire ; le mélange de tuning.json n'est plus suivi.
+  const MIX = arg('mix') ? Object.fromEntries(arg('mix').split(',').map((x) => [x.split(':')[0], Number(x.split(':')[1] ?? 1)])) : { frontieres: 2, partage: 1 };
   const kinds = MIX ? mixSequence(MIX, BATCH) : null;
   for (let i = 0; i < BATCH; i++) {
     const num = String(i + 1).padStart(2, '0');
@@ -1025,10 +1054,18 @@ if (REDO) {
       const hook = pickHook('devine', { n: g.length });
       devine(`${prefix}-${num}-devine-${slug(fr(g[g.length - 1]))}${hook ? `-${hook.id}` : ''}`, g[g.length - 1], g, hook);
     } else if (kind === 'frontieres') {
-      const r1 = randomFrontier(4, 6, 'MOYEN', usedPairs);
-      const r2 = SHORT ? null : randomFrontier(7, 10, 'EXPERT', usedPairs);
-      const hook = pickHook('frontieres', { a: r1.path[0].name, b: r1.path[r1.path.length - 1].name });
-      frontieres(`${prefix}-${num}-frontieres-${slug(r1.path[0].name)}${hook ? `-${hook.id}` : ''}`, r2 ? [r1, r2] : [r1], hook);
+      // Format validé par Paul (03/11, var-f6) : une manche facile (un pays au
+      // milieu), puis une dure (3 à 5 pays), réflexion 4,5 s, ambiance lofi.
+      const r1 = randomFrontier(3, 3, 'FACILE', usedPairs, FAMOUS);
+      const r2 = randomFrontier(5, 7, 'DIFFICILE', usedPairs);
+      const hook = pickHook('frontieres', { a: r1.path[0].name, b: r1.path[r1.path.length - 1].name })
+        ?? { id: 'h4', text: L(['Un facile,', 'puis un dur 🧭'], ['One easy,', 'then a hard one 🧭']), say: L('Un facile, puis un difficile.', 'One easy, then a hard one.') };
+      frontieres(`${prefix}-${num}-frontieres-${slug(r2.path[0].name)}-${hook.id}`, [r1, r2], hook, {
+        think: 4.5, hold: 2.6, step: 0.7, bar: true, sound: 'lofi',
+        outro: L('Tu as eu le difficile\u00a0?', 'Did you get the hard one?'),
+        outroSay: L('Tu avais trouvé le difficile ? Dis-le en commentaire.', 'Did you get the hard one? Tell me in the comments.'),
+        post: L(`${r2.path[0].name} → ${r2.path[r2.path.length - 1].name} sans avion : quels pays faut-il traverser ? 🧭`, `${r2.path[0].name} → ${r2.path[r2.path.length - 1].name} without flying: which countries do you cross? 🧭`),
+      });
     } else if (kind === 'echelle') {
       const pairs = randomEchelle();
       const hook = pickHook('echelle', {});
@@ -1036,7 +1073,13 @@ if (REDO) {
     } else if (kind === 'partage') {
       const plays = randomPartage();
       const hook = pickHook('partage', {});
-      partage(`${prefix}-${num}-partage-${slug(SPLIT.splitMapName(plays[1].q.id, 'fr'))}${hook ? `-${hook.id}` : ''}`, plays, hook);
+      // Format validé par Paul (03/11, var-p1) : trois cartes en deux, 2,5 s pour
+      // réfléchir avant chaque trait, la dernière coupée au milieu (raté), lofi.
+      partage(`${prefix}-${num}-partage-${slug(SPLIT.splitMapName(plays[1].q.id, 'fr'))}${hook ? `-${hook.id}` : ''}`, plays, hook, {
+        think: 2.5, sound: 'lofi',
+        post: L(`${plays.map((p) => SPLIT.splitMapName(p.q.id, 'fr')).join(', ')} : coupe chaque carte en deux, autant d’habitants de chaque côté. Tu couperais où ? ✂️`,
+          `${plays.map((p) => SPLIT.splitMapName(p.q.id, 'en')).join(', ')}: cut each map in half, same population on each side. Where would you cut? ✂️`),
+      });
     } else if (kind === 'plus-ou-moins') {
       const pm = randomPlusOuMoins(i);
       const hook = pickHook('plus-ou-moins', { a: fr(pm.chain[0]), b: fr(pm.chain[1]) });
