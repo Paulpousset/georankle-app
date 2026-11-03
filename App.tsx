@@ -263,6 +263,10 @@ function AppContent() {
     nav.pageStack.length > 0 ||
     (gameMode !== 'menu' && !match.matchData) ||
     (gameMode === 'menu' && nav.playType !== null);
+  // Partage équitable is played by dragging lines across the map, often from
+  // its left edge rightward: the edge swipe would read that as « back » and
+  // close the game mid-drawing. The Home button (and Android's back) still work.
+  const drawsOnScreen = (daily ? daily.mode : gameMode) === 'split';
   const goBack = () => {
     performBack.current();
   };
@@ -309,7 +313,7 @@ function AppContent() {
           flag serveur `web_ads` est à false. Voir guide-pubs-web.md. */}
       <SideRailAds />
       <DesktopStage brand={stageBrand}>
-        <SwipeBack enabled={canGoBack} onBack={goBack}>
+        <SwipeBack enabled={canGoBack && !drawsOnScreen} onBack={goBack}>
           <ScreenErrorBoundary resetKey={screenKey} onReset={recoverToMenu}>
             <Router
               nav={nav}

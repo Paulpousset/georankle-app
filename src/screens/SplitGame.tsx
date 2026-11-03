@@ -38,6 +38,7 @@ import {
   cityParts,
   cityRadius,
   clipToBoard,
+  extraParts,
   partCells,
   partShares,
   placeLabels,
@@ -131,8 +132,8 @@ function instruction(q: SplitQuestion, language: Language): string {
   if (q.parts === 3) {
     return tr(
       language,
-      'Trace deux traits qui coupent la population en 3 parts égales.',
-      'Draw two lines that split the population into 3 equal parts.',
+      'Trace deux traits qui ne se croisent pas dans le pays pour couper la population en 3 parts égales.',
+      "Draw two lines that don't cross inside the country to split the population into 3 equal parts.",
     );
   }
   return tr(
@@ -432,7 +433,10 @@ export default function SplitGame({ setGameMode, user, training = false }: Split
   });
 
   const countryName = question ? splitMapName(question.id, language) : '';
-  const ready = !!question && lines.length >= question.lines;
+  /** Two lines crossing inside the area when thirds are asked: four parts, not three. */
+  const tooManyParts =
+    !!question && !!map && lines.length >= question.lines && extraParts(map, lines, question.parts) > 0;
+  const ready = !!question && lines.length >= question.lines && !tooManyParts;
 
   const validate = () => {
     if (!question || !map || feedback || !ready) return;
@@ -620,7 +624,17 @@ export default function SplitGame({ setGameMode, user, training = false }: Split
               ? tr(language, 'Chaque couleur est une part.', 'Each colour is one part.')
               : instruction(question, language)}
           </Text>
-          {!feedback && lines.length > 0 && (
+          {!feedback && tooManyParts && (
+            <Text style={[styles.warning, { color: isDarkMode ? '#ff8a80' : BAD }]} accessibilityLiveRegion="polite">
+              {tr(
+                language,
+                'Tes traits se croisent dans le pays : ça fait {0} parts au lieu de {1}. Déplace un trait pour qu’ils ne se croisent plus.',
+                'Your lines cross inside the country: that makes {0} parts instead of {1}. Move a line so they no longer cross.',
+                [question.parts + extraParts(map, lines, question.parts), question.parts],
+              )}
+            </Text>
+          )}
+          {!feedback && !tooManyParts && lines.length > 0 && (
             <Text style={[styles.hint, { color: c.textMuted }]}>
               {partsLeft > 0
                 ? tr(language, 'Encore un trait à tracer.', 'One more line to draw.')
@@ -858,6 +872,7 @@ const styles = StyleSheet.create({
   touchLayer: { touchAction: 'none', cursor: 'crosshair' } as never,
   instruction: { fontSize: 13, fontFamily: FONTS.mono, marginTop: 4, textAlign: 'center' },
   hint: { fontSize: 11.5, fontFamily: FONTS.mono, marginTop: 4, textAlign: 'center', opacity: 0.85 },
+  warning: { fontSize: 12, fontFamily: FONTS.monoBold, marginTop: 6, textAlign: 'center' },
 
   actionsRow: { flexDirection: 'row', gap: 10, width: '100%', maxWidth: 500 },
   clearBtn: {
