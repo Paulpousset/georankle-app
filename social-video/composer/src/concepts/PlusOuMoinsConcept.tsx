@@ -215,7 +215,7 @@ export function PlusOuMoinsConcept(p: PlusOuMoinsConceptProps) {
         ) : null}
         <Progress total={end} />
       </Paper>
-      <EndCard title={tx.endTitle} cta={p.cta} ctaSub={tx.ctaSub} icon={p.icon} start={end} />
+      <EndCard title={tx.endTitle} cta={p.cta} ctaSub={tx.ctaSub} icon={p.icon} start={end} lang={p.lang} />
 
       <Audio src={sfx('music')} volume={(f) => musicVolume(p.voice, f / FPS, 0.45, end)} />
       <VoiceTrack voice={p.voice} />

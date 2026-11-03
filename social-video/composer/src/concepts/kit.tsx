@@ -43,6 +43,31 @@ export const sfx = (n: string) => staticFile(`sfx/${n}.wav`);
 export const app = (n: string) => staticFile(`app-sfx/${n}.mp3`);
 export const flag = (cc: string) => staticFile(`flags/${cc}.svg`);
 
+/**
+ * Ambiance sonore complète (packs.mjs) : musique et bruitages assortis. Sans
+ * pack, chaque concept garde ses sons d'origine. `gain` égalise la musique
+ * (mesurée en LUFS) avec celle d'origine.
+ */
+const PACK_GAIN: Record<string, number> = { lofi: 1.4, hype: 0.85, tele: 1.5 };
+export const packOf = (name?: string) =>
+  name
+    ? {
+        music: sfx(`${name}-music`),
+        gain: PACK_GAIN[name] ?? 1,
+        hit: sfx(`${name}-hit`),
+        whoosh: sfx(`${name}-whoosh`),
+        tick: sfx(`${name}-tick`),
+        step: (i: number) => sfx(`${name}-step${Math.max(1, Math.min(8, i))}`),
+        found: sfx(`${name}-found`),
+        stamp: sfx(`${name}-stamp`),
+        submit: sfx(`${name}-submit`),
+        roll: sfx(`${name}-roll`),
+        good: sfx(`${name}-good`),
+        fail: sfx(`${name}-fail`),
+        win: sfx(`${name}-win`),
+      }
+    : null;
+
 /** Un son à `at` secondes (Sequence + Audio). */
 export const Sfx = ({ at, src, volume = 0.8 }: { at: number; src: string; volume?: number }) => (
   <Sequence from={Math.round(at * FPS)} durationInFrames={FPS * 4} layout="none">
@@ -165,65 +190,85 @@ export const Stamp = ({ text, at, color = C.green, rotate = -8, size = 120, top 
   );
 };
 
-/** Carte de fin aux couleurs de l'app : icône qui rebondit, bouton qui pulse, confettis sépia. */
-export const EndCard = ({ title, sub, cta, ctaSub, icon, start }: { title: string; sub?: string; cta: string; ctaSub?: string; icon: string; start: number }) => {
+/** Badges App Store et Google Play, dessinés (pas d'image à télécharger). */
+const StoreBadge = ({ store, lang }: { store: 'apple' | 'google'; lang?: string }) => {
+  const en = lang === 'en';
+  const top = store === 'apple' ? (en ? 'Download on the' : 'Télécharger dans') : en ? 'GET IT ON' : 'DISPONIBLE SUR';
+  const name = store === 'apple' ? 'App Store' : 'Google Play';
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 18, background: '#000', color: '#fff', borderRadius: 22, padding: '16px 30px 16px 22px', border: '3px solid #a6a6a6', minWidth: 380 }}>
+      {store === 'apple' ? (
+        <svg width={62} height={74} viewBox="0 0 84 100">
+          <path fill="#fff" d="M69 53c0-12 10-18 10-18-6-8-15-9-18-9-8-1-15 4-19 4s-10-4-17-4C16 26 5 34 5 52c0 11 4 23 9 31 5 7 10 15 17 15s9-4 17-4 10 4 17 4 12-8 16-15c5-8 7-15 7-16 0 0-19-7-19-14z" />
+          <path fill="#fff" d="M57 15c4-5 6-11 5-15-5 0-12 3-16 8-3 4-6 10-5 15 6 0 12-3 16-8z" />
+        </svg>
+      ) : (
+        <svg width={62} height={68} viewBox="0 0 90 100">
+          <path fill="#00d7fe" d="M4 3l47 47L4 97c-2-1-3-3-3-6V9c0-3 1-5 3-6z" />
+          <path fill="#ffce00" d="M66 35l17 10c5 3 5 7 0 10L66 65 51 50z" />
+          <path fill="#ff3a44" d="M66 65L51 50 4 97c2 1 5 1 8-1z" />
+          <path fill="#00f076" d="M66 35L12 4C9 2 6 2 4 3l47 47z" />
+        </svg>
+      )}
+      <div style={{ textAlign: 'left', lineHeight: 1.05 }}>
+        <div style={{ fontFamily: 'Inter, Arial, sans-serif', fontSize: 24, letterSpacing: store === 'google' ? 1 : 0 }}>{top}</div>
+        <div style={{ fontFamily: 'Inter, Arial, sans-serif', fontWeight: 700, fontSize: 48 }}>{name}</div>
+      </div>
+    </div>
+  );
+};
+
+/**
+ * Carte de fin, pensée pour faire venir dans l'app (relevé Instagram du 03/11 :
+ * 1,2 % des vues vont au profil mais 36 % de ces visites ouvrent le lien) :
+ * « Joue à la suite gratuitement », GeoG en grand avec les badges des stores,
+ * « Cherche GeoG » (TikTok n'a pas de lien en bio) et « lien en bio » (Instagram).
+ * La même vidéo part sur toutes les plateformes, d'où les deux appels.
+ * `title`, `cta` et `ctaSub` restent acceptés pour les anciens appels mais ne s'affichent plus.
+ */
+export const EndCard = ({ icon, start, lang }: { title?: string; sub?: string; cta?: string; ctaSub?: string; icon: string; start: number; lang?: string }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const t = frame - start * fps;
   if (t < 0) return null;
+  const en = lang === 'en';
   const s = spring({ frame: t, fps, config: { damping: 10 } });
   const iconS = spring({ frame: t - 6, fps, config: { damping: 7, stiffness: 160 } });
+  const badges = spring({ frame: t - 14, fps, config: { damping: 11 } });
   const pulse = 1 + 0.05 * Math.sin((t / fps) * Math.PI * 3);
+  const bob = Math.sin((t / fps) * Math.PI * 2) * 10;
   return (
     <AbsoluteFill style={{ opacity: Math.min(1, s * 2) }}>
       <Paper drift={2}>
-        {Array.from({ length: 40 }, (_, i) => {
+        {Array.from({ length: 30 }, (_, i) => {
           const x = random(`x${i}`) * 1080;
           const fall = ((t * (3 + random(`v${i}`) * 5) + random(`y${i}`) * 1900) % 2100) - 100;
           const colors = [C.vermilion, C.green, C.ocean, C.sand];
-          return (
-            <div
-              key={i}
-              style={{
-                position: 'absolute',
-                left: x,
-                top: fall,
-                width: 18,
-                height: 30,
-                background: colors[i % 4],
-                transform: `rotate(${t * 6 + i * 40}deg)`,
-                opacity: 0.7,
-                borderRadius: 3,
-              }}
-            />
-          );
+          return <div key={i} style={{ position: 'absolute', left: x, top: fall, width: 18, height: 30, background: colors[i % 4], transform: `rotate(${t * 6 + i * 40}deg)`, opacity: 0.5, borderRadius: 3 }} />;
         })}
-        <div style={{ position: 'absolute', top: 360, left: 0, right: 0, textAlign: 'center' }}>
-          <div style={{ fontFamily: serif, fontWeight: 900, fontSize: 96, color: C.sepia, transform: `translateY(${(1 - s) * 40}px)`, padding: '0 60px', lineHeight: 1.1 }}>{title}</div>
-          {sub ? <div style={{ fontFamily: mono, fontSize: 40, color: C.brown, marginTop: 24 }}>{sub}</div> : null}
-          <Img
-            src={staticFile(icon)}
-            style={{ width: 260, height: 260, borderRadius: 60, marginTop: 90, transform: `scale(${iconS}) rotate(${(1 - iconS) * -30}deg)`, boxShadow: '0 30px 80px rgba(44,24,16,0.35)' }}
-          />
-          <div style={{ fontFamily: serif, fontWeight: 900, fontSize: 110, color: C.sepia, marginTop: 30 }}>GeoG</div>
+        <div style={{ position: 'absolute', top: 200, left: 0, right: 0, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <div style={{ fontFamily: serif, fontWeight: 900, fontSize: 92, color: C.sepia, lineHeight: 1.08, padding: '0 70px', transform: `translateY(${(1 - s) * 40}px)` }}>
+            {en ? 'Play the next one free' : 'Joue à la suite gratuitement'}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 36, marginTop: 60 }}>
+            <Img src={staticFile(icon)} style={{ width: 210, height: 210, borderRadius: 48, transform: `scale(${iconS}) rotate(${(1 - iconS) * -30}deg)`, boxShadow: '0 30px 80px rgba(44,24,16,0.35)' }} />
+            <div style={{ fontFamily: serif, fontWeight: 900, fontSize: 190, color: C.sepia, lineHeight: 1 }}>GeoG</div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 22, marginTop: 60, opacity: badges, transform: `translateY(${(1 - badges) * 60}px)` }}>
+            <StoreBadge store="apple" lang={lang} />
+            <StoreBadge store="google" lang={lang} />
+          </div>
           <div
             style={{
-              display: 'inline-block',
-              marginTop: 40,
-              background: C.vermilion,
-              color: '#fff',
-              fontFamily: mono,
-              fontWeight: 700,
-              fontSize: 44,
-              padding: '26px 54px',
-              borderRadius: 26,
-              transform: `scale(${pulse})`,
-              boxShadow: '0 16px 0 #8a3210',
+              marginTop: 56, background: C.vermilion, color: '#fff', fontFamily: mono, fontWeight: 700, fontSize: 52,
+              padding: '24px 50px', borderRadius: 26, transform: `scale(${pulse})`, boxShadow: '0 16px 0 #8a3210',
             }}
           >
-            {cta}
+            {en ? 'Search “GeoG” 🔍' : 'Cherche « GeoG » 🔍'}
           </div>
-          {ctaSub ? <div style={{ fontFamily: mono, fontSize: 38, color: C.brown, marginTop: 44 }}>{ctaSub} ↗</div> : null}
+          <div style={{ fontFamily: mono, fontWeight: 700, fontSize: 44, color: C.brown, marginTop: 50, transform: `translateY(${bob}px)` }}>
+            {en ? 'or link in bio 👆' : 'ou lien en bio 👆'}
+          </div>
         </div>
       </Paper>
     </AbsoluteFill>

@@ -13,7 +13,7 @@
     "mixFloor": 0.15,
     "hookFloor": 0.1
   },
-  "mix": { "frontieres": 2, "devine": 1, "plus-ou-moins": 1, "rankle": 0, "echelle": 1, "partage": 1 },
+  "mix": { "frontieres": 2, "devine": 0, "plus-ou-moins": 0, "rankle": 0, "echelle": 0, "partage": 1 },
   "short": true,
   "hooks": {
     "frontieres": {
@@ -21,13 +21,15 @@
         { "id": "h0", "text": ["Quels pays", "traverser ? 🧭"], "say": "Quels pays faut-il traverser ?", "style": "question" },
         { "id": "h1", "text": ["Sans avion,", "tu passes par où ? 🧭"], "say": "Sans avion, tu passes par où ?", "style": "question" },
         { "id": "h2", "text": ["Trouve le chemin", "avant la carte ⏱️"], "say": "Trouve le chemin avant que la carte le dessine.", "style": "course" },
-        { "id": "h3", "text": ["Prouve que tu", "connais ta carte 🧭"], "say": "Prouve que tu connais ta carte.", "style": "defi" }
+        { "id": "h3", "text": ["Prouve que tu", "connais ta carte 🧭"], "say": "Prouve que tu connais ta carte.", "style": "defi" },
+        { "id": "h4", "text": ["Un facile,", "puis un dur 🧭"], "say": "Un facile, puis un difficile.", "style": "defi" }
       ],
       "en": [
         { "id": "h0", "text": ["Which countries", "do you cross? 🧭"], "say": "Which countries do you have to cross?", "style": "question" },
         { "id": "h1", "text": ["No flying.", "Which way? 🧭"], "say": "No flying. Which way do you go?", "style": "question" },
         { "id": "h2", "text": ["Find the route", "before the map ⏱️"], "say": "Find the route before the map draws it.", "style": "course" },
-        { "id": "h3", "text": ["Prove you know", "your map 🧭"], "say": "Prove you know your map.", "style": "defi" }
+        { "id": "h3", "text": ["Prove you know", "your map 🧭"], "say": "Prove you know your map.", "style": "defi" },
+        { "id": "h4", "text": ["One easy,", "then a hard one 🧭"], "say": "One easy, then a hard one.", "style": "defi" }
       ]
     },
     "plus-ou-moins": {

@@ -297,11 +297,15 @@ function frontierRound(from, to, level, view) {
   if (!path) throw new Error(`pas de chemin ${from} → ${to}`);
   const miss = path.filter((c) => !atlasId(c));
   if (miss.length) throw new Error(`world-atlas : pas d'identifiant pour ${miss.join(', ')}`);
-  const LEVEL_EN = { MOYEN: 'MEDIUM', EXPERT: 'EXPERT', FACILE: 'EASY' };
+  const LEVEL_EN = { MOYEN: 'MEDIUM', EXPERT: 'EXPERT', FACILE: 'EASY', DIFFICILE: 'HARD' };
   return { level: EN ? LEVEL_EN[level] ?? level : level, view: view ?? viewOf(path), path: path.map((c) => ({ id: atlasId(c), cc: cca2[c], name: fr(c) })) };
 }
-function frontieres(name, rounds, hook = null) {
-  const roundSeconds = (r) => FR.INTRO + FR.THINK + r.path.length * FR.step(r.path.length) + FR.HOLD;
+// opts (variantes, voir --variantes) : think (s de réflexion), big, labels, bar
+// (aspect), outro / outroSub / post (textes), ask (question sous la carte).
+function frontieres(name, rounds, hook = null, opts = {}) {
+  const think = opts.think ?? FR.THINK;
+  const stepOf = (r) => opts.step ?? FR.step(r.path.length);
+  const roundSeconds = (r) => FR.INTRO + think + r.path.length * stepOf(r) + (opts.hold ?? FR.HOLD);
   // Une réplique par moment fort, jamais en rafale : voice.mjs abandonne une
   // réplique qui arriverait trop tard derrière la précédente.
   // Demande de Paul (15/10) : on demande quels pays traverser, pas combien.
@@ -310,15 +314,21 @@ function frontieres(name, rounds, hook = null) {
   rounds.forEach((r, ri) => {
     const a = r.path[0].name;
     const b = r.path[r.path.length - 1].name;
-    const step = FR.step(r.path.length);
-    const draw = s0 + FR.INTRO + FR.THINK;
-    voice.push({ text: L(`Départ, ${say(a)}. Arrivée, ${say(b)}. Quels pays traverser ?`, `Start, ${say(a)}. Finish, ${say(b)}. Which countries do you cross?`), at: ri === 0 ? 2.1 : s0 + 0.3, maxLate: 1.5 });
+    const step = stepOf(r);
+    const draw = s0 + FR.INTRO + think;
+    // Réflexion courte (rythme éclair) : juste les deux noms.
+    const intro = r.choices
+      ? L(`${say(a)}, ${say(b)}. A, B ou C ?`, `${say(a)} to ${say(b)}. A, B or C?`)
+      : think < 4 ? L(`${say(a)}, ${say(b)}.`, `${say(a)} to ${say(b)}.`)
+      : L(`Départ, ${say(a)}. Arrivée, ${say(b)}. Quels pays traverser ?`, `Start, ${say(a)}. Finish, ${say(b)}. Which countries do you cross?`);
+    voice.push({ text: intro, at: ri === 0 ? 2.1 : s0 + 0.3, maxLate: 1.5 });
     // Les pays traversés ne sont dits que sur les chemins courts (le rythme le permet).
     // Chemins courts : chaque pays est dit quand il se pose. Sinon, la liste
     // tombe d'un coup une fois le chemin dessiné.
     const mid = r.path.slice(1, -1).map((c) => say(c.name));
     const list = mid.length > 1 ? `${mid.slice(0, -1).join(', ')} ${L('et', 'and')} ${mid[mid.length - 1]}` : mid[0];
-    if (step >= 0.9 && r.path.length <= 6) mid.forEach((n, j) => n.length <= 12 && voice.push({ text: n, at: draw + (j + 1) * step, maxLate: 0.3 }));
+    if (!mid.length) voice.push({ text: L('Aucun ! Ils sont voisins.', 'None! They are neighbours.'), at: draw + r.path.length * step + 0.15, maxLate: 1.2 });
+    else if (step >= 0.9 && r.path.length <= 6) mid.forEach((n, j) => n.length <= 12 && voice.push({ text: n, at: draw + (j + 1) * step, maxLate: 0.3 }));
     else voice.push({ text: L(`Par ${list} !`, `Through ${list}!`), at: draw + r.path.length * step + 0.15, maxLate: 1.2 });
     s0 += roundSeconds(r);
   });
@@ -330,23 +340,49 @@ function frontieres(name, rounds, hook = null) {
     composition: 'FrontieresConcept',
     hook: hook?.text ?? L(['Quels pays', 'traverser ? 🧭'], ['Which countries', 'do you cross? 🧭']),
     rounds,
-    ask: L('Quels pays traverser ?', 'Which countries to cross?'),
-    outro: rounds.length > 1 ? L('Tu avais trouvé les deux ?', 'Did you get both?') : L('Tu avais trouvé ?', 'Did you get it?'),
-    outroSub: L('Ton score en commentaire 👇', 'Your score in the comments 👇'),
+    ask: opts.ask ?? L('Quels pays traverser ?', 'Which countries to cross?'),
+    outro: opts.outro ?? (rounds.length > 1 ? L('Tu avais trouvé les deux ?', 'Did you get both?') : L('Tu avais trouvé ?', 'Did you get it?')),
+    outroSub: opts.outroSub ?? L('Ton score en commentaire 👇', 'Your score in the comments 👇'),
+    ...(opts.think != null ? { think } : {}),
+    ...(opts.hold != null ? { hold: opts.hold } : {}),
+    ...(opts.step != null ? { step: opts.step } : {}),
+    ...(opts.big ? { big: true } : {}),
+    ...(opts.labels ? { labels: true } : {}),
+    ...(opts.bar ? { bar: true } : {}),
+    ...(opts.sound ? { sound: opts.sound } : {}),
     ...COMMON,
     voice,
-    post: L(`${first[0].name} → ${first[first.length - 1].name} sans avion : quels pays faut-il traverser ? 🧭\n\n${POST_TAGS}`, `${first[0].name} → ${first[first.length - 1].name} without flying: which countries do you have to cross? 🧭\n\n${POST_TAGS}`),
+    post: opts.post ? `${opts.post}\n\n${POST_TAGS}` : L(`${first[0].name} → ${first[first.length - 1].name} sans avion : quels pays faut-il traverser ? 🧭\n\n${POST_TAGS}`, `${first[0].name} → ${first[first.length - 1].name} without flying: which countries do you have to cross? 🧭\n\n${POST_TAGS}`),
   });
+}
+// Manche facile : départ, arrivée et pays du milieu que tout le monde connaît.
+const FAMOUS = 'FRA DEU ITA ESP PRT BEL NLD CHE AUT POL USA CAN MEX BRA ARG CHL PER COL CHN IND PAK EGY MAR DZA TUN LBY SAU TUR GRC NOR SWE FIN'.split(' ');
+// Nombre de plus courts chemins : une partie n'est gardée que s'il n'y en a
+// qu'un (sinon « et par la Suisse, ça marche aussi ? » en commentaire).
+function shortestCount(from, to) {
+  const dist = { [from]: 0 };
+  const ways = { [from]: 1 };
+  const q = [from];
+  while (q.length) {
+    const c = q.shift();
+    for (const n of adj[c] ?? []) {
+      if (!(n in dist)) { dist[n] = dist[c] + 1; ways[n] = 0; q.push(n); }
+      if (dist[n] === dist[c] + 1) ways[n] += ways[c];
+    }
+  }
+  return ways[to] ?? 0;
 }
 // Pays déjà traversés dans le lot : on évite de repasser toujours par la Russie et l'Allemagne (on tolère un pays déjà vu de plus tous les 1000 essais).
 const crossed = {};
-function randomFrontier(minLen, maxLen, level, avoid) {
+function randomFrontier(minLen, maxLen, level, avoid, pool = KNOWN) {
   for (let tries = 0; tries < 5000; tries++) {
-    const a = pick(KNOWN);
-    const b = pick(KNOWN);
+    const a = pick(pool);
+    const b = pick(pool);
     if (a === b || avoid.has(a + b)) continue;
     const path = shortest(a, b);
     if (!path || path.length < minLen || path.length > maxLen || path.some((c) => !atlasId(c))) continue;
+    if (shortestCount(a, b) !== 1) continue;
+    if (pool !== KNOWN && path.some((c) => !pool.includes(c))) continue;
     // Pas d'aller-retour par la Russie d'un bout à l'autre de l'Eurasie : la carte serait illisible.
     const lngs = path.map((c) => stats[c].lng);
     if (Math.max(...lngs) - Math.min(...lngs) > 150) continue;
@@ -737,7 +773,9 @@ function randomPartage() {
   const plan = [
     { pool: KNOWN.filter((c) => SPLIT.splitCountries().includes(c) && spFits(c) && spHalves(c) <= 0.06), parts: 2, lo: 125, hi: 179 },
     { pool: SPLIT.splitGroups().filter((g) => spFits(g) && spHalves(g) <= 0.06), parts: 2, lo: 182, hi: 200 },
-    { pool: [...SPLIT.splitGroups(), ...SPLIT.splitCountries()].filter((id) => spFits(id) && spQuarters(id) <= 0.06), parts: 4, lo: 5, hi: 55, middle: true },
+    // Plus de quatre parts (choix de Paul, 03/11) : la chute est une carte en
+    // deux coupée en son milieu, sur un pays où la population est d'un seul côté.
+    { pool: SPLIT.splitCountries().filter((id) => spFits(id) && spHalves(id) <= 0.06), parts: 2, lo: 5, hi: 60, middle: true },
   ];
   const picked = [];
   for (const step of plan) {
@@ -767,8 +805,12 @@ function spBefore(line) {
   return { a: line.a, b: { x: line.a.x + dx * Math.cos(turn) - dy * Math.sin(turn), y: line.a.y + dx * Math.sin(turn) + dy * Math.cos(turn) } };
 }
 
-function partage(name, plays, hook = null) {
+// opts (variantes) : think (s de réflexion avant chaque trait, compte à rebours
+// « Tu couperais où ? »), mapLabel, say (réplique par carte, remplace celle par
+// défaut), outro, post.
+function partage(name, plays, hook = null, opts = {}) {
   const lang = EN ? 'en' : 'fr';
+  const think = opts.think ?? 0;
   const r1 = (p) => ({ x: Math.round(p.x * 100) / 100, y: Math.round(p.y * 100) / 100 });
   let clock = SP.START;
   const rounds = plays.map(({ q, lines, points, shares }, i) => {
@@ -778,7 +820,8 @@ function partage(name, plays, hook = null) {
     // Moments de la carte (secondes depuis le début de la vidéo).
     const t0 = clock;
     const draw = [];
-    let t = t0 + (i === 0 ? SP.LEAD : 0) + SP.DRAW;
+    const thinkAt = t0 + (i === 0 ? SP.LEAD : 0.4);
+    let t = (think ? thinkAt + think : t0 + (i === 0 ? SP.LEAD : 0)) + SP.DRAW;
     for (let k = 0; k < lines.length; k++) {
       draw.push([t, t + SP.LINE]);
       t += SP.LINE + SP.GAP;
@@ -802,7 +845,7 @@ function partage(name, plays, hook = null) {
       shares: shares.map((s) => ({ key: s.key, pct: Math.round(s.share * 100), pop: SPLIT.fmtCount(s.pop, lang) })),
       points,
       verdict: points >= 180 ? L('Partage parfait !', 'Perfect split!') : points >= 120 ? L('Presque équitable', 'Nearly fair') : points >= 60 ? L('Un peu déséquilibré', 'A bit lopsided') : L('Très déséquilibré', 'Very lopsided'),
-      t: { start: t0, draw, adjust, submit, reveal, end: clock },
+      t: { start: t0, draw, adjust, submit, reveal, end: clock, ...(think ? { think: [thinkAt, thinkAt + think] } : {}) },
     };
   });
   const n = rounds.length;
@@ -811,8 +854,11 @@ function partage(name, plays, hook = null) {
   const voice = [{ text: hook?.say ?? L('Coupe cette carte en deux : autant d’habitants de chaque côté.', 'Cut this map in half: same population on each side.'), at: 0 }];
   rounds.forEach((r, i) => {
     const [p0, p1] = r.shares.map((s) => s.pct);
-    if (i > 0) voice.push({ text: r.parts === 2 ? L(`${say(r.name)}, en deux.`, `${say(r.name)}, in half.`) : L(`${say(r.name)}, en quatre. Facile, je coupe au milieu.`, `${say(r.name)}, in four. Easy, I cut down the middle.`), at: r.t.start + 0.1, maxLate: 0.6 });
-    const line = i < n - 1
+    if (opts.say?.[i]) voice.push({ text: opts.say[i], at: i === 0 ? 2.0 : r.t.start + 0.1, maxLate: 0.8 });
+    else if (i > 0) voice.push({ text: r.parts === 2 ? L(`${say(r.name)}, en deux.`, `${say(r.name)}, in half.`) : L(`${say(r.name)}, en quatre. Facile, je coupe au milieu.`, `${say(r.name)}, in four. Easy, I cut down the middle.`), at: r.t.start + 0.1, maxLate: 0.6 });
+    const line = r.points < 100 && r.parts === 2
+      ? L(`${p0} contre ${p1}. Raté !`, `${p0} to ${p1}. Missed!`)
+      : i < n - 1 || r.parts === 2
       ? (r.points >= 180 ? L(`${p0}, ${p1}. Parfait !`, `${p0}, ${p1}. Perfect!`) : L(`${p0} contre ${p1}, pas mal !`, `${p0} to ${p1}, not bad!`))
       : L(`Quoi ? ${p0} pour cent dans une seule part !`, `What? ${p0} percent in one part!`);
     voice.push({ text: line, at: r.t.reveal + 0.1, maxLate: 0.8 });
@@ -824,7 +870,9 @@ function partage(name, plays, hook = null) {
     composition: 'PartageConcept',
     hook: hook?.text ?? L(['Coupe cette carte', 'en deux ✂️'], ['Cut this map', 'in half ✂️']),
     title: L('Partage équitable', 'Fair Split'),
-    mapLabel: L('CARTE', 'MAP'),
+    mapLabel: opts.mapLabel ?? L('CARTE', 'MAP'),
+    ...(think ? { ask: L('Tu couperais où ?', 'Where would you cut?') } : {}),
+    ...(opts.sound ? { sound: opts.sound } : {}),
     partsLabel: L(['', '', 'EN DEUX', 'EN TROIS', 'EN QUATRE'], ['', '', 'HALVES', 'THIRDS', 'QUARTERS']),
     totalLabel: L('Population de la zone : {0}', 'Population of the area: {0}'),
     hints: L(
@@ -838,11 +886,11 @@ function partage(name, plays, hook = null) {
     rounds,
     total,
     max: 200 * n,
-    outro: L('Tu fais mieux ?', 'Can you beat it?'),
+    outro: opts.outro ?? L('Tu fais mieux ?', 'Can you beat it?'),
     outroSub: L('Ton score en commentaire 👇', 'Drop your score 👇'),
     ...COMMON,
     voice,
-    post: L(
+    post: opts.post ? `${opts.post}\n\n${POST_TAGS}` : L(
       `${rounds[1].name} en deux, autant d'habitants de chaque côté : tu aurais coupé où ? ✂️ Nouveau mode « Partage équitable » dans GeoG.\n\n${POST_TAGS}`,
       `${rounds[1].name} in half, same population on each side: where would you cut? ✂️ New “Fair Split” mode in GeoG.\n\n${POST_TAGS}`,
     ),
@@ -892,6 +940,63 @@ function pickHook(concept, vars) {
   return null;
 }
 
+// ───────────────────────────── Variantes à comparer (--variantes) ─────────────────────────────
+// Pistes pour faire mieux que Frontières (texte, aspect, parties, rythme) et un
+// Partage équitable « en deux » seulement. Parties choisies à la main : chemins
+// les plus courts uniques (pas de « et par la Suisse, ça marche aussi ? »), sans
+// le raccourci Pologne → Russie par Kaliningrad.
+if (process.argv.includes('--variantes')) {
+  for (const f of readdirSync(EPISODES)) if (f.startsWith('var-')) rmSync(join(EPISODES, f));
+  const fr3 = (a, b, level, extra = {}) => ({ ...frontierRound(a, b, level), ...extra });
+  const hk = (text, say) => ({ text, say });
+  frontieres('var-f1-escalade', [fr3('ESP', 'DEU', 'FACILE'), fr3('MAR', 'EGY', 'MOYEN'), fr3('EGY', 'TUR', 'DIFFICILE')],
+    hk(['Facile, moyen…', 'et le niveau 3 ? 😏'], 'Facile, moyen… et le niveau trois ?'),
+    { think: 3.5, hold: 2.2, step: 0.6, bar: true, outro: 'Tu tiens jusqu’à quel niveau\u00a0?', outroSay: 'Tu t’es arrêté à quel niveau ? Dis-le en commentaire.', post: 'Facile, moyen, difficile : jusqu’où tu tiens sans avion ? 🧭' });
+  frontieres('var-f2-qcm', [
+    fr3('KOR', 'CHN', 'FACILE', { choices: { options: ['Japon', 'Corée du N.', 'Mongolie'], answer: 1 } }),
+    fr3('MAR', 'LBY', 'MOYEN', { choices: { options: ['Algérie', 'Tunisie', 'Égypte'], answer: 0 } }),
+  ], hk(['A, B ou C ?', 'Par où tu passes ? 🧭'], 'A, B ou C : par où tu passes ?'),
+    { think: 4, hold: 2.4, bar: true, ask: 'A, B ou C ?', outro: 'Tu as eu les deux\u00a0?', outroSay: 'A, B ou C ? Ta réponse en commentaire.', post: 'Corée du Sud → Chine puis Maroc → Libye sans avion : A, B ou C ? Réponds en commentaire 👇' });
+  frontieres('var-f3-grande-carte', [fr3('MEX', 'COL', 'MOYEN')],
+    hk(['5 pays entre', 'les deux. Lesquels ?'], 'Mexique, Colombie : cinq pays entre les deux. Lesquels ?'),
+    { think: 4.5, big: true, labels: true, bar: true, outro: 'Tu les avais tous\u00a0?', post: 'Mexique → Colombie par la terre : 5 pays entre les deux. Tu les cites tous ? 🧭' });
+  frontieres('var-f4-eclair', [fr3('FRA', 'POL', 'ÉCLAIR'), fr3('CAN', 'MEX', 'ÉCLAIR'), fr3('MAR', 'SEN', 'ÉCLAIR')],
+    hk(['3 chemins,', '3 secondes ⏱️'], 'Trois chemins, trois secondes chacun.'),
+    { think: 2.5, hold: 1.2, step: 0.45, bar: true, outro: 'Ton score sur 3\u00a0?', outroSay: 'Ton score sur trois ? En commentaire.', post: '3 chemins, 3 secondes chacun : ton score sur 3 ? ⏱️' });
+  // Ambiances sonores (packs.mjs) : f5 et p1 retenus par Paul (03/11), un rendu par ambiance.
+  const SOUNDS = ['', 'lofi', 'hype', 'tele'];
+  for (const sound of SOUNDS)
+    frontieres(`var-f5-piege${sound ? `-${sound}` : ''}`, [fr3('PRT', 'DEU', 'FACILE'), fr3('USA', 'GTM', 'MOYEN'), fr3('CHN', 'AFG', 'PIÈGE', { stamp: 'Aucun ! Voisins 😱' })],
+      hk(['La 3e manche', 'est un piège 😈'], 'Attention, la troisième manche est un piège.'),
+      { think: 4, hold: 2.2, step: 0.6, bar: true, sound, outro: 'Tu t’es fait avoir\u00a0?', outroSay: 'Tu t’es fait avoir ? Dis-le en commentaire.', post: 'Chine → Afghanistan : quels pays faut-il traverser ? Attention, piège 😈' });
+
+  const spPlay = (id, lo, hi, middle = false) => {
+    const q = { id, parts: 2, lines: 1, best: spHalves(id) };
+    for (let k = 0; k < 20; k++) {
+      const got = spLines(q, lo, hi, middle);
+      if (got) return { q, ...got };
+    }
+    throw new Error(`Partage : rien entre ${lo} et ${hi} pour ${id}`);
+  };
+  // Demande de Paul (03/11) : pas de piège, une manche facile puis une dure,
+  // du genre « la Pologne touche la Russie » (Kaliningrad), en lofi.
+  frontieres('var-f6-facile-dur-lofi', [fr3('ESP', 'DEU', 'FACILE'), fr3('FRA', 'CHN', 'DIFFICILE')],
+    hk(['Un facile,', 'puis un dur 🧭'], 'Un facile, puis un difficile.'),
+    { think: 4.5, hold: 2.6, step: 0.7, bar: true, sound: 'lofi', outro: 'Tu as eu le difficile\u00a0?', outroSay: 'Tu avais trouvé le difficile ? Dis-le en commentaire.', post: 'France → Chine sans avion : seulement 3 pays à traverser. Lesquels ? 🧭' });
+  const p1 = [spPlay('FRA', 140, 179), spPlay('europe', 184, 200), spPlay('AUS', 5, 60, true)];
+  for (const sound of SOUNDS)
+    partage(`var-p1-trois-moities${sound ? `-${sound}` : ''}`, p1,
+      hk(['Coupe en deux.', 'Même population ✂️'], 'Coupe chaque carte en deux : autant d’habitants de chaque côté.'),
+      { think: 2.5, sound, post: 'France, Europe, Australie : coupe chaque carte en deux, autant d’habitants de chaque côté. Tu couperais où ? ✂️' });
+  partage('var-p2-piege-milieu', [spPlay('AUS', 0, 50, true), spPlay('AUS', 185, 200)],
+    hk(['Coupe l’Australie', 'en deux ✂️'], 'Coupe l’Australie en deux : autant d’habitants de chaque côté.'),
+    { think: 2.5, mapLabel: 'ESSAI', say: ['Facile, je coupe au milieu.', 'Deuxième essai.'], outro: 'Tu aurais coupé où\u00a0?', post: 'La moitié des Australiens vit… ici. Tu aurais coupé où ? ✂️' });
+  partage('var-p3-chine', [spPlay('CHN', 185, 200)],
+    hk(['1,4 milliard.', 'Coupe en deux ✂️'], 'Un virgule quatre milliard d’habitants. Coupe la Chine en deux.'),
+    { think: 3, outro: 'Tu aurais coupé là\u00a0?', post: 'La Chine en deux, autant d’habitants de chaque côté : tu aurais coupé où ? ✂️' });
+  process.exit(0);
+}
+
 // ───────────────────────────── Vitrine ou lot ─────────────────────────────
 // --redo fichier : refaire des Frontières déjà en file, une ligne
 // « nom|Départ|Arrivée » (noms français), en une manche. Une ligne
@@ -934,7 +1039,10 @@ if (REDO) {
   const usedPairs = new Set(['FRACHN', 'CANARG']);
   let ti = 0;
   // --mix « echelle:4,plus-ou-moins:3,… » : mélange imposé (prioritaire sur --tuning).
-  const MIX = arg('mix') ? Object.fromEntries(arg('mix').split(',').map((x) => [x.split(':')[0], Number(x.split(':')[1] ?? 1)])) : TUNING?.mix;
+  // Choix de Paul (03/11) : les lots ne font plus que Frontières (facile puis
+  // dur) et Partage équitable (en deux), en lofi, en attendant d'autres stats.
+  // --mix reste prioritaire ; le mélange de tuning.json n'est plus suivi.
+  const MIX = arg('mix') ? Object.fromEntries(arg('mix').split(',').map((x) => [x.split(':')[0], Number(x.split(':')[1] ?? 1)])) : { frontieres: 2, partage: 1 };
   const kinds = MIX ? mixSequence(MIX, BATCH) : null;
   for (let i = 0; i < BATCH; i++) {
     const num = String(i + 1).padStart(2, '0');
@@ -946,10 +1054,18 @@ if (REDO) {
       const hook = pickHook('devine', { n: g.length });
       devine(`${prefix}-${num}-devine-${slug(fr(g[g.length - 1]))}${hook ? `-${hook.id}` : ''}`, g[g.length - 1], g, hook);
     } else if (kind === 'frontieres') {
-      const r1 = randomFrontier(4, 6, 'MOYEN', usedPairs);
-      const r2 = SHORT ? null : randomFrontier(7, 10, 'EXPERT', usedPairs);
-      const hook = pickHook('frontieres', { a: r1.path[0].name, b: r1.path[r1.path.length - 1].name });
-      frontieres(`${prefix}-${num}-frontieres-${slug(r1.path[0].name)}${hook ? `-${hook.id}` : ''}`, r2 ? [r1, r2] : [r1], hook);
+      // Format validé par Paul (03/11, var-f6) : une manche facile (un pays au
+      // milieu), puis une dure (3 à 5 pays), réflexion 4,5 s, ambiance lofi.
+      const r1 = randomFrontier(3, 3, 'FACILE', usedPairs, FAMOUS);
+      const r2 = randomFrontier(5, 7, 'DIFFICILE', usedPairs);
+      const hook = pickHook('frontieres', { a: r1.path[0].name, b: r1.path[r1.path.length - 1].name })
+        ?? { id: 'h4', text: L(['Un facile,', 'puis un dur 🧭'], ['One easy,', 'then a hard one 🧭']), say: L('Un facile, puis un difficile.', 'One easy, then a hard one.') };
+      frontieres(`${prefix}-${num}-frontieres-${slug(r2.path[0].name)}-${hook.id}`, [r1, r2], hook, {
+        think: 4.5, hold: 2.6, step: 0.7, bar: true, sound: 'lofi',
+        outro: L('Tu as eu le difficile\u00a0?', 'Did you get the hard one?'),
+        outroSay: L('Tu avais trouvé le difficile ? Dis-le en commentaire.', 'Did you get the hard one? Tell me in the comments.'),
+        post: L(`${r2.path[0].name} → ${r2.path[r2.path.length - 1].name} sans avion : quels pays faut-il traverser ? 🧭`, `${r2.path[0].name} → ${r2.path[r2.path.length - 1].name} without flying: which countries do you cross? 🧭`),
+      });
     } else if (kind === 'echelle') {
       const pairs = randomEchelle();
       const hook = pickHook('echelle', {});
@@ -957,7 +1073,13 @@ if (REDO) {
     } else if (kind === 'partage') {
       const plays = randomPartage();
       const hook = pickHook('partage', {});
-      partage(`${prefix}-${num}-partage-${slug(SPLIT.splitMapName(plays[1].q.id, 'fr'))}${hook ? `-${hook.id}` : ''}`, plays, hook);
+      // Format validé par Paul (03/11, var-p1) : trois cartes en deux, 2,5 s pour
+      // réfléchir avant chaque trait, la dernière coupée au milieu (raté), lofi.
+      partage(`${prefix}-${num}-partage-${slug(SPLIT.splitMapName(plays[1].q.id, 'fr'))}${hook ? `-${hook.id}` : ''}`, plays, hook, {
+        think: 2.5, sound: 'lofi',
+        post: L(`${plays.map((p) => SPLIT.splitMapName(p.q.id, 'fr')).join(', ')} : coupe chaque carte en deux, autant d’habitants de chaque côté. Tu couperais où ? ✂️`,
+          `${plays.map((p) => SPLIT.splitMapName(p.q.id, 'en')).join(', ')}: cut each map in half, same population on each side. Where would you cut? ✂️`),
+      });
     } else if (kind === 'plus-ou-moins') {
       const pm = randomPlusOuMoins(i);
       const hook = pickHook('plus-ou-moins', { a: fr(pm.chain[0]), b: fr(pm.chain[1]) });

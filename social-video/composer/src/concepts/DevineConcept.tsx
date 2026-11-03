@@ -232,7 +232,7 @@ export function DevineConcept(p: DevineProps) {
         <Progress total={end} />
       </Paper>
 
-      <EndCard title={tx.endTitle} cta={p.cta} ctaSub={tx.ctaSub} icon={p.icon} start={end} />
+      <EndCard title={tx.endTitle} cta={p.cta} ctaSub={tx.ctaSub} icon={p.icon} start={end} lang={p.lang} />
 
       <Audio src={sfx('music')} volume={(f) => {
         const s = f / FPS;
