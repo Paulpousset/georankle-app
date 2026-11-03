@@ -44,6 +44,7 @@ import { localeData } from './siteLocales.mjs';
 import { t } from './i18n.mjs';
 import { MODE_COPY, APP_MODE } from './generated.mjs';
 import { COUNTRY_COUNT, MODE_COUNT } from './constants.mjs';
+import { STORE_IOS, STORE_ANDROID } from './invite.mjs';
 
 function esc(text) {
   return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -119,13 +120,14 @@ export const PLAY_DOC_CSS = `    <style id="play-doc-style">
       .pd-bar a { color: #7a5c38; text-decoration: none; white-space: nowrap; }
       .pd-bar a:hover { text-decoration: underline; }
       .pd-bar .pd-brand { font-weight: 700; color: #2c1810; font-size: 16px; }
-      .pd-bar .pd-jump { margin-left: auto; color: #c04a1a; font-weight: 700; }
+      .pd-bar .pd-app { margin-left: auto; font-weight: 700; color: #2c1810; }
+      .pd-bar .pd-jump { color: #c04a1a; font-weight: 700; }
       @media (prefers-color-scheme: dark) {
         .pd-bar {
           background: #132040; border-bottom-color: #2d4a70; color: #7aa0c4;
         }
         .pd-bar a { color: #7aa0c4; }
-        .pd-bar .pd-brand { color: #d8e8f4; }
+        .pd-bar .pd-brand, .pd-bar .pd-app { color: #d8e8f4; }
         .pd-bar .pd-jump { color: #e8825a; }
       }
       /* ── Barre masquée (html.pd-nobar) ─────────────────────────────────
@@ -272,6 +274,7 @@ export function playBar(locale) {
     <div class="pd-links">
     <a class="pd-brand" href="${href('home', locale)}">GeoG</a>
 ${links.map(([url, label]) => `    <a href="${url}">${esc(label)}</a>`).join('\n')}
+    <a class="pd-app" href="${STORE_IOS}" data-android="${STORE_ANDROID}" rel="noopener">📲 App</a>
     <a class="pd-jump" href="#regles"><span class="pd-jump-go">↓ ${esc(labels.go)}</span><span class="pd-jump-back">↑ ${esc(labels.back)}</span></a>
     </div>
     <button class="pd-hide" type="button" data-pd-hide title="${esc(dismiss)}" aria-label="${esc(dismiss)}">✕</button>
@@ -324,6 +327,8 @@ export const PLAY_DOC_SCRIPT = `  <script>
           else localStorage.setItem('geog.playBar', 'hidden');
         } catch (e) {}
       }
+      var app = document.querySelector('.pd-app');
+      if (app && /android/i.test(navigator.userAgent)) app.href = app.getAttribute('data-android');
       var hide = document.querySelector('[data-pd-hide]');
       if (hide) hide.addEventListener('click', function () { bar(false); });
       var show = document.querySelector('[data-pd-show]');
