@@ -76,6 +76,15 @@ export const ADSENSE_HEAD = `  <meta name="google-adsense-account" content="${AD
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${AD_CLIENT}" crossorigin="anonymous"></script>`;
 
 /**
+ * La même bibliothèque pour la coquille du jeu (/play) : elle porte en plus
+ * les attributs de l'Ad Placement API (H5 Games Ads) — `data-ad-client` et le
+ * plancher entre deux ad breaks. src/lib/adsWeb.ts ne réinjecte pas la
+ * bibliothèque quand elle est déjà là, donc ces attributs doivent être ici.
+ */
+export const GAME_ADSENSE_HEAD = `  <meta name="google-adsense-account" content="${AD_CLIENT}" />
+  <script async data-ad-client="${AD_CLIENT}" data-ad-frequency-hint="60s" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${AD_CLIENT}" crossorigin="anonymous"></script>`;
+
+/**
  * Le bloc `<link rel="alternate">` d'une page.
  *
  * Trois règles, toutes vérifiées par `site/lib/validate.mjs` après génération :

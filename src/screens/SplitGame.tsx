@@ -84,6 +84,7 @@ import { useMyGameGlobe } from '../lib/myGlobe';
 import { TopInsetBar } from '../components/TopInsetBar';
 
 import { isMobileLayout as isMobile } from '../lib/layout';
+import { CAN_SIGN_IN } from '../lib/portal';
 
 const NUM_MAPS = 5;
 const GOOD = '#2a6e3f';
@@ -879,7 +880,7 @@ export default function SplitGame({
             </Reveal>
 
             <Reveal at={END_CHOREO.actions}>
-              {!user && !isDaily && (
+              {!user && !isDaily && CAN_SIGN_IN && (
                 <Text style={{ color: c.textMuted, fontFamily: FONTS.mono, fontSize: 12, textAlign: 'center', marginBottom: 12 }}>
                   {tr(
                     language,

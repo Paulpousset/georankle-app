@@ -20,6 +20,8 @@ export type FeatureFlag =
   | 'interstitial_ads_v2'
   | 'banner_ads'
   | 'web_ads'
+  // Ad breaks web seuls (H5 Games Ads), sans les rails display — h5_games_ads.sql.
+  | 'h5_games_ads'
   | 'avatar_3d'
   | 'globe_3d'
   | 'menu_globe_3d'

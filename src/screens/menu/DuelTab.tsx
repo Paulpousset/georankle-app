@@ -36,6 +36,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { a11yButton } from '../../lib/a11y';
 import { hoverLift } from '../../lib/webHover';
 import { playSfx } from '../../lib/sfx';
+import { CAN_SIGN_IN } from '../../lib/portal';
 
 export type DuelSegment = 'online' | 'local';
 
@@ -76,6 +77,16 @@ export function DuelTab(props: DuelTabProps) {
     },
     { id: 'local', label: tr(language, 'Même téléphone', 'Same phone'), icon: Monitor },
   ];
+
+  // Build portail : pas de compte, donc pas d'en ligne — seulement le duel sur
+  // le même écran, sans sélecteur.
+  if (!CAN_SIGN_IN) {
+    return (
+      <View style={{ width: '100%', maxWidth: grid.col, marginTop: 12 }}>
+        <LocalCard {...props} />
+      </View>
+    );
+  }
 
   return (
     <View style={{ width: '100%', maxWidth: grid.col }}>

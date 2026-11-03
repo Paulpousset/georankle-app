@@ -77,3 +77,6 @@ video-pipeline/
 # Vidéos réseaux sociaux : brutes, fiches et montages, régénérables (social-video/)
 social-video/out/
 social-video/insights/out/
+
+# Builds portails de jeux (scripts/build-portal.mjs)
+dist-portal/

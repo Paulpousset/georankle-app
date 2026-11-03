@@ -22,6 +22,7 @@
 import { Platform } from 'react-native';
 
 import { STAGE_MAX_WIDTH } from './stage';
+import { setSfxSuppressed } from './audioGate';
 
 /**
  * Google publisher id — same publisher as the AdMob account
@@ -70,6 +71,10 @@ let scriptInjected = false;
 export function ensureAdsScript(): void {
   if (!webAdsSupported() || scriptInjected) return;
   scriptInjected = true;
+  // /play (app.html) charge déjà la bibliothèque dans son <head>, avec les
+  // attributs de l'Ad Placement API (site/build.mjs) : la charger une seconde
+  // fois ferait deux instances concurrentes de l'API.
+  if (document.querySelector('script[src*="adsbygoogle.js"]')) return;
   const s = document.createElement('script');
   s.async = true;
   s.crossOrigin = 'anonymous';
@@ -128,10 +133,13 @@ export function showWebRewardedAd(): Promise<WebAdOutcome> {
           clearTimeout(timer);
           showAdFn();
         },
+        beforeAd: () => setSfxSuppressed('ad', true),
+        afterAd: () => setSfxSuppressed('ad', false),
         adViewed: () => settle('viewed'),
         adDismissed: () => settle('dismissed'),
         // Fires for every placement, shown or not — resolves the no-ad path.
         adBreakDone: (info?: { breakStatus?: string }) => {
+          setSfxSuppressed('ad', false);
           if (!shown) settle('unavailable');
           else settle(info?.breakStatus === 'viewed' ? 'viewed' : 'dismissed');
         },
@@ -145,8 +153,11 @@ export function showWebRewardedAd(): Promise<WebAdOutcome> {
 /**
  * Show one interstitial ad break at a natural pause; resolves to whether an ad
  * was actually displayed. Never rejects.
+ *
+ * `type` suit la nomenclature de l'Ad Placement API : 'next' quand le joueur
+ * enchaîne une nouvelle partie, 'browse' quand il retourne au menu.
  */
-export function showWebInterstitial(): Promise<boolean> {
+export function showWebInterstitial(type: 'next' | 'browse' = 'browse'): Promise<boolean> {
   if (!webAdsSupported()) return Promise.resolve(false);
   initWebAds();
   return new Promise<boolean>((resolve) => {
@@ -161,13 +172,18 @@ export function showWebInterstitial(): Promise<boolean> {
     const timer = setTimeout(() => settle(false), BREAK_READY_TIMEOUT_MS);
     try {
       queue().push({
-        type: 'browse',
-        name: 'game_over',
+        type,
+        name: type === 'next' ? 'next_game' : 'game_over',
         beforeAd: () => {
           shown = true;
           clearTimeout(timer);
+          setSfxSuppressed('ad', true);
         },
-        adBreakDone: () => settle(shown),
+        afterAd: () => setSfxSuppressed('ad', false),
+        adBreakDone: () => {
+          setSfxSuppressed('ad', false);
+          settle(shown);
+        },
       });
     } catch {
       settle(false);

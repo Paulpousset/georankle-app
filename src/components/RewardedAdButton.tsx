@@ -26,6 +26,7 @@ import { tr } from '../i18n';
 import { a11yButton, announce } from '../lib/a11y';
 import { useToast } from './ToastProvider';
 import { ScoreText } from './ScoreText';
+import { supabase } from '../lib/supabase';
 
 interface RewardedAdButtonProps {
   /** Where the button lives — analytics dimension only. */
@@ -45,6 +46,13 @@ export function RewardedAdButton({ context, onEarned }: RewardedAdButtonProps) {
   const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
+    // La récompense est créditée côté serveur, sur le compte : sans session le
+    // claim échouerait à coup sûr — pas de bouton qui ne mène à rien.
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) {
+      setVisible(false);
+      return;
+    }
     const ok = await rewardedAdsAvailable();
     if (!ok) {
       setVisible(false);

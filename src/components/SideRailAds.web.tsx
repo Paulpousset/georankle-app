@@ -22,6 +22,7 @@ import {
 } from '../lib/adsWeb';
 import { isFeatureEnabled } from '../lib/featureFlags';
 import { useUiScale } from '../lib/uiScale';
+import { IS_PORTAL } from '../lib/portal';
 
 function RailUnit({
   slot,
@@ -76,7 +77,8 @@ export function SideRailAds() {
   );
 
   useEffect(() => {
-    if (!webAdsSupported()) return;
+    // Build portail : seules les pubs du SDK du portail sont permises.
+    if (!webAdsSupported() || IS_PORTAL) return;
     let alive = true;
     isFeatureEnabled('web_ads')
       .then((on) => {

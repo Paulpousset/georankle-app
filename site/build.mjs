@@ -36,7 +36,7 @@ import {
   href,
   routesIn,
 } from './lib/routes.mjs';
-import { renderPage, attr, ADSENSE_HEAD } from './lib/layout.mjs';
+import { renderPage, attr, ADSENSE_HEAD, GAME_ADSENSE_HEAD } from './lib/layout.mjs';
 import { loadPage, interpolate, extractFaq } from './lib/content.mjs';
 import { playDoc, playBar, PLAY_DOC_CSS, PLAY_DOC_HEAD_SCRIPT, PLAY_DOC_SCRIPT } from './lib/playDoc.mjs';
 import { article, faqPage, videoGame, render as renderJsonLd } from './lib/jsonld.mjs';
@@ -216,7 +216,7 @@ ${alternates('play')
 ${LOCALES.filter((l) => l !== locale)
   .map((l) => `    <meta property="og:locale:alternate" content="${LOCALE_META[l].ogLocale}" />`)
   .join('\n')}
-${ADSENSE_HEAD}
+${GAME_ADSENSE_HEAD}
     <!-- Le pont web → app. Un lien de parrainage (?code=) ou d'invitation de
          ligue (?league=) atterrit ici : si l'application est installée, elle
          doit prendre le relais, sinon le code n'est jamais crédité ni la ligue

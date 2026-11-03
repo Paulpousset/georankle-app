@@ -51,6 +51,7 @@ import { announceAdBreak } from './adBreak';
 import { track } from './analytics';
 import { log } from './log';
 import { RECORDING_MODE } from './recordingMode';
+import { IS_PORTAL, PORTAL, portalAdsSupported, portalMidgame, portalRewarded } from './portal';
 
 /** Store product ids ↔ coins (must mirror grant_iap_coins in SQL). */
 export const COIN_PACKS = [
@@ -106,6 +107,20 @@ const BANNER_AD_UNIT_IDS: Record<string, string> = {
   android: 'ca-app-pub-2429865520138981/4468294740',
   ios: 'ca-app-pub-2429865520138981/4481482048',
 };
+
+/**
+ * Ad breaks web (rewarded + interstitiel, Ad Placement API = H5 Games Ads) :
+ * allumés par 'web_ads' (tout le web, rails compris) OU par 'h5_games_ads'
+ * (les ad breaks seuls, pour le cas où le programme H5 Games Ads est accepté
+ * avant le site AdSense — les rails display, eux, restent sous 'web_ads').
+ */
+async function webAdBreaksEnabled(): Promise<boolean> {
+  const [web, h5] = await Promise.all([
+    isFeatureEnabled('web_ads'),
+    isFeatureEnabled('h5_games_ads'),
+  ]);
+  return web || h5;
+}
 
 /** How long to wait for an ad to load before giving up. */
 const AD_LOAD_TIMEOUT_MS = 15000;
@@ -193,8 +208,10 @@ function loadAndShowAd(sdk: AdsSdk): Promise<boolean> {
  */
 export async function rewardedAdsAvailable(): Promise<boolean> {
   if (!(await isFeatureEnabled('rewarded_ads'))) return false;
+  // Build portail (CrazyGames / GameDistribution) : leurs pubs uniquement.
+  if (IS_PORTAL) return portalAdsSupported();
   if (Platform.OS === 'web') {
-    if (!webAdsSupported() || !(await isFeatureEnabled('web_ads'))) return false;
+    if (!webAdsSupported() || !(await webAdBreaksEnabled())) return false;
     initWebAds(); // preload ad breaks so the first tap has an ad ready
     return true;
   }
@@ -232,8 +249,13 @@ export async function watchRewardedAd(): Promise<
   { earned: true } | { earned: false; reason: RewardedAdResult['reason'] }
 > {
   if (!(await isFeatureEnabled('rewarded_ads'))) return { earned: false, reason: 'disabled' };
+  if (IS_PORTAL) {
+    const outcome = await portalRewarded();
+    if (outcome === 'viewed') return { earned: true };
+    return { earned: false, reason: outcome === 'dismissed' ? 'dismissed' : 'failed' };
+  }
   if (Platform.OS === 'web') {
-    if (!webAdsSupported() || !(await isFeatureEnabled('web_ads'))) {
+    if (!webAdsSupported() || !(await webAdBreaksEnabled())) {
       return { earned: false, reason: 'disabled' };
     }
     const outcome = await showWebRewardedAd();
@@ -360,19 +382,40 @@ function loadAndShowInterstitial(sdk: AdsSdk, loadTimeoutMs = AD_LOAD_TIMEOUT_MS
  * forget: navigation can proceed behind the ad. Never throws.
  */
 export async function maybeShowInterstitial(
-  { loadTimeoutMs = AD_LOAD_TIMEOUT_MS }: { loadTimeoutMs?: number } = {},
+  {
+    loadTimeoutMs = AD_LOAD_TIMEOUT_MS,
+    placement = 'menu',
+  }: {
+    loadTimeoutMs?: number;
+    /**
+     * 'menu' : on quitte une partie finie pour le menu. 'next' : on enchaîne
+     * une autre partie (rejouer, niveau suivant) — voir afterAdBreak.
+     */
+    placement?: 'menu' | 'next';
+  } = {},
 ): Promise<void> {
   // Mode tournage : aucune pub ne doit couvrir une vidéo.
   if (RECORDING_MODE) return;
+  // Build portail : pas de flag ni de garde maison, le SDK du portail impose
+  // lui-même son rythme (3 min minimum chez CrazyGames). CrazyGames interdit
+  // en revanche une pub accrochée à un bouton de navigation (retour au
+  // menu) : là-bas, seulement entre deux parties.
+  if (IS_PORTAL) {
+    if (PORTAL === 'crazygames' && placement === 'menu') return;
+    if (!portalAdsSupported()) return;
+    const shown = await portalMidgame();
+    track(shown ? 'interstitial_shown' : 'interstitial_failed', { portal: PORTAL });
+    return;
+  }
   if (!(await isFeatureEnabled('interstitial_ads_v2'))) return;
   // Web needs its own flag too — checked BEFORE the gate so an off switch
   // doesn't burn gate credits.
   const web = Platform.OS === 'web';
-  if (web && !(webAdsSupported() && (await isFeatureEnabled('web_ads')))) return;
+  if (web && !(webAdsSupported() && (await webAdBreaksEnabled()))) return;
   // Consult the gate BEFORE touching the SDK.
   if (!(await shouldShowAtBreak())) return;
   if (web) {
-    const shown = await showWebInterstitial();
+    const shown = await showWebInterstitial(placement === 'next' ? 'next' : 'browse');
     track(shown ? 'interstitial_shown' : 'interstitial_failed', {});
     return;
   }
@@ -403,7 +446,10 @@ export function afterAdBreak(start: () => void): () => void {
   return () => {
     if (betweenGamesBusy) return;
     betweenGamesBusy = true;
-    void maybeShowInterstitial({ loadTimeoutMs: BETWEEN_GAMES_LOAD_TIMEOUT_MS }).finally(() => {
+    void maybeShowInterstitial({
+      loadTimeoutMs: BETWEEN_GAMES_LOAD_TIMEOUT_MS,
+      placement: 'next',
+    }).finally(() => {
       betweenGamesBusy = false;
       start();
     });
