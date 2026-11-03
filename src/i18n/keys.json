@@ -249,6 +249,18 @@
     ]
   },
   {
+    "key": "1 vs 1, one mode",
+    "fr": "1 contre 1, un seul mode",
+    "en": "1 vs 1, one mode",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/menu/DuelTab.tsx"
+    ]
+  },
+  {
     "key": "195 countries · leaderboard on",
     "fr": "195 pays · classement actif",
     "en": "195 countries · leaderboard on",
@@ -281,7 +293,7 @@
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/screens/menu/DuelTab.tsx"
     ]
   },
   {
@@ -331,6 +343,18 @@
     "files": [
       "src/lib/customMatch.ts",
       "src/screens/LocalParcours.tsx"
+    ]
+  },
+  {
+    "key": "A bit lopsided",
+    "fr": "Un peu déséquilibré",
+    "en": "A bit lopsided",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/SplitGame.tsx"
     ]
   },
   {
@@ -397,6 +421,18 @@
     "key": "A country name appears. Spin the 3D globe and tap the right country to find it.",
     "fr": "Un nom de pays s’affiche. Faites tourner le globe 3D et tapez sur le bon pays pour le localiser.",
     "en": "A country name appears. Spin the 3D globe and tap the right country to find it.",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/modeIntros.ts"
+    ]
+  },
+  {
+    "key": "A country, a group of countries or a continent, with its big cities as landmarks. Draw one or two straight lines to cut its whole population (cities, towns, countryside) into equal parts: two halves, then thirds, then quarters. It’s up to you to know where people live!",
+    "fr": "Un pays, un groupe de pays ou un continent, avec ses grandes villes en repères. Tracez un ou deux traits droits pour couper toute sa population (villes, villages, campagnes) en parts égales : deux moitiés, puis trois tiers, puis quatre quarts. À vous de savoir où vivent les gens !",
+    "en": "A country, a group of countries or a continent, with its big cities as landmarks. Draw one or two straight lines to cut its whole population (cities, towns, countryside) into equal parts: two halves, then thirds, then quarters. It’s up to you to know where people live!",
     "count": 1,
     "kinds": [
       "label"
@@ -555,10 +591,10 @@
     "en": "A point on a borderless globe: which country?",
     "count": 1,
     "kinds": [
-      "call"
+      "label"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/data/menuModes.ts"
     ]
   },
   {
@@ -871,15 +907,28 @@
     ]
   },
   {
+    "key": "Add {0} to favorites",
+    "fr": "Ajouter {0} aux favoris",
+    "en": "Add {0} to favorites",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/menu/ModeTiles.tsx"
+    ]
+  },
+  {
     "key": "Africa",
     "fr": "Afrique",
     "en": "Africa",
-    "count": 2,
+    "count": 3,
     "kinds": [
       "label"
     ],
     "files": [
-      "src/data/continents.ts"
+      "src/data/continents.ts",
+      "src/lib/split.ts"
     ]
   },
   {
@@ -940,6 +989,18 @@
     ],
     "files": [
       "assets/game_data.json"
+    ]
+  },
+  {
+    "key": "All",
+    "fr": "Tous",
+    "en": "All",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/menu/PlayTab.tsx"
     ]
   },
   {
@@ -1767,6 +1828,18 @@
     ]
   },
   {
+    "key": "Benelux",
+    "fr": "Benelux",
+    "en": "Benelux",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/lib/split.ts"
+    ]
+  },
+  {
     "key": "Bengali",
     "fr": "Bengali",
     "en": "Bengali",
@@ -1776,6 +1849,18 @@
     ],
     "files": [
       "assets/languages.json"
+    ]
+  },
+  {
+    "key": "Best",
+    "fr": "Record",
+    "en": "Best",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/menu/ModeTiles.tsx"
     ]
   },
   {
@@ -1890,13 +1975,14 @@
     "key": "Borders",
     "fr": "Frontières",
     "en": "Borders",
-    "count": 13,
+    "count": 12,
     "kinds": [
       "label",
       "call"
     ],
     "files": [
       "src/components/OnlineModeLeaderboardModal.tsx",
+      "src/data/menuModes.ts",
       "src/data/modeIntros.ts",
       "src/hooks/useMatchEngine.ts",
       "src/lib/customMatch.ts",
@@ -1905,7 +1991,6 @@
       "src/screens/BordersGame.tsx",
       "src/screens/Leaderboard.tsx",
       "src/screens/LocalParcours.tsx",
-      "src/screens/MainMenu.tsx",
       "src/screens/Matchmaking.tsx"
     ]
   },
@@ -1958,18 +2043,6 @@
     ]
   },
   {
-    "key": "Build a sequence of modes",
-    "fr": "Construire une suite de modes",
-    "en": "Build a sequence of modes",
-    "count": 1,
-    "kinds": [
-      "call"
-    ],
-    "files": [
-      "src/screens/MainMenu.tsx"
-    ]
-  },
-  {
     "key": "Build the game",
     "fr": "Construire la partie",
     "en": "Build the game",
@@ -1990,7 +2063,7 @@
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/screens/menu/DuelTab.tsx"
     ]
   },
   {
@@ -2317,6 +2390,18 @@
     ]
   },
   {
+    "key": "Candy planet",
+    "fr": "Planète bonbon",
+    "en": "Candy planet",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/cosmetics.ts"
+    ]
+  },
+  {
     "key": "Capital",
     "fr": "Capitale",
     "en": "Capital",
@@ -2340,13 +2425,25 @@
     "files": [
       "src/components/ContinentChip.tsx",
       "src/components/ReviewEntryCard.tsx",
+      "src/data/menuModes.ts",
       "src/data/modeIntros.ts",
       "src/lib/customMatch.ts",
       "src/lib/daily.ts",
       "src/screens/Leaderboard.tsx",
       "src/screens/LocalParcours.tsx",
-      "src/screens/MainMenu.tsx",
       "src/screens/Matchmaking.tsx"
+    ]
+  },
+  {
+    "key": "Capitals and flags, against a player",
+    "fr": "Capitales et drapeaux, face à un joueur",
+    "en": "Capitals and flags, against a player",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/menu/DuelTab.tsx"
     ]
   },
   {
@@ -2374,15 +2471,39 @@
     ]
   },
   {
+    "key": "Celestial Vault",
+    "fr": "Voûte Céleste",
+    "en": "Celestial Vault",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/cosmetics.ts"
+    ]
+  },
+  {
+    "key": "Ceylon",
+    "fr": "Ceylan",
+    "en": "Ceylon",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/ghostCountries.ts"
+    ]
+  },
+  {
     "key": "Chain correct answers",
     "fr": "Enchaînez les bonnes réponses",
     "en": "Chain correct answers",
     "count": 2,
     "kinds": [
-      "call"
+      "label"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/data/menuModes.ts"
     ]
   },
   {
@@ -2406,7 +2527,7 @@
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/screens/menu/DuelTab.tsx"
     ]
   },
   {
@@ -2528,7 +2649,7 @@
     "key": "Change language",
     "fr": "Changer de langue",
     "en": "Change language",
-    "count": 10,
+    "count": 12,
     "kinds": [
       "call"
     ],
@@ -2539,7 +2660,9 @@
       "src/screens/HigherLowerGame.tsx",
       "src/screens/LanguagesGame.tsx",
       "src/screens/PinpointGame.tsx",
+      "src/screens/ScaleGame.tsx",
       "src/screens/SilhouetteGame.tsx",
+      "src/screens/SplitGame.tsx",
       "src/screens/StreakGame.tsx"
     ]
   },
@@ -2773,6 +2896,18 @@
     ]
   },
   {
+    "key": "Cities take the colour of their part; the population of each part only shows once you submit.",
+    "fr": "Les villes prennent la couleur de leur part ; la population de chaque part ne s’affiche qu’après validation.",
+    "en": "Cities take the colour of their part; the population of each part only shows once you submit.",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/modeIntros.ts"
+    ]
+  },
+  {
     "key": "Claim the win",
     "fr": "Réclamer la victoire",
     "en": "Claim the win",
@@ -2811,16 +2946,41 @@
     ]
   },
   {
+    "key": "Clear",
+    "fr": "Effacer",
+    "en": "Clear",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/SplitGame.tsx"
+    ]
+  },
+  {
     "key": "Clear search",
     "fr": "Effacer la recherche",
     "en": "Clear search",
-    "count": 2,
+    "count": 3,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/GuessCountryGame.tsx",
-      "src/screens/RegionCountryPicker.tsx"
+      "src/screens/RegionCountryPicker.tsx",
+      "src/screens/menu/PlayTab.tsx"
+    ]
+  },
+  {
+    "key": "Clear the lines",
+    "fr": "Effacer les traits",
+    "en": "Clear the lines",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/SplitGame.tsx"
     ]
   },
   {
@@ -2948,7 +3108,7 @@
     "key": "Coins not synced — will retry when you reconnect.",
     "fr": "Pièces non synchronisées — réessai à la reconnexion.",
     "en": "Coins not synced — will retry when you reconnect.",
-    "count": 8,
+    "count": 10,
     "kinds": [
       "call"
     ],
@@ -2959,7 +3119,9 @@
       "src/screens/HigherLowerGame.tsx",
       "src/screens/LanguagesGame.tsx",
       "src/screens/PinpointGame.tsx",
+      "src/screens/ScaleGame.tsx",
       "src/screens/SilhouetteGame.tsx",
+      "src/screens/SplitGame.tsx",
       "src/screens/StreakGame.tsx"
     ]
   },
@@ -2973,6 +3135,18 @@
     ],
     "files": [
       "src/components/SoloCoinReward.tsx"
+    ]
+  },
+  {
+    "key": "Colombo",
+    "fr": "Colombo",
+    "en": "Colombo",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/ghostCountries.ts"
     ]
   },
   {
@@ -3057,6 +3231,18 @@
     ],
     "files": [
       "src/data/challenges.ts"
+    ]
+  },
+  {
+    "key": "Compare",
+    "fr": "Comparer",
+    "en": "Compare",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/menuModes.ts"
     ]
   },
   {
@@ -3187,12 +3373,13 @@
     "key": "Continue",
     "fr": "Continuer",
     "en": "Continue",
-    "count": 2,
+    "count": 3,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/components/UsernameGate.tsx"
+      "src/components/UsernameGate.tsx",
+      "src/screens/menu/HomeTab.tsx"
     ]
   },
   {
@@ -3537,7 +3724,7 @@
     "key": "Could not save your score.",
     "fr": "Impossible d'enregistrer ton score.",
     "en": "Could not save your score.",
-    "count": 7,
+    "count": 9,
     "kinds": [
       "call"
     ],
@@ -3547,7 +3734,9 @@
       "src/screens/HigherLowerGame.tsx",
       "src/screens/LanguagesGame.tsx",
       "src/screens/PinpointGame.tsx",
+      "src/screens/ScaleGame.tsx",
       "src/screens/SilhouetteGame.tsx",
+      "src/screens/SplitGame.tsx",
       "src/screens/StreakGame.tsx"
     ]
   },
@@ -3627,7 +3816,7 @@
     "key": "Country Challenges",
     "fr": "Défis Pays",
     "en": "Country Challenges",
-    "count": 11,
+    "count": 10,
     "kinds": [
       "label",
       "call"
@@ -3635,13 +3824,13 @@
     "files": [
       "src/components/OnlineModeLeaderboardModal.tsx",
       "src/components/PreGameLobby.tsx",
+      "src/data/menuModes.ts",
       "src/data/modeIntros.ts",
       "src/hooks/useMatchEngine.ts",
       "src/lib/customMatch.ts",
       "src/lib/daily.ts",
       "src/lib/ranked.ts",
       "src/screens/LocalParcours.tsx",
-      "src/screens/MainMenu.tsx",
       "src/screens/Matchmaking.tsx"
     ]
   },
@@ -3723,7 +3912,7 @@
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/screens/menu/DuelTab.tsx"
     ]
   },
   {
@@ -3777,18 +3966,6 @@
     ]
   },
   {
-    "key": "Create or join a league",
-    "fr": "Créer ou rejoindre une ligue",
-    "en": "Create or join a league",
-    "count": 1,
-    "kinds": [
-      "call"
-    ],
-    "files": [
-      "src/screens/MainMenu.tsx"
-    ]
-  },
-  {
     "key": "Create the league",
     "fr": "Créer la ligue",
     "en": "Create the league",
@@ -3809,7 +3986,7 @@
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/screens/menu/HomeTab.tsx"
     ]
   },
   {
@@ -3828,14 +4005,14 @@
     "key": "Custom game",
     "fr": "Partie perso",
     "en": "Custom game",
-    "count": 5,
+    "count": 4,
     "kinds": [
       "call"
     ],
     "files": [
       "src/components/PreGameLobby.tsx",
       "src/screens/CustomMatchmaking.tsx",
-      "src/screens/MainMenu.tsx"
+      "src/screens/menu/DuelTab.tsx"
     ],
     "frVariants": [
       "Partie personnalisée"
@@ -3879,6 +4056,18 @@
     ]
   },
   {
+    "key": "Cut a country into equal population shares",
+    "fr": "Coupez un pays en parts de population égales",
+    "en": "Cut a country into equal population shares",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/menuModes.ts"
+    ]
+  },
+  {
     "key": "Cyber world",
     "fr": "Cyber-monde",
     "en": "Cyber world",
@@ -3903,16 +4092,29 @@
     ]
   },
   {
+    "key": "Czechoslovakia",
+    "fr": "Tchécoslovaquie",
+    "en": "Czechoslovakia",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/ghostCountries.ts"
+    ]
+  },
+  {
     "key": "DAILY CHALLENGE",
     "fr": "DÉFI DU JOUR",
     "en": "DAILY CHALLENGE",
-    "count": 2,
+    "count": 3,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/DailyEnd.tsx",
-      "src/screens/Profile.tsx"
+      "src/screens/Profile.tsx",
+      "src/screens/menu/HomeTab.tsx"
     ],
     "frVariants": [
       "DÉFI QUOTIDIEN"
@@ -3983,6 +4185,18 @@
     ]
   },
   {
+    "key": "Dahomey",
+    "fr": "Dahomey",
+    "en": "Dahomey",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/ghostCountries.ts"
+    ]
+  },
+  {
     "key": "Daily",
     "fr": "Chaque jour",
     "en": "Daily",
@@ -3998,7 +4212,7 @@
     "key": "Daily Challenge",
     "fr": "Le Défi du Jour",
     "en": "Daily Challenge",
-    "count": 4,
+    "count": 3,
     "kinds": [
       "label",
       "call"
@@ -4006,7 +4220,7 @@
     "files": [
       "src/components/OnboardingTutorial.tsx",
       "src/screens/DailyHub.tsx",
-      "src/screens/MainMenu.tsx"
+      "src/screens/menu/HomeTab.tsx"
     ],
     "frVariants": [
       "Défi du Jour"
@@ -4121,10 +4335,22 @@
     ]
   },
   {
+    "key": "Dar es Salaam",
+    "fr": "Dar es Salam",
+    "en": "Dar es Salaam",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/ghostCountries.ts"
+    ]
+  },
+  {
     "key": "Dark mode",
     "fr": "Mode sombre",
     "en": "Dark mode",
-    "count": 9,
+    "count": 11,
     "kinds": [
       "call"
     ],
@@ -4135,7 +4361,9 @@
       "src/screens/HigherLowerGame.tsx",
       "src/screens/LanguagesGame.tsx",
       "src/screens/PinpointGame.tsx",
+      "src/screens/ScaleGame.tsx",
       "src/screens/SilhouetteGame.tsx",
+      "src/screens/SplitGame.tsx",
       "src/screens/StreakGame.tsx"
     ]
   },
@@ -4206,6 +4434,18 @@
     "key": "Deep blue night",
     "fr": "Bleu nuit",
     "en": "Deep blue night",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/cosmetics.ts"
+    ]
+  },
+  {
+    "key": "Deep sea",
+    "fr": "Abysses",
+    "en": "Deep sea",
     "count": 1,
     "kinds": [
       "label"
@@ -4349,6 +4589,18 @@
     ]
   },
   {
+    "key": "Desert planet",
+    "fr": "Planète des sables",
+    "en": "Desert planet",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/cosmetics.ts"
+    ]
+  },
+  {
     "key": "Diacritics give it away: ã and ç for Portuguese, ñ for Spanish, ř for Czech.",
     "fr": "Les accents trahissent : ã et ç pour le portugais, ñ pour l’espagnol, ř pour le tchèque.",
     "en": "Diacritics give it away: ã and ç for Portuguese, ñ for Spanish, ř for Czech.",
@@ -4358,6 +4610,18 @@
     ],
     "files": [
       "src/data/modeIntros.ts"
+    ]
+  },
+  {
+    "key": "Diamond planet",
+    "fr": "Planète diamant",
+    "en": "Diamond planet",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/cosmetics.ts"
     ]
   },
   {
@@ -4406,7 +4670,7 @@
     ],
     "files": [
       "src/components/ResumeMatchBanner.tsx",
-      "src/screens/MainMenu.tsx"
+      "src/screens/menu/HomeTab.tsx"
     ],
     "frVariants": [
       "Masquer"
@@ -4430,10 +4694,10 @@
     "en": "Diverse games for one country",
     "count": 1,
     "kinds": [
-      "call"
+      "label"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/data/menuModes.ts"
     ]
   },
   {
@@ -4477,7 +4741,7 @@
     "key": "Done",
     "fr": "Fait",
     "en": "Done",
-    "count": 2,
+    "count": 3,
     "kinds": [
       "call"
     ],
@@ -4535,6 +4799,42 @@
     ]
   },
   {
+    "key": "Drag a line to move it, a white dot to turn it. A new line replaces the oldest.",
+    "fr": "Glisse un trait pour le déplacer, un rond blanc pour le tourner. Un nouveau trait remplace le plus ancien.",
+    "en": "Drag a line to move it, a white dot to turn it. A new line replaces the oldest.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/SplitGame.tsx"
+    ]
+  },
+  {
+    "key": "Drag across the map to draw a line. Then drag the line to move it, or one of its white dots to turn it; a new line replaces the oldest.",
+    "fr": "Faites glisser votre doigt sur la carte pour tracer un trait. Glissez ensuite le trait pour le déplacer, ou un de ses ronds blancs pour le tourner ; un nouveau trait remplace le plus ancien.",
+    "en": "Drag across the map to draw a line. Then drag the line to move it, or one of its white dots to turn it; a new line replaces the oldest.",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/modeIntros.ts"
+    ]
+  },
+  {
+    "key": "Drag the line to move it, a white dot to turn it.",
+    "fr": "Glisse le trait pour le déplacer, un rond blanc pour le tourner.",
+    "en": "Drag the line to move it, a white dot to turn it.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/SplitGame.tsx"
+    ]
+  },
+  {
     "key": "Drag to spin",
     "fr": "Glisse pour tourner",
     "en": "Drag to spin",
@@ -4560,6 +4860,55 @@
     ]
   },
   {
+    "key": "Draw a line that splits the population into two equal halves.",
+    "fr": "Trace un trait qui coupe la population en deux parts égales.",
+    "en": "Draw a line that splits the population into two equal halves.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/SplitGame.tsx"
+    ]
+  },
+  {
+    "key": "Draw two crossing lines that split the population into 4 equal parts.",
+    "fr": "Trace deux traits qui se croisent pour couper la population en 4 parts égales.",
+    "en": "Draw two crossing lines that split the population into 4 equal parts.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/SplitGame.tsx"
+    ]
+  },
+  {
+    "key": "Draw two lines that split the population into 3 equal parts.",
+    "fr": "Trace deux traits qui coupent la population en 3 parts égales.",
+    "en": "Draw two lines that split the population into 3 equal parts.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/SplitGame.tsx"
+    ]
+  },
+  {
+    "key": "Duel",
+    "fr": "Duel",
+    "en": "Duel",
+    "count": 2,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/menu/MenuTabBar.tsx",
+      "src/screens/MainMenu.tsx"
+    ]
+  },
+  {
     "key": "Duels, 8-player matches and ranked ELO — with a free account.",
     "fr": "Duels, matchs à 8 joueurs et mode classé ELO — avec un compte gratuit.",
     "en": "Duels, 8-player matches and ranked ELO — with a free account.",
@@ -4568,7 +4917,7 @@
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/screens/menu/DuelTab.tsx"
     ]
   },
   {
@@ -4640,7 +4989,7 @@
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/screens/menu/DuelTab.tsx"
     ]
   },
   {
@@ -4692,6 +5041,18 @@
     ]
   },
   {
+    "key": "Each colour is one part.",
+    "fr": "Chaque couleur est une part.",
+    "en": "Each colour is one part.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/SplitGame.tsx"
+    ]
+  },
+  {
     "key": "Each correct answer extends your streak.",
     "fr": "Chaque bonne réponse allonge votre série.",
     "en": "Each correct answer extends your streak.",
@@ -4713,6 +5074,18 @@
     ],
     "files": [
       "src/data/modeIntros.ts"
+    ]
+  },
+  {
+    "key": "Each player gets their language ({0} languages ready, the rest get English).",
+    "fr": "Chaque joueur reçoit sa langue ({0} langues prêtes, les autres reçoivent l’anglais).",
+    "en": "Each player gets their language ({0} languages ready, the rest get English).",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/AdminNotifications.tsx"
     ]
   },
   {
@@ -4785,6 +5158,18 @@
     ],
     "files": [
       "src/screens/StoryMap.tsx"
+    ]
+  },
+  {
+    "key": "East Asia",
+    "fr": "Asie de l’Est",
+    "en": "East Asia",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/lib/split.ts"
     ]
   },
   {
@@ -5033,6 +5418,18 @@
     ]
   },
   {
+    "key": "English (for every other language)",
+    "fr": "Anglais (pour toutes les autres langues)",
+    "en": "English (for every other language)",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/AdminNotifications.tsx"
+    ]
+  },
+  {
     "key": "Enter your email and we’ll send you a link to choose a new password.",
     "fr": "Saisis ton email : on t’envoie un lien pour choisir un nouveau mot de passe.",
     "en": "Enter your email and we’ll send you a link to choose a new password.",
@@ -5084,7 +5481,7 @@
     "key": "Error",
     "fr": "Erreur",
     "en": "Error",
-    "count": 34,
+    "count": 36,
     "kinds": [
       "call",
       "label"
@@ -5106,8 +5503,10 @@
       "src/screens/PlayerProfile.tsx",
       "src/screens/Profile.tsx",
       "src/screens/RankedMatchmaking.tsx",
+      "src/screens/ScaleGame.tsx",
       "src/screens/Shop.tsx",
       "src/screens/SilhouetteGame.tsx",
+      "src/screens/SplitGame.tsx",
       "src/screens/StreakGame.tsx"
     ]
   },
@@ -5115,12 +5514,13 @@
     "key": "Europe",
     "fr": "Europe",
     "en": "Europe",
-    "count": 2,
+    "count": 3,
     "kinds": [
       "label"
     ],
     "files": [
-      "src/data/continents.ts"
+      "src/data/continents.ts",
+      "src/lib/split.ts"
     ]
   },
   {
@@ -5164,6 +5564,18 @@
     "key": "Every day brings a fresh puzzle for each mode. Come back daily to grow your streak — the easiest way to improve a little every day.",
     "fr": "Chaque jour, un nouveau puzzle pour chaque mode. Revenez quotidiennement pour allonger votre série : c’est le moyen le plus simple de progresser un peu chaque jour.",
     "en": "Every day brings a fresh puzzle for each mode. Come back daily to grow your streak — the easiest way to improve a little every day.",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/components/OnboardingTutorial.tsx"
+    ]
+  },
+  {
+    "key": "Every game",
+    "fr": "Tous les jeux",
+    "en": "Every game",
     "count": 1,
     "kinds": [
       "label"
@@ -5218,6 +5630,18 @@
     ],
     "files": [
       "src/screens/StoryMap.tsx"
+    ]
+  },
+  {
+    "key": "Explorer pack",
+    "fr": "Pack Explorateur",
+    "en": "Explorer pack",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/cosmetics.ts"
     ]
   },
   {
@@ -5293,15 +5717,56 @@
     ]
   },
   {
-    "key": "Face a player online",
-    "fr": "Affrontez un joueur en ligne",
-    "en": "Face a player online",
+    "key": "Fair Split",
+    "fr": "Partage équitable",
+    "en": "Fair Split",
+    "count": 5,
+    "kinds": [
+      "label",
+      "call"
+    ],
+    "files": [
+      "src/data/menuModes.ts",
+      "src/data/modeIntros.ts",
+      "src/lib/daily.ts",
+      "src/screens/Leaderboard.tsx",
+      "src/screens/SplitGame.tsx"
+    ]
+  },
+  {
+    "key": "Favorites",
+    "fr": "Favoris",
+    "en": "Favorites",
     "count": 1,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/screens/menu/PlayTab.tsx"
+    ]
+  },
+  {
+    "key": "Federal Republic of Central America",
+    "fr": "Provinces-Unies d’Amérique centrale",
+    "en": "Federal Republic of Central America",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/ghostCountries.ts"
+    ]
+  },
+  {
+    "key": "Federation of Rhodesia and Nyasaland",
+    "fr": "Fédération de Rhodésie et du Nyassaland",
+    "en": "Federation of Rhodesia and Nyasaland",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/ghostCountries.ts"
     ]
   },
   {
@@ -5358,10 +5823,10 @@
     "en": "Find countries on the globe",
     "count": 2,
     "kinds": [
-      "call"
+      "label"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/data/menuModes.ts"
     ]
   },
   {
@@ -5502,10 +5967,10 @@
     "en": "Find the world capitals",
     "count": 1,
     "kinds": [
-      "call"
+      "label"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/data/menuModes.ts"
     ]
   },
   {
@@ -5751,12 +6216,12 @@
     "files": [
       "src/components/ContinentChip.tsx",
       "src/components/ReviewEntryCard.tsx",
+      "src/data/menuModes.ts",
       "src/data/modeIntros.ts",
       "src/lib/customMatch.ts",
       "src/lib/daily.ts",
       "src/screens/Leaderboard.tsx",
       "src/screens/LocalParcours.tsx",
-      "src/screens/MainMenu.tsx",
       "src/screens/Matchmaking.tsx"
     ]
   },
@@ -5884,12 +6349,14 @@
     "key": "French",
     "fr": "Français",
     "en": "French",
-    "count": 1,
+    "count": 2,
     "kinds": [
+      "call",
       "label"
     ],
     "files": [
-      "assets/languages.json"
+      "assets/languages.json",
+      "src/screens/AdminNotifications.tsx"
     ]
   },
   {
@@ -6092,14 +6559,16 @@
     "key": "Game over. Score {0}.",
     "fr": "Partie terminée. Score {0}.",
     "en": "Game over. Score {0}.",
-    "count": 3,
+    "count": 5,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/LanguagesGame.tsx",
       "src/screens/PinpointGame.tsx",
-      "src/screens/SilhouetteGame.tsx"
+      "src/screens/ScaleGame.tsx",
+      "src/screens/SilhouetteGame.tsx",
+      "src/screens/SplitGame.tsx"
     ]
   },
   {
@@ -6168,7 +6637,7 @@
     "key": "Geo Globe",
     "fr": "Globe Géo",
     "en": "Geo Globe",
-    "count": 16,
+    "count": 15,
     "kinds": [
       "label",
       "call"
@@ -6178,6 +6647,7 @@
       "src/components/OnlineModeLeaderboardModal.tsx",
       "src/components/PreGameLobby.tsx",
       "src/components/ReviewEntryCard.tsx",
+      "src/data/menuModes.ts",
       "src/data/modeIntros.ts",
       "src/hooks/useMatchEngine.ts",
       "src/lib/customMatch.ts",
@@ -6185,7 +6655,6 @@
       "src/lib/ranked.ts",
       "src/screens/Leaderboard.tsx",
       "src/screens/LocalParcours.tsx",
-      "src/screens/MainMenu.tsx",
       "src/screens/Matchmaking.tsx"
     ]
   },
@@ -6235,6 +6704,18 @@
     ],
     "files": [
       "src/data/challenges.ts"
+    ]
+  },
+  {
+    "key": "Germany, Austria, Switzerland",
+    "fr": "Allemagne, Autriche, Suisse",
+    "en": "Germany, Austria, Switzerland",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/lib/split.ts"
     ]
   },
   {
@@ -6444,6 +6925,18 @@
     ]
   },
   {
+    "key": "Gold Coast",
+    "fr": "Côte-de-l’Or",
+    "en": "Gold Coast",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/ghostCountries.ts"
+    ]
+  },
+  {
     "key": "Golden Comet",
     "fr": "Comète Dorée",
     "en": "Golden Comet",
@@ -6508,6 +7001,18 @@
     ]
   },
   {
+    "key": "Gran Colombia",
+    "fr": "Grande Colombie",
+    "en": "Gran Colombia",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/ghostCountries.ts"
+    ]
+  },
+  {
     "key": "Great Wall",
     "fr": "Grande Muraille",
     "en": "Great Wall",
@@ -6532,6 +7037,18 @@
     ]
   },
   {
+    "key": "Green dashes: the real size.",
+    "fr": "Pointillés verts : la vraie taille.",
+    "en": "Green dashes: the real size.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/ScaleGame.tsx"
+    ]
+  },
+  {
     "key": "Gross Domestic Product. #1 is the world's largest economic power.",
     "fr": "Produit Intérieur Brut global. Le #1 est la plus grande puissance économique mondiale.",
     "en": "Gross Domestic Product. #1 is the world's largest economic power.",
@@ -6544,10 +7061,34 @@
     ]
   },
   {
+    "key": "Grow",
+    "fr": "Agrandir",
+    "en": "Grow",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/ScaleGame.tsx"
+    ]
+  },
+  {
+    "key": "Grow or shrink the right country so it matches the scale of the left one.",
+    "fr": "Agrandis ou réduis le pays de droite pour qu’il soit à la même échelle que celui de gauche.",
+    "en": "Grow or shrink the right country so it matches the scale of the left one.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/ScaleGame.tsx"
+    ]
+  },
+  {
     "key": "Guess Country",
     "fr": "Devine le Pays",
     "en": "Guess Country",
-    "count": 12,
+    "count": 11,
     "kinds": [
       "label",
       "call"
@@ -6555,13 +7096,13 @@
     "files": [
       "src/components/OnlineModeLeaderboardModal.tsx",
       "src/components/PreGameLobby.tsx",
+      "src/data/menuModes.ts",
       "src/hooks/useMatchEngine.ts",
       "src/lib/customMatch.ts",
       "src/lib/daily.ts",
       "src/lib/ranked.ts",
       "src/screens/Leaderboard.tsx",
       "src/screens/LocalParcours.tsx",
-      "src/screens/MainMenu.tsx",
       "src/screens/Matchmaking.tsx"
     ],
     "frVariants": [
@@ -6593,10 +7134,10 @@
     "en": "Guess the country by its shape",
     "count": 1,
     "kinds": [
-      "call"
+      "label"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/data/menuModes.ts"
     ]
   },
   {
@@ -6732,18 +7273,6 @@
     ]
   },
   {
-    "key": "Here, top-left: your name, avatar, stats and records. Sign in to save your progress and play online.",
-    "fr": "Ici, en haut à gauche : votre pseudo, votre avatar, vos statistiques et vos records. Connectez-vous pour sauvegarder votre progression et jouer en ligne.",
-    "en": "Here, top-left: your name, avatar, stats and records. Sign in to save your progress and play online.",
-    "count": 1,
-    "kinds": [
-      "label"
-    ],
-    "files": [
-      "src/components/OnboardingTutorial.tsx"
-    ]
-  },
-  {
     "key": "Hidden",
     "fr": "Masqué",
     "en": "Hidden",
@@ -6759,7 +7288,7 @@
     "key": "Higher or Lower",
     "fr": "Plus ou Moins",
     "en": "Higher or Lower",
-    "count": 12,
+    "count": 11,
     "kinds": [
       "label",
       "call"
@@ -6767,6 +7296,7 @@
     "files": [
       "src/components/ContinentChip.tsx",
       "src/components/OnlineModeLeaderboardModal.tsx",
+      "src/data/menuModes.ts",
       "src/data/modeIntros.ts",
       "src/hooks/useMatchEngine.ts",
       "src/lib/customMatch.ts",
@@ -6774,7 +7304,6 @@
       "src/lib/ranked.ts",
       "src/screens/HigherLowerGame.tsx",
       "src/screens/LocalParcours.tsx",
-      "src/screens/MainMenu.tsx",
       "src/screens/Matchmaking.tsx"
     ]
   },
@@ -6824,6 +7353,18 @@
     ],
     "files": [
       "src/data/cosmetics.ts"
+    ]
+  },
+  {
+    "key": "Home",
+    "fr": "Accueil",
+    "en": "Home",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/menu/MenuTabBar.tsx"
     ]
   },
   {
@@ -6890,13 +7431,13 @@
     "key": "How to play {0}",
     "fr": "Comment jouer à {0}",
     "en": "How to play {0}",
-    "count": 3,
+    "count": 2,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/screens/DailyHub.tsx",
-      "src/screens/MainMenu.tsx"
+      "src/components/menu/ModeTiles.tsx",
+      "src/screens/DailyHub.tsx"
     ]
   },
   {
@@ -6933,6 +7474,18 @@
     ],
     "files": [
       "src/components/CountryFactCard.tsx"
+    ]
+  },
+  {
+    "key": "Iberian Peninsula",
+    "fr": "Péninsule ibérique",
+    "en": "Iberian Peninsula",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/lib/split.ts"
     ]
   },
   {
@@ -6977,10 +7530,10 @@
     "en": "Identify country flags",
     "count": 1,
     "kinds": [
-      "call"
+      "label"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/data/menuModes.ts"
     ]
   },
   {
@@ -6989,10 +7542,10 @@
     "en": "Identify the country from clues",
     "count": 1,
     "kinds": [
-      "call"
+      "label"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/data/menuModes.ts"
     ]
   },
   {
@@ -7504,6 +8057,30 @@
     ]
   },
   {
+    "key": "Jungle planet",
+    "fr": "Planète jungle",
+    "en": "Jungle planet",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/cosmetics.ts"
+    ]
+  },
+  {
+    "key": "Kalmar Union",
+    "fr": "Union de Kalmar",
+    "en": "Kalmar Union",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/ghostCountries.ts"
+    ]
+  },
+  {
     "key": "Keep playing",
     "fr": "Continuer",
     "en": "Keep playing",
@@ -7659,13 +8236,14 @@
     "key": "Languages",
     "fr": "Langues",
     "en": "Languages",
-    "count": 14,
+    "count": 13,
     "kinds": [
       "label",
       "call"
     ],
     "files": [
       "src/components/OnlineModeLeaderboardModal.tsx",
+      "src/data/menuModes.ts",
       "src/data/modeIntros.ts",
       "src/hooks/useMatchEngine.ts",
       "src/lib/customMatch.ts",
@@ -7675,7 +8253,6 @@
       "src/screens/LanguagesGame.tsx",
       "src/screens/Leaderboard.tsx",
       "src/screens/LocalParcours.tsx",
-      "src/screens/MainMenu.tsx",
       "src/screens/Matchmaking.tsx"
     ]
   },
@@ -7745,12 +8322,12 @@
     "key": "League",
     "fr": "Ligue",
     "en": "League",
-    "count": 2,
+    "count": 1,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/screens/menu/DuelTab.tsx"
     ]
   },
   {
@@ -7793,28 +8370,32 @@
     "key": "Learn more",
     "fr": "En savoir plus",
     "en": "Learn more",
-    "count": 3,
+    "count": 5,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/GuessCountryGame.tsx",
       "src/screens/PinpointGame.tsx",
-      "src/screens/SilhouetteGame.tsx"
+      "src/screens/ScaleGame.tsx",
+      "src/screens/SilhouetteGame.tsx",
+      "src/screens/SplitGame.tsx"
     ]
   },
   {
     "key": "Learn more about this country",
     "fr": "En savoir plus sur ce pays",
     "en": "Learn more about this country",
-    "count": 3,
+    "count": 5,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/GuessCountryGame.tsx",
       "src/screens/PinpointGame.tsx",
-      "src/screens/SilhouetteGame.tsx"
+      "src/screens/ScaleGame.tsx",
+      "src/screens/SilhouetteGame.tsx",
+      "src/screens/SplitGame.tsx"
     ]
   },
   {
@@ -7975,7 +8556,7 @@
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/screens/menu/HomeTab.tsx"
     ]
   },
   {
@@ -8066,7 +8647,7 @@
     "key": "Light mode",
     "fr": "Mode clair",
     "en": "Light mode",
-    "count": 9,
+    "count": 11,
     "kinds": [
       "call"
     ],
@@ -8077,7 +8658,9 @@
       "src/screens/HigherLowerGame.tsx",
       "src/screens/LanguagesGame.tsx",
       "src/screens/PinpointGame.tsx",
+      "src/screens/ScaleGame.tsx",
       "src/screens/SilhouetteGame.tsx",
+      "src/screens/SplitGame.tsx",
       "src/screens/StreakGame.tsx"
     ]
   },
@@ -8112,10 +8695,10 @@
     "en": "Link two countries through borders",
     "count": 1,
     "kinds": [
-      "call"
+      "label"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/data/menuModes.ts"
     ]
   },
   {
@@ -8285,39 +8868,36 @@
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/screens/menu/DuelTab.tsx"
     ]
   },
   {
     "key": "Log in",
-    "fr": "Se connecter",
+    "fr": "Connexion",
     "en": "Log in",
-    "count": 4,
+    "count": 5,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/components/menu/MenuTabBar.tsx",
+      "src/screens/menu/DuelTab.tsx",
+      "src/screens/menu/HomeTab.tsx"
     ],
     "frVariants": [
-      "Connexion"
+      "Se connecter"
     ]
   },
   {
     "key": "Login",
     "fr": "Se connecter",
     "en": "Login",
-    "count": 2,
+    "count": 1,
     "kinds": [
-      "label",
-      "call"
+      "label"
     ],
     "files": [
-      "src/screens/Auth.tsx",
-      "src/screens/MainMenu.tsx"
-    ],
-    "frVariants": [
-      "Connexion"
+      "src/screens/Auth.tsx"
     ]
   },
   {
@@ -8466,6 +9046,18 @@
     ]
   },
   {
+    "key": "Maghreb",
+    "fr": "Maghreb",
+    "en": "Maghreb",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/lib/split.ts"
+    ]
+  },
+  {
     "key": "Main menu",
     "fr": "Menu principal",
     "en": "Main menu",
@@ -8490,6 +9082,18 @@
     ]
   },
   {
+    "key": "Mali Federation",
+    "fr": "Fédération du Mali",
+    "en": "Mali Federation",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/ghostCountries.ts"
+    ]
+  },
+  {
     "key": "Map",
     "fr": "Carte",
     "en": "Map",
@@ -8500,6 +9104,42 @@
     "files": [
       "src/screens/StoryLevelEnd.tsx",
       "src/screens/StoryMap.tsx"
+    ]
+  },
+  {
+    "key": "Map of {0} with {1} cities",
+    "fr": "Carte de {0} avec {1} villes",
+    "en": "Map of {0} with {1} cities",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/SplitGame.tsx"
+    ]
+  },
+  {
+    "key": "Map {0}/{1} · halves",
+    "fr": "Carte {0}/{1} · en deux",
+    "en": "Map {0}/{1} · halves",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/SplitGame.tsx"
+    ]
+  },
+  {
+    "key": "Map {0}/{1} · in {2}",
+    "fr": "Carte {0}/{1} · en {2}",
+    "en": "Map {0}/{1} · in {2}",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/SplitGame.tsx"
     ]
   },
   {
@@ -8582,10 +9222,10 @@
     "en": "Match each country to a theme",
     "count": 2,
     "kinds": [
-      "call"
+      "label"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/data/menuModes.ts"
     ]
   },
   {
@@ -8661,6 +9301,18 @@
     ]
   },
   {
+    "key": "Me",
+    "fr": "Moi",
+    "en": "Me",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/menu/MenuTabBar.tsx"
+    ]
+  },
+  {
     "key": "Meadow",
     "fr": "Prairie",
     "en": "Meadow",
@@ -8676,7 +9328,7 @@
     "key": "Menu",
     "fr": "Menu",
     "en": "Menu",
-    "count": 14,
+    "count": 16,
     "kinds": [
       "call"
     ],
@@ -8690,7 +9342,9 @@
       "src/screens/HigherLowerGame.tsx",
       "src/screens/LanguagesGame.tsx",
       "src/screens/PinpointGame.tsx",
+      "src/screens/ScaleGame.tsx",
       "src/screens/SilhouetteGame.tsx",
+      "src/screens/SplitGame.tsx",
       "src/screens/StreakGame.tsx"
     ]
   },
@@ -8698,7 +9352,7 @@
     "key": "Message…",
     "fr": "Message…",
     "en": "Message…",
-    "count": 1,
+    "count": 2,
     "kinds": [
       "call"
     ],
@@ -8716,6 +9370,18 @@
     ],
     "files": [
       "src/data/cosmetics.ts"
+    ]
+  },
+  {
+    "key": "Middle East",
+    "fr": "Moyen-Orient",
+    "en": "Middle East",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/lib/split.ts"
     ]
   },
   {
@@ -8977,12 +9643,12 @@
     "key": "NEW",
     "fr": "NOUVEAU",
     "en": "NEW",
-    "count": 6,
+    "count": 5,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx",
+      "src/components/menu/ModeTiles.tsx",
       "src/screens/RegionCountryPicker.tsx",
       "src/screens/Shop.tsx",
       "src/screens/StoryLevelEnd.tsx"
@@ -9025,18 +9691,6 @@
     ]
   },
   {
-    "key": "NEXT CHALLENGE",
-    "fr": "PROCHAIN DÉFI",
-    "en": "NEXT CHALLENGE",
-    "count": 1,
-    "kinds": [
-      "call"
-    ],
-    "files": [
-      "src/screens/MainMenu.tsx"
-    ]
-  },
-  {
     "key": "NEXT ROUND",
     "fr": "MANCHE SUIVANTE",
     "en": "NEXT ROUND",
@@ -9073,6 +9727,18 @@
     ]
   },
   {
+    "key": "Nearly fair",
+    "fr": "Presque équitable",
+    "en": "Nearly fair",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/SplitGame.tsx"
+    ]
+  },
+  {
     "key": "Nebula",
     "fr": "Nébuleuse",
     "en": "Nebula",
@@ -9088,6 +9754,18 @@
     "key": "Neon ring",
     "fr": "Anneau néon",
     "en": "Neon ring",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/cosmetics.ts"
+    ]
+  },
+  {
+    "key": "Neptune",
+    "fr": "Neptune",
+    "en": "Neptune",
     "count": 1,
     "kinds": [
       "label"
@@ -9197,7 +9875,7 @@
     "key": "Next",
     "fr": "Suivant",
     "en": "Next",
-    "count": 13,
+    "count": 17,
     "kinds": [
       "call"
     ],
@@ -9208,7 +9886,9 @@
       "src/screens/FindRegionGame.tsx",
       "src/screens/LanguagesGame.tsx",
       "src/screens/PinpointGame.tsx",
-      "src/screens/SilhouetteGame.tsx"
+      "src/screens/ScaleGame.tsx",
+      "src/screens/SilhouetteGame.tsx",
+      "src/screens/SplitGame.tsx"
     ]
   },
   {
@@ -9220,7 +9900,7 @@
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/screens/menu/HomeTab.tsx"
     ]
   },
   {
@@ -9399,6 +10079,18 @@
     ]
   },
   {
+    "key": "No favorites yet. Tap a mode’s star to find it here.",
+    "fr": "Pas encore de favori. Touche l’étoile d’un mode pour le retrouver ici.",
+    "en": "No favorites yet. Tap a mode’s star to find it here.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/menu/PlayTab.tsx"
+    ]
+  },
+  {
     "key": "No friends found.",
     "fr": "Aucun ami trouvé.",
     "en": "No friends found.",
@@ -9470,6 +10162,18 @@
     ],
     "files": [
       "src/components/ContinentChip.tsx"
+    ]
+  },
+  {
+    "key": "No mode matches.",
+    "fr": "Aucun mode ne correspond.",
+    "en": "No mode matches.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/menu/PlayTab.tsx"
     ]
   },
   {
@@ -9626,6 +10330,18 @@
     ],
     "files": [
       "src/data/cosmetics.ts"
+    ]
+  },
+  {
+    "key": "North America",
+    "fr": "Amérique du Nord",
+    "en": "North America",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/lib/split.ts"
     ]
   },
   {
@@ -9900,15 +10616,28 @@
     ]
   },
   {
-    "key": "Oceania",
-    "fr": "Océanie",
-    "en": "Oceania",
-    "count": 2,
+    "key": "Obsidian World",
+    "fr": "Monde d'Obsidienne",
+    "en": "Obsidian World",
+    "count": 1,
     "kinds": [
       "label"
     ],
     "files": [
-      "src/data/continents.ts"
+      "src/data/cosmetics.ts"
+    ]
+  },
+  {
+    "key": "Oceania",
+    "fr": "Océanie",
+    "en": "Oceania",
+    "count": 3,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/continents.ts",
+      "src/lib/split.ts"
     ]
   },
   {
@@ -9960,6 +10689,30 @@
     ]
   },
   {
+    "key": "On the map",
+    "fr": "Sur la carte",
+    "en": "On the map",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/menuModes.ts"
+    ]
+  },
+  {
+    "key": "Once you submit, the green dashes show the real size.",
+    "fr": "Après validation, les pointillés verts montrent la vraie taille.",
+    "en": "Once you submit, the green dashes show the real size.",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/modeIntros.ts"
+    ]
+  },
+  {
     "key": "One game each",
     "fr": "Une partie chacun",
     "en": "One game each",
@@ -9984,6 +10737,18 @@
     ]
   },
   {
+    "key": "One more line to draw.",
+    "fr": "Encore un trait à tracer.",
+    "en": "One more line to draw.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/SplitGame.tsx"
+    ]
+  },
+  {
     "key": "One puzzle per mode, every day",
     "fr": "Un puzzle par mode, chaque jour",
     "en": "One puzzle per mode, every day",
@@ -9992,7 +10757,7 @@
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/screens/menu/HomeTab.tsx"
     ]
   },
   {
@@ -10009,18 +10774,15 @@
   },
   {
     "key": "Online",
-    "fr": "En Ligne",
+    "fr": "En ligne",
     "en": "Online",
     "count": 2,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx",
-      "src/screens/RegionCountryPicker.tsx"
-    ],
-    "frVariants": [
-      "En ligne"
+      "src/screens/RegionCountryPicker.tsx",
+      "src/screens/menu/DuelTab.tsx"
     ]
   },
   {
@@ -10088,6 +10850,18 @@
     ]
   },
   {
+    "key": "Open the campaign",
+    "fr": "Ouvrir la campagne",
+    "en": "Open the campaign",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/menu/MenuTabBar.tsx"
+    ]
+  },
+  {
     "key": "Open the daily challenge",
     "fr": "Ouvrir le défi du jour",
     "en": "Open the daily challenge",
@@ -10096,7 +10870,7 @@
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/screens/menu/HomeTab.tsx"
     ]
   },
   {
@@ -10132,7 +10906,7 @@
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/screens/menu/HomeTab.tsx"
     ]
   },
   {
@@ -10396,6 +11170,18 @@
     ]
   },
   {
+    "key": "Pair {0}/{1}",
+    "fr": "Paire {0}/{1}",
+    "en": "Pair {0}/{1}",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/ScaleGame.tsx"
+    ]
+  },
+  {
     "key": "Paper plane",
     "fr": "Avion en papier",
     "en": "Paper plane",
@@ -10639,6 +11425,18 @@
     ]
   },
   {
+    "key": "Perfect split!",
+    "fr": "Partage parfait !",
+    "en": "Perfect split!",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/SplitGame.tsx"
+    ]
+  },
+  {
     "key": "Permission needed",
     "fr": "Permission requise",
     "en": "Permission needed",
@@ -10648,6 +11446,18 @@
     ],
     "files": [
       "src/screens/Profile.tsx"
+    ]
+  },
+  {
+    "key": "Persia",
+    "fr": "Perse",
+    "en": "Persia",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/ghostCountries.ts"
     ]
   },
   {
@@ -10767,7 +11577,7 @@
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/screens/menu/DuelTab.tsx"
     ]
   },
   {
@@ -10846,7 +11656,7 @@
     "key": "Pin on the Globe",
     "fr": "Point sur le Globe",
     "en": "Pin on the Globe",
-    "count": 15,
+    "count": 14,
     "kinds": [
       "label",
       "call"
@@ -10855,6 +11665,7 @@
       "src/components/ContinentChip.tsx",
       "src/components/OnlineModeLeaderboardModal.tsx",
       "src/components/ReviewEntryCard.tsx",
+      "src/data/menuModes.ts",
       "src/data/modeIntros.ts",
       "src/hooks/useMatchEngine.ts",
       "src/lib/customMatch.ts",
@@ -10862,9 +11673,20 @@
       "src/lib/ranked.ts",
       "src/screens/Leaderboard.tsx",
       "src/screens/LocalParcours.tsx",
-      "src/screens/MainMenu.tsx",
       "src/screens/Matchmaking.tsx",
       "src/screens/PinpointGame.tsx"
+    ]
+  },
+  {
+    "key": "Pink dusk",
+    "fr": "Crépuscule rose",
+    "en": "Pink dusk",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/cosmetics.ts"
     ]
   },
   {
@@ -10885,10 +11707,24 @@
     "en": "Place a country's regions, head-to-head",
     "count": 1,
     "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/menuModes.ts"
+    ]
+  },
+  {
+    "key": "Play",
+    "fr": "Jouer",
+    "en": "Play",
+    "count": 3,
+    "kinds": [
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/components/menu/MenuTabBar.tsx",
+      "src/screens/MainMenu.tsx",
+      "src/screens/menu/HomeTab.tsx"
     ]
   },
   {
@@ -11278,6 +12114,18 @@
     ]
   },
   {
+    "key": "Population of the area: {0}",
+    "fr": "Population de la zone : {0}",
+    "en": "Population of the area: {0}",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/SplitGame.tsx"
+    ]
+  },
+  {
     "key": "Portuguese",
     "fr": "Portugais",
     "en": "Portuguese",
@@ -11352,18 +12200,6 @@
     ]
   },
   {
-    "key": "Profile",
-    "fr": "Profil",
-    "en": "Profile",
-    "count": 1,
-    "kinds": [
-      "call"
-    ],
-    "files": [
-      "src/screens/MainMenu.tsx"
-    ]
-  },
-  {
     "key": "Profile updated!",
     "fr": "Profil mis à jour !",
     "en": "Profile updated!",
@@ -11396,7 +12232,7 @@
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/screens/menu/HomeTab.tsx"
     ]
   },
   {
@@ -11495,6 +12331,18 @@
     ],
     "files": [
       "src/screens/Profile.tsx"
+    ]
+  },
+  {
+    "key": "Put two countries at the same scale",
+    "fr": "Mettez deux pays à la même échelle",
+    "en": "Put two countries at the same scale",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/menuModes.ts"
     ]
   },
   {
@@ -11603,6 +12451,18 @@
     ],
     "files": [
       "src/components/ContinentChip.tsx"
+    ]
+  },
+  {
+    "key": "Quick match",
+    "fr": "Match rapide",
+    "en": "Quick match",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/menu/DuelTab.tsx"
     ]
   },
   {
@@ -11727,6 +12587,18 @@
     ]
   },
   {
+    "key": "RESUME · STORY MODE",
+    "fr": "REPRENDRE · MODE HISTOIRE",
+    "en": "RESUME · STORY MODE",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/menu/HomeTab.tsx"
+    ]
+  },
+  {
     "key": "REVIEW",
     "fr": "RÉVISION",
     "en": "REVIEW",
@@ -11843,26 +12715,27 @@
     "key": "Ranked Mode",
     "fr": "Mode Classé",
     "en": "Ranked Mode",
-    "count": 3,
+    "count": 2,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx",
-      "src/screens/RankedMatchmaking.tsx"
+      "src/screens/RankedMatchmaking.tsx",
+      "src/screens/menu/DuelTab.tsx"
     ]
   },
   {
     "key": "Rankle",
     "fr": "Rankle",
     "en": "Rankle",
-    "count": 9,
+    "count": 10,
     "kinds": [
       "label"
     ],
     "files": [
       "src/components/ContinentChip.tsx",
       "src/components/OnlineModeLeaderboardModal.tsx",
+      "src/data/menuModes.ts",
       "src/data/modeIntros.ts",
       "src/hooks/useMatchEngine.ts",
       "src/lib/customMatch.ts",
@@ -11917,6 +12790,18 @@
     ],
     "files": [
       "src/screens/DailyEnd.tsx"
+    ]
+  },
+  {
+    "key": "Recognize",
+    "fr": "Reconnaître",
+    "en": "Recognize",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/menuModes.ts"
     ]
   },
   {
@@ -12167,6 +13052,18 @@
     ]
   },
   {
+    "key": "Remove {0} from favorites",
+    "fr": "Retirer {0} des favoris",
+    "en": "Remove {0} from favorites",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/components/menu/ModeTiles.tsx"
+    ]
+  },
+  {
     "key": "Rename {0}",
     "fr": "Renommer {0}",
     "en": "Rename {0}",
@@ -12351,6 +13248,18 @@
     ]
   },
   {
+    "key": "Retro-future pack",
+    "fr": "Pack Néo-rétro",
+    "en": "Retro-future pack",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/cosmetics.ts"
+    ]
+  },
+  {
     "key": "Retry",
     "fr": "Réessayer",
     "en": "Retry",
@@ -12428,6 +13337,18 @@
     "key": "Ring of fire",
     "fr": "Anneau de feu",
     "en": "Ring of fire",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/cosmetics.ts"
+    ]
+  },
+  {
+    "key": "Ringed giant",
+    "fr": "Géante aux anneaux",
+    "en": "Ringed giant",
     "count": 1,
     "kinds": [
       "label"
@@ -12707,6 +13628,18 @@
     ]
   },
   {
+    "key": "STORY MODE",
+    "fr": "MODE HISTOIRE",
+    "en": "STORY MODE",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/menu/HomeTab.tsx"
+    ]
+  },
+  {
     "key": "STREAK",
     "fr": "SÉRIE",
     "en": "STREAK",
@@ -12723,7 +13656,7 @@
     "key": "SUBMIT",
     "fr": "VALIDER",
     "en": "SUBMIT",
-    "count": 5,
+    "count": 7,
     "kinds": [
       "call"
     ],
@@ -12731,8 +13664,22 @@
       "src/screens/ChallengeQuiz.tsx",
       "src/screens/LanguagesGame.tsx",
       "src/screens/PinpointGame.tsx",
+      "src/screens/ScaleGame.tsx",
       "src/screens/SilhouetteGame.tsx",
+      "src/screens/SplitGame.tsx",
       "src/screens/VersusCapitals.tsx"
+    ]
+  },
+  {
+    "key": "Salisbury",
+    "fr": "Salisbury",
+    "en": "Salisbury",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/ghostCountries.ts"
     ]
   },
   {
@@ -12741,10 +13688,10 @@
     "en": "Same chain for both players",
     "count": 1,
     "kinds": [
-      "call"
+      "label"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/data/menuModes.ts"
     ]
   },
   {
@@ -12753,10 +13700,34 @@
     "en": "Same mystery country for both",
     "count": 1,
     "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/menuModes.ts"
+    ]
+  },
+  {
+    "key": "Same pairs for both players",
+    "fr": "Les mêmes paires pour les deux joueurs",
+    "en": "Same pairs for both players",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/menuModes.ts"
+    ]
+  },
+  {
+    "key": "Same phone",
+    "fr": "Même téléphone",
+    "en": "Same phone",
+    "count": 1,
+    "kinds": [
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/screens/menu/DuelTab.tsx"
     ]
   },
   {
@@ -12765,10 +13736,10 @@
     "en": "Same phrases for both players",
     "count": 1,
     "kinds": [
-      "call"
+      "label"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/data/menuModes.ts"
     ]
   },
   {
@@ -12777,10 +13748,10 @@
     "en": "Same points for both players",
     "count": 1,
     "kinds": [
-      "call"
+      "label"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/data/menuModes.ts"
     ]
   },
   {
@@ -12801,10 +13772,10 @@
     "en": "Same route for both players",
     "count": 1,
     "kinds": [
-      "call"
+      "label"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/data/menuModes.ts"
     ]
   },
   {
@@ -12813,10 +13784,10 @@
     "en": "Same shapes for both players",
     "count": 1,
     "kinds": [
-      "call"
+      "label"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/data/menuModes.ts"
     ]
   },
   {
@@ -12940,7 +13911,7 @@
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/screens/menu/HomeTab.tsx"
     ]
   },
   {
@@ -12953,6 +13924,18 @@
     ],
     "files": [
       "src/screens/DailyGameHost.tsx"
+    ]
+  },
+  {
+    "key": "Scandinavia",
+    "fr": "Scandinavie",
+    "en": "Scandinavia",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/lib/split.ts"
     ]
   },
   {
@@ -13045,6 +14028,30 @@
     ]
   },
   {
+    "key": "Search a mode",
+    "fr": "Chercher un mode",
+    "en": "Search a mode",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/menu/PlayTab.tsx"
+    ]
+  },
+  {
+    "key": "Search a mode…",
+    "fr": "Chercher un mode…",
+    "en": "Search a mode…",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/menu/PlayTab.tsx"
+    ]
+  },
+  {
     "key": "Search a username...",
     "fr": "Rechercher un pseudo...",
     "en": "Search a username...",
@@ -13120,7 +14127,7 @@
     "key": "See score",
     "fr": "Voir le score",
     "en": "See score",
-    "count": 8,
+    "count": 12,
     "kinds": [
       "call"
     ],
@@ -13128,20 +14135,24 @@
       "src/screens/ChallengeQuiz.tsx",
       "src/screens/LanguagesGame.tsx",
       "src/screens/PinpointGame.tsx",
-      "src/screens/SilhouetteGame.tsx"
+      "src/screens/ScaleGame.tsx",
+      "src/screens/SilhouetteGame.tsx",
+      "src/screens/SplitGame.tsx"
     ]
   },
   {
     "key": "See the country facts",
     "fr": "Voir la fiche du pays",
     "en": "See the country facts",
-    "count": 2,
+    "count": 4,
     "kinds": [
       "call"
     ],
     "files": [
       "src/components/RunRecap.tsx",
-      "src/screens/SilhouetteGame.tsx"
+      "src/screens/ScaleGame.tsx",
+      "src/screens/SilhouetteGame.tsx",
+      "src/screens/SplitGame.tsx"
     ]
   },
   {
@@ -13160,13 +14171,13 @@
     "key": "See this mode’s rules",
     "fr": "Voir les règles de ce mode",
     "en": "See this mode’s rules",
-    "count": 3,
+    "count": 2,
     "kinds": [
       "call"
     ],
     "files": [
-      "src/screens/DailyHub.tsx",
-      "src/screens/MainMenu.tsx"
+      "src/components/menu/ModeTiles.tsx",
+      "src/screens/DailyHub.tsx"
     ]
   },
   {
@@ -13466,18 +14477,6 @@
     ]
   },
   {
-    "key": "Show this tab",
-    "fr": "Afficher cet onglet",
-    "en": "Show this tab",
-    "count": 1,
-    "kinds": [
-      "call"
-    ],
-    "files": [
-      "src/screens/MainMenu.tsx"
-    ]
-  },
-  {
     "key": "Shown",
     "fr": "Visible",
     "en": "Shown",
@@ -13487,6 +14486,30 @@
     ],
     "files": [
       "src/screens/Profile.tsx"
+    ]
+  },
+  {
+    "key": "Shrink",
+    "fr": "Réduire",
+    "en": "Shrink",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/ScaleGame.tsx"
+    ]
+  },
+  {
+    "key": "Siam",
+    "fr": "Siam",
+    "en": "Siam",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/ghostCountries.ts"
     ]
   },
   {
@@ -13517,14 +14540,16 @@
     "key": "Sign in to earn coins and save your score.",
     "fr": "Connecte-toi pour gagner des pièces et sauvegarder ton score.",
     "en": "Sign in to earn coins and save your score.",
-    "count": 3,
+    "count": 5,
     "kinds": [
       "call"
     ],
     "files": [
       "src/screens/LanguagesGame.tsx",
       "src/screens/PinpointGame.tsx",
-      "src/screens/SilhouetteGame.tsx"
+      "src/screens/ScaleGame.tsx",
+      "src/screens/SilhouetteGame.tsx",
+      "src/screens/SplitGame.tsx"
     ]
   },
   {
@@ -13572,14 +14597,15 @@
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/screens/menu/DuelTab.tsx",
+      "src/screens/menu/HomeTab.tsx"
     ]
   },
   {
     "key": "Silhouette",
     "fr": "Silhouette",
     "en": "Silhouette",
-    "count": 13,
+    "count": 12,
     "kinds": [
       "label",
       "call"
@@ -13588,13 +14614,13 @@
       "src/components/ContinentChip.tsx",
       "src/components/OnlineModeLeaderboardModal.tsx",
       "src/components/ReviewEntryCard.tsx",
+      "src/data/menuModes.ts",
       "src/data/modeIntros.ts",
       "src/hooks/useMatchEngine.ts",
       "src/lib/customMatch.ts",
       "src/lib/ranked.ts",
       "src/screens/Leaderboard.tsx",
       "src/screens/LocalParcours.tsx",
-      "src/screens/MainMenu.tsx",
       "src/screens/Matchmaking.tsx"
     ]
   },
@@ -13632,6 +14658,18 @@
     ],
     "files": [
       "src/data/cosmetics.ts"
+    ]
+  },
+  {
+    "key": "Size of {0}",
+    "fr": "Taille de {0}",
+    "en": "Size of {0}",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/ScaleGame.tsx"
     ]
   },
   {
@@ -13743,6 +14781,54 @@
     ]
   },
   {
+    "key": "South America",
+    "fr": "Amérique du Sud",
+    "en": "South America",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/lib/split.ts"
+    ]
+  },
+  {
+    "key": "South Asia",
+    "fr": "Asie du Sud",
+    "en": "South Asia",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/lib/split.ts"
+    ]
+  },
+  {
+    "key": "Southeast Asia",
+    "fr": "Asie du Sud-Est",
+    "en": "Southeast Asia",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/lib/split.ts"
+    ]
+  },
+  {
+    "key": "Soviet Union",
+    "fr": "URSS",
+    "en": "Soviet Union",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/ghostCountries.ts"
+    ]
+  },
+  {
     "key": "Space station",
     "fr": "Station ISS",
     "en": "Space station",
@@ -13812,6 +14898,18 @@
     ],
     "files": [
       "src/data/cosmetics.ts"
+    ]
+  },
+  {
+    "key": "Spot on!",
+    "fr": "Pile à l’échelle !",
+    "en": "Spot on!",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/ScaleGame.tsx"
     ]
   },
   {
@@ -13890,20 +14988,9 @@
       "call"
     ],
     "files": [
+      "src/components/menu/ModeTiles.tsx",
       "src/screens/DailyHub.tsx",
-      "src/screens/MainMenu.tsx"
-    ]
-  },
-  {
-    "key": "Start with Solo to discover every game at your own pace. Local is for several players on one phone, and Online pits you against players from around the world.",
-    "fr": "Commencez par Solo pour découvrir tous les jeux à votre rythme. Local se joue à plusieurs sur le même téléphone, et En Ligne vous oppose à d’autres joueurs du monde entier.",
-    "en": "Start with Solo to discover every game at your own pace. Local is for several players on one phone, and Online pits you against players from around the world.",
-    "count": 1,
-    "kinds": [
-      "label"
-    ],
-    "files": [
-      "src/components/OnboardingTutorial.tsx"
+      "src/screens/menu/DuelTab.tsx"
     ]
   },
   {
@@ -13982,11 +15069,12 @@
     "key": "Story",
     "fr": "Histoire",
     "en": "Story",
-    "count": 1,
+    "count": 2,
     "kinds": [
       "call"
     ],
     "files": [
+      "src/components/menu/MenuTabBar.tsx",
       "src/screens/AvatarEditor.tsx"
     ]
   },
@@ -13999,8 +15087,9 @@
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx",
-      "src/screens/StoryMap.tsx"
+      "src/components/menu/MenuTabBar.tsx",
+      "src/screens/StoryMap.tsx",
+      "src/screens/menu/HomeTab.tsx"
     ]
   },
   {
@@ -14043,16 +15132,15 @@
     "key": "Streak Mode",
     "fr": "Mode Streak",
     "en": "Streak Mode",
-    "count": 5,
+    "count": 4,
     "kinds": [
-      "label",
-      "call"
+      "label"
     ],
     "files": [
       "src/components/OnlineModeLeaderboardModal.tsx",
+      "src/data/menuModes.ts",
       "src/data/modeIntros.ts",
-      "src/hooks/useMatchEngine.ts",
-      "src/screens/MainMenu.tsx"
+      "src/hooks/useMatchEngine.ts"
     ]
   },
   {
@@ -14099,7 +15187,7 @@
     "key": "Submit",
     "fr": "Valider",
     "en": "Submit",
-    "count": 5,
+    "count": 7,
     "kinds": [
       "call"
     ],
@@ -14107,7 +15195,9 @@
       "src/screens/ChallengeQuiz.tsx",
       "src/screens/LanguagesGame.tsx",
       "src/screens/PinpointGame.tsx",
+      "src/screens/ScaleGame.tsx",
       "src/screens/SilhouetteGame.tsx",
+      "src/screens/SplitGame.tsx",
       "src/screens/VersusCapitals.tsx"
     ]
   },
@@ -14171,6 +15261,18 @@
     ],
     "files": [
       "assets/languages.json"
+    ]
+  },
+  {
+    "key": "Sweden-Norway",
+    "fr": "Suède-Norvège",
+    "en": "Sweden-Norway",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/ghostCountries.ts"
     ]
   },
   {
@@ -14281,6 +15383,18 @@
     ],
     "files": [
       "src/components/OfflineBanner.tsx"
+    ]
+  },
+  {
+    "key": "Synthwave",
+    "fr": "Synthwave",
+    "en": "Synthwave",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/cosmetics.ts"
     ]
   },
   {
@@ -14430,7 +15544,7 @@
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/screens/menu/DuelTab.tsx"
     ]
   },
   {
@@ -14443,6 +15557,18 @@
     ],
     "files": [
       "assets/languages.json"
+    ]
+  },
+  {
+    "key": "Tanganyika",
+    "fr": "Tanganyika",
+    "en": "Tanganyika",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/ghostCountries.ts"
     ]
   },
   {
@@ -14650,6 +15776,18 @@
     ]
   },
   {
+    "key": "Target: {0}% each",
+    "fr": "Objectif : {0} % chacune",
+    "en": "Target: {0}% each",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/SplitGame.tsx"
+    ]
+  },
+  {
     "key": "Telugu",
     "fr": "Télougou",
     "en": "Telugu",
@@ -14659,6 +15797,18 @@
     ],
     "files": [
       "assets/languages.json"
+    ]
+  },
+  {
+    "key": "Template: {0}",
+    "fr": "Modèle : {0}",
+    "en": "Template: {0}",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/AdminNotifications.tsx"
     ]
   },
   {
@@ -14695,6 +15845,30 @@
     ],
     "files": [
       "src/components/ReferralCard.tsx"
+    ]
+  },
+  {
+    "key": "The Me tab: your name, avatar, stats and records. Sign in to save your progress and play online.",
+    "fr": "L’onglet Moi : votre pseudo, votre avatar, vos statistiques et vos records. Connectez-vous pour sauvegarder votre progression et jouer en ligne.",
+    "en": "The Me tab: your name, avatar, stats and records. Sign in to save your progress and play online.",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/components/OnboardingTutorial.tsx"
+    ]
+  },
+  {
+    "key": "The Play tab sorts every game into three families, with search and your favorites. The Duel tab gathers multiplayer: online against the whole world, or several players on one phone.",
+    "fr": "L’onglet Jouer range tous les jeux en trois familles, avec une recherche et vos favoris. L’onglet Duel réunit le multijoueur : en ligne contre le monde entier, ou à plusieurs sur le même téléphone.",
+    "en": "The Play tab sorts every game into three families, with search and your favorites. The Duel tab gathers multiplayer: online against the whole world, or several players on one phone.",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/components/OnboardingTutorial.tsx"
     ]
   },
   {
@@ -14762,9 +15936,9 @@
     ]
   },
   {
-    "key": "The easiest way to start: tap Solo, pick a game, and follow the on-screen guide. Happy exploring!",
-    "fr": "Le plus simple pour démarrer : appuyez sur Solo, choisissez un jeu, et laissez-vous guider. Bonne exploration, géographe !",
-    "en": "The easiest way to start: tap Solo, pick a game, and follow the on-screen guide. Happy exploring!",
+    "key": "The easiest way to start: open the Play tab, pick a game, and follow the on-screen guide. Happy exploring!",
+    "fr": "Le plus simple pour démarrer : ouvrez l’onglet Jouer, choisissez un jeu, et laissez-vous guider. Bonne exploration, géographe !",
+    "en": "The easiest way to start: open the Play tab, pick a game, and follow the on-screen guide. Happy exploring!",
     "count": 1,
     "kinds": [
       "label"
@@ -14908,6 +16082,18 @@
     ]
   },
   {
+    "key": "The slider never starts at the answer, and the middle isn’t the answer either.",
+    "fr": "Le curseur ne commence jamais au bon endroit, et le milieu n’est pas la réponse.",
+    "en": "The slider never starts at the answer, and the middle isn’t the answer either.",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/modeIntros.ts"
+    ]
+  },
+  {
     "key": "The theme changes every question — stay sharp!",
     "fr": "Le thème change à chaque question — restez attentif !",
     "en": "The theme changes every question — stay sharp!",
@@ -15017,18 +16203,6 @@
     ]
   },
   {
-    "key": "Three ways to play",
-    "fr": "Trois façons de jouer",
-    "en": "Three ways to play",
-    "count": 1,
-    "kinds": [
-      "label"
-    ],
-    "files": [
-      "src/components/OnboardingTutorial.tsx"
-    ]
-  },
-  {
     "key": "Thresholds",
     "fr": "Seuils",
     "en": "Thresholds",
@@ -15062,6 +16236,29 @@
     ],
     "files": [
       "src/screens/AdminNotifications.tsx"
+    ]
+  },
+  {
+    "key": "To Scale",
+    "fr": "À l’échelle",
+    "en": "To Scale",
+    "count": 12,
+    "kinds": [
+      "label",
+      "call"
+    ],
+    "files": [
+      "src/components/OnlineModeLeaderboardModal.tsx",
+      "src/data/menuModes.ts",
+      "src/data/modeIntros.ts",
+      "src/hooks/useMatchEngine.ts",
+      "src/lib/customMatch.ts",
+      "src/lib/daily.ts",
+      "src/lib/ranked.ts",
+      "src/screens/Leaderboard.tsx",
+      "src/screens/LocalParcours.tsx",
+      "src/screens/Matchmaking.tsx",
+      "src/screens/ScaleGame.tsx"
     ]
   },
   {
@@ -15246,6 +16443,18 @@
     ]
   },
   {
+    "key": "Toxic world",
+    "fr": "Monde toxique",
+    "en": "Toxic world",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/cosmetics.ts"
+    ]
+  },
+  {
     "key": "Training",
     "fr": "Entraînement",
     "en": "Training",
@@ -15355,6 +16564,18 @@
     ]
   },
   {
+    "key": "Try this",
+    "fr": "À essayer",
+    "en": "Try this",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/menu/HomeTab.tsx"
+    ]
+  },
+  {
     "key": "Tundra",
     "fr": "Toundra",
     "en": "Tundra",
@@ -15418,6 +16639,18 @@
     "key": "Two countries appear: link them by typing neighbouring countries, border after border. Each guess must touch the last country in your chain. Fewer steps = more points!",
     "fr": "Deux pays s’affichent : reliez-les en tapant des pays voisins, frontière après frontière. Chaque pays proposé doit toucher le dernier de votre chaîne. Moins d’étapes = plus de points !",
     "en": "Two countries appear: link them by typing neighbouring countries, border after border. Each guess must touch the last country in your chain. Fewer steps = more points!",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/modeIntros.ts"
+    ]
+  },
+  {
+    "key": "Two countries side by side. The left one is drawn to scale; the right one is too big or too small. Use the slider to grow or shrink it until both share the same scale.",
+    "fr": "Deux pays côte à côte. Celui de gauche est à la bonne taille ; celui de droite est trop grand ou trop petit. Avec le curseur, agrandissez-le ou réduisez-le jusqu’à ce que les deux soient à la même échelle.",
+    "en": "Two countries side by side. The left one is drawn to scale; the right one is too big or too small. Use the slider to grow or shrink it until both share the same scale.",
     "count": 1,
     "kinds": [
       "label"
@@ -15551,6 +16784,18 @@
     ]
   },
   {
+    "key": "United Arab Republic",
+    "fr": "République arabe unie",
+    "en": "United Arab Republic",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/ghostCountries.ts"
+    ]
+  },
+  {
     "key": "United States",
     "fr": "États-Unis",
     "en": "United States",
@@ -15623,6 +16868,30 @@
     ]
   },
   {
+    "key": "Up to 200 pts per map, counted from the best split possible: a perfect score is always reachable.",
+    "fr": "Jusqu’à 200 pts par carte, comptés depuis le meilleur partage possible : le sans-faute est toujours atteignable.",
+    "en": "Up to 200 pts per map, counted from the best split possible: a perfect score is always reachable.",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/modeIntros.ts"
+    ]
+  },
+  {
+    "key": "Up to 200 pts per pair: the closer to the real size, the more you score.",
+    "fr": "Jusqu’à 200 pts par paire : plus vous êtes proche de la vraie taille, plus vous marquez.",
+    "en": "Up to 200 pts per pair: the closer to the real size, the more you score.",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/modeIntros.ts"
+    ]
+  },
+  {
     "key": "Updating",
     "fr": "Mise à jour en cours",
     "en": "Updating",
@@ -15632,6 +16901,18 @@
     ],
     "files": [
       "src/components/ForceUpdateGate.tsx"
+    ]
+  },
+  {
+    "key": "Upper Volta",
+    "fr": "Haute-Volta",
+    "en": "Upper Volta",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/ghostCountries.ts"
     ]
   },
   {
@@ -15759,7 +17040,19 @@
       "src/components/OnlineModeLeaderboardModal.tsx",
       "src/data/modeIntros.ts",
       "src/hooks/useMatchEngine.ts",
-      "src/screens/MainMenu.tsx"
+      "src/screens/menu/DuelTab.tsx"
+    ]
+  },
+  {
+    "key": "Very lopsided",
+    "fr": "Très déséquilibré",
+    "en": "Very lopsided",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/SplitGame.tsx"
     ]
   },
   {
@@ -16233,6 +17526,18 @@
     ]
   },
   {
+    "key": "Western Europe",
+    "fr": "Europe de l’Ouest",
+    "en": "Western Europe",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/lib/split.ts"
+    ]
+  },
+  {
     "key": "What do you want to revisit?",
     "fr": "Que veux-tu revoir ?",
     "en": "What do you want to revisit?",
@@ -16418,11 +17723,12 @@
     "en": "Which country is higher?",
     "count": 2,
     "kinds": [
+      "label",
       "call"
     ],
     "files": [
-      "src/screens/HigherLowerGame.tsx",
-      "src/screens/MainMenu.tsx"
+      "src/data/menuModes.ts",
+      "src/screens/HigherLowerGame.tsx"
     ]
   },
   {
@@ -16443,10 +17749,10 @@
     "en": "Which language is this phrase?",
     "count": 1,
     "kinds": [
-      "call"
+      "label"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/data/menuModes.ts"
     ]
   },
   {
@@ -16543,6 +17849,18 @@
     ],
     "files": [
       "src/screens/LocalParcours.tsx"
+    ]
+  },
+  {
+    "key": "Without an English version, everyone gets the French text.",
+    "fr": "Sans version anglaise, tout le monde reçoit le français.",
+    "en": "Without an English version, everyone gets the French text.",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/AdminNotifications.tsx"
     ]
   },
   {
@@ -17316,6 +18634,30 @@
     ]
   },
   {
+    "key": "You’ve never played it",
+    "fr": "Tu n’y as jamais joué",
+    "en": "You’ve never played it",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/menu/HomeTab.tsx"
+    ]
+  },
+  {
+    "key": "Yugoslavia",
+    "fr": "Yougoslavie",
+    "en": "Yugoslavia",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/ghostCountries.ts"
+    ]
+  },
+  {
     "key": "ZONE",
     "fr": "ZONE",
     "en": "ZONE",
@@ -17325,6 +18667,18 @@
     ],
     "files": [
       "src/components/ContinentChip.tsx"
+    ]
+  },
+  {
+    "key": "Zaire",
+    "fr": "Zaïre",
+    "en": "Zaire",
+    "count": 1,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/data/ghostCountries.ts"
     ]
   },
   {
@@ -17619,6 +18973,19 @@
     ]
   },
   {
+    "key": "out of {0}",
+    "fr": "sur {0}",
+    "en": "out of {0}",
+    "count": 2,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/ScaleGame.tsx",
+      "src/screens/SplitGame.tsx"
+    ]
+  },
+  {
     "key": "owned",
     "fr": "possédé",
     "en": "owned",
@@ -17629,6 +18996,19 @@
     "files": [
       "src/screens/GlobeLab.tsx",
       "src/screens/Shop.tsx"
+    ]
+  },
+  {
+    "key": "pairs",
+    "fr": "paires",
+    "en": "pairs",
+    "count": 2,
+    "kinds": [
+      "label"
+    ],
+    "files": [
+      "src/lib/customMatch.ts",
+      "src/screens/LocalParcours.tsx"
     ]
   },
   {
@@ -18012,7 +19392,7 @@
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/components/menu/ModeTiles.tsx"
     ]
   },
   {
@@ -18293,7 +19673,7 @@
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/components/menu/ModeTiles.tsx"
     ]
   },
   {
@@ -18305,7 +19685,7 @@
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/screens/menu/HomeTab.tsx"
     ]
   },
   {
@@ -18345,6 +19725,30 @@
     ]
   },
   {
+    "key": "{0} of {1} challenges done",
+    "fr": "{0} défis sur {1} terminés",
+    "en": "{0} of {1} challenges done",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/menu/HomeTab.tsx"
+    ]
+  },
+  {
+    "key": "{0} of {1} done",
+    "fr": "{0} sur {1} terminés",
+    "en": "{0} of {1} done",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/menu/HomeTab.tsx"
+    ]
+  },
+  {
     "key": "{0} of {1} steps",
     "fr": "{0} étapes sur {1}",
     "en": "{0} of {1} steps",
@@ -18354,6 +19758,18 @@
     ],
     "files": [
       "src/screens/BordersGame.tsx"
+    ]
+  },
+  {
+    "key": "{0} on the left, {1} on the right",
+    "fr": "{0} à gauche, {1} à droite",
+    "en": "{0} on the left, {1} on the right",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/ScaleGame.tsx"
     ]
   },
   {
@@ -18453,6 +19869,18 @@
     ]
   },
   {
+    "key": "{0} puzzles waiting",
+    "fr": "{0} puzzles t’attendent",
+    "en": "{0} puzzles waiting",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/menu/HomeTab.tsx"
+    ]
+  },
+  {
     "key": "{0} recipient(s)",
     "fr": "{0} destinataire(s)",
     "en": "{0} recipient(s)",
@@ -18509,8 +19937,8 @@
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx",
-      "src/screens/StoryMap.tsx"
+      "src/screens/StoryMap.tsx",
+      "src/screens/menu/HomeTab.tsx"
     ]
   },
   {
@@ -18587,6 +20015,30 @@
     ],
     "files": [
       "src/screens/Friends.tsx"
+    ]
+  },
+  {
+    "key": "{0}% too big",
+    "fr": "{0} % trop grand",
+    "en": "{0}% too big",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/ScaleGame.tsx"
+    ]
+  },
+  {
+    "key": "{0}% too small",
+    "fr": "{0} % trop petit",
+    "en": "{0}% too small",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/ScaleGame.tsx"
     ]
   },
   {
@@ -18720,7 +20172,7 @@
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/components/menu/ModeTiles.tsx"
     ]
   },
   {
@@ -18758,7 +20210,7 @@
     ],
     "files": [
       "src/screens/DailyHub.tsx",
-      "src/screens/MainMenu.tsx"
+      "src/screens/menu/HomeTab.tsx"
     ]
   },
   {
@@ -18771,18 +20223,6 @@
     ],
     "files": [
       "src/screens/DailyGameHost.tsx"
-    ]
-  },
-  {
-    "key": "{0}-day streak · 8 modes",
-    "fr": "Série de {0} · 8 modes",
-    "en": "{0}-day streak · 8 modes",
-    "count": 1,
-    "kinds": [
-      "call"
-    ],
-    "files": [
-      "src/screens/MainMenu.tsx"
     ]
   },
   {
@@ -18966,6 +20406,18 @@
     ]
   },
   {
+    "key": "◀ smaller · bigger ▶",
+    "fr": "◀ plus petit · plus grand ▶",
+    "en": "◀ smaller · bigger ▶",
+    "count": 1,
+    "kinds": [
+      "call"
+    ],
+    "files": [
+      "src/screens/ScaleGame.tsx"
+    ]
+  },
+  {
     "key": "⚠️ Campaigns cron down?",
     "fr": "⚠️ Cron campagnes en panne ?",
     "en": "⚠️ Campaigns cron down?",
@@ -19010,7 +20462,7 @@
       "call"
     ],
     "files": [
-      "src/screens/MainMenu.tsx"
+      "src/screens/menu/HomeTab.tsx"
     ]
   },
   {

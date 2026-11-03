@@ -89,12 +89,12 @@ export const ONBOARDING_STEPS: TutorialStep[] = [
     icon: LayoutGrid,
     accent: PALETTE.forestGreen,
     targetId: 'modes',
-    titleFr: 'Trois façons de jouer',
-    titleEn: 'Three ways to play',
+    titleFr: 'Tous les jeux',
+    titleEn: 'Every game',
     bodyFr:
-      'Commencez par Solo pour découvrir tous les jeux à votre rythme. Local se joue à plusieurs sur le même téléphone, et En Ligne vous oppose à d’autres joueurs du monde entier.',
+      'L’onglet Jouer range tous les jeux en trois familles, avec une recherche et vos favoris. L’onglet Duel réunit le multijoueur : en ligne contre le monde entier, ou à plusieurs sur le même téléphone.',
     bodyEn:
-      'Start with Solo to discover every game at your own pace. Local is for several players on one phone, and Online pits you against players from around the world.',
+      'The Play tab sorts every game into three families, with search and your favorites. The Duel tab gathers multiplayer: online against the whole world, or several players on one phone.',
   },
   {
     id: 'daily',
@@ -116,9 +116,9 @@ export const ONBOARDING_STEPS: TutorialStep[] = [
     titleFr: 'Votre profil',
     titleEn: 'Your profile',
     bodyFr:
-      'Ici, en haut à gauche : votre pseudo, votre avatar, vos statistiques et vos records. Connectez-vous pour sauvegarder votre progression et jouer en ligne.',
+      'L’onglet Moi : votre pseudo, votre avatar, vos statistiques et vos records. Connectez-vous pour sauvegarder votre progression et jouer en ligne.',
     bodyEn:
-      'Here, top-left: your name, avatar, stats and records. Sign in to save your progress and play online.',
+      'The Me tab: your name, avatar, stats and records. Sign in to save your progress and play online.',
   },
   {
     id: 'shop',
@@ -152,9 +152,9 @@ export const ONBOARDING_STEPS: TutorialStep[] = [
     titleFr: 'À vous de jouer !',
     titleEn: 'Your turn to play!',
     bodyFr:
-      'Le plus simple pour démarrer : appuyez sur Solo, choisissez un jeu, et laissez-vous guider. Bonne exploration, géographe !',
+      'Le plus simple pour démarrer : ouvrez l’onglet Jouer, choisissez un jeu, et laissez-vous guider. Bonne exploration, géographe !',
     bodyEn:
-      'The easiest way to start: tap Solo, pick a game, and follow the on-screen guide. Happy exploring!',
+      'The easiest way to start: open the Play tab, pick a game, and follow the on-screen guide. Happy exploring!',
   },
 ];
 
