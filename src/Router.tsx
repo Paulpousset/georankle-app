@@ -639,7 +639,13 @@ export function Router({
   if (gameMode === 'split') {
     return (
       <SafeAreaProvider>
-        <SplitGame setGameMode={leaveGame} user={user} training={soloTraining('split')} />
+        <SplitGame
+          setGameMode={leaveGame}
+          user={user}
+          matchData={matchData}
+          onRoundComplete={matchData ? handleRoundComplete : undefined}
+          training={soloTraining('split')}
+        />
       </SafeAreaProvider>
     );
   }

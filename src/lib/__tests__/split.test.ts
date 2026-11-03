@@ -3,6 +3,7 @@ import {
   buildSplitRun,
   cityParts,
   clipToBoard,
+  extraParts,
   partCells,
   partShares,
   placeLabels,
@@ -138,6 +139,14 @@ describe('lines and parts', () => {
     const shares = partShares(m, [vertical(x), horizontal(m.height / 2)]);
     expect(shares.reduce((s, p) => s + p.share, 0)).toBeCloseTo(1);
     expect(shares.length).toBeLessThanOrEqual(4);
+  });
+
+  it('flags two lines crossing inside the area when thirds are asked', () => {
+    const cross = [vertical(m.width / 2), horizontal(m.height / 2)];
+    expect(extraParts(m, cross, 3)).toBe(1);
+    expect(extraParts(m, cross, 4)).toBe(0);
+    // Two parallel lines: three parts, nothing extra.
+    expect(extraParts(m, [vertical(m.width / 3), vertical((2 * m.width) / 3)], 3)).toBe(0);
   });
 
   it('a line off the map leaves everything in one part', () => {

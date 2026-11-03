@@ -20,7 +20,7 @@ import { FONTS } from '../theme/typography';
 
 /** Online duel modes, in main-menu order. */
 const CHALLENGE_MODES: MatchMode[] = [
-  'globe', 'regions', 'guess', 'borders', 'silhouette', 'pinpoint', 'scale', 'languages',
+  'globe', 'regions', 'guess', 'borders', 'silhouette', 'pinpoint', 'scale', 'split', 'languages',
   'higherlower', 'versus', 'classic', 'streak',
 ];
 

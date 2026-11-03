@@ -24,6 +24,7 @@ import HigherLowerGame from './HigherLowerGame';
 import SilhouetteGame from './SilhouetteGame';
 import PinpointGame from './PinpointGame';
 import ScaleGame from './ScaleGame';
+import SplitGame from './SplitGame';
 import LanguagesFlow from './LanguagesFlow';
 import BordersGame from './BordersGame';
 import GuessCountryGame from './GuessCountryGame';
@@ -237,6 +238,15 @@ export default function DailyGameHost({
         user={user}
         onDailyScoreChange={reportScore}
         ghost={isGhostDaily(date, mode)}
+        {...common}
+      />
+    );
+  } else if (mode === 'split') {
+    screen = (
+      <SplitGame
+        setGameMode={exitOnMenu}
+        user={user}
+        onDailyScoreChange={reportScore}
         {...common}
       />
     );

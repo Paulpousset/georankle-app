@@ -1546,6 +1546,17 @@ export function MainMenu({
                 onLeaderboard={() => onOpenOnlineModeLeaderboard('scale', PALETTE.sand)}
                 notify={incomingInviteMode === 'scale'}
               />
+              <ModeCard
+                icon={Scissors}
+                accent={PALETTE.forestGreen}
+                tint={isDarkMode ? 'rgba(42,110,63,0.15)' : 'rgba(42,110,63,0.10)'}
+                title={tr(language, 'Partage équitable', 'Fair Split')}
+                subtitle={tr(language, 'Les mêmes cartes pour les deux joueurs', 'Same maps for both players')}
+                isDarkMode={isDarkMode}
+                onPress={() => onPlayOnline('split')}
+                onLeaderboard={() => onOpenOnlineModeLeaderboard('split', PALETTE.forestGreen)}
+                notify={incomingInviteMode === 'split'}
+              />
               {languagesMode && (
                 <ModeCard
                   icon={Languages}
