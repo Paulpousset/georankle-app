@@ -63,6 +63,7 @@ import { ScoreText } from '../components/ScoreText';
 import { DailyResultCard } from '../components/DailyResultCard';
 import { DailyLeaderboardModal } from '../components/DailyLeaderboardModal';
 import { ModeIntroCard } from '../components/ModeIntroModal';
+import { CAN_PROMOTE_APP, CAN_SIGN_IN } from '../lib/portal';
 
 const FLAME = '#e8772e';
 const GOLD = '#c4872a';
@@ -537,7 +538,7 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
       {/* Web players (Wordle-style entry): one-tap path to install the full app —
           straight to the store on a phone, the install page (no referral code,
           so it reads "install GeoG", not "join me") on a computer. */}
-      {Platform.OS === 'web' ? (
+      {Platform.OS === 'web' && CAN_PROMOTE_APP ? (
         <TouchableOpacity
           onPress={() => {
             track('install_cta_pressed', { source: 'daily_hub' });
@@ -560,7 +561,7 @@ export default function DailyHub({ user, onPlayDaily, onBack, onOpenPlayer }: Da
           </Text>
         </TouchableOpacity>
       ) : null}
-      {!user ? (
+      {!user && CAN_SIGN_IN ? (
         <Text
           style={{
             fontFamily: FONTS.mono,

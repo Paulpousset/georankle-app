@@ -6,6 +6,7 @@ import { SCOPED_MODES, effectiveScope, useSoloScope, useTrainingMode } from './l
 import { continentLabel } from './data/continents';
 import { track } from './lib/analytics';
 import { maybeShowInterstitial } from './lib/monetization';
+import { CAN_SIGN_IN, withPortalPreroll } from './lib/portal';
 import type { GameMode, Match, MatchMode } from './types';
 import { useAuth } from './contexts/AuthContext';
 import { useLanguage } from './contexts/LanguageContext';
@@ -136,6 +137,9 @@ export function Router({
   // header/gated features open login. Local to routing — App owns visibility.
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const openAuth = (m: 'login' | 'signup') => {
+    // Build portail : connexion externe interdite, tout se joue en invité. Les
+    // boutons qui y menaient sont cachés ; ceci n'est que le filet.
+    if (!CAN_SIGN_IN) return;
     setAuthMode(m);
     setShowAuthModal(true);
   };
@@ -258,7 +262,7 @@ export function Router({
       <SafeAreaProvider>
         <DailyHub
           user={user}
-          onPlayDaily={(mode) => setDaily({ mode, date: getTodayUTC() })}
+          onPlayDaily={(mode) => withPortalPreroll(() => setDaily({ mode, date: getTodayUTC() }))()}
           onBack={popPage}
           onOpenPlayer={user ? openPlayer : undefined}
         />
@@ -687,7 +691,7 @@ export function Router({
           user={user}
           matchData={matchData}
           onRoundComplete={matchData ? handleRoundComplete : undefined}
-          onOpenShop={openShopFromGame}
+          onOpenShop={user || CAN_SIGN_IN ? openShopFromGame : undefined}
         />
       </SafeAreaProvider>
     );
@@ -720,7 +724,7 @@ export function Router({
           scope={soloScope('globe')}
           training={soloTraining('globe')}
           reviewIds={soloReview('globe')}
-          onOpenShop={openShopFromGame}
+          onOpenShop={user || CAN_SIGN_IN ? openShopFromGame : undefined}
         />
       </SafeAreaProvider>
     );
@@ -780,7 +784,7 @@ export function Router({
           onPlayChallengeOnline={
             user ? (challengeId) => pushPage({ name: 'challenge-matchmaking', challengeId }) : undefined
           }
-          onOpenShop={openShopFromGame}
+          onOpenShop={user || CAN_SIGN_IN ? openShopFromGame : undefined}
         />
       </SafeAreaProvider>
     );
@@ -856,8 +860,8 @@ export function Router({
           track('leaderboard_opened', { type: 'online_mode', mode });
           setOnlineLeaderboard({ mode, accent });
         }}
-        onPlay={(mode) => { setReviewIds(null); setGameMode(mode); }}
-        onPlayReview={(mode, ids) => { setReviewIds(ids); setGameMode(mode); }}
+        onPlay={(mode) => withPortalPreroll(() => { setReviewIds(null); setGameMode(mode); })()}
+        onPlayReview={(mode, ids) => withPortalPreroll(() => { setReviewIds(ids); setGameMode(mode); })()}
         onPlayOnline={(mode) => pushPage({ name: 'matchmaking', mode })}
         onPlayCustomOnline={() => (user ? pushPage({ name: 'custom-matchmaking' }) : openAuth('login'))}
         onPlayRanked={() => (user ? pushPage({ name: 'ranked' }) : openAuth('login'))}

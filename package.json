@@ -16,6 +16,7 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "build:site": "node site/build.mjs",
+    "build:portal": "node scripts/build-portal.mjs",
     "build:web:full": "npm run build:web && node site/build.mjs",
     "site:fonts": "node scripts/fetch_site_fonts.mjs",
     "site:check": "node site/build.mjs --check",

@@ -47,9 +47,13 @@ import { LaunchIntro, markLaunchIntroDone } from './src/components/LaunchIntro';
 import { RECORDING_MODE } from './src/lib/recordingMode';
 import { SoundToggle } from './src/components/SoundToggle';
 import { initSfx, preloadSfx } from './src/lib/sfx';
+import { initPortal, portalGameplay, portalLoadingDone } from './src/lib/portal';
 
 // Start crash reporting as early as possible so startup errors are captured.
 initSentry();
+// Build portail (CrazyGames / GameDistribution) uniquement : SDK + « chargement
+// en cours ». No-op partout ailleurs — voir src/lib/portal.ts.
+initPortal();
 
 /** Read the local daily state and arm/disarm tonight's streak guard. */
 function armStreakGuard(language: Language): void {
@@ -275,6 +279,19 @@ function AppContent() {
     match.matchPhase === 'waiting_opponent' ||
     match.matchPhase === 'round_summary' ||
     match.matchPhase === 'match_over';
+  // Portails : « le joueur est en partie » (gameplayStart / gameplayStop) —
+  // une partie à l'écran, hors lobby et récap. Approximation assumée : les
+  // écrans de fin propres à chaque jeu comptent encore comme « en partie ».
+  // (Un défi du jour se joue PAR-DESSUS la page du défi, d'où l'ordre.)
+  const inGame = daily != null || (gameMode !== 'menu' && !nav.currentPage && !inLobbyOrSummary);
+  useEffect(() => {
+    portalGameplay(inGame);
+  }, [inGame]);
+  // Le menu est affiché : fin du chargement pour le portail.
+  useEffect(() => {
+    portalLoadingDone();
+  }, []);
+
   const introMode: GameMode | null = daily
     ? daily.mode
     : !inLobbyOrSummary && gameMode !== 'menu'

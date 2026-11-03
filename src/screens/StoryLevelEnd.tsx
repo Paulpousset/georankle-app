@@ -40,6 +40,7 @@ import { Burst } from '../components/end/Confetti';
 import { CountUp } from '../components/end/CountUp';
 import { SoloCoinReward } from '../components/SoloCoinReward';
 import { ScoreText } from '../components/ScoreText';
+import { CAN_SIGN_IN } from '../lib/portal';
 
 const GOLD = '#f5b301';
 const GOLD_DEEP = '#8a5a00';
@@ -313,11 +314,11 @@ export default function StoryLevelEnd({
                 coinsSyncFailed={record ? !record.synced : false}
                 containerStyle={{ alignSelf: 'stretch' }}
               />
-            ) : (
+            ) : CAN_SIGN_IN ? (
               <Text style={{ color: c.textMuted, fontFamily: FONTS.mono, fontSize: 12, textAlign: 'center' }}>
                 {tr(language, 'Connecte-toi pour gagner des pièces et sauvegarder ta progression.', 'Sign in to earn coins and save your progress.')}
               </Text>
-            )}
+            ) : null}
           </Reveal>
 
           <Reveal at={COLLECTION_AT} kind="rise" style={{ marginTop: 14 }}>

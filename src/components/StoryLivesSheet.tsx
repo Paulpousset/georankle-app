@@ -19,6 +19,7 @@ import {
   getCoinBalance,
 } from '../lib/story';
 import type { Language } from '../types';
+import { CAN_SIGN_IN } from '../lib/portal';
 
 const HEART = '#e8772e';
 const GOLD = '#e0a93a';
@@ -126,6 +127,7 @@ export function StoryLivesSheet({
   }, [language, toast]);
 
   const canBuy = !!user && !full && (balance ?? 0) >= STORY_LIFE_PRICE;
+  const coinsUsable = !!user || CAN_SIGN_IN;
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -171,6 +173,10 @@ export function StoryLivesSheet({
           </Text>
 
           <View style={{ gap: 10, marginTop: 16 }}>
+            {/* Build portail : pas de compte, donc pas de pièces — on n'affiche
+                pas deux options grisées pour toujours. Restent l'attente et la
+                vidéo (l'alternative sans pub exigée par CrazyGames : attendre). */}
+            {coinsUsable && (
             <Option
               icon={HeartPlus}
               tint={HEART}
@@ -189,6 +195,7 @@ export function StoryLivesSheet({
               colors={c}
               a11y={tr(language, 'Acheter une vie pour {0} pièces', 'Buy one life for {0} coins', [STORY_LIFE_PRICE])}
             />
+            )}
             <Option
               icon={Play}
               tint="#2a8f5a"
@@ -203,6 +210,7 @@ export function StoryLivesSheet({
               highlight
               a11y={tr(language, 'Regarder une vidéo pour recharger toutes les vies', 'Watch a video to refill all lives')}
             />
+            {coinsUsable && (
             <Option
               icon={Coins}
               tint={GOLD}
@@ -215,6 +223,7 @@ export function StoryLivesSheet({
               colors={c}
               a11y={tr(language, 'Regarder une vidéo pour {0} pièces', 'Watch a video for {0} coins', [REWARDED_COINS])}
             />
+            )}
           </View>
 
           {!adAvailable ? (

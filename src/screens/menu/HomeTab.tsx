@@ -27,6 +27,7 @@ import { tr } from '../../i18n';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { a11yButton, a11yImage, ICON_HIT_SLOP } from '../../lib/a11y';
 import { hoverLift } from '../../lib/webHover';
+import { CAN_SIGN_IN } from '../../lib/portal';
 
 /** Accent du défi du jour (flamme), comme sur l'écran du défi. */
 export const DAILY_FLAME = '#e8772e';
@@ -138,7 +139,7 @@ export function HomeTab({
 
   return (
     <View style={{ width: '100%', maxWidth: grid.col, gap: 14, marginTop: 14 }}>
-      {!isAuthenticated && !signupDismissed && (
+      {CAN_SIGN_IN && !isAuthenticated && !signupDismissed && (
         <View
           style={{
             borderRadius: 18,

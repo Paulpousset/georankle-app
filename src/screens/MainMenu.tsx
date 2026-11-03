@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Linking, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { BarChart3, Moon, ShoppingBag, Sun, Users } from 'lucide-react-native';
@@ -33,6 +33,7 @@ import {
 import { ModeIntroCard } from '../components/ModeIntroModal';
 import { getHasSeenTutorial, setHasSeenTutorial } from '../lib/tutorial';
 import { useStageWidth } from '../lib/stage';
+import { CAN_PROMOTE_APP, CAN_SIGN_IN } from '../lib/portal';
 import { useMyGameGlobe } from '../lib/myGlobe';
 import { MenuTabBar, type MenuTab } from '../components/menu/MenuTabBar';
 import { HomeTab } from './menu/HomeTab';
@@ -45,6 +46,9 @@ import { DuelTab, type DuelSegment } from './menu/DuelTab';
  * Jouer, 'online' / 'local' = Duel (en ligne / même téléphone).
  */
 export type PlayType = 'solo' | 'local' | 'online';
+
+/** Étapes du tour guidé sans objet dans un build portail (pas de compte). */
+const PORTAL_HIDDEN_STEPS = new Set(['profile', 'shop', 'friends']);
 
 function tabOf(playType: PlayType | null): MenuTab {
   return playType === 'solo'
@@ -443,6 +447,27 @@ export function MainMenu({
         >
           GEOG · v2.0
         </Text>
+        {/* Build portail : la mention exigée par CrazyGames dès qu'on collecte
+            plus que les événements du SDK (mesure d'audience, scores). Un lien
+            discret, pas une fenêtre bloquante. */}
+        {!CAN_PROMOTE_APP && (
+          <TouchableOpacity
+            onPress={() => Linking.openURL('https://playgeog.com/privacy.html')}
+            {...a11yButton(tr(language, 'Politique de confidentialité', 'Privacy policy'))}
+          >
+            <Text
+              style={{
+                marginTop: 6,
+                fontFamily: FONTS.mono,
+                color: c.textFaint,
+                fontSize: 10,
+                textDecorationLine: 'underline',
+              }}
+            >
+              {tr(language, 'Confidentialité', 'Privacy')}
+            </Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
 
       {/* Pub + barre d'onglets : leur hauteur soulève le bouton son flottant. */}
@@ -453,7 +478,7 @@ export function MainMenu({
           tab={tab}
           onSelect={selectTab}
           onOpenStory={onOpenStory}
-          onOpenProfile={onOpenAuth}
+          onOpenProfile={CAN_SIGN_IN ? onOpenAuth : onOpenLeaderboard}
           isDarkMode={isDarkMode}
           isAuthenticated={isAuthenticated}
           avatar={myAvatar ?? localGlobe.config}
@@ -468,7 +493,11 @@ export function MainMenu({
       <OnboardingTutorial
         key={showTutorial ? 'tour-open' : 'tour-closed'}
         visible={showTutorial}
-        steps={ONBOARDING_STEPS}
+        steps={
+          CAN_SIGN_IN
+            ? ONBOARDING_STEPS
+            : ONBOARDING_STEPS.filter((st) => !PORTAL_HIDDEN_STEPS.has(st.id))
+        }
         measureTarget={measureTarget}
         onFinish={finishTutorial}
       />
