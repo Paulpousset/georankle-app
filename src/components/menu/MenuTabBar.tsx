@@ -8,7 +8,7 @@
 import { forwardRef } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Globe2, Home, LayoutGrid, Swords, User } from 'lucide-react-native';
+import { Home, LayoutGrid, Swords, User } from 'lucide-react-native';
 
 import type { AvatarConfig } from '../../types';
 import { PALETTE, getColors } from '../../theme/colors';
@@ -32,7 +32,7 @@ interface MenuTabBarProps {
   onOpenProfile: () => void;
   isDarkMode: boolean;
   isAuthenticated: boolean;
-  /** Le globe du joueur (cosmétiques compris), au centre de la barre. */
+  /** Le globe du joueur (cosmétiques compris), au centre de la barre, connecté ou non. */
   avatar: AvatarConfig | null | undefined;
   notifyDuel?: boolean;
   /** Le tour guidé vise l'onglet Jouer (la bibliothèque des modes)… */
@@ -129,11 +129,9 @@ export function MenuTabBar({
               elevation: 6,
             }}
           >
-            {isAuthenticated ? (
-              <AvatarPreview3D config={avatar ?? null} size={CENTER - 6} />
-            ) : (
-              <Globe2 color={PALETTE.parchment} size={28} />
-            )}
+            {/* Toujours le globe du joueur : celui du compte, sinon celui
+                gardé sur l'appareil, sinon le globe de départ. */}
+            <AvatarPreview3D config={avatar ?? null} size={CENTER - 6} />
           </View>
           <Text
             style={{ fontFamily: FONTS.monoBold, fontSize: 9.5, color: c.textMuted, marginTop: 3 }}

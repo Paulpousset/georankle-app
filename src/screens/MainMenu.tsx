@@ -33,6 +33,7 @@ import {
 import { ModeIntroCard } from '../components/ModeIntroModal';
 import { getHasSeenTutorial, setHasSeenTutorial } from '../lib/tutorial';
 import { useStageWidth } from '../lib/stage';
+import { useMyGameGlobe } from '../lib/myGlobe';
 import { MenuTabBar, type MenuTab } from '../components/menu/MenuTabBar';
 import { HomeTab } from './menu/HomeTab';
 import { PlayTab } from './menu/PlayTab';
@@ -166,6 +167,10 @@ export function MainMenu({
     fetchMyAvatar,
     { enabled: !!authUser, ttl: 0 },
   );
+
+  // Le globe gardé sur l'appareil (marche déconnecté) : il sert tant que celui
+  // du compte n'est pas chargé, ou quand il n'y a pas de compte.
+  const localGlobe = useMyGameGlobe();
 
   // ----- Tour guidé de premier lancement -----
   // `any` garde simple l'union des types d'instance ; on n'utilise que
@@ -451,7 +456,7 @@ export function MainMenu({
           onOpenProfile={onOpenAuth}
           isDarkMode={isDarkMode}
           isAuthenticated={isAuthenticated}
-          avatar={myAvatar}
+          avatar={myAvatar ?? localGlobe.config}
           notifyDuel={!!incomingInviteMode && tab !== 'duel'}
           playRef={modesRef}
           profileRef={profileRef}
