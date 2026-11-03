@@ -159,6 +159,20 @@ function withAppLine(caption, lang) {
   return `${before}\n\n${line}\n\n${lines.slice(tags).join('\n')}`;
 }
 
+// Instagram (relevé du 03/11) : 1,2 % des vues vont au profil, mais 36 % de ces
+// visites ouvrent le lien en bio. On y envoie donc en tête de légende ; TikTok
+// n'a pas de lien en bio, il garde la légende commune (et « Cherche GeoG » à l'écran).
+const BIO_LINE = {
+  fr: 'Joue à la suite gratuitement, lien en bio 👆',
+  en: 'Play the next one free, link in bio 👆',
+};
+function instagramCaption(caption, lang) {
+  const line = BIO_LINE[lang] ?? BIO_LINE.en;
+  if (!caption) return line;
+  const lines = caption.split('\n');
+  return [lines[0], line, ...lines.slice(1)].join('\n');
+}
+
 // Titre YouTube : première ligne du texte, sans hashtags, 100 caractères max.
 function youtubeTitle(caption) {
   const first = caption.split('\n').find((l) => l.trim() && !l.trim().startsWith('#')) || 'Georankle';
@@ -216,9 +230,11 @@ async function postZernio(item, { video, caption }, accounts) {
   const put = await fetch(up.uploadUrl, { method: 'PUT', headers: { 'Content-Type': 'video/mp4' }, body: data });
   if (!put.ok) throw new Error(`Zernio envoi de la vidéo ${put.status}`);
 
+  const lang = parse(item.name)?.lang;
   const platforms = accounts.map((a) => ({
     platform: a.platform,
     accountId: a._id,
+    ...(a.platform === 'instagram' ? { customContent: instagramCaption(caption, lang) } : {}),
     platformSpecificData:
       a.platform === 'tiktok' ? { tiktokSettings: { privacy_level: 'PUBLIC_TO_EVERYONE', allow_comment: true } }
       : a.platform === 'youtube' ? { title: youtubeTitle(caption) }

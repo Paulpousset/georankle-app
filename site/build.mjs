@@ -46,13 +46,10 @@ import { strings } from './lib/strings.mjs';
 import { COUNTRY_COUNT, MODE_COUNT } from './lib/constants.mjs';
 import { assertPartition } from './lib/continents.mjs';
 import { localeData } from './lib/siteLocales.mjs';
-import { INVITE_COPY, STORE_IOS, inviteFile, renderInvite } from './lib/invite.mjs';
+import { INVITE_COPY, inviteFile, renderInvite } from './lib/invite.mjs';
 
 import { retiredRedirects } from './lib/generated.mjs';
 import { modeById } from './lib/modes.mjs';
-
-/** L'identifiant App Store, lu depuis l'URL du store pour n'avoir qu'une source. */
-const APP_STORE_ID = STORE_IOS.match(/id(\d+)$/)[1];
 
 function fail(message) {
   console.error(`\n[site] ${message}\n`);
