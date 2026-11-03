@@ -44,6 +44,7 @@ import { localeData } from './siteLocales.mjs';
 import { t } from './i18n.mjs';
 import { MODE_COPY, APP_MODE } from './generated.mjs';
 import { COUNTRY_COUNT, MODE_COUNT } from './constants.mjs';
+import { STORE_IOS, STORE_ANDROID } from './invite.mjs';
 
 function esc(text) {
   return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -102,24 +103,31 @@ export const PLAY_DOC_CSS = `    <style id="play-doc-style">
       html.pd-reading .pd-jump-back { display: inline; }
       .pd-bar {
         height: 46px; box-sizing: border-box;
-        display: flex; align-items: center; gap: 16px;
-        padding: 0 16px;
+        display: flex; align-items: center; gap: 12px;
+        padding: 0 12px 0 16px;
         background: #f8f2e3; border-bottom: 2px solid #c4a87a;
         font-family: Georgia, "Times New Roman", serif; font-size: 14px;
         color: #7a5c38;
+      }
+      /* Seuls les liens défilent de côté sur un écran étroit : la croix reste
+         hors de la zone défilante, toujours visible à droite. */
+      .pd-links {
+        flex: 1 1 auto; min-width: 0; height: 100%;
+        display: flex; align-items: center; gap: 16px;
         overflow-x: auto; scrollbar-width: none;
       }
-      .pd-bar::-webkit-scrollbar { display: none; }
+      .pd-links::-webkit-scrollbar { display: none; }
       .pd-bar a { color: #7a5c38; text-decoration: none; white-space: nowrap; }
       .pd-bar a:hover { text-decoration: underline; }
       .pd-bar .pd-brand { font-weight: 700; color: #2c1810; font-size: 16px; }
-      .pd-bar .pd-jump { margin-left: auto; color: #c04a1a; font-weight: 700; }
+      .pd-bar .pd-app { margin-left: auto; font-weight: 700; color: #2c1810; }
+      .pd-bar .pd-jump { color: #c04a1a; font-weight: 700; }
       @media (prefers-color-scheme: dark) {
         .pd-bar {
           background: #132040; border-bottom-color: #2d4a70; color: #7aa0c4;
         }
         .pd-bar a { color: #7aa0c4; }
-        .pd-bar .pd-brand { color: #d8e8f4; }
+        .pd-bar .pd-brand, .pd-bar .pd-app { color: #d8e8f4; }
         .pd-bar .pd-jump { color: #e8825a; }
       }
       /* ── Barre masquée (html.pd-nobar) ─────────────────────────────────
@@ -128,7 +136,8 @@ export const PLAY_DOC_CSS = `    <style id="play-doc-style">
          mémorisé (localStorage, voir PLAY_DOC_HEAD_SCRIPT). Le mode lecture
          la remontre quoi qu'il arrive : c'est elle qui ramène au jeu. */
       .pd-bar .pd-hide {
-        background: none; border: 0; padding: 0 2px; margin-left: 4px;
+        flex: 0 0 auto; background: none; border: 0; padding: 0 4px; margin: 0;
+        min-width: 28px; height: 100%;
         font: inherit; font-size: 16px; line-height: 1; color: inherit;
         cursor: pointer; opacity: 0.7;
       }
@@ -262,9 +271,12 @@ export function playBar(locale) {
   // dans les autres langues.
   links.push(data ? [`${href('home', locale)}#about`, data.chrome.about] : [href('about', locale), s.about]);
   return `  <nav class="pd-bar">
+    <div class="pd-links">
     <a class="pd-brand" href="${href('home', locale)}">GeoG</a>
 ${links.map(([url, label]) => `    <a href="${url}">${esc(label)}</a>`).join('\n')}
+    <a class="pd-app" href="${STORE_IOS}" data-android="${STORE_ANDROID}" rel="noopener">📲 App</a>
     <a class="pd-jump" href="#regles"><span class="pd-jump-go">↓ ${esc(labels.go)}</span><span class="pd-jump-back">↑ ${esc(labels.back)}</span></a>
+    </div>
     <button class="pd-hide" type="button" data-pd-hide title="${esc(dismiss)}" aria-label="${esc(dismiss)}">✕</button>
   </nav>
   <a class="pd-show" href="#" data-pd-show aria-label="GeoG">GeoG ⌄</a>`;
@@ -315,6 +327,8 @@ export const PLAY_DOC_SCRIPT = `  <script>
           else localStorage.setItem('geog.playBar', 'hidden');
         } catch (e) {}
       }
+      var app = document.querySelector('.pd-app');
+      if (app && /android/i.test(navigator.userAgent)) app.href = app.getAttribute('data-android');
       var hide = document.querySelector('[data-pd-hide]');
       if (hide) hide.addEventListener('click', function () { bar(false); });
       var show = document.querySelector('[data-pd-show]');

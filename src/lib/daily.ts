@@ -51,6 +51,7 @@ export const DAILY_MODES: GameMode[] = [
   'challenge',
   'pinpoint',
   'scale',
+  'split',
 ];
 
 /** Day index 0 maps to this UTC date — only affects the displayed "#N". */
