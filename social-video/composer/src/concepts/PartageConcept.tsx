@@ -10,7 +10,7 @@
  */
 import { AbsoluteFill, Audio, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 
-import { C, EndCard, FPS, Hook, Paper, Progress, Sfx, Stamp, VoiceTrack, app, clamp, mono, musicVolume, serif, sfx, type VoiceLine } from './kit';
+import { C, EndCard, FPS, Hook, Paper, Progress, Sfx, Stamp, VoiceTrack, app, clamp, mono, musicVolume, packOf, serif, sfx, type VoiceLine } from './kit';
 
 type Pt = { x: number; y: number };
 type Line = { a: Pt; b: Pt };
@@ -45,6 +45,8 @@ export type PartageProps = {
   rounds: PtRound[];
   /** Question du compte à rebours, quand les cartes ont un temps de réflexion (t.think). */
   ask?: string;
+  /** Ambiance sonore de packs.mjs (lofi, hype, tele). */
+  sound?: string;
   total: number;
   max: number;
   outro: string;
@@ -172,6 +174,7 @@ export function PartageConcept(p: PartageProps) {
   // Tampon « Raté ! » sur chaque carte ratée (avant : seulement la dernière, toujours ratée).
   const missed = (x: PtRound) => x.points < 100;
   const failAt = missed(r) ? r.t.reveal : Infinity;
+  const pk = packOf(p.sound);
 
   // Plateau à l'écran : même viewBox que l'app, agrandi pour tenir dans la carte.
   const s = Math.min(BOARD_MAX_W / r.width, BOARD_MAX_H / r.height);
@@ -344,27 +347,27 @@ export function PartageConcept(p: PartageProps) {
         ) : null}
         <Progress total={end} />
       </Paper>
-      <EndCard title={tx.endTitle} sub={tx.endSub} cta={p.cta} ctaSub={tx.ctaSub} icon={p.icon} start={end} />
+      <EndCard title={tx.endTitle} sub={tx.endSub} cta={p.cta} ctaSub={tx.ctaSub} icon={p.icon} start={end} lang={p.lang} />
 
-      <Audio src={sfx('music')} volume={(f) => musicVolume(p.voice, f / FPS, 0.45, end)} />
+      <Audio src={pk?.music ?? sfx('music')} volume={(f) => musicVolume(p.voice, f / FPS, 0.45 * (pk?.gain ?? 1), end)} />
       <VoiceTrack voice={p.voice} />
-      <Sfx at={0} src={sfx('hit')} volume={0.6} />
+      <Sfx at={0} src={pk?.hit ?? sfx('hit')} volume={0.6} />
       {p.rounds.map((x, i) => {
         const ok = x.points >= 120;
         return [
-          i > 0 ? <Sfx key={`w${i}`} at={x.t.start} src={sfx('whoosh')} volume={0.5} /> : null,
-          ...x.t.draw.map(([s0], k) => <Sfx key={`d${i}${k}`} at={s0} src={app('draw')} volume={0.6} />),
-          ...[0, 1, 2].map((k) => <Sfx key={`k${i}${k}`} at={x.t.adjust[0] + k * 0.22} src={app('tick')} volume={0.4} />),
-          <Sfx key={`t${i}`} at={x.t.submit} src={app('tap')} volume={0.8} />,
-          <Sfx key={`r${i}`} at={x.t.submit + 0.05} src={sfx('drumroll')} volume={0.3} />,
+          i > 0 ? <Sfx key={`w${i}`} at={x.t.start} src={pk?.whoosh ?? sfx('whoosh')} volume={0.5} /> : null,
+          ...x.t.draw.map(([s0], k) => <Sfx key={`d${i}${k}`} at={s0} src={pk?.step(1 + 2 * k + i) ?? app('draw')} volume={0.6} />),
+          ...[0, 1, 2].map((k) => <Sfx key={`k${i}${k}`} at={x.t.adjust[0] + k * 0.22} src={pk?.tick ?? app('tick')} volume={0.4} />),
+          <Sfx key={`t${i}`} at={x.t.submit} src={pk?.submit ?? app('tap')} volume={0.8} />,
+          <Sfx key={`r${i}`} at={x.t.submit + 0.05} src={pk?.roll ?? sfx('drumroll')} volume={pk ? 0.5 : 0.3} />,
           ok
-            ? <Sfx key={`v${i}`} at={x.t.reveal} src={sfx(`coin${Math.min(8, i + 3)}`)} volume={0.8} />
-            : <Sfx key={`v${i}`} at={x.t.reveal} src={sfx('gameover')} volume={0.8} />,
+            ? <Sfx key={`v${i}`} at={x.t.reveal} src={pk?.good ?? sfx(`coin${Math.min(8, i + 3)}`)} volume={0.8} />
+            : <Sfx key={`v${i}`} at={x.t.reveal} src={pk?.fail ?? sfx('gameover')} volume={0.8} />,
         ];
       })}
-      {p.rounds.filter(missed).map((x, i) => <Sfx key={`st${i}`} at={x.t.reveal + 0.25} src={app('stamp')} volume={0.9} />)}
-      {p.rounds.flatMap((x, i) => (x.t.think ? Array.from({ length: Math.ceil(x.t.think[1] - x.t.think[0]) }, (_, k) => <Sfx key={`tk${i}${k}`} at={x.t.think![0] + k} src={app('tick')} volume={0.7} />) : []))}
-      <Sfx at={end} src={app('win')} volume={0.7} />
+      {p.rounds.filter(missed).map((x, i) => <Sfx key={`st${i}`} at={x.t.reveal + 0.25} src={pk?.stamp ?? app('stamp')} volume={0.9} />)}
+      {p.rounds.flatMap((x, i) => (x.t.think ? Array.from({ length: Math.ceil(x.t.think[1] - x.t.think[0]) }, (_, k) => <Sfx key={`tk${i}${k}`} at={x.t.think![0] + k} src={pk?.tick ?? app('tick')} volume={0.7} />) : []))}
+      <Sfx at={end} src={pk?.win ?? app('win')} volume={0.7} />
     </AbsoluteFill>
   );
 }

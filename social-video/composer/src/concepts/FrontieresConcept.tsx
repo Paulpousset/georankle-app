@@ -11,7 +11,7 @@ import { AbsoluteFill, Audio, Img, interpolate, spring, useCurrentFrame, useVide
 import { feature } from 'topojson-client';
 import world from 'world-atlas/countries-50m.json';
 
-import { C, EndCard, FPS, Hook, Paper, Progress, Sfx, Stamp, Tag, VoiceTrack, app, clamp, flag, mono, musicVolume, serif, sfx, type VoiceLine } from './kit';
+import { C, EndCard, FPS, Hook, Paper, Progress, Sfx, Stamp, Tag, VoiceTrack, app, clamp, flag, mono, musicVolume, packOf, serif, sfx, type VoiceLine } from './kit';
 
 export type FrontierStep = { id: string; cc: string; name: string };
 export type FrontierRound = {
@@ -40,6 +40,7 @@ export type FrontieresProps = {
   big?: boolean; // grande carte, sans étiquette de niveau au-dessus
   labels?: boolean; // noms des pays écrits sur la carte quand ils se posent
   bar?: boolean; // barre de temps qui se vide pendant la réflexion
+  sound?: string; // ambiance sonore de packs.mjs (lofi, hype, tele)
 };
 
 // Textes fixes de la vidéo, selon la langue de la fiche (concepts.mjs --lang).
@@ -257,6 +258,7 @@ export function FrontieresConcept(p: FrontieresProps) {
   const tx = txOf(p.lang);
   const look: Look = { think: thinkOf(p), big: p.big, labels: p.labels, bar: p.bar, step: p.step };
   const { top: MAP_TOP, h: MAP_H } = layoutOf(p.big);
+  const pk = packOf(p.sound);
 
   return (
     <AbsoluteFill>
@@ -279,23 +281,23 @@ export function FrontieresConcept(p: FrontieresProps) {
         ) : null}
         <Progress total={end} />
       </Paper>
-      <EndCard title={tx.endTitle} cta={p.cta} ctaSub={tx.ctaSub} icon={p.icon} start={end} />
+      <EndCard title={tx.endTitle} cta={p.cta} ctaSub={tx.ctaSub} icon={p.icon} start={end} lang={p.lang} />
 
-      <Audio src={sfx('tension')} volume={(f) => musicVolume(p.voice, f / FPS, 0.6, end)} />
+      <Audio src={pk?.music ?? sfx('tension')} volume={(f) => musicVolume(p.voice, f / FPS, 0.6 * (pk?.gain ?? 1), end)} />
       <VoiceTrack voice={p.voice} />
-      <Sfx at={0} src={sfx('hit')} volume={0.6} />
+      <Sfx at={0} src={pk?.hit ?? sfx('hit')} volume={0.6} />
       {p.rounds.map((round, i) => {
         const s0 = roundStart(p, i);
         const draw = s0 + INTRO_S + look.think;
         return [
-          <Sfx key={`w${i}`} at={s0} src={sfx('whoosh')} volume={0.6} />,
-          ...Array.from({ length: Math.ceil(look.think - 0.2) }, (_, k) => k).map((k) => <Sfx key={`k${i}${k}`} at={s0 + INTRO_S + 0.2 + k} src={app('tick')} volume={0.7} />),
-          ...round.path.slice(1, -1).map((_, j) => <Sfx key={`s${i}${j}`} at={draw + (j + 1) * stepS(round, p)} src={app('draw')} volume={0.55} />),
-          <Sfx key={`f${i}`} at={draw + round.path.length * stepS(round, p)} src={app('found')} volume={0.8} />,
-          <Sfx key={`st${i}`} at={draw + round.path.length * stepS(round, p) + 0.1} src={app('stamp')} volume={0.8} />,
+          <Sfx key={`w${i}`} at={s0} src={pk?.whoosh ?? sfx('whoosh')} volume={0.6} />,
+          ...Array.from({ length: Math.ceil(look.think - 0.2) }, (_, k) => k).map((k) => <Sfx key={`k${i}${k}`} at={s0 + INTRO_S + 0.2 + k} src={pk?.tick ?? app('tick')} volume={0.7} />),
+          ...round.path.slice(1, -1).map((_, j) => <Sfx key={`s${i}${j}`} at={draw + (j + 1) * stepS(round, p)} src={pk?.step(j + 1) ?? app('draw')} volume={pk ? 0.7 : 0.55} />),
+          <Sfx key={`f${i}`} at={draw + round.path.length * stepS(round, p)} src={pk?.found ?? app('found')} volume={0.8} />,
+          <Sfx key={`st${i}`} at={draw + round.path.length * stepS(round, p) + 0.1} src={pk?.stamp ?? app('stamp')} volume={0.8} />,
         ];
       })}
-      <Sfx at={end} src={app('win')} volume={0.7} />
+      <Sfx at={end} src={pk?.win ?? app('win')} volume={0.7} />
     </AbsoluteFill>
   );
 }

@@ -349,6 +349,7 @@ function frontieres(name, rounds, hook = null, opts = {}) {
     ...(opts.big ? { big: true } : {}),
     ...(opts.labels ? { labels: true } : {}),
     ...(opts.bar ? { bar: true } : {}),
+    ...(opts.sound ? { sound: opts.sound } : {}),
     ...COMMON,
     voice,
     post: opts.post ? `${opts.post}\n\n${POST_TAGS}` : L(`${first[0].name} → ${first[first.length - 1].name} sans avion : quels pays faut-il traverser ? 🧭\n\n${POST_TAGS}`, `${first[0].name} → ${first[first.length - 1].name} without flying: which countries do you have to cross? 🧭\n\n${POST_TAGS}`),
@@ -850,6 +851,7 @@ function partage(name, plays, hook = null, opts = {}) {
     title: L('Partage équitable', 'Fair Split'),
     mapLabel: opts.mapLabel ?? L('CARTE', 'MAP'),
     ...(think ? { ask: L('Tu couperais où ?', 'Where would you cut?') } : {}),
+    ...(opts.sound ? { sound: opts.sound } : {}),
     partsLabel: L(['', '', 'EN DEUX', 'EN TROIS', 'EN QUATRE'], ['', '', 'HALVES', 'THIRDS', 'QUARTERS']),
     totalLabel: L('Population de la zone : {0}', 'Population of the area: {0}'),
     hints: L(
@@ -940,9 +942,12 @@ if (process.argv.includes('--variantes')) {
   frontieres('var-f4-eclair', [fr3('FRA', 'POL', 'ÉCLAIR'), fr3('CAN', 'MEX', 'ÉCLAIR'), fr3('MAR', 'SEN', 'ÉCLAIR')],
     hk(['3 chemins,', '3 secondes ⏱️'], 'Trois chemins, trois secondes chacun.'),
     { think: 2.5, hold: 1.2, step: 0.45, bar: true, outro: 'Ton score sur 3\u00a0?', outroSay: 'Ton score sur trois ? En commentaire.', post: '3 chemins, 3 secondes chacun : ton score sur 3 ? ⏱️' });
-  frontieres('var-f5-piege', [fr3('PRT', 'DEU', 'FACILE'), fr3('USA', 'GTM', 'MOYEN'), fr3('CHN', 'AFG', 'PIÈGE', { stamp: 'Aucun ! Voisins 😱' })],
-    hk(['La 3e manche', 'est un piège 😈'], 'Attention, la troisième manche est un piège.'),
-    { think: 4, hold: 2.2, step: 0.6, bar: true, outro: 'Tu t’es fait avoir\u00a0?', outroSay: 'Tu t’es fait avoir ? Dis-le en commentaire.', post: 'Chine → Afghanistan : quels pays faut-il traverser ? Attention, piège 😈' });
+  // Ambiances sonores (packs.mjs) : f5 et p1 retenus par Paul (03/11), un rendu par ambiance.
+  const SOUNDS = ['', 'lofi', 'hype', 'tele'];
+  for (const sound of SOUNDS)
+    frontieres(`var-f5-piege${sound ? `-${sound}` : ''}`, [fr3('PRT', 'DEU', 'FACILE'), fr3('USA', 'GTM', 'MOYEN'), fr3('CHN', 'AFG', 'PIÈGE', { stamp: 'Aucun ! Voisins 😱' })],
+      hk(['La 3e manche', 'est un piège 😈'], 'Attention, la troisième manche est un piège.'),
+      { think: 4, hold: 2.2, step: 0.6, bar: true, sound, outro: 'Tu t’es fait avoir\u00a0?', outroSay: 'Tu t’es fait avoir ? Dis-le en commentaire.', post: 'Chine → Afghanistan : quels pays faut-il traverser ? Attention, piège 😈' });
 
   const spPlay = (id, lo, hi, middle = false) => {
     const q = { id, parts: 2, lines: 1, best: spHalves(id) };
@@ -952,9 +957,11 @@ if (process.argv.includes('--variantes')) {
     }
     throw new Error(`Partage : rien entre ${lo} et ${hi} pour ${id}`);
   };
-  partage('var-p1-trois-moities', [spPlay('FRA', 140, 179), spPlay('europe', 184, 200), spPlay('AUS', 5, 60, true)],
-    hk(['Coupe en deux.', 'Même population ✂️'], 'Coupe chaque carte en deux : autant d’habitants de chaque côté.'),
-    { think: 2.5, post: 'France, Europe, Australie : coupe chaque carte en deux, autant d’habitants de chaque côté. Tu couperais où ? ✂️' });
+  const p1 = [spPlay('FRA', 140, 179), spPlay('europe', 184, 200), spPlay('AUS', 5, 60, true)];
+  for (const sound of SOUNDS)
+    partage(`var-p1-trois-moities${sound ? `-${sound}` : ''}`, p1,
+      hk(['Coupe en deux.', 'Même population ✂️'], 'Coupe chaque carte en deux : autant d’habitants de chaque côté.'),
+      { think: 2.5, sound, post: 'France, Europe, Australie : coupe chaque carte en deux, autant d’habitants de chaque côté. Tu couperais où ? ✂️' });
   partage('var-p2-piege-milieu', [spPlay('AUS', 0, 50, true), spPlay('AUS', 185, 200)],
     hk(['Coupe l’Australie', 'en deux ✂️'], 'Coupe l’Australie en deux : autant d’habitants de chaque côté.'),
     { think: 2.5, mapLabel: 'ESSAI', say: ['Facile, je coupe au milieu.', 'Deuxième essai.'], outro: 'Tu aurais coupé où\u00a0?', post: 'La moitié des Australiens vit… ici. Tu aurais coupé où ? ✂️' });
