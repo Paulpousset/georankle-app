@@ -229,6 +229,10 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
       });
   }, [match.id, refetchPlayers, applyMatchRow]);
 
+  // Whether the realtime channel below is live: the reconciliation poll slows
+  // down while it is, and only runs at full speed when it is not.
+  const realtimeOkRef = useRef(false);
+
   // Realtime: match_players (per-player state) + matches (status / current_round).
   useEffect(() => {
     const channel = supabase
@@ -245,8 +249,11 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
           applyMatchRow(payload.new);
         },
       )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
+      .subscribe((st) => { realtimeOkRef.current = st === 'SUBSCRIBED'; });
+    return () => {
+      realtimeOkRef.current = false;
+      supabase.removeChannel(channel);
+    };
   }, [match.id, refetchPlayers, applyMatchRow]);
 
   // Reconciliation poll — the FFA path is otherwise 100% realtime-driven, so a
@@ -259,7 +266,13 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
   useEffect(() => {
     if (phase === 'over') return;
     let cancelled = false;
+    // Every 5 s while realtime is down; every 15 s (3 ticks) while it is live,
+    // as a safety net for a dropped event. Each tick is two requests per
+    // player, so this cuts the steady-state load of a full lobby by 3×.
+    let n = 0;
     const tick = async () => {
+      n += 1;
+      if (realtimeOkRef.current && n % 3 !== 0) return;
       const { data } = await supabase
         .from('matches')
         .select('status, current_round')

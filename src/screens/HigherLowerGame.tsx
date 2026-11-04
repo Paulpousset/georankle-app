@@ -148,11 +148,11 @@ export default function HigherLowerGame({
 
   const fetchBest = async (userId: string): Promise<number> => {
     const { data } = await supabase
-      .from('scores')
+      .from('best_scores')
       .select('score')
       .eq('user_id', userId)
       .eq('game_mode', 'higherlower');
-    return data && data.length > 0 ? Math.max(...data.map((s) => s.score)) : 0;
+    return data && data.length > 0 ? Math.max(...data.map((s) => Number(s.score))) : 0;
   };
 
   useEffect(() => {

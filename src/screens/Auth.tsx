@@ -143,13 +143,13 @@ const Auth = ({ onAuthSuccess, language, initialMode = 'login' }: AuthProps) => 
     if (profile) setUsername(profile.username || '');
 
     const { data: scores } = await supabase
-      .from('scores')
+      .from('best_scores')
       .select('game_mode, score')
       .eq('user_id', userId);
 
     if (scores) {
-      const classicScores = scores.filter((s) => s.game_mode === 'classic').map((s) => s.score);
-      const streakScores = scores.filter((s) => s.game_mode === 'streak').map((s) => s.score);
+      const classicScores = scores.filter((s) => s.game_mode === 'classic').map((s) => Number(s.score));
+      const streakScores = scores.filter((s) => s.game_mode === 'streak').map((s) => Number(s.score));
 
       // Classic now stores a 0–100 efficiency (higher is better); filter out
       // legacy raw-points rows (>100) as ClassicGame/Leaderboard do. Streak is
