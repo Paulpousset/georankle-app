@@ -45,6 +45,10 @@ on:
         description: Ajouter à la file de publication (shorts-next)
         type: boolean
         default: false
+      front:
+        description: Mettre le lot en tête de la file (publié avant les vidéos déjà en attente)
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -62,6 +66,8 @@ env:
   SHORT: ${{ github.event.inputs.short || 'true' }}
   MIX: ${{ github.event.inputs.mix || '' }}
   QUEUE: ${{ github.event.inputs.queue || (github.event_name == 'schedule' && 'true') || 'false' }}
+  # next-lot.mjs lit FRONT=1 : le lot passe avant le reste de l'ordre de /hq.
+  FRONT: ${{ github.event.inputs.front == 'true' && '1' || '0' }}
 
 jobs:
   setup:
