@@ -9,10 +9,16 @@ name: Migrations Supabase
 #
 # Secret requis : SUPABASE_DB_URL (Supabase → Settings → Database → URI,
 # mot de passe inclus ; préférer le pooler en mode session, port 5432).
+#
+# Ensuite, les Edge Functions touchées par le push sont redéployées
+# (scripts/deploy_functions.sh), toujours APRÈS les migrations puisqu'une
+# fonction peut appeler une RPC qu'elles créent.
+# Secret requis : SUPABASE_ACCESS_TOKEN (supabase.com → Account → Access
+# Tokens). Sans lui, l'étape ne déploie rien et ne casse rien.
 on:
   push:
     branches: [master]
-    paths: ['supabase/migrations/**']
+    paths: ['supabase/migrations/**', 'supabase/functions/**']
   workflow_dispatch:
 
 concurrency:
@@ -31,3 +37,28 @@ jobs:
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: bash scripts/migrate.sh
+
+  functions:
+    name: Déployer les Edge Functions
+    needs: migrate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Deploy changed functions
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            bash scripts/deploy_functions.sh --all
+          else
+            bash scripts/deploy_functions.sh "${{ github.event.before }}" "${{ github.sha }}"
+          fi
