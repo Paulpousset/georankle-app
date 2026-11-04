@@ -106,7 +106,16 @@ export function RematchPanel({
     };
 
     void sync();
-    const poll = setInterval(sync, POLL_MS);
+    // Toutes les 4 s quand le realtime est tombé, toutes les 12 s quand il
+    // tourne : tous les joueurs passent par cet écran en fin de match, le
+    // filet n'a pas besoin d'aller vite quand la voie normale marche.
+    let realtimeOk = false;
+    let n = 0;
+    const poll = setInterval(() => {
+      n += 1;
+      if (realtimeOk && n % 3 !== 0) return;
+      void sync();
+    }, POLL_MS);
 
     const channel = supabase
       .channel(`rematch_${match.id}`)
@@ -123,7 +132,7 @@ export function RematchPanel({
           setRequestedBy(row.rematch_requested_by ?? null);
         },
       )
-      .subscribe();
+      .subscribe((st) => { realtimeOk = st === 'SUBSCRIBED'; });
 
     return () => {
       alive = false;

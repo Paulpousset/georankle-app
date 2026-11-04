@@ -25,6 +25,35 @@ export type Database = {
   }
   public: {
     Tables: {
+      best_scores: {
+        Row: {
+          user_id: string
+          game_mode: string
+          score: number
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          game_mode: string
+          score: number
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          game_mode?: string
+          score?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "best_scores_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ad_claims: {
         Row: {
           count: number
@@ -927,6 +956,24 @@ export type Database = {
         Returns: Json
       }
       league_daily_modes: { Args: { p_date: string }; Returns: string[] }
+      online_mode_leaderboard: {
+        Args: { p_mode: string; p_limit?: number }
+        Returns: {
+          user_id: string
+          username: string | null
+          avatar_config: Json | null
+          wins: number
+          total: number
+        }[]
+      }
+      online_mode_stats: {
+        Args: { p_user_id: string }
+        Returns: {
+          game_mode: string
+          wins: number
+          total: number
+        }[]
+      }
       daily_overall_leaderboard: {
         Args: { p_date: string }
         Returns: {

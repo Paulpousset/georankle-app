@@ -15,7 +15,7 @@ export function initSentry(): void {
   Sentry.init({
     dsn,
     // Sample a fraction of transactions for performance monitoring. Tune later.
-    tracesSampleRate: 0.2,
+    tracesSampleRate: 0.05,
     // Avoid noisy logs in the local dev console; crashes still report.
     enableNativeCrashHandling: true,
   });

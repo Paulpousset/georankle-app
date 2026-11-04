@@ -37,64 +37,26 @@ export function OnlineModeLeaderboard({ mode, accent, onOpenPlayer }: Props) {
   const { language } = useLanguage();
   const c = getColors(isDarkMode);
 
+  // Aggregated in SQL (online_mode_leaderboard): reading every completed match
+  // was capped at 1000 rows and grew with each game played.
   const fetchLeaderboard = useCallback(async (): Promise<WinEntry[]> => {
-    const { data: matches, error } = await supabase
-      .from('matches')
-      .select('player1_id, player2_id, p1_rounds_won, p2_rounds_won')
-      .eq('game_mode', mode)
-      .eq('status', 'completed');
+    const { data, error } = await supabase.rpc('online_mode_leaderboard', {
+      p_mode: mode,
+      p_limit: 50,
+    });
 
     if (error) {
       log.error('Online leaderboard fetch error:', error);
       throw error;
     }
 
-    if (!matches || matches.length === 0) {
-      return [];
-    }
-
-    const stats: Record<string, { wins: number; total: number }> = {};
-    const userIds = new Set<string>();
-
-    for (const m of matches) {
-      if (!m.player1_id || !m.player2_id) continue;
-      userIds.add(m.player1_id);
-      userIds.add(m.player2_id);
-
-      if (!stats[m.player1_id]) stats[m.player1_id] = { wins: 0, total: 0 };
-      if (!stats[m.player2_id]) stats[m.player2_id] = { wins: 0, total: 0 };
-
-      stats[m.player1_id].total++;
-      stats[m.player2_id].total++;
-
-      if ((m.p1_rounds_won ?? 0) > (m.p2_rounds_won ?? 0)) {
-        stats[m.player1_id].wins++;
-      } else if ((m.p2_rounds_won ?? 0) > (m.p1_rounds_won ?? 0)) {
-        stats[m.player2_id].wins++;
-      }
-    }
-
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, username')
-      .in('id', Array.from(userIds));
-
-    const usernameMap: Record<string, string> = {};
-    for (const p of profiles ?? []) {
-      usernameMap[p.id] = p.username ?? (tr(language, 'Anonyme', 'Anonymous'));
-    }
-
-    return Object.entries(stats)
-      .filter(([, s]) => s.total >= 1)
-      .map(([user_id, s]) => ({
-        user_id,
-        username: usernameMap[user_id] ?? 'Anonyme',
-        wins: s.wins,
-        total: s.total,
-        winRate: Math.round((s.wins / s.total) * 100),
-      }))
-      .sort((a, b) => b.winRate - a.winRate || b.wins - a.wins)
-      .slice(0, 50);
+    return (data ?? []).map((row) => ({
+      user_id: row.user_id,
+      username: row.username ?? tr(language, 'Anonyme', 'Anonymous'),
+      wins: row.wins,
+      total: row.total,
+      winRate: Math.round((row.wins / row.total) * 100),
+    }));
   }, [mode, language]);
 
   const {

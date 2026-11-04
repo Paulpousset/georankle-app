@@ -228,14 +228,14 @@ export function ClassicGame({
   const fetchUserBestScores = useCallback(async (): Promise<number | null> => {
     if (!user) return null;
     const { data: scores } = await supabase
-      .from('scores')
+      .from('best_scores')
       .select('score')
       .eq('user_id', user.id)
       .eq('game_mode', 'classic');
 
     if (scores && scores.length > 0) {
-      // Older rows stored total ranks (usually > 100); keep only efficiency (%).
-      const validScores = scores.map((s) => s.score).filter((s: number) => s <= 100);
+      // best_scores already ignores the legacy raw-points rows (> 100).
+      const validScores = scores.map((s) => Number(s.score)).filter((s: number) => s <= 100);
       return validScores.length > 0 ? Math.max(...validScores) : null;
     }
     return null;

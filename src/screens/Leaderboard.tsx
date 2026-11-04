@@ -125,10 +125,13 @@ const Leaderboard = ({ onOpenPlayer }: LeaderboardProps) => {
   const accent = mode.accent(isDarkMode);
   const unit = mode.unit(language);
 
+  // One row per player (best_scores, kept by a trigger on scores): the old
+  // read of raw score rows was capped at 1000 by the API, so a few heavy
+  // players could crowd everyone else out of the top.
   const fetchSolo = useCallback(async (gameMode: string): Promise<Entry[]> => {
     const { data, error } = await supabase
-      .from('scores')
-      .select('score, user_id, profiles!scores_user_id_fkey (username, avatar_config)')
+      .from('best_scores')
+      .select('score, user_id, profiles!best_scores_user_id_fkey (username, avatar_config)')
       .eq('game_mode', gameMode)
       .order('score', { ascending: false })
       .limit(1000);
@@ -144,76 +147,40 @@ const Leaderboard = ({ onOpenPlayer }: LeaderboardProps) => {
       profiles?: { username?: string | null; avatar_config?: unknown } | null;
     }[];
 
-    const seen: Record<string, boolean> = {};
-    const entries: Entry[] = [];
-    for (const row of rows) {
-      // Legacy classic rows stored raw points (>100) before the efficiency-% rescale.
-      if (gameMode === 'classic' && row.score > 100) continue;
-      if (seen[row.user_id]) continue;
-      seen[row.user_id] = true;
-      entries.push({
-        user_id: row.user_id,
-        username: row.profiles?.username ?? null,
-        avatar: parseAvatar(row.profiles?.avatar_config),
-        value: row.score,
-      });
-    }
-    return entries;
+    return rows.map((row) => ({
+      user_id: row.user_id,
+      username: row.profiles?.username ?? null,
+      avatar: parseAvatar(row.profiles?.avatar_config),
+      value: Number(row.score),
+    }));
   }, []);
 
+  // Aggregated in SQL (online_mode_leaderboard): reading every completed match
+  // was capped at 1000 rows and grew with each game played.
   const fetchOnline = useCallback(
     async (gameMode: string): Promise<Entry[]> => {
-      const { data: matches, error } = await supabase
-        .from('matches')
-        .select('player1_id, player2_id, p1_rounds_won, p2_rounds_won')
-        .eq('game_mode', gameMode)
-        .eq('status', 'completed');
+      const { data, error } = await supabase.rpc('online_mode_leaderboard', {
+        p_mode: gameMode,
+        p_limit: 100,
+      });
 
       if (error) {
         log.error('Online leaderboard fetch error:', error);
         throw error;
       }
 
-      const stats: Record<string, { wins: number; total: number }> = {};
-      for (const m of matches ?? []) {
-        if (!m.player1_id || !m.player2_id) continue;
-        for (const id of [m.player1_id, m.player2_id]) {
-          if (!stats[id]) stats[id] = { wins: 0, total: 0 };
-          stats[id].total++;
-        }
-        if ((m.p1_rounds_won ?? 0) > (m.p2_rounds_won ?? 0)) stats[m.player1_id].wins++;
-        else if ((m.p2_rounds_won ?? 0) > (m.p1_rounds_won ?? 0)) stats[m.player2_id].wins++;
-      }
-
-      const userIds = Object.keys(stats);
-      if (userIds.length === 0) return [];
-
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, username, avatar_config')
-        .in('id', userIds);
-
-      const profileMap: Record<string, { username: string | null; avatar: AvatarConfig | null }> = {};
-      for (const p of profiles ?? []) {
-        profileMap[p.id] = { username: p.username ?? null, avatar: parseAvatar(p.avatar_config) };
-      }
-
-      return userIds
-        .map((id) => {
-          const s = stats[id];
-          const wins = s.wins;
-          const losses = s.total - s.wins;
-          return {
-            user_id: id,
-            username: profileMap[id]?.username ?? null,
-            avatar: profileMap[id]?.avatar ?? null,
-            value: Math.round((wins / s.total) * 100),
-            sub: tr(language, '{0}V · {1}D', '{0}W · {1}L', [wins, losses]),
-            wins,
-          };
-        })
-        .sort((a, b) => b.value - a.value || b.wins - a.wins)
-        .slice(0, 100);
+      return (data ?? []).map((row) => {
+        const wins = row.wins;
+        const losses = row.total - row.wins;
+        return {
+          user_id: row.user_id,
+          username: row.username ?? null,
+          avatar: parseAvatar(row.avatar_config),
+          value: Math.round((wins / row.total) * 100),
+          sub: tr(language, '{0}V · {1}D', '{0}W · {1}L', [wins, losses]),
+          wins,
+        };
+      });
     },
     [language],
   );

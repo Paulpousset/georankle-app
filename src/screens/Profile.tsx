@@ -165,12 +165,10 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
       // maybeSingle: players who never finished a ranked match have no row —
       // .single() turned every such profile view into a 406 + console error.
       supabase.from('player_ratings').select('elo, wins, losses').eq('user_id', userId).maybeSingle(),
-      supabase
-        .from('matches')
-        .select('game_mode, player1_id, player2_id, p1_rounds_won, p2_rounds_won')
-        .or(`player1_id.eq.${userId},player2_id.eq.${userId}`)
-        .eq('status', 'completed'),
-      supabase.from('scores').select('game_mode, score').eq('user_id', userId),
+      // Per-mode wins/games counted in SQL, best solo score per mode from
+      // best_scores: both used to download the player's full history.
+      supabase.rpc('online_mode_stats', { p_user_id: userId }),
+      supabase.from('best_scores').select('game_mode, score').eq('user_id', userId),
     ]);
 
     const profile = profileRes.data;
@@ -179,19 +177,15 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
     // Per-mode win rate from completed matches.
     const stats: Record<string, ModeStat> = {};
     for (const m of matchesRes.data ?? []) {
-      const mode = m.game_mode as string;
-      if (!stats[mode]) stats[mode] = { wins: 0, total: 0 };
-      stats[mode].total += 1;
-      const iAmP1 = m.player1_id === userId;
-      const myRounds = iAmP1 ? (m.p1_rounds_won ?? 0) : (m.p2_rounds_won ?? 0);
-      const oppRounds = iAmP1 ? (m.p2_rounds_won ?? 0) : (m.p1_rounds_won ?? 0);
-      if (myRounds > oppRounds) stats[mode].wins += 1;
+      stats[m.game_mode] = { wins: m.wins, total: m.total };
     }
 
-    // Solo records.
+    // Solo records (one row per mode).
     const scores = scoresRes.data ?? [];
-    const classic = scores.filter((s) => s.game_mode === 'classic').map((s) => s.score);
-    const streak = scores.filter((s) => s.game_mode === 'streak').map((s) => s.score);
+    const bestOf = (mode: string) => {
+      const row = scores.find((s) => s.game_mode === mode);
+      return row ? Number(row.score) : null;
+    };
 
     return {
       username: profile?.username ?? '',
@@ -205,8 +199,8 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
       wins: rating?.wins ?? 0,
       losses: rating?.losses ?? 0,
       modeStats: stats,
-      bestClassic: classic.length ? Math.min(...classic) : null,
-      bestStreak: streak.length ? Math.max(...streak) : null,
+      bestClassic: bestOf('classic'),
+      bestStreak: bestOf('streak'),
     };
   }, [userId]);
 

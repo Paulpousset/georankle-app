@@ -84,7 +84,7 @@ export default function PlayerProfile({
         .eq('id', userId)
         .single(),
       supabase.from('player_ratings').select('elo, wins, losses').eq('user_id', userId).maybeSingle(),
-      supabase.from('scores').select('game_mode, score').eq('user_id', userId),
+      supabase.from('best_scores').select('game_mode, score').eq('user_id', userId),
       supabase
         .from('matches')
         .select('player1_id, player2_id, p1_rounds_won, p2_rounds_won')
@@ -97,9 +97,12 @@ export default function PlayerProfile({
     const profile = profileRes.data;
     const rating = ratingRes.data;
 
+    // best_scores: one row per mode (trigger-maintained), not the full history.
     const scores = scoresRes.data ?? [];
-    const classic = scores.filter((s) => s.game_mode === 'classic').map((s) => s.score);
-    const streak = scores.filter((s) => s.game_mode === 'streak').map((s) => s.score);
+    const bestOf = (mode: string) => {
+      const row = scores.find((s) => s.game_mode === mode);
+      return row ? Number(row.score) : null;
+    };
 
     let h2hMine = 0;
     let h2hTheirs = 0;
@@ -119,8 +122,8 @@ export default function PlayerProfile({
       elo: rating?.elo ?? 1000,
       wins: rating?.wins ?? 0,
       losses: rating?.losses ?? 0,
-      bestClassic: classic.length ? Math.min(...classic) : null,
-      bestStreak: streak.length ? Math.max(...streak) : null,
+      bestClassic: bestOf('classic'),
+      bestStreak: bestOf('streak'),
       h2hMine,
       h2hTheirs,
       h2hPlayed: h2hRes.data?.length ?? 0,

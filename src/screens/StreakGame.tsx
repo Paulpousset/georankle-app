@@ -161,13 +161,13 @@ export default function StreakGame({
 
   const fetchUserBestStreak = async (userId: string) => {
     const { data: scores } = await supabase
-      .from('scores')
+      .from('best_scores')
       .select('score')
       .eq('user_id', userId)
       .eq('game_mode', 'streak');
 
     if (scores && scores.length > 0) {
-      const maxStreak = Math.max(...scores.map((s: any) => s.score));
+      const maxStreak = Math.max(...scores.map((s) => Number(s.score)));
       setBestStreak(maxStreak);
     }
   };

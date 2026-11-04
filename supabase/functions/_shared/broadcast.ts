@@ -44,6 +44,25 @@ const RECIPIENT_COLS = 'id, push_token, push_lang, daily_streak';
 const EXPO_URL = 'https://exp.host/--/api/v2/push/send';
 const DAY_MS = 86_400_000;
 
+/**
+ * PostgREST caps every response at the project's "Max rows" (1000 by default)
+ * WITHOUT an error, so a single `select` silently drops everyone past the cap.
+ * Every recipient query goes through this: it pages with `range()` on a stable
+ * `id` order until a short page comes back.
+ */
+const PAGE = 1000;
+// deno-lint-ignore no-explicit-any
+async function fetchAllPages(build: () => any): Promise<Recipient[]> {
+  const out: Recipient[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await build().order('id').range(from, from + PAGE - 1);
+    if (error) throw new Error(`recipient query failed: ${error.message}`);
+    const rows = (data ?? []) as Recipient[];
+    out.push(...rows);
+    if (rows.length < PAGE) return out;
+  }
+}
+
 /** Fetch recipients for a set of user ids, chunked to keep the `in()` small. */
 async function tokensForIds(admin: Admin, ids: string[]): Promise<Recipient[]> {
   const out: Recipient[] = [];
@@ -61,71 +80,36 @@ async function tokensForIds(admin: Admin, ids: string[]): Promise<Recipient[]> {
 
 /** Resolve a segment to the list of profiles (with push tokens) it targets. */
 export async function resolveRecipients(admin: Admin, segment: Segment): Promise<Recipient[]> {
+  const withToken = () => admin.from('profiles').select(RECIPIENT_COLS).not('push_token', 'is', null);
+
   switch (segment.type) {
-    case 'everyone': {
-      const { data } = await admin
-        .from('profiles')
-        .select(RECIPIENT_COLS)
-        .not('push_token', 'is', null);
-      return data ?? [];
-    }
+    case 'everyone':
+      return fetchAllPages(withToken);
 
     case 'inactive': {
       const days = Math.max(1, segment.days || 7);
       const cutoff = new Date(Date.now() - days * DAY_MS).toISOString();
       // Never-seen users (last_seen NULL) count as inactive too.
-      const { data } = await admin
-        .from('profiles')
-        .select(RECIPIENT_COLS)
-        .not('push_token', 'is', null)
-        .or(`last_seen.lt.${cutoff},last_seen.is.null`);
-      return data ?? [];
+      return fetchAllPages(() => withToken().or(`last_seen.lt.${cutoff},last_seen.is.null`));
     }
 
     case 'daily_pending': {
       // Same day boundary as the daily puzzle itself (src/lib/daily.ts): UTC.
       const today = new Date().toISOString().slice(0, 10);
-      const { data } = await admin
-        .from('profiles')
-        .select(RECIPIENT_COLS)
-        .not('push_token', 'is', null)
-        .or(`daily_last_date.lt.${today},daily_last_date.is.null`);
-      return data ?? [];
+      return fetchAllPages(() => withToken().or(`daily_last_date.lt.${today},daily_last_date.is.null`));
     }
 
     case 'users':
       return tokensForIds(admin, segment.ids ?? []);
 
     case 'activity': {
+      // Both segments are resolved in SQL (scale_hardening migration): reading
+      // whole `matches` / `scores` tables here was capped at 1000 rows.
       if (segment.filter === 'never_online') {
-        const { data: matchRows } = await admin.from('matches').select('player1_id, player2_id');
-        const played = new Set<string>();
-        for (const r of matchRows ?? []) {
-          if (r.player1_id) played.add(r.player1_id);
-          if (r.player2_id) played.add(r.player2_id);
-        }
-        const { data } = await admin
-          .from('profiles')
-          .select(RECIPIENT_COLS)
-          .not('push_token', 'is', null);
-        return (data ?? []).filter((p: Recipient) => !played.has(p.id));
+        return fetchAllPages(() => admin.rpc('broadcast_recipients_never_online'));
       }
-
-      // played a specific mode (solo scores, daily results, or multiplayer)
       const mode = segment.mode;
-      const [scores, daily, matches] = await Promise.all([
-        admin.from('scores').select('user_id').eq('game_mode', mode),
-        admin.from('daily_results').select('user_id').eq('game_mode', mode),
-        admin.from('matches').select('player1_id, player2_id').eq('game_mode', mode),
-      ]);
-      const ids = new Set<string>();
-      for (const r of scores.data ?? []) ids.add(r.user_id);
-      for (const r of daily.data ?? []) ids.add(r.user_id);
-      for (const r of matches.data ?? []) {
-        if (r.player1_id) ids.add(r.player1_id);
-        if (r.player2_id) ids.add(r.player2_id);
-      }
-      return tokensForIds(admin, [...ids]);
+      return fetchAllPages(() => admin.rpc('broadcast_recipients_played_mode', { p_mode: mode }));
     }
   }
   return [];
@@ -167,8 +151,7 @@ async function sendExpo(
   let sent = 0;
   const invalid: string[] = [];
 
-  for (let i = 0; i < unique.length; i += 100) {
-    const chunk = unique.slice(i, i + 100);
+  const sendChunk = async (chunk: Recipient[]) => {
     const messages = chunk.map((r) => ({
       to: r.push_token,
       ...copyFor(r, title, body, i18n),
@@ -193,15 +176,30 @@ async function sendExpo(
       // A failed chunk is logged via the returned counts (sent stays lower); we
       // don't abort the whole broadcast for one bad batch.
     }
-  }
+  };
+
+  // Batches of 100 (Expo's max per request), a few in flight at once: sending
+  // them one by one would run tens of thousands of tokens past the edge
+  // function's wall-clock limit. 4 × 100 stays under Expo's 600/s guidance.
+  const chunks: Recipient[][] = [];
+  for (let i = 0; i < unique.length; i += 100) chunks.push(unique.slice(i, i + 100));
+  const CONCURRENCY = 4;
+  let next = 0;
+  const worker = async () => {
+    while (next < chunks.length) await sendChunk(chunks[next++]);
+  };
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, chunks.length) }, worker));
 
   return { tokens: unique.length, sent, invalid };
 }
 
 /** Null out tokens Expo reported as DeviceNotRegistered so we stop hitting them. */
 async function clearInvalidTokens(admin: Admin, tokens: string[]): Promise<void> {
-  if (!tokens.length) return;
-  await admin.from('profiles').update({ push_token: null }).in('push_token', tokens);
+  // Chunked like tokensForIds: a large campaign can return hundreds of dead
+  // tokens, and one giant `in()` would overflow the request URL.
+  for (let i = 0; i < tokens.length; i += 200) {
+    await admin.from('profiles').update({ push_token: null }).in('push_token', tokens.slice(i, i + 200));
+  }
 }
 
 export interface BroadcastOpts {

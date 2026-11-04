@@ -241,20 +241,11 @@ export default function Matchmaking({
       .eq('id', userId)
       .single();
 
-    const { data: allMatches } = await supabase
-      .from('matches')
-      .select('player1_id, player2_id, p1_rounds_won, p2_rounds_won')
-      .or(`player1_id.eq.${userId},player2_id.eq.${userId}`)
-      .eq('status', 'completed');
-
-    const total = allMatches?.length ?? 0;
-    const wins =
-      allMatches?.filter((m) => {
-        if (m.player1_id === userId) {
-          return (m.p1_rounds_won ?? 0) > (m.p2_rounds_won ?? 0);
-        }
-        return (m.p2_rounds_won ?? 0) > (m.p1_rounds_won ?? 0);
-      }).length ?? 0;
+    // Counted in SQL: re-reading the player's whole match history on every
+    // visit grew with each game (and was capped at 1000 rows by the API).
+    const { data: modeStats } = await supabase.rpc('online_mode_stats', { p_user_id: userId });
+    const total = (modeStats ?? []).reduce((n, r) => n + r.total, 0);
+    const wins = (modeStats ?? []).reduce((n, r) => n + r.wins, 0);
 
     setPlayerStats({
       username: profile?.username ?? null,
