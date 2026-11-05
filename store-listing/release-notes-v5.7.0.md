@@ -48,8 +48,8 @@ Ton lien d'invitation est proposé en fin de partie : vous gagnez chacun 50 piè
 🌍 Globes 3D plus beaux : Mars refait, globe glacé, et les petits pays changent enfin de couleur.
 🗺️ Mode Histoire : recharge de vies, portails d'étoiles, 1000 niveaux et animaux 3D sur la carte.
 
-📏 Nouveau mode « À l'échelle » et ✂️ « Partage équitable » (couper une zone en parts de population égales).
-🎃 Halloween : un défi « pays fantômes » par jour jusqu'au 31/10.
+📏 Nouveau mode « À l'échelle » et ✂️ « Partage équitable » (couper une zone en parts de population égales), aussi en quotidien, en ligne et en histoire.
+🧭 Nouveau menu en onglets : Accueil, Jouer, Histoire, Duel, Moi.
 🎨 12 nouveaux cosmétiques (globes, fonds cosmos).
 
 🔊 Bouton son flottant et bouton de langue plus clair.
@@ -79,8 +79,8 @@ Your invite link is offered at the end of a game: you both earn 50 coins.
 🌍 Nicer 3D globes: redone Mars, icy globe, and small countries finally change color.
 🗺️ Story mode: life refills, star gates, 1000 levels and 3D animals on the map.
 
-📏 New "To Scale" mode and ✂️ "Fair Share" (cut an area into equal population shares).
-🎃 Halloween: one "ghost countries" challenge a day until 10/31.
+📏 New "To Scale" mode and ✂️ "Fair Share" (cut an area into equal population shares), also in daily, online and story.
+🧭 New tabbed menu: Home, Play, Story, Duel, Me.
 🎨 12 new cosmetics (globes, cosmos backgrounds).
 
 🔊 Floating sound button and a clearer language button.
@@ -97,7 +97,7 @@ Upcoming fixes will arrive without a store update.
 
 <fr-FR>📏 Nouveau mode « À l'échelle » : compare la taille des pays.
 ✂️ Nouveau mode « Partage équitable » : coupe une zone en parts de population égales.
-🎃 Halloween : un défi « pays fantômes » par jour jusqu'au 31/10.
+🧭 Nouveau menu en onglets : Accueil, Jouer, Histoire, Duel, Moi.
 🗺️ Mode Histoire : 1000 niveaux.
 🌍 12 nouveaux cosmétiques, fonds 3D plus nets.
 ⚔️ Défie un ami : partage ton score, il joue dans son navigateur.
@@ -106,7 +106,7 @@ Upcoming fixes will arrive without a store update.
 
 <en-US>📏 New "To Scale" mode: compare the size of countries.
 ✂️ New "Fair Share" mode: cut an area into equal population shares.
-🎃 Halloween: one "ghost countries" challenge a day until 10/31.
+🧭 New tabbed menu: Home, Play, Story, Duel, Me.
 🗺️ Story mode: 1000 levels.
 🌍 12 new cosmetics, sharper 3D backgrounds.
 ⚔️ Challenge a friend: share your score, they play in their browser.
@@ -115,7 +115,7 @@ Upcoming fixes will arrive without a store update.
 
 <es-ES>📏 Nuevo modo «A escala»: compara el tamaño de los países.
 ✂️ Nuevo modo «Reparto justo»: divide una zona en partes iguales de población.
-🎃 Halloween: un reto de «países fantasma» al día hasta el 31/10.
+🧭 Nuevo menú con pestañas: Inicio, Jugar, Historia, Duelo, Yo.
 🗺️ Modo Historia: 1000 niveles.
 🌍 12 nuevos cosméticos, fondos 3D más nítidos.
 ⚔️ Reta a un amigo: comparte tu puntuación y jugará en su navegador.
@@ -124,7 +124,7 @@ Upcoming fixes will arrive without a store update.
 
 <pt-PT>📏 Novo modo «À escala»: compara o tamanho dos países.
 ✂️ Novo modo «Partilha justa»: divide uma zona em partes iguais de população.
-🎃 Halloween: um desafio de «países fantasma» por dia até 31/10.
+🧭 Novo menu com separadores: Início, Jogar, História, Duelo, Eu.
 🗺️ Modo História: 1000 níveis.
 🌍 12 novos cosméticos, fundos 3D mais nítidos.
 ⚔️ Desafia um amigo: partilha a pontuação e ele joga no browser.
@@ -133,7 +133,7 @@ Upcoming fixes will arrive without a store update.
 
 <de-DE>📏 Neuer Modus „Im Maßstab": vergleiche die Größe von Ländern.
 ✂️ Neuer Modus „Fair geteilt": teile ein Gebiet in gleich große Bevölkerungsanteile.
-🎃 Halloween: täglich eine „Geisterländer"-Aufgabe bis 31.10.
+🧭 Neues Menü mit Tabs: Start, Spielen, Story, Duell, Ich.
 🗺️ Story-Modus: 1000 Level.
 🌍 12 neue Kosmetika, schärfere 3D-Hintergründe.
 ⚔️ Fordere Freunde heraus: Score teilen, sie spielen im Browser.
@@ -142,7 +142,7 @@ Upcoming fixes will arrive without a store update.
 
 <it-IT>📏 Nuova modalità «In scala»: confronta la dimensione dei paesi.
 ✂️ Nuova modalità «Divisione equa»: dividi un'area in parti uguali di popolazione.
-🎃 Halloween: una sfida «paesi fantasma» al giorno fino al 31/10.
+🧭 Nuovo menu a schede: Home, Gioca, Storia, Sfida, Io.
 🗺️ Modalità Storia: 1000 livelli.
 🌍 12 nuovi cosmetici, sfondi 3D più nitidi.
 ⚔️ Sfida un amico: condividi il punteggio, giocherà nel browser.
