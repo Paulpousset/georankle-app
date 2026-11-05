@@ -74,6 +74,8 @@ INDICATORS: dict[str, str] = {
 # Écart relatif au-delà duquel une nouvelle valeur est signalée dans le rapport
 # (pour repérer un mauvais indicateur, pas pour bloquer).
 SUSPICIOUS_RATIO = 3.0
+# Valeur plus ancienne que ça : ignorée (on garde l'éventuelle valeur actuelle).
+MIN_YEAR = 2010
 
 NUM_RE = re.compile(r"^(?P<pre>\$?)(?P<num>-?\d{1,3}(?: \d{3})*(?:\.(?P<dec>\d+))?)(?P<post>.*)$")
 
@@ -184,7 +186,7 @@ def main() -> int:
     for theme, code in INDICATORS.items():
         values = fetched[theme]
         tpl = templates[theme]
-        updated = added = missing = 0
+        updated = added = missing = too_old = 0
         years: dict[int, int] = {}
         suspicious: list[str] = []
         for country in data["countries"]:
@@ -194,6 +196,9 @@ def main() -> int:
                     missing += 1  # pas de donnée Banque mondiale : on garde l'ancienne
                 continue
             value, year = values[iso]
+            if year < MIN_YEAR:
+                too_old += 1
+                continue
             years[year] = years.get(year, 0) + 1
             old = country["data"].get(theme)
             if old and old["value"] and value:
@@ -213,6 +218,7 @@ def main() -> int:
             "updated": updated,
             "added": added,
             "kept_old_value": missing,
+            "ignored_too_old": too_old,
             "suspicious": suspicious,
         }
 
@@ -239,7 +245,7 @@ def main() -> int:
 
     for theme, r in report.items():
         print(f"{theme:24s} maj={r['updated']:3d} ajout={r['added']:2d} "
-              f"gardé={r['kept_old_value']:2d} années={r['years']}")
+              f"gardé={r['kept_old_value']:2d} trop_ancien={r['ignored_too_old']:2d} années={r['years']}")
         for s in r["suspicious"][:5]:
             print(f"    ⚠ {s}")
 
