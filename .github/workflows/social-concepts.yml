@@ -38,8 +38,15 @@ on:
         description: Vidéos courtes (~20 s) si pas de réglages
         type: boolean
         default: true
+      mix:
+        description: Mélange imposé (ex. partage:1 ; vide = réglages)
+        default: ''
       queue:
         description: Ajouter à la file de publication (shorts-next)
+        type: boolean
+        default: false
+      front:
+        description: Mettre le lot en tête de la file (publié avant les vidéos déjà en attente)
         type: boolean
         default: false
 
@@ -57,7 +64,10 @@ env:
   SEED: ${{ github.event.inputs.seed || github.run_number }}
   TUNING: ${{ github.event.inputs.tuning || 'true' }}
   SHORT: ${{ github.event.inputs.short || 'true' }}
+  MIX: ${{ github.event.inputs.mix || '' }}
   QUEUE: ${{ github.event.inputs.queue || (github.event_name == 'schedule' && 'true') || 'false' }}
+  # next-lot.mjs lit FRONT=1 : le lot passe avant le reste de l'ordre de /hq.
+  FRONT: ${{ github.event.inputs.front == 'true' && '1' || '0' }}
 
 jobs:
   setup:
@@ -121,6 +131,7 @@ jobs:
           npm ci --no-audit --no-fund
           args="--batch ${{ matrix.count }} --seed $SEED --lang ${{ matrix.lang }}"
           if [ "$TUNING" = true ]; then args="$args --tuning /tmp/tuning.json"; elif [ "$SHORT" = true ]; then args="$args --short"; fi
+          if [ -n "$MIX" ]; then args="$args --mix $MIX"; fi
           node concepts.mjs $args
           node voice.mjs
           mkdir -p public/voice
@@ -176,6 +187,10 @@ jobs:
     if: always() && needs.setup.outputs.plans != '[]'
     runs-on: ubuntu-latest
     strategy:
+      # Une langue après l'autre : chaque envoi relit puis réécrit order.json
+      # (release shorts-state). En parallèle, le dernier écrit effaçait l'ordre
+      # de l'autre langue (lot du 04/11 : les vidéos FR n'étaient pas rangées).
+      max-parallel: 1
       matrix:
         include: ${{ fromJson(needs.setup.outputs.plans) }}
     steps:

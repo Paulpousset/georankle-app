@@ -46,13 +46,10 @@ import { strings } from './lib/strings.mjs';
 import { COUNTRY_COUNT, MODE_COUNT } from './lib/constants.mjs';
 import { assertPartition } from './lib/continents.mjs';
 import { localeData } from './lib/siteLocales.mjs';
-import { INVITE_COPY, STORE_IOS, inviteFile, renderInvite } from './lib/invite.mjs';
+import { INVITE_COPY, inviteFile, renderInvite } from './lib/invite.mjs';
 
 import { retiredRedirects } from './lib/generated.mjs';
 import { modeById } from './lib/modes.mjs';
-
-/** L'identifiant App Store, lu depuis l'URL du store pour n'avoir qu'une source. */
-const APP_STORE_ID = STORE_IOS.match(/id(\d+)$/)[1];
 
 function fail(message) {
   console.error(`\n[site] ${message}\n`);
@@ -207,11 +204,10 @@ ${alternates('play')
     <meta name="twitter:title" content="${attr(copy.ogTitle)}" />
     <meta name="twitter:description" content="${attr(copy.ogDescription)}" />
     <meta name="twitter:image" content="${ORIGIN}/og-invite.png" />
-    <!-- Bannière native Safari iOS « Ouvrir dans l'App Store » : gratuite,
-         discrète, et c'est le premier pont web → app d'un joueur qui arrive
-         par un lien partagé. app-argument rend l'URL courante à l'app quand
-         elle est déjà installée, donc le code de parrainage la suit. -->
-    <meta name="apple-itunes-app" content="app-id=${APP_STORE_ID}, app-argument=${canonical}" />
+    <!-- Pas de bannière native Safari (apple-itunes-app) : on ne peut pas la
+         fermer et ses ~100px poussaient le bouton « Valider » de certains modes
+         sous la ligne de flottaison. Le lien « App » de la barre (playBar) la
+         remplace, et il se replie avec la barre. -->
     <meta property="og:locale" content="${meta.ogLocale}" />
 ${LOCALES.filter((l) => l !== locale)
   .map((l) => `    <meta property="og:locale:alternate" content="${LOCALE_META[l].ogLocale}" />`)

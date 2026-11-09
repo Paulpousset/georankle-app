@@ -16,6 +16,7 @@
 import { mkdirSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { buildPacks } from './packs.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT = join(HERE, 'public', 'sfx');
@@ -367,3 +368,5 @@ writeWav('gameover.wav', gameover());
 writeWav('powerup.wav', powerup());
 writeWav('zap.wav', zap());
 writeWav('tick.wav', tick());
+// Ambiances complètes « lofi », « hype », « tele » (packs.mjs, prop `sound` des concepts).
+buildPacks(writeWav);

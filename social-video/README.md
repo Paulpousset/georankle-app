@@ -177,10 +177,13 @@ Dans l'ordre. Après ça, une fournée de shorts sort chaque lundi à 5 h UTC da
 | `concept-rankle` | `RankleConcept` | Six pays posés dans six thèmes, rang mondial qui défile, le dernier tombe mal |
 | `court-NN-plusmoins-…` (lot) | `PlusOuMoinsConcept` | Cinq manches population ou superficie, sceau 3-2-1, la série casse à la dernière |
 | `court-NN-echelle-…` (lot) | `EchelleConcept` | Mode « À l'échelle » : trois paires, curseur qui règle le pays de droite, pointillés verts de la vraie taille, la dernière ratée |
+| `court-NN-partage-…` (lot) | `PartageConcept` | Mode « Partage équitable » : un pays puis un continent coupés en deux au doigt, villes colorées par part en direct, populations révélées après « Valider » ; la dernière carte en quatre, coupée au milieu, est ratée. Cartes, villes et barème viennent de `src/lib/split.ts`, compilé par esbuild |
 
 Un lot : `node concepts.mjs --batch 12 --short --mix echelle:1,plus-ou-moins:1,frontieres:1,devine:1`
 (`--tuning` pour les accroches et leurs poids, `--hook-shift 1` pour que la
-même partie sorte avec une autre accroche dans l'autre langue).
+même partie sorte avec une autre accroche dans l'autre langue). Dans GitHub
+Actions, le champ « Mélange imposé » du workflow « Vidéos concepts (lot) » fait
+la même chose (ex. `partage:1` pour un lot de Partage équitable avec la voix).
 
 **Intros testées sans surapprentissage.** Chaque accroche a un type d'intro
 (`style` dans `insights/tuning.default.json` : défi, question, course contre

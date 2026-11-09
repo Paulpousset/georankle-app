@@ -384,6 +384,15 @@ export function partShares(map: SplitMap, lines: SplitLine[]): { key: number; sh
 }
 
 /**
+ * Parts holding people beyond the `parts` asked: two lines crossing inside
+ * the area when thirds are asked make four parts, which the player must fix
+ * before submitting. 0 when the split has at most `parts` parts.
+ */
+export function extraParts(map: SplitMap, lines: SplitLine[], parts: SplitParts): number {
+  return Math.max(0, partShares(map, lines).length - parts);
+}
+
+/**
  * How far shares are from `parts` equal ones: the population that would have
  * to move for every part to hold exactly 1/parts (total variation distance,
  * 0 = perfect). Missing parts count as empty; extra parts (two crossing lines

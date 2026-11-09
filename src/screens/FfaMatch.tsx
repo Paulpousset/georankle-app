@@ -49,6 +49,7 @@ import HigherLowerGame from './HigherLowerGame';
 import SilhouetteGame from './SilhouetteGame';
 import PinpointGame from './PinpointGame';
 import ScaleGame from './ScaleGame';
+import SplitGame from './SplitGame';
 import LanguagesGame from './LanguagesGame';
 import BordersGame from './BordersGame';
 import GuessCountryGame from './GuessCountryGame';
@@ -483,6 +484,8 @@ export default function FfaMatch({ match, user, onExit }: FfaMatchProps) {
         return <PinpointGame setGameMode={quit} user={null} {...common} />;
       case 'scale':
         return <ScaleGame setGameMode={quit} user={null} {...common} />;
+      case 'split':
+        return <SplitGame setGameMode={quit} user={null} {...common} />;
       case 'languages':
         return <LanguagesGame setGameMode={quit} user={null} {...common} />;
       case 'borders':
