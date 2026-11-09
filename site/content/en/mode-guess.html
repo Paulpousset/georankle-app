@@ -3,7 +3,7 @@ description: A geographic deduction game: find the mystery country in as few gue
 ogTitle: Guess the Country — the geography clue game
 breadcrumb: Guess the country
 published: 2026-08-23
-modified: 2026-08-23
+modified: 2026-11-09
 ---
     <article>
       <header>
@@ -39,9 +39,9 @@ modified: 2026-08-23
 
       <p>Nine clues in all, recomputed on every attempt. None of them gives the answer alone; it is crossing them that does.</p>
 
-      <p>The right strategy is not to guess wildly but to <strong>grid-search</strong>: start with one country per continent to find the right one, then use direction and distance to close in, and finally population to separate the last candidates. It is exactly the reasoning you apply without thinking when reading a map — the mode makes it explicit.</p>
+      <p>The right strategy is not to guess wildly but to <strong>grid-search</strong>: start with a country that sits at the extreme of no clue (a simulation over the 195 countries gives Georgia, Azerbaijan or Gabon, see <a href="{{link:guide-guess-clues}}">how to read the clues</a>) to identify the continent, then use direction and distance to close in, and finally population to separate the last candidates. It is exactly the reasoning you apply without thinking when reading a map — the mode makes it explicit.</p>
 
-      <p><strong>The fewer guesses you use, the more you score.</strong> A player who knows their subregions finds most countries in four or five.</p>
+      <p><strong>The fewer guesses you use, the more you score.</strong></p>
 
       <h2>The 24 subregions of the world</h2>
 
@@ -54,11 +54,11 @@ modified: 2026-08-23
       <div class="faq-list">
         <details>
           <summary>What is the best strategy?</summary>
-          <div class="faq-body">Start with one country per continent to identify the right one, then use direction and distance to close in, and population to separate the last candidates.</div>
+          <div class="faq-body">Start with a “middle” country that sits at the extreme of no clue (Georgia, for example) to identify the continent, then use direction and distance to close in, and population to separate the last candidates.</div>
         </details>
         <details>
           <summary>How many guesses does it usually take?</summary>
-          <div class="faq-body">A player who knows the subregions usually gets there in four or five. The score depends directly on the number of attempts.</div>
+          <div class="faq-body">It depends on the hidden country and on your opening: simulating the clues, the best first guess (Georgia) leaves on average only 1.4 compatible countries, the worst (DR Congo) about ten. The score depends directly on the number of attempts.</div>
         </details>
         <details>
           <summary>Are the clues always the same?</summary>
@@ -78,5 +78,6 @@ modified: 2026-08-23
         <li><a href="{{link:mode-borders}}">The borders game</a></li>
         <li><a href="{{link:mode-higherlower}}">Higher or Lower: comparing two countries</a></li>
         <li><a href="{{link:mode-globe}}">The 3D globe</a></li>
+        <li><a href="{{link:guide-guess-clues}}">Reading the Guess the Country clues</a></li>
       </ul>
     </article>

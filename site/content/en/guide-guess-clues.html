@@ -1,0 +1,109 @@
+title: Guess the Country: reading the clues like a geographer (colours, bands and best first guess)
+description: What the colours in Guess the Country really mean, which clues eliminate the most countries, why life expectancy filters almost nothing, and which country to open with: all computed on the game’s 195 countries.
+ogTitle: Guess the Country: reading the clues and choosing your first guess
+breadcrumb: Reading the Guess the Country clues
+linkTitle: Reading the Guess the Country clues
+published: 2026-11-09
+modified: 2026-11-09
+---
+    <article>
+      <header>
+        <h1>Guess the Country: reading the clues like a geographer</h1>
+        <p class="standfirst">Nine clues per guess, colours, arrows. How many countries does each one really eliminate? The answers are in the game’s data, and some go against intuition.</p>
+        <p class="meta">Guide · game data and rules, November 2026</p>
+      </header>
+
+      <p>The <a href="{{link:mode-guess}}">Guess the Country mode page</a> explains the rules and gives the split of the world into subregions. This one goes further in how to read the clues: it uses the game’s exact rules, taken from its code, to compute what each colour lets you conclude. The idea is simple. A player who knows that an orange cell on population means “the target is between 60% and 167% of this figure” reasons in ranges, not at random.</p>
+
+      <h2>The nine clues and what each colour says</h2>
+
+      <p>Every guess shows nine cells. In all of them, <strong>the value shown is the one for the country you just entered</strong>, not the target’s; the game adds a pointer about the target.</p>
+
+      <ul>
+        <li><strong>Continent</strong> and <strong>coastline</strong>: only “right” (green) or “other” (red). These are the sharpest clues: a wrong answer eliminates a large part of the game at once.</li>
+        <li><strong>Direction</strong> and <strong>distance</strong>: the arrow points, among eight directions, towards the target. Distance is green under 500 km, orange under 2,000 km, red beyond. The arrow is orange when the target is within 2,000 km, red otherwise.</li>
+        <li><strong>Population, area, GDP per capita, life expectancy, number of borders</strong>: a “▲ more” or “▼ less” arrow says whether the target is above or below. The cell is <strong>green</strong> if both values are equal, <strong>orange</strong> if the ratio between your guess and the target stays between 0.6 and 1.67, <strong>red</strong> otherwise.</li>
+      </ul>
+
+      <p>The orange band is the key: it means the target is worth between 60% and 167% of your guess, roughly the same order of magnitude, within a factor of 1.67 either way. Red means “much more” or “much less”, and the arrow says which.</p>
+
+      <h2>What an orange cell really eliminates</h2>
+
+      <p>The tables below propose a pivot country at various ranks and count how many of the other countries stay inside the orange band. Everything is computed on the game’s data. Start with <strong>population</strong>.</p>
+
+      {{table:guess-pivots:population}}
+
+      <p>Reading: if you guess India, only one country can stay orange, China; everything else is red, and that tells you little, since the target is “less” in 194 cases out of 195. Conversely, if you guess a median-population country such as Belarus (9.1 million people, ranked 98th), 43 countries, 22% of the list, are orange. The extremes are bad pivots: the Vatican leaves no orange country, so the colour teaches nothing beyond the direction of the arrow. Same logic for <strong>area</strong>.</p>
+
+      {{table:guess-pivots:area}}
+
+      <p>The pivots are Eritrea (median rank, 33 countries orange) or Sweden (35). With these mid-table values, a red or an orange really splits the list into two camps of reasonable size. For <strong>GDP per capita</strong>, the orange band is wider still in the middle of the ranking.</p>
+
+      {{table:guess-pivots:gdp}}
+
+      <p>Azerbaijan, at the median rank, keeps 49 countries orange, a quarter of the list. It is the widest of the three bands, because GDP per capita is spread over three orders of magnitude, from 216 dollars in Burundi to 288,002 in Monaco, while most countries are bunched in the middle.</p>
+
+      <h2>The life expectancy trap</h2>
+
+      <p>Now the most surprising case. Apply the same rule to <strong>life expectancy</strong>.</p>
+
+      {{table:guess-pivots:life}}
+
+      <p>Whatever the pivot, <strong>100% of the other countries stay orange</strong>. The reason is arithmetic: the country where people live the shortest (Nigeria, 54.6 years) is at 63% of the country where they live the longest (Monaco, 86.5 years), and 63% is above the 60% threshold. In other words, among the 194 countries whose life expectancy is in the data, <strong>the colour never separates anything</strong>: only the ▲ or ▼ arrow is left, which cuts the list in two relative to your guess. The clue remains useful to separate two neighbours that have little in common, but do not ask it for more than that one bit of information.</p>
+
+      <h2>Which first guess?</h2>
+
+      <p>That leaves the question of where to start. For each of the 195 countries entered as a first guess, we simulated the nine clues against each of the 195 possible targets, and grouped the targets that would produce exactly the same clues. The average number of countries left, counting the right answer, measures the quality of the opening. One caveat: only the colour of the distance is kept, not the kilometres, so these numbers are ceilings.</p>
+
+      {{table:guess-openers:best}}
+
+      <p>The best first guess is <strong>Georgia</strong>: on average, only 1.4 countries compatible with the clues remain. The good openings are mostly in the Caucasus, the Middle East and the Balkans, with Belarus and Gabon. What they share is that none is at the extreme of any clue, like the pivot countries in the earlier tables: their colours spread out in varied ways depending on the target, instead of almost always giving the same answer. At the other end:</p>
+
+      {{table:guess-openers:worst}}
+
+      <p>The worst openings are the very small Caribbean states, along with DR Congo, with about ten candidates left on average. Going from extreme to extreme too often gives the same answer, red everywhere.</p>
+
+      <h2>A four-step method</h2>
+
+      <ol>
+        <li><strong>Open in the middle</strong>: a country at the extreme of no clue, for example Georgia or Azerbaijan.</li>
+        <li><strong>Pin down continent and coastline</strong>: these are the two all-or-nothing clues.</li>
+        <li><strong>Follow the arrow</strong> and the distance: under 500 km, you are in the right neighbourhood.</li>
+        <li><strong>Tighten with population, then area</strong>, each time guessing a median country within the range that remains.</li>
+      </ol>
+
+      <h2>Frequently asked questions</h2>
+
+      <div class="faq-list">
+        <details>
+          <summary>What does an orange cell mean?</summary>
+          <div class="faq-body">On population, area, GDP per capita, life expectancy and borders: that the ratio between your guess and the target is between 0.6 and 1.67. On distance: less than 2,000 km.</div>
+        </details>
+        <details>
+          <summary>Which clue eliminates the most countries?</summary>
+          <div class="faq-body">Continent and coastline, which are all-or-nothing. Among the numeric clues, population and area, provided you start from a country in the middle of the ranking.</div>
+        </details>
+        <details>
+          <summary>Why is life expectancy always orange?</summary>
+          <div class="faq-body">Because the gap between the lowest (54.6 years) and the highest (86.5 years) is smaller than the 0.6 to 1.67 band. Only the arrow is informative.</div>
+        </details>
+        <details>
+          <summary>What is the best first country to guess?</summary>
+          <div class="faq-body">According to the simulation over the 195 countries: Georgia, then Gabon and Azerbaijan. Avoid the small Caribbean islands.</div>
+        </details>
+      </div>
+
+      <div class="play-cta">
+        <h3>Try the Georgia opening</h3>
+        <p>The Guess the Country mode plays in the browser, no account needed.</p>
+        <a class="btn" href="{{play:mode-guess}}">{{t:playNow}}</a>
+      </div>
+
+      <h2>{{t:readNext}}</h2>
+      <ul>
+        <li><a href="{{link:mode-guess}}">The Guess the Country mode</a></li>
+        <li><a href="{{link:guide-hard-to-place}}">The hardest countries to locate</a></li>
+        <li><a href="{{link:guide-population-ranking}}">Countries by population</a></li>
+        <li><a href="{{link:guide-area-ranking}}">Countries by area</a></li>
+      </ul>
+    </article>

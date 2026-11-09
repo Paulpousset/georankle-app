@@ -198,6 +198,14 @@ const THEMATIC = [
     paths: { fr: '/guides/pays-a-plusieurs-capitales/', en: '/en/guides/countries-with-several-capitals/' },
   },
   {
+    id: 'guide-border-network',
+    paths: { fr: '/guides/reseau-des-frontieres/', en: '/en/guides/land-border-network/' },
+  },
+  {
+    id: 'guide-guess-clues',
+    paths: { fr: '/guides/lire-les-indices-devine-le-pays/', en: '/en/guides/guess-the-country-clues/' },
+  },
+  {
     id: 'guide-central-asia',
     paths: { fr: '/guides/asie-centrale-sur-le-globe/', en: '/en/guides/central-asia-on-the-globe/' },
   },
@@ -338,6 +346,16 @@ export const COUNTRY_PAGES = [
   { cca3: 'MLI', fr: 'mali', en: 'mali' },
   { cca3: 'BFA', fr: 'burkina-faso', en: 'burkina-faso' },
   { cca3: 'LKA', fr: 'sri-lanka', en: 'sri-lanka' },
+  { cca3: 'MWI', fr: 'malawi', en: 'malawi' },
+  { cca3: 'ZMB', fr: 'zambie', en: 'zambia' },
+  { cca3: 'KAZ', fr: 'kazakhstan', en: 'kazakhstan' },
+  { cca3: 'TCD', fr: 'tchad', en: 'chad' },
+  { cca3: 'CHL', fr: 'chili', en: 'chile' },
+  { cca3: 'ROU', fr: 'roumanie', en: 'romania' },
+  { cca3: 'SOM', fr: 'somalie', en: 'somalia' },
+  { cca3: 'SEN', fr: 'senegal', en: 'senegal' },
+  { cca3: 'GTM', fr: 'guatemala', en: 'guatemala' },
+  { cca3: 'ECU', fr: 'equateur', en: 'ecuador' },
 ];
 
 const COUNTRY_ROUTES = COUNTRY_PAGES.map((p) => ({
