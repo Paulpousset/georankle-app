@@ -91,35 +91,24 @@ export async function posthog({ days, from, to, countries, exclude, platform }) 
       top(await hogql(`select properties.$geoip_country_code c, uniq(person_id) n from events where ${win} group by c order by n desc limit 15`)),
     appVersions: async () =>
       top(await hogql(`select properties.$app_version v, uniq(person_id) n from events where timestamp > now() - interval 7 day and properties.$lib = 'posthog-react-native'${F} group by v order by n desc limit 8`)),
-    // Joueurs restés sur une ancienne version, par jour et par plateforme :
-    // la version de référence est la plus récente vue sur la période ; un
-    // joueur compte sous la dernière version qu'il a utilisée ce jour-là.
+    // Joueurs restés sur une ancienne version, par jour et par plateforme.
+    // `$app_version` seul ne suffit pas : il vaut 5.7.0 pour tous les binaires
+    // et toutes les mises à jour OTA. On compare donc (version, build natif,
+    // date du bundle OTA `ota_date`). La référence d'un jour est la plus
+    // récente vue jusqu'à ce jour inclus ; un joueur compte sous le dernier
+    // bundle qu'il a utilisé ce jour-là. Pas de `ota_date` = bundle d'avant le
+    // suivi (ou binaire sans OTA) : toujours plus ancien qu'un bundle qui l'a.
     outdated: async () => {
       const rows = await hogql(`
-        select d, p, v, count()
-        from (select ${W.bucket} d, ${PLATFORM} p, person_id, argMax(properties.$app_version, timestamp) v
+        select d, p, v, b, o, count()
+        from (select ${W.bucket} d, ${PLATFORM} p, person_id,
+                     argMax(properties.$app_version, timestamp) v,
+                     argMax(toString(properties.$app_build), timestamp) b,
+                     argMax(toString(properties.ota_date), timestamp) o
               from events where ${win} and properties.$lib = 'posthog-react-native' and properties.$app_version != ''
               group by d, p, person_id)
-        group by d, p, v`);
-      const num = (v) => String(v).split('.').map(Number);
-      const cmp = (a, b) => {
-        const x = num(a), y = num(b);
-        for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0);
-        return 0;
-      };
-      const latest = {};
-      for (const [, p, v] of rows) if (!latest[p] || cmp(v, latest[p]) > 0) latest[p] = v;
-      const empty = (x) => ({ x, iOS: 0, Android: 0, total: 0, versions: {} });
-      const byDay = {};
-      for (const [d, p, v, n] of rows) {
-        const r = (byDay[d] ??= empty(d));
-        r.total += n;
-        if (cmp(v, latest[p]) < 0) {
-          r[p] += n;
-          r.versions[`${p} ${v}`] = (r.versions[`${p} ${v}`] ?? 0) + n;
-        }
-      }
-      return { latest, days: W.buckets.map((x) => byDay[x] ?? empty(x)) };
+        group by d, p, v, b, o`);
+      return outdatedFrom(rows, W.buckets);
     },
     webVitals: async () => {
       const [[lcp, inp, cls, n]] = await hogql(`
@@ -135,4 +124,54 @@ export async function posthog({ days, from, to, countries, exclude, platform }) 
     languages: async () =>
       top(await hogql(`select coalesce(properties.$locale, properties.$browser_language) l, uniq(person_id) n from events where ${win} group by l order by n desc limit 10`)),
   });
+}
+
+const clean = (x) => (x == null || x === 'null' ? '' : String(x));
+const num = (v) => clean(v).split('.').map((n) => Number(n) || 0);
+
+/** Ordre (version, build, date OTA) ; négatif si a est plus ancien que b. */
+export function cmpBuild(a, b) {
+  const x = num(a.v), y = num(b.v);
+  for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0);
+  const bx = Number(clean(a.b)) || 0, by = Number(clean(b.b)) || 0;
+  if (bx !== by) return bx - by;
+  const ox = clean(a.o), oy = clean(b.o);
+  return ox < oy ? -1 : ox > oy ? 1 : 0;
+}
+
+export function buildLabel({ v, b, o }) {
+  const ota = clean(o);
+  return `${clean(v)}${clean(b) ? ` (${clean(b)})` : ''}${ota ? ` · OTA ${ota.slice(8, 10)}/${ota.slice(5, 7)}` : ' · OTA ?'}`;
+}
+
+/** rows : [jour, plateforme, version, build, date OTA, joueurs]. */
+export function outdatedFrom(rows, buckets) {
+  const sorted = [...rows].sort((r, s) => (r[0] < s[0] ? -1 : r[0] > s[0] ? 1 : 0));
+  const latestByDay = {};
+  const running = {};
+  for (const [d, p, v, b, o] of sorted) {
+    const cur = { v, b, o };
+    if (!running[p] || cmpBuild(cur, running[p]) > 0) running[p] = cur;
+    latestByDay[d] = { ...(latestByDay[d] ?? {}), ...running };
+  }
+  // Reporte la référence sur les jours suivants (une plateforme absente un
+  // jour garde sa dernière référence connue).
+  const ref = {};
+  for (const d of new Set(sorted.map((r) => r[0]))) {
+    Object.assign(ref, latestByDay[d]);
+    latestByDay[d] = { ...ref };
+  }
+  const empty = (x) => ({ x, iOS: 0, Android: 0, total: 0, versions: {} });
+  const byDay = {};
+  for (const [d, p, v, b, o, n] of sorted) {
+    const r = (byDay[d] ??= empty(d));
+    r.total += n;
+    if (cmpBuild({ v, b, o }, latestByDay[d][p]) < 0) {
+      r[p] = (r[p] ?? 0) + n;
+      const k = `${p} ${buildLabel({ v, b, o })}`;
+      r.versions[k] = (r.versions[k] ?? 0) + n;
+    }
+  }
+  const latest = Object.fromEntries(Object.entries(ref).map(([p, x]) => [p, buildLabel(x)]));
+  return { latest, days: buckets.map((x) => byDay[x] ?? empty(x)) };
 }
