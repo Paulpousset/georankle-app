@@ -20,6 +20,7 @@ import * as Font from 'expo-font';
 import { fontMapFor, sameScript } from '../lib/appFonts';
 import { track } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
+import { IS_PORTAL } from '../lib/portal';
 
 /**
  * Best-effort persist of the language onto the profile so server-built push
@@ -83,6 +84,9 @@ function urlLanguage(): Language | null {
  * plus le défaut universel — il l'était quand l'app ne parlait que deux langues.
  */
 function deviceLanguage(): Language {
+  // Build portail : CrazyGames exige l'anglais comme langue par défaut. Le
+  // joueur peut toujours changer avec le bouton de langue (choix mémorisé).
+  if (IS_PORTAL) return 'en';
   const fromUrl = urlLanguage();
   if (fromUrl) return fromUrl;
   try {
