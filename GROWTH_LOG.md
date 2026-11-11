@@ -42,6 +42,24 @@ seuil.
 
 ## Entrées
 
+### 2026-11-06 — rapport hebdo (sans PostHog)
+
+- Pas de `POSTHOG_PERSONAL_API_KEY` dans la session : aucun indicateur produit mesuré. `playgeog.com` est bloqué par le réseau de la session (connexion refusée par le proxy) : sitemap et PageSpeed non mesurés, pas de nouvel essai.
+
+| Mesurable sans clé | Valeur (vs 30/10) |
+|---|---|
+| Commits sur 7 jours | 8 (11), dernier : 05/11 |
+| Pages ajoutées dans `site/content` | 0 (116 fichiers, inchangé) |
+| Cases cochées de la file éditoriale | 0 / 15 |
+| Taux partage/complétion, parrainages, rétention | non mesuré |
+
+Faits saillants :
+1. Semaine produit/vidéo : menu principal en onglets (Accueil, Jouer, Histoire, Duel, Moi), correctifs « Partage équitable », notes v5.7.0, vidéos concepts FR/EN.
+2. Site : lien « App » dans la barre à la place de la bannière Safari, croix visible sur mobile — effet sur `install_cta_pressed` à lire dès que la clé existe.
+3. Sixième semaine consécutive sans page SEO : 116 fichiers inchangés, file éditoriale intacte (0/15).
+
+Décision : la Routine « Contenu SEO » est à vérifier en priorité (déclenchement, droits, garde-fou de 600 mots ?) ; file éditoriale non réordonnée faute de données de trafic. Ajouter `POSTHOG_PERSONAL_API_KEY` et autoriser `playgeog.com` à l'environnement de cette Routine pour des rapports chiffrés.
+
 ### 2026-10-30 — rapport hebdo (sans PostHog)
 
 - Pas de `POSTHOG_PERSONAL_API_KEY` dans la session : aucun indicateur produit mesuré. `playgeog.com` est inaccessible depuis la session (aucune réponse) : sitemap et PageSpeed non mesurés, pas de nouvel essai.
