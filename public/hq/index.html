@@ -1080,13 +1080,13 @@ function quality() {
   </div>`;
 }
 
-// ─── Joueurs sur une ancienne version (PostHog, $app_version) ────────────────
+// ─── Joueurs sur une ancienne version (PostHog : version, build, bundle OTA) ──
 function outdatedChart(v) {
   const latest = Object.entries(v.latest).map(([p, x]) => `${p} ${esc(x)}`).join(' · ');
   return chart([
     { name: 'iOS', color: 'var(--s1)', points: v.days.map((r) => ({ x: r.x, y: r.iOS })) },
     { name: 'Android', color: 'var(--s2)', points: v.days.map((r) => ({ x: r.x, y: r.Android })) },
-  ], { type: 'bar', name: 'anciennes-versions' }) + `<p class="muted" style="font-size:12px;margin:6px 0 0">Dernière version vue : ${latest || '—'}. Un joueur compte une fois par ${unit()}, sous la dernière version qu’il a utilisée.</p>`;
+  ], { type: 'bar', name: 'anciennes-versions' }) + `<p class="muted" style="font-size:12px;margin:6px 0 0">Dernière version vue : ${latest || '—'}. Version = version (build natif) · date du bundle OTA ; « OTA ? » = bundle d’avant ce suivi ou binaire sans mise à jour à distance. Un joueur compte une fois par ${unit()}, sous la dernière version qu’il a utilisée.</p>`;
 }
 function outdatedTable(v) {
   const rows = [...v.days].reverse().filter((r) => r.total);

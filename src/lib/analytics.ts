@@ -17,6 +17,7 @@
 import { Platform } from 'react-native';
 import PostHog from 'posthog-react-native';
 import { clean, type AnalyticsEvent, type Props } from './analyticsEvents';
+import { otaAnalyticsProps } from './otaUpdate';
 
 export type { AnalyticsEvent } from './analyticsEvents';
 
@@ -47,7 +48,9 @@ export const posthog: PostHog | null = apiKey
 // Toujours savoir de quelle surface vient un event : sans ça, web / iOS /
 // Android se mélangent dans le même graphe et tout comptage par plateforme est
 // faux. `platform` est une super-propriété, attachée à chaque event.
-posthog?.register({ platform: Platform.OS, surface: 'app' });
+// Les `ota_*` disent quel bundle tourne (voir otaUpdate.ts) : sans eux, le HQ
+// ne voit pas qui est resté sur une ancienne mise à jour.
+posthog?.register({ platform: Platform.OS, surface: 'app', ...otaAnalyticsProps() });
 
 /** Record a product event. No-op when analytics is disabled. */
 export function track(event: AnalyticsEvent, props?: Props): void {

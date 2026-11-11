@@ -1,9 +1,13 @@
 import * as Updates from 'expo-updates';
 
-import { applyOtaUpdate, isOtaUpdateAvailable } from '../otaUpdate';
+import { applyOtaUpdate, isOtaUpdateAvailable, otaAnalyticsProps } from '../otaUpdate';
 
 jest.mock('expo-updates', () => ({
   isEnabled: true,
+  isEmbeddedLaunch: false,
+  updateId: 'abc-123',
+  channel: 'production',
+  createdAt: new Date('2026-11-10T10:00:00.000Z'),
   checkForUpdateAsync: jest.fn(),
   fetchUpdateAsync: jest.fn(),
   reloadAsync: jest.fn(),
@@ -48,5 +52,15 @@ describe('otaUpdate', () => {
     U.fetchUpdateAsync.mockResolvedValue({ isNew: false } as never);
     expect(await applyOtaUpdate()).toBe(false);
     expect(U.reloadAsync).not.toHaveBeenCalled();
+  });
+
+  it('describes the running bundle for analytics', () => {
+    expect(otaAnalyticsProps()).toEqual({
+      ota_enabled: true,
+      ota_embedded: false,
+      ota_update_id: 'abc-123',
+      ota_date: '2026-11-10T10:00:00.000Z',
+      ota_channel: 'production',
+    });
   });
 });

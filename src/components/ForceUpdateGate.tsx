@@ -4,14 +4,20 @@
  * Rien ne s'affiche tant que la vérification n'a rien trouvé ; en cas d'échec
  * l'écran disparaît et on joue avec la version actuelle.
  *
+ * Vérifié au lancement, puis à chaque retour au premier plan après au moins
+ * FOREGROUND_RECHECK_MS d'absence : sur Android surtout, l'app est reprise
+ * depuis l'arrière-plan bien plus souvent que relancée, et un joueur pouvait
+ * garder un vieux bundle des jours durant. Jamais en pleine partie : seulement
+ * au retour d'une longue absence.
+ *
  * Monté une fois à la racine, après le reste, pour passer au-dessus de tout.
  */
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, AppState, Modal, Text, View } from 'react-native';
 import { Download } from 'lucide-react-native';
 
 import { tr } from '../i18n';
-import { applyOtaUpdate, isOtaUpdateAvailable } from '../lib/otaUpdate';
+import { applyOtaUpdate, FOREGROUND_RECHECK_MS, isOtaUpdateAvailable } from '../lib/otaUpdate';
 import { RECORDING_MODE } from '../lib/recordingMode';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -24,19 +30,40 @@ export function ForceUpdateGate() {
   const c = getColors(isDarkMode);
   const [updating, setUpdating] = useState(false);
 
+  const busy = useRef(false);
+
   useEffect(() => {
     // Pas dans le build de tournage : un rechargement casserait la vidéo.
     if (RECORDING_MODE) return;
     let alive = true;
-    (async () => {
-      if (!(await isOtaUpdateAvailable()) || !alive) return;
-      setUpdating(true);
-      // reloadAsync relance l'app : on ne revient ici qu'en cas d'échec.
-      await applyOtaUpdate();
-      if (alive) setUpdating(false);
-    })();
+    const check = async () => {
+      if (busy.current) return;
+      busy.current = true;
+      try {
+        if (!(await isOtaUpdateAvailable()) || !alive) return;
+        setUpdating(true);
+        // reloadAsync relance l'app : on ne revient ici qu'en cas d'échec.
+        await applyOtaUpdate();
+        if (alive) setUpdating(false);
+      } finally {
+        busy.current = false;
+      }
+    };
+    void check();
+
+    let backgroundSince: number | null = null;
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'background') {
+        backgroundSince = Date.now();
+      } else if (state === 'active' && backgroundSince !== null) {
+        const away = Date.now() - backgroundSince;
+        backgroundSince = null;
+        if (away >= FOREGROUND_RECHECK_MS) void check();
+      }
+    });
     return () => {
       alive = false;
+      sub.remove();
     };
   }, []);
 
