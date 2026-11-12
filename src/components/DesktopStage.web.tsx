@@ -29,6 +29,7 @@ import type { ReactNode } from 'react';
 import { Text, View } from 'react-native';
 
 import { useTheme } from '../contexts/ThemeContext';
+import { IS_PORTAL } from '../lib/portal';
 import { STAGE_MAX_WIDTH, StageWidthContext, stageChrome } from '../lib/stage';
 import { useViewport } from '../lib/uiScale';
 import { FONTS } from '../theme/typography';
@@ -73,7 +74,11 @@ export function DesktopStage({
   const { width, height } = useViewport();
   const { colors, isDarkMode } = useTheme();
 
-  if (width <= STAGE_MAX_WIDTH) return <>{children}</>;
+  // Sur un portail (CrazyGames, GameDistribution), le jeu tourne dans une
+  // iframe que le portail entoure déjà de ses propres pubs : les gouttières
+  // ne serviraient à rien (pas de rails AdSense permis) et rogneraient une
+  // fenêtre souvent petite. Le jeu prend toute l'iframe, comme sur tablette.
+  if (IS_PORTAL || width <= STAGE_MAX_WIDTH) return <>{children}</>;
 
   const chrome = stageChrome(height);
   const showBar = brand !== undefined && chrome.barHeight > 0;
