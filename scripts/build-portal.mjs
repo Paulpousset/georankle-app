@@ -32,7 +32,7 @@
  *     rien à faire dans le zip.
  */
 import { execFileSync } from 'node:child_process';
-import { readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 
 const ROOT = resolve(import.meta.dirname, '..');
@@ -116,12 +116,29 @@ for (const f of bundles) {
   if (/"\/_expo\//.test(js)) fail(`chemin "/_expo/" absolu restant dans ${f}`);
   writeFileSync(p, js);
 }
+// CrazyGames ignore tout dossier nommé `node_modules` à l'envoi : les polices
+// (Playfair, Space Mono, icônes) qu'Expo range sous assets/node_modules/
+// manquaient en ligne. On renomme le dossier et ses références.
+const NM_FROM = join(OUT, 'assets', 'node_modules');
+let nmRewrites = 0;
+if (existsSync(NM_FROM)) {
+  renameSync(NM_FROM, join(OUT, 'assets', 'nm'));
+  for (const f of readdirSync(jsDir).filter((n) => n.endsWith('.js'))) {
+    const p = join(jsDir, f);
+    const js = readFileSync(p, 'utf8').replace(/assets\/node_modules\//g, () => {
+      nmRewrites++;
+      return 'assets/nm/';
+    });
+    writeFileSync(p, js);
+  }
+  if (nmRewrites === 0) fail('assets/node_modules renommé mais aucune référence trouvée dans le bundle');
+}
 const leftover = readdirSync(jsDir)
   .map((f) => readFileSync(join(jsDir, f), 'utf8').match(/"\/assets\//g)?.length ?? 0)
   .reduce((a, b) => a + b, 0);
 if (assetRewrites < 50) fail(`seulement ${assetRewrites} URL d'assets réécrites — le format du bundle a changé ?`);
 if (leftover > 0) fail(`${leftover} URL "/assets/…" absolues restantes dans le bundle`);
-console.log(`› chemins relatifs : ${assetRewrites} assets, ${chunkRewrites} morceaux`);
+console.log(`› chemins relatifs : ${assetRewrites} assets, ${chunkRewrites} morceaux, ${nmRewrites} node_modules → nm`);
 
 // ── 3. index.html ───────────────────────────────────────────────────────────
 const indexPath = join(OUT, 'index.html');

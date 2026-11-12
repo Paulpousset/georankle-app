@@ -23,6 +23,7 @@
  */
 import posthogJs from 'posthog-js';
 import { clean, type AnalyticsEvent, type Props } from './analyticsEvents';
+import { IS_PORTAL, PORTAL } from './portal';
 
 export type { AnalyticsEvent } from './analyticsEvents';
 
@@ -40,7 +41,9 @@ function resolveHost(): string {
   if (typeof window === 'undefined') return DIRECT_HOST;
   const { hostname, origin } = window.location;
   const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.local');
-  return isLocal ? DIRECT_HOST : `${origin}${PROXY_PATH}`;
+  // Sur un portail (CrazyGames, GameDistribution), le jeu est servi par le CDN
+  // du portail : pas de réécriture /ph là-bas, on tape PostHog en direct.
+  return isLocal || IS_PORTAL ? DIRECT_HOST : `${origin}${PROXY_PATH}`;
 }
 
 /** `true` une fois `init()` passé — tous les helpers sont des no-op sinon. */
@@ -76,7 +79,7 @@ if (apiKey && typeof window !== 'undefined') {
   ready = true;
   // Super-propriétés : sans elles, web / iOS / Android se mélangent dans le
   // même graphe et tout comptage par plateforme est faux.
-  posthogJs.register({ platform: 'web', surface: 'app' });
+  posthogJs.register({ platform: 'web', surface: PORTAL ?? 'app' });
 }
 
 /**
