@@ -31,6 +31,13 @@ PLANT = {
     "emblem_goldengate": dict(scale=1.25, shadow=0.30),
     "emblem_sydney": dict(scale=1.30, shadow=0.28),
     "emblem_greatwall": dict(scale=1.10, shadow=0.26),
+    # Merveilles & Envols (2026-11)
+    "emblem_stonehenge": dict(scale=1.25, shadow=0.27),
+    "emblem_torii": dict(scale=1.10, shadow=0.22),
+    "emblem_chichen": dict(scale=1.20, shadow=0.27),
+    "emblem_burj": dict(scale=0.86, shadow=0.15),
+    "emblem_angkor": dict(scale=1.20, shadow=0.28),
+    "emblem_basil": dict(scale=1.00, shadow=0.22),
     "emblem_st_star": dict(scale=1.20, shadow=0.18),
     "emblem_st_summit": dict(scale=1.25, shadow=0.24),
     "emblem_st_worldtree": dict(scale=1.15, shadow=0.22),
@@ -755,3 +762,231 @@ def m_st_laurel(c):
 
 BUILDERS = {k.replace("m_", "emblem_"): v for k, v in list(globals().items())
             if k.startswith("m_") and callable(v)}
+
+
+# ══ Vague « Merveilles & Envols » (2026-11) ═════════════════════════════════
+
+# ── Stonehenge ───────────────────────────────────────────────────────────────
+def m_stonehenge(c):
+    stone, stone_d, grass = "#b3b1a6", "#8e8b80", "#7dc95e"
+    ms = toon_material("e_henge", stone)
+    msd = toon_material("e_henged", stone_d)
+    lawn = cyl(c, "lawn", 0.72, 0.06, (0, 0, 0.03), mat=toon_material("e_hgrass", grass),
+               segments=40)
+    lawn.scale = (1.0, 0.86, 1.0)
+    # cercle de sarsens (piliers + linteaux continus), ouvert vers la caméra
+    R, n = 0.52, 14
+    for i in range(n):
+        a = 2 * math.pi * i / n
+        if abs(math.sin(a) + 1.0) < 0.35:  # brèche côté caméra (-Y) : on voit dedans
+            continue
+        x, y = R * math.cos(a), R * math.sin(a) * 0.86
+        h = 0.40 + 0.03 * ((i * 7) % 3)
+        box(c, f"sarsen{i}", (0.10, 0.075, h), (x, y, 0.06 + h / 2),
+            (0, 0, math.degrees(a) + 90), ms, bevel=0.018)
+        if i % 2 == 0:
+            a2 = 2 * math.pi * (i + 1) / n
+            mx, my = R * math.cos((a + a2) / 2), R * math.sin((a + a2) / 2) * 0.86
+            box(c, f"lintel{i}", (0.30, 0.08, 0.065), (mx, my, 0.52),
+                (0, 0, math.degrees((a + a2) / 2) + 90), msd, bevel=0.015)
+    # fer à cheval des grands trilithes au centre
+    for k, (x, y, rz, h) in enumerate(((-0.24, 0.06, 30, 0.58), (0.0, 0.18, 0, 0.66),
+                                       (0.24, 0.06, -30, 0.58))):
+        for sx in (-1, 1):
+            ox = sx * 0.075 * math.cos(math.radians(rz))
+            oy = sx * 0.075 * math.sin(math.radians(rz))
+            box(c, f"tri{k}{sx}", (0.10, 0.09, h), (x + ox, y + oy, 0.06 + h / 2),
+                (0, 0, rz), ms, bevel=0.02)
+        box(c, f"trilintel{k}", (0.27, 0.10, 0.07), (x, y, 0.06 + h + 0.035), (0, 0, rz), msd,
+            bevel=0.015)
+    # pierres tombées (l'âge du site)
+    box(c, "fallen0", (0.30, 0.10, 0.07), (0.30, -0.28, 0.095), (0, 0, 64), msd, bevel=0.02)
+    box(c, "fallen1", (0.10, 0.08, 0.22), (-0.36, -0.22, 0.11), (24, 0, -20), ms, bevel=0.02)
+
+
+# ── Torii d'Itsukushima (debout dans l'eau) ──────────────────────────────────
+def m_torii(c):
+    red, black, water = "#e8452c", "#2b2a33", "#5ec4e8"
+    mr = toon_material("e_torii", red)
+    mk = toon_material("e_toriiblack", black)
+    sea = cyl(c, "sea", 0.66, 0.05, (0, 0, 0.025), mat=toon_material("e_toriisea", water),
+              segments=40)
+    sea.scale = (1.0, 0.78, 1.0)
+    for i, r in enumerate((0.30, 0.46)):  # rides
+        torus(c, f"ripple{i}", r, 0.010, (0, 0, 0.052), mat=flat_material("e_ripple", "#c8f0ff"),
+              seg_major=36, seg_minor=6, scale=(1.0, 0.78, 1.0))
+    for sx in (-1, 1):
+        cyl(c, f"pillar{sx}", 0.055, 1.12, (sx * 0.34, 0, 0.61), (0, sx * -3, 0), mr, segments=18)
+        cyl(c, f"foot{sx}", 0.075, 0.10, (sx * 0.35, 0, 0.09), mat=mk, segments=18)
+        # piliers d'appui (ryōbu)
+        for sy in (-1, 1):
+            cyl(c, f"prop{sx}{sy}", 0.032, 0.78, (sx * 0.34, sy * 0.17, 0.44), mat=mr, segments=12)
+            box(c, f"brace{sx}{sy}", (0.04, 0.17, 0.035), (sx * 0.34, sy * 0.085, 0.66), mat=mr)
+    box(c, "nuki", (0.92, 0.07, 0.075), (0, 0, 0.92), mat=mr, bevel=0.01)
+    box(c, "gakuzuka", (0.07, 0.05, 0.16), (0, 0, 1.03), mat=mr)
+    box(c, "shimaki", (1.02, 0.10, 0.07), (0, 0, 1.15), mat=mr, bevel=0.01)
+    # kasagi : linteau noir aux extrémités relevées (3 segments)
+    box(c, "kasagi", (0.74, 0.13, 0.085), (0, 0, 1.235), mat=mk, bevel=0.015)
+    for sx in (-1, 1):
+        box(c, f"kasagi{sx}", (0.30, 0.13, 0.085), (sx * 0.50, 0, 1.262), (0, sx * -11, 0), mk,
+            bevel=0.015)
+
+
+# ── Chichén Itzá (El Castillo) ───────────────────────────────────────────────
+def m_chichen(c):
+    stone, stone_d, temple, jungle = "#dccb9a", "#b8a374", "#cdb98a", "#4fae5a"
+    ms = toon_material("e_maya", stone)
+    msd = toon_material("e_mayad", stone_d)
+    mt = toon_material("e_mayatemple", temple)
+    ground = cyl(c, "ground", 0.74, 0.05, (0, 0, 0.025), mat=toon_material("e_mayagrass", "#8fd16a"),
+                 segments=40)
+    ground.scale = (1.0, 0.86, 1.0)
+    tiers, w0, w1, hz = 9, 1.0, 0.36, 0.075
+    z = 0.05
+    for i in range(tiers):
+        w = w0 + (w1 - w0) * i / (tiers - 1)
+        box(c, f"tier{i}", (w, w, hz), (0, 0, z + hz / 2), mat=ms if i % 2 == 0 else msd,
+            bevel=0.008)
+        z += hz
+    top = z
+    # escalier central (rampe + balustres à têtes de serpent)
+    run = (w0 - w1) / 2
+    ang = math.degrees(math.atan2(top - 0.05, run))
+    L = math.hypot(top - 0.05, run)
+    box(c, "stairs", (0.20, 0.05, L), (0, -(w1 / 2 + run / 2) + 0.01, 0.05 + (top - 0.05) / 2),
+        (-(90 - ang), 0, 0), mt)
+    for sx in (-1, 1):
+        box(c, f"balustrade{sx}", (0.035, 0.06, L), (sx * 0.12, -(w1 / 2 + run / 2) + 0.005,
+            0.05 + (top - 0.05) / 2), (-(90 - ang), 0, 0), msd)
+        sphere(c, f"serpent{sx}", 0.045, (sx * 0.12, -w0 / 2 - 0.02, 0.08),
+               toon_material("e_serpent", "#6aa84f"), seg=12, rings=8, scale=(1, 1.3, 0.8))
+    for k in range(9):  # marches lisibles à l'encre
+        f = (k + 0.5) / 9
+        box(c, f"step{k}", (0.19, 0.012, 0.012),
+            (0, -(w0 / 2) + f * run - 0.015, 0.05 + f * (top - 0.05) + 0.012),
+            mat=flat_material("e_mayaink", "#8a7650"))
+    # temple sommital
+    box(c, "temple", (0.30, 0.26, 0.20), (0, 0, top + 0.10), mat=mt, bevel=0.01)
+    box(c, "roof", (0.34, 0.30, 0.05), (0, 0, top + 0.225), mat=msd, bevel=0.01)
+    box(c, "door", (0.09, 0.02, 0.12), (0, -0.13, top + 0.07), mat=flat_material("e_mayadoor", "#3a2e1e"))
+    # touffes de jungle autour
+    for i, (x, y, r) in enumerate(((-0.62, -0.18, 0.11), (0.60, -0.26, 0.09), (0.55, 0.36, 0.12),
+                                   (-0.52, 0.40, 0.10))):
+        sphere(c, f"bush{i}", r, (x, y, 0.05 + r * 0.7), toon_material("e_mayabush", jungle),
+               seg=14, rings=10)
+
+
+# ── Burj Khalifa ─────────────────────────────────────────────────────────────
+def m_burj(c):
+    glass, steel, sand = "#5f97c8", "#c4d2e0", "#f2d189"
+    mg = toon_material("e_burj", glass, extra_hot="#ffffff")
+    ms = toon_material("e_burjsteel", steel)
+    plaza = cyl(c, "plaza", 0.40, 0.05, (0, 0, 0.025), mat=toon_material("e_burjsand", sand),
+                segments=32)
+    cyl(c, "pool", 0.30, 0.012, (0, -0.06, 0.055), mat=toon_material("e_burjpool", "#5ec4e8"),
+        segments=28).scale = (1.0, 0.55, 1.0)
+    # trois ailes en Y qui s'arrêtent en paliers successifs (spirale)
+    z0 = 0.05
+    wings = 3
+    for w in range(wings):
+        a = math.radians(90 + w * 120)
+        for k in range(6):
+            h = 0.30 + 0.17 * k + 0.05 * w
+            r = 0.10 - 0.011 * k
+            off = 0.12 - 0.014 * k
+            cyl(c, f"wing{w}_{k}", r, h, (off * math.cos(a), off * math.sin(a), z0 + h / 2),
+                mat=mg if (k + w) % 2 == 0 else ms, segments=14)
+    # fût central qui s'affine + flèche
+    core = lathe(c, "core", [(0.10, z0), (0.095, 0.6), (0.075, 1.1), (0.055, 1.5), (0.035, 1.75),
+                             (0.022, 1.86)], mat=mg, segments=18)
+    for i, z in enumerate((0.45, 0.80, 1.15, 1.45, 1.70)):
+        torus(c, f"band{i}", 0.098 - z * 0.04, 0.008, (0, 0, z), mat=ms, seg_major=20, seg_minor=6)
+    cyl(c, "spire", 0.020, 0.36, (0, 0, 2.03), mat=ms, segments=10, r2=0.004)
+    sphere(c, "beacon", 0.016, (0, 0, 2.21), mat=flat_material("e_burjlight", "#ff5a4a"),
+           seg=10, rings=8)
+
+
+# ── Angkor Vat ───────────────────────────────────────────────────────────────
+def m_angkor(c):
+    stone, stone_d, moat, grass = "#c4ad80", "#9f8a62", "#5ec4e8", "#7dc95e"
+    ms = toon_material("e_khmer", stone)
+    msd = toon_material("e_khmerd", stone_d)
+    w = cyl(c, "moat", 0.76, 0.04, (0, 0, 0.02), mat=toon_material("e_khmermoat", moat),
+            segments=4, smooth=False, rot=(0, 0, 45))
+    w.scale = (1.0, 0.82, 1.0)
+    isl = cyl(c, "island", 0.62, 0.05, (0, 0, 0.045), mat=toon_material("e_khmergrass", grass),
+              segments=4, smooth=False, rot=(0, 0, 45))
+    isl.scale = (1.0, 0.82, 1.0)
+    # trois terrasses
+    for i, (sx, sy, h) in enumerate(((0.80, 0.62, 0.09), (0.62, 0.48, 0.10), (0.44, 0.34, 0.11))):
+        z = 0.07 + sum((0.09, 0.10, 0.11)[:i])
+        box(c, f"terrace{i}", (sx, sy, h), (0, 0, z + h / 2), mat=ms if i % 2 == 0 else msd,
+            bevel=0.01)
+        for j in range(5):  # galeries : fenêtres sombres à l'avant
+            box(c, f"gal{i}{j}", (0.04, 0.012, h * 0.45),
+                (-sx * 0.36 + j * sx * 0.18, -sy / 2 - 0.004, z + h / 2),
+                mat=flat_material("e_khmerink", "#5a4a30"))
+    top = 0.07 + 0.30
+    # cinq tours en bouton de lotus (quinconce), la centrale plus haute
+    lotus = [(0.075, 0.0), (0.075, 0.08), (0.068, 0.12), (0.072, 0.16), (0.060, 0.24),
+             (0.064, 0.28), (0.048, 0.36), (0.050, 0.40), (0.032, 0.48), (0.016, 0.55), (0.0, 0.60)]
+    for k, (x, y, s) in enumerate(((0, 0.02, 1.0), (-0.17, -0.12, 0.72), (0.17, -0.12, 0.72),
+                                   (-0.17, 0.12, 0.72), (0.17, 0.12, 0.72))):
+        prof = [(r * s * 1.25, z * s) for r, z in lotus]
+        lathe(c, f"tower{k}", prof, (x, y, top), mat=ms if k == 0 else msd, segments=8,
+              smooth=False)
+    # chaussée d'accès vers la caméra
+    box(c, "causeway", (0.12, 0.40, 0.03), (0, -0.52, 0.06), mat=ms)
+    for sx in (-1, 1):
+        sphere(c, f"palm{sx}", 0.07, (sx * 0.50, -0.30, 0.16), toon_material("e_khmerpalm", "#4fae5a"),
+               seg=12, rings=8, scale=(1.2, 1.2, 0.7))
+        cyl(c, f"trunk{sx}", 0.012, 0.10, (sx * 0.50, -0.30, 0.10), mat=toon_material("e_khmertrunk", "#8a5a30"),
+            segments=8)
+
+
+# ── Cathédrale Saint-Basile ──────────────────────────────────────────────────
+def _onion(c, name, x, y, zb, r, h, mat, mat2=None, stripes=0):
+    """Bulbe : tambour + oignon (lathe) + croix dorée."""
+    drum = cyl(c, f"{name}_drum", r * 0.62, h * 0.55, (x, y, zb + h * 0.275),
+               mat=toon_material("e_basilbrick", "#d9643f"), segments=16)
+    z = zb + h * 0.55
+    prof = [(r * 0.62, 0), (r * 0.95, r * 0.35), (r, r * 0.65), (r * 0.80, r * 1.05),
+            (r * 0.40, r * 1.40), (r * 0.12, r * 1.70), (0.0, r * 1.95)]
+    if stripes and mat2 is not None:
+        n = stripes
+        for i in range(n):
+            lathe(c, f"{name}_onion{i}", prof, (x, y, z), (0, 0, i * 360 / n),
+                  mat=mat if i % 2 == 0 else mat2, segments=8, arc_deg=360 / n)
+    else:
+        lathe(c, f"{name}_onion", prof, (x, y, z), mat=mat, segments=20)
+    gold = toon_material("e_basilgold", "#ffd23e", extra_hot="#fff2b0")
+    cyl(c, f"{name}_cross", 0.008, r * 0.7, (x, y, z + r * 1.95 + r * 0.35), mat=gold, segments=6)
+    box(c, f"{name}_crossbar", (r * 0.38, 0.012, 0.012), (x, y, z + r * 1.95 + r * 0.48), mat=gold)
+
+
+def m_basil(c):
+    brick, white, green, blue, yellow, red2 = ("#c8462c", "#f4efe2", "#3fae5a", "#2f86ff",
+                                               "#ffc924", "#e8452c")
+    mb = toon_material("e_basil", brick)
+    mw = toon_material("e_basilwhite", white)
+    plaza = cyl(c, "plaza", 0.62, 0.05, (0, 0, 0.025), mat=toon_material("e_basilplaza", "#cfc7b8"),
+                segments=36)
+    plaza.scale = (1.0, 0.82, 1.0)
+    box(c, "base", (0.80, 0.56, 0.18), (0, 0, 0.14), mat=mb, bevel=0.012)
+    box(c, "baseband", (0.82, 0.58, 0.03), (0, 0, 0.235), mat=mw)
+    # tour-tente centrale
+    cyl(c, "tentbase", 0.15, 0.36, (0, 0.04, 0.42), mat=mb, segments=8, smooth=False)
+    cyl(c, "tentband", 0.16, 0.035, (0, 0.04, 0.61), mat=mw, segments=8, smooth=False)
+    cone(c, "tent", 0.15, 0.62, (0, 0.04, 0.93), mat=toon_material("e_basiltent", "#e4b23a"),
+         segments=8, smooth=False)
+    _onion(c, "main", 0, 0.04, 1.22, 0.075, 0.10, toon_material("e_basilgold2", "#ffd23e"))
+    # quatre grands bulbes rayés + quatre petits
+    big = [(-0.27, -0.14, green, yellow), (0.27, -0.14, blue, white), (-0.27, 0.20, red2, green),
+           (0.27, 0.20, yellow, blue)]
+    for i, (x, y, a, b) in enumerate(big):
+        cyl(c, f"chapel{i}", 0.11, 0.30, (x, y, 0.40), mat=mb, segments=12)
+        _onion(c, f"big{i}", x, y, 0.55, 0.12, 0.16,
+               toon_material(f"e_basilc{i}a", a), toon_material(f"e_basilc{i}b", b), stripes=8)
+    for i, (x, y, col) in enumerate(((0, -0.26, red2), (-0.36, 0.03, blue), (0.36, 0.03, green),
+                                     (0, 0.30, yellow))):
+        _onion(c, f"small{i}", x, y, 0.25, 0.075, 0.18, toon_material(f"e_basils{i}", col))

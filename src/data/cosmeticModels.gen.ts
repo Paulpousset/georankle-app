@@ -4,7 +4,11 @@
 // satellites, orbites) + textures équirect cartoon des styles de globe.
 
 export const COSMETIC_MODELS: Record<string, number> = {
+  emblem_angkor: require('../../assets/models3d/emblem_angkor.glb'),
+  emblem_basil: require('../../assets/models3d/emblem_basil.glb'),
   emblem_bigben: require('../../assets/models3d/emblem_bigben.glb'),
+  emblem_burj: require('../../assets/models3d/emblem_burj.glb'),
+  emblem_chichen: require('../../assets/models3d/emblem_chichen.glb'),
   emblem_christ: require('../../assets/models3d/emblem_christ.glb'),
   emblem_colosseum: require('../../assets/models3d/emblem_colosseum.glb'),
   emblem_compass: require('../../assets/models3d/emblem_compass.glb'),
@@ -20,8 +24,10 @@ export const COSMETIC_MODELS: Record<string, number> = {
   emblem_st_star: require('../../assets/models3d/emblem_st_star.glb'),
   emblem_st_summit: require('../../assets/models3d/emblem_st_summit.glb'),
   emblem_st_worldtree: require('../../assets/models3d/emblem_st_worldtree.glb'),
+  emblem_stonehenge: require('../../assets/models3d/emblem_stonehenge.glb'),
   emblem_sydney: require('../../assets/models3d/emblem_sydney.glb'),
   emblem_taj: require('../../assets/models3d/emblem_taj.glb'),
+  emblem_torii: require('../../assets/models3d/emblem_torii.glb'),
   emblem_windmill: require('../../assets/models3d/emblem_windmill.glb'),
   globe_ice_props: require('../../assets/models3d/globe_ice_props.glb'),
   globe_land: require('../../assets/models3d/globe_land.glb'),
@@ -46,17 +52,22 @@ export const COSMETIC_MODELS: Record<string, number> = {
   sat_balloon: require('../../assets/models3d/sat_balloon.glb'),
   sat_bird: require('../../assets/models3d/sat_bird.glb'),
   sat_comet: require('../../assets/models3d/sat_comet.glb'),
+  sat_helicopter: require('../../assets/models3d/sat_helicopter.glb'),
   sat_iss: require('../../assets/models3d/sat_iss.glb'),
+  sat_kite: require('../../assets/models3d/sat_kite.glb'),
   sat_moon: require('../../assets/models3d/sat_moon.glb'),
   sat_paperplane: require('../../assets/models3d/sat_paperplane.glb'),
+  sat_phoenix: require('../../assets/models3d/sat_phoenix.glb'),
   sat_plane: require('../../assets/models3d/sat_plane.glb'),
   sat_rocket: require('../../assets/models3d/sat_rocket.glb'),
   sat_satellite: require('../../assets/models3d/sat_satellite.glb'),
   sat_shootingstar: require('../../assets/models3d/sat_shootingstar.glb'),
+  sat_shuttle: require('../../assets/models3d/sat_shuttle.glb'),
   sat_st_comet: require('../../assets/models3d/sat_st_comet.glb'),
   sat_st_moon: require('../../assets/models3d/sat_st_moon.glb'),
   sat_st_ship: require('../../assets/models3d/sat_st_ship.glb'),
   sat_ufo: require('../../assets/models3d/sat_ufo.glb'),
+  sat_zeppelin: require('../../assets/models3d/sat_zeppelin.glb'),
 };
 
 export const GLOBE_TEXTURES: Record<string, number> = {

@@ -36,6 +36,13 @@ export const EMBLEM_COORD: Record<string, [number, number]> = {
   emblem_goldengate: [-122.48, 37.82], // États-Unis (San Francisco)
   emblem_sydney: [151.21, -33.86],    // Australie
   emblem_greatwall: [116.57, 40.43],  // Chine (Badaling)
+  // ── Merveilles & Envols (2026-11) ──
+  emblem_stonehenge: [-1.83, 51.18],  // Royaume-Uni (Wiltshire)
+  emblem_torii: [132.32, 34.3],       // Japon (Itsukushima)
+  emblem_chichen: [-88.57, 20.68],    // Mexique (Yucatán)
+  emblem_burj: [55.27, 25.2],         // Émirats arabes unis (Dubaï)
+  emblem_angkor: [103.87, 13.41],     // Cambodge
+  emblem_basil: [37.62, 55.75],       // Russie (Moscou)
 };
 
 // ── Emblems — stand on the globe. base point (bx, by), height h (px) ─────────
@@ -439,6 +446,91 @@ export function EmblemGlyph({ id, bx, by, h }: EmblemProps) {
       );
     }
 
+    // ── Merveilles & Envols (2026-11) — fallback SVG (le rendu Blender prime) ──
+    case 'emblem_stonehenge': {
+      const ST = '#b3b1a6', SD = '#8e8b80';
+      const posts: [number, number][] = [[-0.38, 0.30], [-0.24, 0.36], [-0.07, 0.42], [0.07, 0.42], [0.24, 0.36], [0.38, 0.30]];
+      return (
+        <G>
+          <Ellipse cx={bx} cy={by} rx={h * 0.5} ry={h * 0.06} fill="#7dc95e" />
+          {posts.map(([u, t], i) => (
+            <Rect key={i} x={X(u - 0.045)} y={Y(t)} width={0.09 * h} height={t * h} fill={ST} stroke={DARK} strokeWidth={sw} />
+          ))}
+          <Rect x={X(-0.43)} y={Y(0.35)} width={0.24 * h} height={0.05 * h} fill={SD} stroke={DARK} strokeWidth={sw} />
+          <Rect x={X(-0.12)} y={Y(0.47)} width={0.24 * h} height={0.05 * h} fill={SD} stroke={DARK} strokeWidth={sw} />
+          <Rect x={X(0.19)} y={Y(0.35)} width={0.24 * h} height={0.05 * h} fill={SD} stroke={DARK} strokeWidth={sw} />
+        </G>
+      );
+    }
+    case 'emblem_torii': {
+      const RD = '#e8452c', BK = '#2b2a33';
+      return (
+        <G>
+          <Ellipse cx={bx} cy={by} rx={h * 0.48} ry={h * 0.06} fill="#5ec4e8" />
+          <Rect x={X(-0.33)} y={Y(0.92)} width={0.07 * h} height={0.92 * h} fill={RD} stroke={DARK} strokeWidth={sw} />
+          <Rect x={X(0.26)} y={Y(0.92)} width={0.07 * h} height={0.92 * h} fill={RD} stroke={DARK} strokeWidth={sw} />
+          <Rect x={X(-0.42)} y={Y(0.72)} width={0.84 * h} height={0.06 * h} fill={RD} stroke={DARK} strokeWidth={sw} />
+          <Rect x={X(-0.03)} y={Y(0.86)} width={0.06 * h} height={0.14 * h} fill={RD} />
+          <Rect x={X(-0.46)} y={Y(0.92)} width={0.92 * h} height={0.06 * h} fill={RD} stroke={DARK} strokeWidth={sw} />
+          <Polygon points={poly([[-0.56, 1.06], [-0.46, 0.98], [0.46, 0.98], [0.56, 1.06], [0.4, 1.03], [-0.4, 1.03]])} fill={BK} />
+        </G>
+      );
+    }
+    case 'emblem_chichen': {
+      const tiers = [];
+      for (let i = 0; i < 7; i++) {
+        const w = 0.48 - i * 0.05;
+        tiers.push(<Rect key={i} x={X(-w)} y={Y(0.08 + i * 0.08)} width={2 * w * h} height={0.08 * h} fill={i % 2 ? MID : LIGHT} stroke={SHADOW} strokeWidth={sw} />);
+      }
+      return (
+        <G>
+          {tiers}
+          <Polygon points={poly([[-0.09, 0], [0.09, 0], [0.06, 0.56], [-0.06, 0.56]])} fill="#cdb98a" stroke={SHADOW} strokeWidth={sw} />
+          <Rect x={X(-0.13)} y={Y(0.76)} width={0.26 * h} height={0.2 * h} fill={MID} stroke={DARK} strokeWidth={sw} />
+          <Rect x={X(-0.04)} y={Y(0.68)} width={0.08 * h} height={0.12 * h} fill={DARK} />
+        </G>
+      );
+    }
+    case 'emblem_burj':
+      return (
+        <G>
+          <Polygon points={poly([[-0.16, 0], [0.16, 0], [0.14, 0.3], [0.11, 0.3], [0.1, 0.6], [0.075, 0.6], [0.06, 0.9], [0.04, 0.9], [0.02, 1.15], [0, 1.4], [-0.02, 1.15], [-0.04, 0.9], [-0.06, 0.9], [-0.075, 0.6], [-0.1, 0.6], [-0.11, 0.3], [-0.14, 0.3]])} fill="#7fb0d6" stroke="#2c4a66" strokeWidth={sw} strokeLinejoin="round" />
+          <Polygon points={poly([[0, 0], [0.16, 0], [0.14, 0.3], [0.11, 0.3], [0.1, 0.6], [0.075, 0.6], [0.06, 0.9], [0.04, 0.9], [0.02, 1.15], [0, 1.4]])} fill="#2c4a66" opacity={0.25} />
+          <Circle cx={X(0)} cy={Y(1.4)} r={h * 0.02} fill="#ff5a4a" />
+        </G>
+      );
+    case 'emblem_angkor': {
+      const tower = (u: number, base: number, k: number, key: string) => (
+        <Path key={key} d={`M${X(u - 0.07 * k)},${Y(base)} Q${X(u - 0.08 * k)},${Y(base + 0.3 * k)} ${X(u)},${Y(base + 0.55 * k)} Q${X(u + 0.08 * k)},${Y(base + 0.3 * k)} ${X(u + 0.07 * k)},${Y(base)} Z`} fill={k === 1 ? MID : SHADOW} stroke={DARK} strokeWidth={sw} />
+      );
+      return (
+        <G>
+          <Ellipse cx={bx} cy={by} rx={h * 0.52} ry={h * 0.06} fill="#5ec4e8" />
+          <Rect x={X(-0.44)} y={Y(0.12)} width={0.88 * h} height={0.12 * h} fill={MID} stroke={DARK} strokeWidth={sw} />
+          <Rect x={X(-0.32)} y={Y(0.24)} width={0.64 * h} height={0.12 * h} fill={LIGHT} stroke={DARK} strokeWidth={sw} />
+          {tower(-0.22, 0.24, 0.72, 'l')}{tower(0.22, 0.24, 0.72, 'r')}{tower(0, 0.24, 1, 'c')}
+        </G>
+      );
+    }
+    case 'emblem_basil': {
+      const onion = (u: number, base: number, r: number, fill: string, key: string) => (
+        <G key={key}>
+          <Rect x={X(u - r * 0.6)} y={Y(base)} width={r * 1.2 * h} height={(base - 0.12) * h} fill="#c8462c" stroke={DARK} strokeWidth={sw} />
+          <Path d={`M${X(u - r * 0.6)},${Y(base)} C${X(u - r * 1.3)},${Y(base + r * 0.9)} ${X(u - r * 0.2)},${Y(base + r * 1.3)} ${X(u)},${Y(base + r * 2)} C${X(u + r * 0.2)},${Y(base + r * 1.3)} ${X(u + r * 1.3)},${Y(base + r * 0.9)} ${X(u + r * 0.6)},${Y(base)} Z`} fill={fill} stroke={DARK} strokeWidth={sw} />
+        </G>
+      );
+      return (
+        <G>
+          <Rect x={X(-0.42)} y={Y(0.18)} width={0.84 * h} height={0.18 * h} fill="#c8462c" stroke={DARK} strokeWidth={sw} />
+          <Polygon points={poly([[-0.08, 0.5], [0.08, 0.5], [0, 1.15]])} fill="#e4b23a" stroke={DARK} strokeWidth={sw} />
+          <Rect x={X(-0.08)} y={Y(0.5)} width={0.16 * h} height={0.32 * h} fill="#c8462c" stroke={DARK} strokeWidth={sw} />
+          {onion(-0.27, 0.55, 0.12, '#3fae5a', 'a')}{onion(0.27, 0.55, 0.12, '#2f86ff', 'b')}
+          {onion(-0.12, 0.42, 0.08, '#ffc924', 'c')}{onion(0.12, 0.42, 0.08, '#e8452c', 'd')}
+          <Circle cx={X(0)} cy={Y(1.17)} r={h * 0.025} fill={GOLD} />
+        </G>
+      );
+    }
+
     case 'emblem_compass':
     default: {
       const ccy = by - h * 0.5; const G6 = '#e8c45a';
@@ -661,6 +753,61 @@ export function SatelliteGlyph({ id, cx, cy, s }: SatelliteProps) {
           <Circle cx={cx} cy={cy} r={s * 0.32} fill="#ffe9a8" fillOpacity={0.5} />
           <Circle cx={cx} cy={cy} r={s * 0.2} fill="#ffd700" />
           <Circle cx={cx} cy={cy} r={s * 0.1} fill="#fffbe8" />
+        </G>
+      );
+
+    // ── Merveilles & Envols (2026-11) — fallback SVG ──
+    case 'sat_kite':
+      return (
+        <G>
+          <Polygon points={poly([[0, -0.45], [0.28, -0.05], [0, 0], [0, -0.45]])} fill="#e8452c" />
+          <Polygon points={poly([[0.28, -0.05], [0, 0.45], [0, 0]])} fill="#ffc924" />
+          <Polygon points={poly([[0, 0.45], [-0.28, -0.05], [0, 0]])} fill="#2f86ff" />
+          <Polygon points={poly([[-0.28, -0.05], [0, -0.45], [0, 0]])} fill="#3fae5a" />
+          <Polygon points={poly([[0, -0.45], [0.28, -0.05], [0, 0.45], [-0.28, -0.05]])} fill="none" stroke="#5a3a1a" strokeWidth={s * 0.02} />
+          <Path d={`M${X(0)},${Y(0.45)} Q${X(0.12)},${Y(0.6)} ${X(-0.02)},${Y(0.75)}`} fill="none" stroke="#f4efe2" strokeWidth={s * 0.015} />
+        </G>
+      );
+    case 'sat_helicopter':
+      return (
+        <G>
+          <Line x1={X(-0.45)} y1={Y(-0.3)} x2={X(0.45)} y2={Y(-0.3)} stroke="#2b2f3a" strokeWidth={s * 0.03} />
+          <Line x1={X(0.02)} y1={Y(-0.3)} x2={X(0.02)} y2={Y(-0.16)} stroke="#2b2f3a" strokeWidth={s * 0.03} />
+          <Polygon points={poly([[-0.1, -0.06], [-0.55, -0.02], [-0.55, 0.04], [-0.1, 0.06]])} fill="#ffc924" stroke="#a87a10" strokeWidth={s * 0.012} />
+          <Ellipse cx={X(0.06)} cy={Y(0)} rx={s * 0.26} ry={s * 0.17} fill="#ffc924" stroke="#a87a10" strokeWidth={s * 0.015} />
+          <Ellipse cx={X(0.16)} cy={Y(-0.03)} rx={s * 0.12} ry={s * 0.1} fill="#9fdcf7" />
+          <Line x1={X(-0.18)} y1={Y(0.26)} x2={X(0.3)} y2={Y(0.26)} stroke="#2b2f3a" strokeWidth={s * 0.025} />
+        </G>
+      );
+    case 'sat_zeppelin':
+      return (
+        <G>
+          <Polygon points={poly([[-0.42, 0], [-0.58, -0.18], [-0.5, 0], [-0.58, 0.18]])} fill="#2f86ff" />
+          <Ellipse cx={cx} cy={cy} rx={s * 0.5} ry={s * 0.2} fill="#e3e8ef" stroke="#7c8596" strokeWidth={s * 0.015} />
+          <Line x1={X(-0.15)} y1={Y(-0.19)} x2={X(-0.15)} y2={Y(0.19)} stroke="#2f86ff" strokeWidth={s * 0.03} />
+          <Line x1={X(0.15)} y1={Y(-0.19)} x2={X(0.15)} y2={Y(0.19)} stroke="#2f86ff" strokeWidth={s * 0.03} />
+          <Rect x={X(-0.08)} y={Y(0.22)} width={0.2 * s} height={0.07 * s} rx={s * 0.02} fill="#c1763c" />
+        </G>
+      );
+    case 'sat_shuttle':
+      return (
+        <G>
+          <Polygon points={poly([[0.15, 0.02], [-0.3, 0.32], [-0.38, 0.32], [-0.38, 0.02]])} fill="#e3e8ef" stroke="#2b2f3a" strokeWidth={s * 0.015} />
+          <Path d={`M${X(-0.38)},${Y(-0.08)} L${X(0.3)},${Y(-0.08)} Q${X(0.5)},${Y(-0.02)} ${X(0.3)},${Y(0.08)} L${X(-0.38)},${Y(0.08)} Z`} fill="#f4f7fb" stroke="#7c8596" strokeWidth={s * 0.015} />
+          <Polygon points={poly([[-0.2, -0.08], [-0.38, -0.08], [-0.42, -0.34], [-0.32, -0.34]])} fill="#f4f7fb" stroke="#7c8596" strokeWidth={s * 0.012} />
+          <Path d={`M${X(0.38)},${Y(-0.05)} Q${X(0.47)},${Y(0)} ${X(0.38)},${Y(0.05)} Z`} fill="#2b2f3a" />
+          <Polygon points={poly([[-0.38, -0.05], [-0.56, 0], [-0.38, 0.05]])} fill="#ffb03a" />
+        </G>
+      );
+    case 'sat_phoenix':
+      return (
+        <G>
+          <Polygon points={poly([[-0.2, 0], [-0.62, -0.12], [-0.5, 0], [-0.62, 0.12]])} fill="#ffd23e" />
+          <Polygon points={poly([[0.05, -0.04], [-0.08, -0.5], [-0.14, -0.32], [-0.22, -0.44], [-0.22, -0.06]])} fill="#ffb02e" stroke="#c0541a" strokeWidth={s * 0.012} />
+          <Ellipse cx={X(0)} cy={Y(0.02)} rx={s * 0.24} ry={s * 0.12} fill="#ff6a2a" />
+          <Circle cx={X(0.24)} cy={Y(-0.06)} r={s * 0.09} fill="#ff6a2a" />
+          <Polygon points={poly([[0.32, -0.08], [0.44, -0.05], [0.32, -0.02]])} fill="#ffd23e" />
+          <Circle cx={X(0.27)} cy={Y(-0.08)} r={s * 0.015} fill="#3a1408" />
         </G>
       );
 

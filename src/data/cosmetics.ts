@@ -133,6 +133,13 @@ const CATALOG: Record<CosmeticCategory, CosmeticPart[]> = {
     { id: 'emblem_goldengate', category: 'emblem', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Golden Gate', nameEn: 'Golden Gate', tintable: false, addedAt: '2026-07-02' },
     { id: 'emblem_sydney', category: 'emblem', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Opéra de Sydney', nameEn: 'Sydney Opera House', tintable: false, addedAt: '2026-07-02' },
     { id: 'emblem_greatwall', category: 'emblem', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Grande Muraille', nameEn: 'Great Wall', tintable: false, addedAt: '2026-07-02' },
+    // ── Vague « Merveilles & Envols » (2026-11) ──
+    { id: 'emblem_stonehenge', category: 'emblem', price: RARITY_META.uncommon.price, isDefault: false, rarity: 'uncommon', nameFr: 'Stonehenge', nameEn: 'Stonehenge', tintable: false, addedAt: '2026-11-12' },
+    { id: 'emblem_torii', category: 'emblem', price: RARITY_META.uncommon.price, isDefault: false, rarity: 'uncommon', nameFr: "Torii d'Itsukushima", nameEn: 'Itsukushima torii', tintable: false, addedAt: '2026-11-12' },
+    { id: 'emblem_chichen', category: 'emblem', price: RARITY_META.rare.price, isDefault: false, rarity: 'rare', nameFr: 'Chichén Itzá', nameEn: 'Chichen Itza', tintable: false, addedAt: '2026-11-12' },
+    { id: 'emblem_burj', category: 'emblem', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Burj Khalifa', nameEn: 'Burj Khalifa', tintable: false, addedAt: '2026-11-12' },
+    { id: 'emblem_angkor', category: 'emblem', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Angkor Vat', nameEn: 'Angkor Wat', tintable: false, addedAt: '2026-11-12' },
+    { id: 'emblem_basil', category: 'emblem', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Cathédrale Saint-Basile', nameEn: "Saint Basil's Cathedral", tintable: false, addedAt: '2026-11-12' },
     // ── Mode Histoire : emblèmes héraldiques EXCLUSIFS ──
     { id: 'emblem_st_star', category: 'emblem', price: 0, isDefault: false, rarity: 'legendary', exclusive: true, nameFr: 'Étoile du Voyageur', nameEn: "Traveler's Star", tintable: false },
     { id: 'emblem_st_summit', category: 'emblem', price: 0, isDefault: false, rarity: 'legendary', exclusive: true, nameFr: 'Fanion de Sommet', nameEn: 'Summit Pennant', tintable: false },
@@ -155,6 +162,12 @@ const CATALOG: Record<CosmeticCategory, CosmeticPart[]> = {
     { id: 'sat_rocket', category: 'satellite', price: RARITY_META.rare.price, isDefault: false, rarity: 'rare', nameFr: 'Fusée', nameEn: 'Rocket', tintable: false, addedAt: '2026-07-02' },
     { id: 'sat_ufo', category: 'satellite', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'OVNI', nameEn: 'UFO', tintable: false, addedAt: '2026-07-02' },
     { id: 'sat_shootingstar', category: 'satellite', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Étoile filante', nameEn: 'Shooting star', tintable: false, addedAt: '2026-07-02' },
+    // ── Vague « Merveilles & Envols » (2026-11) ──
+    { id: 'sat_kite', category: 'satellite', price: RARITY_META.uncommon.price, isDefault: false, rarity: 'uncommon', nameFr: 'Cerf-volant', nameEn: 'Kite', tintable: false, addedAt: '2026-11-12' },
+    { id: 'sat_helicopter', category: 'satellite', price: RARITY_META.uncommon.price, isDefault: false, rarity: 'uncommon', nameFr: 'Hélicoptère', nameEn: 'Helicopter', tintable: false, addedAt: '2026-11-12' },
+    { id: 'sat_zeppelin', category: 'satellite', price: RARITY_META.rare.price, isDefault: false, rarity: 'rare', nameFr: 'Dirigeable', nameEn: 'Airship', tintable: false, addedAt: '2026-11-12' },
+    { id: 'sat_shuttle', category: 'satellite', price: RARITY_META.epic.price, isDefault: false, rarity: 'epic', nameFr: 'Navette spatiale', nameEn: 'Space shuttle', tintable: false, addedAt: '2026-11-12' },
+    { id: 'sat_phoenix', category: 'satellite', price: RARITY_META.legendary.price, isDefault: false, rarity: 'legendary', nameFr: 'Phénix', nameEn: 'Phoenix', tintable: false, addedAt: '2026-11-12' },
     // ── Mode Histoire : satellites EXCLUSIFS ──
     { id: 'sat_st_moon', category: 'satellite', price: 0, isDefault: false, rarity: 'legendary', exclusive: true, nameFr: 'Lune-Trophée', nameEn: 'Trophy Moon', tintable: false },
     { id: 'sat_st_ship', category: 'satellite', price: 0, isDefault: false, rarity: 'legendary', exclusive: true, nameFr: 'Vaisseau Pionnier', nameEn: 'Pioneer Ship', tintable: false },
@@ -339,6 +352,20 @@ export const BUNDLES: CosmeticBundle[] = [
     nameEn: 'Retro-future pack',
     itemIds: ['cosmos_synthwave', 'globe_toxic', 'globe_candy'],
     price: 1900, // 1500 + 800 + 400 = 2700
+  },
+  {
+    id: 'bundle_skies',
+    nameFr: 'Pack Envol',
+    nameEn: 'Take-off pack',
+    itemIds: ['sat_kite', 'sat_helicopter', 'sat_zeppelin'],
+    price: 500, // 150 + 150 + 400 = 700
+  },
+  {
+    id: 'bundle_temples',
+    nameFr: 'Pack Temples anciens',
+    nameEn: 'Ancient Temples pack',
+    itemIds: ['emblem_chichen', 'emblem_angkor', 'emblem_stonehenge'],
+    price: 950, // 400 + 800 + 150 = 1350
   },
 ];
 

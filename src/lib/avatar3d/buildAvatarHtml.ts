@@ -185,12 +185,18 @@ var SAT_BEHAV={
   sat_comet:{face:1,yaw:0},sat_shootingstar:{face:1,yaw:0},
   sat_st_comet:{face:1,yaw:0},
   sat_st_ship:{face:1,yaw:Math.PI,rock:[1.1,0.09],bob:[1.5,0.02]},
+  sat_kite:{spin:0,sway:[1.1,0.14],bob:[1.6,0.04]},
+  sat_helicopter:{face:1,yaw:0,bob:[2.0,0.02]},
+  sat_zeppelin:{face:1,yaw:0,bob:[1.0,0.02]},
+  sat_shuttle:{face:1,yaw:0,bob:[2.2,0.012]},
+  sat_phoenix:{face:1,yaw:0,bob:[3.0,0.03]},
 };
 var satBehav=null;
 var SAT_SCALE={sat_bird:0.56,sat_plane:0.46,sat_iss:0.48,sat_st_ship:0.47,
   sat_balloon:0.45,sat_satellite:0.44,sat_ufo:0.45,sat_paperplane:0.42,
   sat_comet:0.50,sat_rocket:0.43,sat_shootingstar:0.50,sat_st_comet:0.50,
-  sat_moon:0.31,sat_st_moon:0.34};
+  sat_moon:0.31,sat_st_moon:0.34,
+  sat_kite:0.44,sat_helicopter:0.46,sat_zeppelin:0.50,sat_shuttle:0.46,sat_phoenix:0.52};
 function setupSatAnims(m,satId){
   nodesOf(m,/^blink/).forEach(function(b){ // balise : clignotement franc
     var c0=b.material.color.clone(),c1=new THREE.Color('#5a1410');
@@ -208,6 +214,8 @@ function setupSatAnims(m,satId){
     var sy=/wing-1/.test(w.name)?-1:1,r0=rest(w);
     if(satId==='sat_bird'){
       addAnim('sat',function(t){w.rotation.x=r0.r.x+sy*Math.sin(t*7.5)*0.45;return true;});
+    }else if(satId==='sat_phoenix'){ // grands battements lents d'oiseau de feu
+      addAnim('sat',function(t){w.rotation.x=r0.r.x+sy*Math.sin(t*4.4)*0.38;return true;});
     }else if(satId==='sat_paperplane'){
       addAnim('sat',function(t){w.rotation.x=r0.r.x+sy*Math.sin(t*3.1)*0.07;return true;});
     }});
@@ -217,6 +225,15 @@ function setupSatAnims(m,satId){
       var k=1+0.22*Math.sin(t*11.3)+0.10*Math.sin(t*17.7);
       f.scale.set(r0.s.x*(2-k)*0.9+r0.s.x*0.1,r0.s.y*k,r0.s.z);
       return true;});});
+  // rotors / hélices : le moyeu porte ses pales (enfants dans le GLB)
+  nodesOf(m,/^rotorhub$/).forEach(function(h){
+    var r0=rest(h);addAnim('sat',function(t){h.rotation.y=r0.r.y+t*14;return true;});});
+  nodesOf(m,/^rotortail$/).forEach(function(h){ // axe Blender Y -> -Z glTF
+    var r0=rest(h);addAnim('sat',function(t){h.rotation.z=r0.r.z+t*20;return true;});});
+  nodesOf(m,/^prop$/).forEach(function(h){ // hélice de nacelle, axe X
+    var r0=rest(h);addAnim('sat',function(t){h.rotation.x=r0.r.x+t*12;return true;});});
+  nodesOf(m,/^bow[0-9]/).forEach(function(b,i){ // nœuds de la queue du cerf-volant
+    var r0=rest(b);addAnim('sat',function(t){b.rotation.z=r0.r.z+Math.sin(t*4+i*0.9)*0.35;return true;});});
   nodesOf(m,/^light[0-9]/).forEach(function(l,i){colorPulse('sat',l,'#5a4a10',2.6,i*0.9);});
   nodesOf(m,/^beam/).forEach(function(b){
     b.material.transparent=true;
