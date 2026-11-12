@@ -23,11 +23,17 @@
  */
 import posthogJs from 'posthog-js';
 import { clean, type AnalyticsEvent, type Props } from './analyticsEvents';
-import { IS_PORTAL, PORTAL } from './portal';
 
 export type { AnalyticsEvent } from './analyticsEvents';
 
 const apiKey = process.env.EXPO_PUBLIC_POSTHOG_KEY;
+
+/**
+ * Build portail (CrazyGames, GameDistribution) : lu directement plutôt que via
+ * lib/portal, qui tire Sentry (natif) dans les tests de ce module.
+ */
+const PORTAL = process.env.EXPO_PUBLIC_PORTAL || null;
+const IS_PORTAL = PORTAL !== null;
 
 /**
  * Hôte d'ingestion. Le proxy same-origin `/ph` (voir vercel.json) n'existe que
