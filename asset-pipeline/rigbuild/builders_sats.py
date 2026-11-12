@@ -401,3 +401,152 @@ def s_st_comet(c):
 
 BUILDERS = {k.replace("s_", "sat_"): v for k, v in list(globals().items())
             if k.startswith("s_") and callable(v)}
+
+
+# ══ Vague « Merveilles & Envols » (2026-11) ═════════════════════════════════
+# Nez vers +X pour les sats qui « face » la trajectoire (SAT_BEHAV côté live).
+
+def s_kite(c):
+    cols = ("#e8452c", "#ffc924", "#2f86ff", "#3fae5a")
+    # losange en 4 triangles colorés (plaques fines) + croisillons
+    pts = ((0, 0.42), (0.27, 0.0), (0, -0.50), (-0.27, 0.0))
+    for i in range(4):
+        a, b = pts[i], pts[(i + 1) % 4]
+        ngon_prism(c, f"sail{i}", [(0, 0), a, b], 0.018, (0, 0, 0), (0, 0, 0),
+                   toon_material(f"s_kite{i}", cols[i]))
+    stick = toon_material("s_kitestick", "#8a5a30")
+    strut(c, "spar0", (0, -0.012, 0.42), (0, -0.012, -0.50), 0.018, stick)
+    strut(c, "spar1", (-0.27, -0.012, 0.0), (0.27, -0.012, 0.0), 0.018, stick)
+    # queue : ficelle + nœuds papillon (ondulent en live via bow*)
+    prev = (0, 0, -0.50)
+    for i in range(4):
+        p = (0.06 * math.sin(i * 1.7), 0, -0.62 - i * 0.13)
+        strut(c, f"string{i}", prev, p, 0.008, toon_material("s_kitestring", "#f4efe2"))
+        for sx in (-1, 1):
+            ngon_prism(c, f"bow{i}{sx}", [(0, 0), (sx * 0.075, 0.035), (sx * 0.075, -0.035)],
+                       0.012, p, (0, 0, 0), toon_material(f"s_kitebow{i % 2}", cols[i % 2]))
+        prev = p
+    common.group_rotate(c, "sat_kite", (0, 18, -8))
+
+
+def s_helicopter(c):
+    yellow, glass, dark = "#ffc924", "#9fdcf7", "#2b2f3a"
+    my = toon_material("s_heli", yellow)
+    mg = toon_material("s_heliglass", glass, rim=0.3)
+    mk = toon_material("s_helidark", dark)
+    sphere(c, "cabin", 0.26, (0.05, 0, 0), my, seg=28, rings=18, scale=(1.25, 0.95, 0.95))
+    sphere(c, "canopy", 0.19, (0.18, 0, 0.04), mg, seg=24, rings=16, scale=(1.0, 0.88, 0.85))
+    cyl(c, "boom", 0.06, 0.62, (-0.42, 0, 0.04), (0, 90, 0), my, segments=14, r2=0.035)
+    ngon_prism(c, "fin", [(0, 0), (-0.10, 0.18), (-0.16, 0.18), (-0.12, 0)], 0.025,
+               (-0.66, 0, 0.06), (0, 0, 0), toon_material("s_helired", "#e8452c"))
+    # rotor de queue (tourne sur lui-même : rotortail*)
+    th = sphere(c, "rotortail", 0.025, (-0.74, -0.03, 0.14), mk, seg=8, rings=6)
+    for k in range(2):
+        b = box(c, f"rotortail_b{k}", (0.012, 0.012, 0.20), (0, 0, 0), (0, k * 90, 0), mk)
+        b.parent = th
+    # patins
+    for sy in (-1, 1):
+        cyl(c, f"skid{sy}", 0.016, 0.56, (0.04, sy * 0.17, -0.30), (0, 90, 0), mk, segments=8)
+        for dx in (-0.10, 0.18):
+            strut(c, f"leg{sy}{dx}", (dx, sy * 0.12, -0.18), (dx, sy * 0.17, -0.30), 0.02, mk)
+    # mât + rotor principal (moyeu parent des pales : rotorhub tourne en live)
+    cyl(c, "mast", 0.025, 0.10, (0.03, 0, 0.27), mat=mk, segments=10)
+    hub = cyl(c, "rotorhub", 0.045, 0.035, (0.03, 0, 0.33), mat=mk, segments=12)
+    for k in range(3):
+        a = k * 120
+        bl = box(c, f"rotorhub_blade{k}", (0.40, 0.055, 0.012), (0, 0, 0), (0, 0, a), mk)
+        bl.location = (0.21 * math.cos(math.radians(a)), 0.21 * math.sin(math.radians(a)), 0)
+        bl.parent = hub
+
+
+def s_zeppelin(c):
+    silver, blue, gondola = "#e3e8ef", "#2f86ff", "#c1763c"
+    ms = toon_material("s_zep", silver, extra_hot="#ffffff")
+    mb = toon_material("s_zepblue", blue)
+    lathe(c, "envelope", [(0.0, -0.62), (0.12, -0.56), (0.20, -0.40), (0.235, -0.10),
+                          (0.23, 0.20), (0.19, 0.42), (0.10, 0.58), (0.0, 0.64)],
+          (0, 0, 0), (0, 90, 0), ms, segments=32)
+    for i, x in enumerate((-0.18, 0.16)):  # bandes bleues
+        torus(c, f"stripe{i}", 0.234, 0.016, (x, 0, 0), (0, 90, 0), mb, seg_major=32, seg_minor=8)
+    for k in range(4):  # empennage en croix
+        a = math.radians(k * 90)
+        fin = ngon_prism(c, f"fin{k}", [(0, 0), (-0.20, 0.0), (-0.24, 0.20), (-0.08, 0.10)],
+                         0.02, (0, 0, 0), (0, 0, 0), mb)
+        fin.location = (-0.42, 0.12 * math.sin(a), 0.12 * math.cos(a))
+        fin.rotation_euler = Euler((-a, 0, 0))
+    box(c, "gondola", (0.24, 0.09, 0.075), (0.04, 0, -0.27), mat=toon_material("s_zepgon", gondola),
+        bevel=0.02)
+    for i in range(4):
+        box(c, f"win{i}", (0.03, 0.01, 0.025), (-0.05 + i * 0.06, -0.046, -0.265),
+            mat=flat_material("s_zeplight", "#fff2b0"))
+    for sx in (-1, 1):
+        strut(c, f"cable{sx}", (0.04 + sx * 0.09, 0, -0.23), (0.04 + sx * 0.06, 0, -0.17), 0.01,
+              toon_material("s_zepcable", "#6a7690"))
+    # hélice arrière de la nacelle (prop* tourne en live)
+    ph = sphere(c, "prop", 0.022, (-0.10, 0, -0.27), toon_material("s_zepprop", "#2b2f3a"),
+                seg=8, rings=6)
+    for k in range(2):
+        b = box(c, f"prop_b{k}", (0.012, 0.012, 0.14), (0, 0, 0), (k * 90, 0, 0),
+                toon_material("s_zepprop", "#2b2f3a"))
+        b.parent = ph
+    common.group_rotate(c, "sat_zeppelin", (0, -4, 0))
+
+
+def s_shuttle(c):
+    white, black, grey = "#f4f7fb", "#2b2f3a", "#9aa6b8"
+    mw = toon_material("s_shuttle", white, extra_hot="#ffffff")
+    mk = toon_material("s_shuttleblack", black)
+    mg = toon_material("s_shuttlegrey", grey)
+    fl = toon_material("s_flame_shuttle", "#f7b32e", glow=0.45, extra_hot="#fff6c8")
+    lathe(c, "fuselage", [(0.10, -0.40), (0.12, -0.30), (0.12, 0.20), (0.10, 0.34), (0.06, 0.44),
+                          (0.0, 0.48)], (0, 0, 0), (0, 90, 0), mw, segments=24)
+    lathe(c, "nosecap", [(0.075, 0.40), (0.045, 0.45), (0.0, 0.485)], (0, 0, 0), (0, 90, 0), mk,
+          segments=20)
+    # ailes delta (plaque horizontale, bord d'attaque noir)
+    for sy in (-1, 1):
+        w = ngon_prism(c, f"delta{sy}", [(0.22, 0.0), (-0.34, 0.40), (-0.40, 0.40), (-0.40, 0.0)],
+                       0.025, (0, 0, -0.06), (sy * -90, 0, 0), mw)
+        ngon_prism(c, f"edge{sy}", [(0.22, 0.0), (-0.34, 0.40), (-0.31, 0.40), (0.16, 0.0)],
+                   0.03, (0, 0, -0.06), (sy * -90, 0, 0), mk)
+    ngon_prism(c, "tailfin", [(0, 0), (-0.30, 0), (-0.38, 0.30), (-0.28, 0.30)], 0.025,
+               (-0.08, 0, 0.08), (0, 0, 0), mw)
+    # cockpit
+    for i, dy in enumerate((-0.035, 0.035)):
+        box(c, f"window{i}", (0.05, 0.03, 0.02), (0.33, dy, 0.085), (0, -18, 0), mk)
+    # moteurs + flammes (flame* palpite en live)
+    for i, (dy, dz) in enumerate(((0, 0.05), (-0.06, -0.04), (0.06, -0.04))):
+        cyl(c, f"engine{i}", 0.04, 0.07, (-0.42, dy, dz), (0, 90, 0), mg, segments=12, r2=0.05)
+        lathe(c, f"flame{i}_NoOutline", [(0.035, 0.0), (0.03, -0.06), (0.0, -0.18)],
+              (-0.45, dy, dz), (0, 90, 0), fl, segments=10, smooth=False)
+    common.group_rotate(c, "sat_shuttle", (-14, 0, 0))
+
+
+def s_phoenix(c):
+    body_hex, wing_hex, hot = "#ff6a2a", "#ffb02e", "#fff2a0"
+    mb = toon_material("s_phoenix", body_hex, glow=0.15)
+    mw = flat_material("s_flame_phoenixwing", wing_hex)
+    mk = toon_material("s_phoenixbeak", "#ffd23e")
+    fl = flat_material("s_flame_phoenix", "#ffd23e")
+    sphere(c, "body", 0.20, (0, 0, 0), mb, seg=24, rings=16, scale=(1.5, 0.75, 0.8))
+    sphere(c, "head", 0.12, (0.30, 0, 0.12), mb, seg=20, rings=14)
+    cone(c, "beak", 0.045, 0.13, (0.44, 0, 0.10), (0, 100, 0), mk, segments=8, smooth=False)
+    sphere(c, "eye_NoOutline", 0.022, (0.36, -0.09, 0.16), flat_material("s_phoenixeye", "#3a1408"),
+           seg=8, rings=6)
+    for i in range(3):  # aigrette de flammes
+        cone(c, f"crest{i}", 0.03, 0.16, (0.24 - i * 0.05, 0, 0.26 + i * 0.01),
+             (0, -30 - i * 15, 0), fl, segments=6, smooth=False)
+    # ailes en plumes de feu (wing1 / wing-1 : battement en live)
+    wing_pts = [(0.16, 0.0), (0.08, 0.14), (-0.02, 0.34), (-0.08, 0.62), (-0.16, 0.52),
+                (-0.20, 0.68), (-0.27, 0.50), (-0.33, 0.58), (-0.36, 0.36), (-0.42, 0.38),
+                (-0.33, 0.14), (-0.16, 0.04)]
+    for sy in (1, -1):
+        wg = ngon_prism(c, f"wing{sy}", wing_pts, 0.04, (0, 0, 0), (0, 0, 0), mw)
+        wg.location = (0.02, sy * 0.12, 0.06)
+        wg.rotation_euler = Euler((math.radians(-sy * 40), 0, 0))
+    # queue : trois longues plumes de flamme (tail* ondule en live)
+    for i, (dz, ln, w) in enumerate(((0.0, 0.62, 0.08), (0.10, 0.48, 0.06), (-0.10, 0.46, 0.06))):
+        ngon_prism(c, f"tail{i}", [(0, w * 0.5), (-ln * 0.6, w), (-ln, 0), (-ln * 0.6, -w),
+                                   (0, -w * 0.5)],
+                   0.03, (-0.26, 0, dz), (0, 0, 0), flat_material(f"s_tail_phoenix{i}",
+                                                                   ("#ff8a2a", "#ffd23e", "#ffd23e")[i]))
+    common.group_rotate(c, "sat_phoenix", (28, -6, 0))
