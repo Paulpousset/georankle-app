@@ -33,6 +33,7 @@ import { Asset } from 'expo-asset';
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
 
 import { log } from './log';
+import { __resetAudioGateForTests, isSfxSuppressed } from './audioGate';
 
 /** Les sons, un fichier chacun dans assets/sounds (sfx.test.ts le vérifie). */
 export const SFX_NAMES = [
@@ -189,7 +190,7 @@ export function preloadSfx(names: readonly SfxName[] = ['tap', 'correct', 'wrong
 
 /** Joue un son, tout de suite, sans jamais lever. Muet si le joueur a coupé les effets. */
 export function playSfx(name: SfxName): void {
-  if (!enabled) return;
+  if (!enabled || isSfxSuppressed()) return;
   try {
     playerFor(name)?.play();
   } catch (e) {
@@ -233,5 +234,6 @@ export function __resetSfxForTests(): void {
   enabled = true;
   ready = null;
   players.clear();
+  __resetAudioGateForTests();
   listeners.clear();
 }

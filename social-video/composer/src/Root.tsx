@@ -10,6 +10,7 @@ import { EchelleConcept, echelleSeconds, type EchelleProps } from './concepts/Ec
 import { FrontieresConcept, frontieresSeconds, type FrontieresProps } from './concepts/FrontieresConcept';
 import { FPS as CONCEPT_FPS } from './concepts/kit';
 import { PartageConcept, partageSeconds, type PartageProps } from './concepts/PartageConcept';
+import { PortalTrailer, portalTrailerSeconds, type PortalTrailerProps } from './concepts/PortalTrailer';
 import { PlusOuMoinsConcept, plusOuMoinsConceptSeconds, type PlusOuMoinsConceptProps } from './concepts/PlusOuMoinsConcept';
 import { RankleConcept, rankleSeconds, type RankleProps } from './concepts/RankleConcept';
 
@@ -181,6 +182,28 @@ const partageDefaults: PartageProps = {
   icon: 'icon.png',
 };
 
+const portalDefaults: PortalTrailerProps = {
+  name: 'GeoGames',
+  tagline: '13 GEOGRAPHY GAMES',
+  modes: [
+    { title: 'Geo Globe', cat: 'map' },
+    { title: 'Borders', cat: 'map' },
+    { title: 'Fair Split', cat: 'map' },
+    { title: 'To Scale', cat: 'map' },
+    { title: 'Pin on the Globe', cat: 'map' },
+    { title: 'Country Challenges', cat: 'map' },
+    { title: 'Guess Country', cat: 'recognize' },
+    { title: 'Silhouette', cat: 'recognize' },
+    { title: 'Flags', cat: 'recognize' },
+    { title: 'Capitals', cat: 'recognize' },
+    { title: 'Languages', cat: 'recognize' },
+    { title: 'Higher or Lower', cat: 'compare' },
+    { title: 'Rankle', cat: 'compare' },
+  ],
+  clips: [],
+  cta: 'PLAY FREE ▶',
+};
+
 const concepts = [
   { id: 'AppTrailer', component: AppTrailer, seconds: appTrailerSeconds, defaults: trailerDefaults },
   { id: 'DevineConcept', component: DevineConcept, seconds: devineSeconds, defaults: devineDefaults },
@@ -207,6 +230,19 @@ export const Root = () => (
       defaultProps={c.defaults}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       calculateMetadata={({ props }) => ({ durationInFrames: Math.ceil(CONCEPT_FPS * (c.seconds as any)(props)) })}
+    />
+  ))}
+  {([['PortalTrailerLandscape', 1920, 1080], ['PortalTrailerPortrait', 1080, 1620]] as const).map(([id, w, h]) => (
+    <Composition
+      key={id}
+      id={id}
+      component={PortalTrailer}
+      width={w}
+      height={h}
+      fps={CONCEPT_FPS}
+      durationInFrames={Math.ceil(CONCEPT_FPS * portalTrailerSeconds(portalDefaults))}
+      defaultProps={portalDefaults}
+      calculateMetadata={({ props }) => ({ durationInFrames: Math.ceil(CONCEPT_FPS * portalTrailerSeconds(props)) })}
     />
   ))}
   <Composition

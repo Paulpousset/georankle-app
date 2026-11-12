@@ -22,6 +22,7 @@ import { getCachedReferralCode } from './shareDaily';
 import { isBootableMode } from './webEntry';
 import { track } from './analytics';
 import { tr } from '../i18n';
+import { CAN_PROMOTE_APP, PORTAL_GAME_URL } from './portal';
 
 export interface SoloShareInput {
   mode: GameMode;
@@ -57,8 +58,10 @@ export function buildSoloShareMessage({ mode, summary, language, refCode }: Solo
     `🌍 GeoG — ${dailyModeLabel(mode, language)}`,
     tr(language, 'Score : {0}', 'Score: {0}', [summary]),
     tr(language, 'Tu fais mieux ? 👇', 'Can you beat it? 👇'),
-    soloShareLink(mode, refCode),
-  ];
+    // Build portail : jamais vers playgeog.com (autre version jouable =
+    // promotion interdite), seulement vers la page du jeu sur le portail.
+    CAN_PROMOTE_APP ? soloShareLink(mode, refCode) : PORTAL_GAME_URL,
+  ].filter(Boolean);
   return lines.join('\n');
 }
 

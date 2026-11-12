@@ -8,7 +8,7 @@
 import { forwardRef } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Home, LayoutGrid, Swords, User } from 'lucide-react-native';
+import { BarChart3, Home, LayoutGrid, Swords, User } from 'lucide-react-native';
 
 import type { AvatarConfig } from '../../types';
 import { PALETTE, getColors } from '../../theme/colors';
@@ -17,6 +17,7 @@ import { tr } from '../../i18n';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { a11yButton } from '../../lib/a11y';
 import { playSfx } from '../../lib/sfx';
+import { CAN_SIGN_IN } from '../../lib/portal';
 import { NotificationDot } from '../NotificationDot';
 import { AvatarPreview3D } from '../AvatarPreview3D';
 import type { MenuIcon } from './ModeTiles';
@@ -150,8 +151,15 @@ export function MenuTabBar({
         />
         <TabButton
           ref={profileRef}
-          icon={User}
-          label={isAuthenticated ? tr(language, 'Moi', 'Me') : tr(language, 'Connexion', 'Log in')}
+          // Build portail (pas de compte) : la 5e place sert au classement.
+          icon={CAN_SIGN_IN ? User : BarChart3}
+          label={
+            !CAN_SIGN_IN
+              ? tr(language, 'Classement', 'Ranking')
+              : isAuthenticated
+                ? tr(language, 'Moi', 'Me')
+                : tr(language, 'Connexion', 'Log in')
+          }
           active={false}
           onPress={onOpenProfile}
           color={c.textMuted}

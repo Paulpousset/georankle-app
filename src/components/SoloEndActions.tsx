@@ -36,6 +36,7 @@ import { ScoreText } from './ScoreText';
 import { ReferralNudge } from './ReferralNudge';
 import { useToast } from './ToastProvider';
 import { tr } from '../i18n';
+import { CAN_PROMOTE_APP } from '../lib/portal';
 
 export interface SoloShare {
   mode: GameMode;
@@ -168,7 +169,7 @@ export function SoloEndActions({
       {soloShare
         ? btn('challenge', tr(language, 'Défier un ami', 'Challenge a friend'), Swords, onChallenge, 'secondary')
         : null}
-      {Platform.OS === 'web'
+      {Platform.OS === 'web' && CAN_PROMOTE_APP
         ? btn('install', tr(language, "Installer l'app — gratuit", 'Get the free app'), Smartphone, onInstall, 'secondary')
         : null}
       {/* En quotidien, la relance vit dans DailyEnd (posé par-dessus) : ne pas

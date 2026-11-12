@@ -65,6 +65,7 @@ import { useMyGameGlobe } from '../lib/myGlobe';
 import { TopInsetBar } from '../components/TopInsetBar';
 
 import { isMobileLayout as isMobile } from '../lib/layout';
+import { CAN_SIGN_IN } from '../lib/portal';
 
 const NUM_PAIRS = 5;
 const MID_Y = BOARD_H / 2;
@@ -586,7 +587,7 @@ export default function ScaleGame({
             </Reveal>
 
             <Reveal at={END_CHOREO.actions}>
-              {!user && !isDaily && (
+              {!user && !isDaily && CAN_SIGN_IN && (
                 <Text style={{ color: c.textMuted, fontFamily: FONTS.mono, fontSize: 12, textAlign: 'center', marginBottom: 12 }}>
                   {tr(
                     language,

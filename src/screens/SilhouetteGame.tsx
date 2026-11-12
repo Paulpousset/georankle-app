@@ -74,6 +74,7 @@ import { useMyGameGlobe } from '../lib/myGlobe';
 import { TopInsetBar } from '../components/TopInsetBar';
 
 import { isMobileLayout as isMobile } from '../lib/layout';
+import { CAN_SIGN_IN } from '../lib/portal';
 
 type QuizMode = 'DUO' | 'CARRE' | 'CASH';
 type Feedback = { correct: boolean; points: number; answer: string };
@@ -666,7 +667,7 @@ export default function SilhouetteGame({
             </Reveal>
 
             <Reveal at={END_CHOREO.actions}>
-            {!user && !isDaily && (
+            {!user && !isDaily && CAN_SIGN_IN && (
               <Text style={{ color: c.textMuted, fontFamily: FONTS.mono, fontSize: 12, textAlign: 'center', marginBottom: 12 }}>
                 {tr(
                   language,

@@ -12,6 +12,7 @@ import { dailyModeLabel, getPuzzleNumber } from './daily';
 import { isGhostDaily } from '../data/ghostCountries';
 import { playLink } from './links';
 import { tr } from '../i18n';
+import { CAN_PROMOTE_APP, PORTAL_GAME_URL } from './portal';
 
 /** One-line score summary used when a mode ships no emoji grid yet. */
 function scoreLine(result: DailyResult, language: Language): string {
@@ -67,7 +68,10 @@ export function buildShareMessage(
   lines.push(tr(language, 'À toi de faire mieux 👇', 'Beat my score 👇'));
   // No code (logged-out player): still a real URL, tagged so opens are measurable.
   // `s=daily` is what makes the web open the daily instead of the menu.
-  lines.push(refCode ? `${playLink(refCode)}&s=daily` : `${playLink()}?s=daily`);
+  if (!CAN_PROMOTE_APP) {
+    // Build portail : la page du jeu sur le portail, jamais playgeog.com.
+    if (PORTAL_GAME_URL) lines.push(PORTAL_GAME_URL);
+  } else lines.push(refCode ? `${playLink(refCode)}&s=daily` : `${playLink()}?s=daily`);
 
   return lines.join('\n');
 }

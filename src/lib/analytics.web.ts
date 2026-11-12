@@ -29,6 +29,13 @@ export type { AnalyticsEvent } from './analyticsEvents';
 const apiKey = process.env.EXPO_PUBLIC_POSTHOG_KEY;
 
 /**
+ * Build portail (CrazyGames, GameDistribution) : lu directement plutôt que via
+ * lib/portal, qui tire Sentry (natif) dans les tests de ce module.
+ */
+const PORTAL = process.env.EXPO_PUBLIC_PORTAL || null;
+const IS_PORTAL = PORTAL !== null;
+
+/**
  * Hôte d'ingestion. Le proxy same-origin `/ph` (voir vercel.json) n'existe que
  * sur le domaine déployé ; en dev local (`expo start --web`, port 8081) il n'y a
  * aucune réécriture, donc on tape PostHog en direct.
@@ -40,7 +47,9 @@ function resolveHost(): string {
   if (typeof window === 'undefined') return DIRECT_HOST;
   const { hostname, origin } = window.location;
   const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.local');
-  return isLocal ? DIRECT_HOST : `${origin}${PROXY_PATH}`;
+  // Sur un portail (CrazyGames, GameDistribution), le jeu est servi par le CDN
+  // du portail : pas de réécriture /ph là-bas, on tape PostHog en direct.
+  return isLocal || IS_PORTAL ? DIRECT_HOST : `${origin}${PROXY_PATH}`;
 }
 
 /** `true` une fois `init()` passé — tous les helpers sont des no-op sinon. */
@@ -76,7 +85,7 @@ if (apiKey && typeof window !== 'undefined') {
   ready = true;
   // Super-propriétés : sans elles, web / iOS / Android se mélangent dans le
   // même graphe et tout comptage par plateforme est faux.
-  posthogJs.register({ platform: 'web', surface: 'app' });
+  posthogJs.register({ platform: 'web', surface: PORTAL ?? 'app' });
 }
 
 /**
