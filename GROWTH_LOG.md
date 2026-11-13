@@ -42,6 +42,25 @@ seuil.
 
 ## Entrées
 
+### 2026-11-13 — rapport hebdo (sans PostHog)
+
+- Pas de `POSTHOG_PERSONAL_API_KEY` dans la session : aucun indicateur produit mesuré. `playgeog.com` est bloqué par le réseau de la session (403 sur CONNECT) : sitemap non mesuré, pas de nouvel essai. PageSpeed sans clé : quota journalier épuisé (HTTP 429 sur les 2 appels), scores non mesurés.
+
+| Mesurable sans clé | Valeur (vs 06/11) |
+|---|---|
+| Commits sur 7 jours | 1 (8), dernier : 12/11 |
+| Pages ajoutées dans `site/content` | 0 (116 fichiers, inchangé) |
+| Cases cochées de la file éditoriale | 0 / 15 |
+| Sitemap, PageSpeed mobile | non mesuré (réseau / quota) |
+| Taux partage/complétion, parrainages, rétention | non mesuré |
+
+Faits saillants :
+1. Semaine la plus calme depuis le début du journal : un seul commit, la boutique « Merveilles & Envols » (6 emblèmes, 5 satellites, 2 packs, migration SQL du 12/11). Rien côté acquisition, partage ni site.
+2. Septième semaine consécutive sans page SEO : 116 fichiers inchangés, file éditoriale intacte (0/15). La Routine « Contenu SEO » n'a toujours rien livré depuis sa mise en place.
+3. Le rapport est aveugle pour la septième fois : ni PostHog, ni site, ni PageSpeed. L'effet du lien « App » dans la barre (03/11) et des vidéos concepts sur `install_cta_pressed` et `campaign_link_opened` reste inconnu.
+
+Décision : (a) arbitrer la Routine « Contenu SEO » cette semaine, soit la réparer (déclencheur, droits d'écriture, garde-fou 600 mots), soit écrire à la main les deux premiers sujets de la file (capitales d'Europe, drapeaux les plus difficiles) pour débloquer la série ; (b) ajouter `POSTHOG_PERSONAL_API_KEY` et autoriser `playgeog.com` et `www.googleapis.com` avec une clé PageSpeed à l'environnement de cette Routine ; (c) file éditoriale non réordonnée, aucune donnée de trafic ne le justifie.
+
 ### 2026-11-06 — rapport hebdo (sans PostHog)
 
 - Pas de `POSTHOG_PERSONAL_API_KEY` dans la session : aucun indicateur produit mesuré. `playgeog.com` est bloqué par le réseau de la session (connexion refusée par le proxy) : sitemap et PageSpeed non mesurés, pas de nouvel essai.
