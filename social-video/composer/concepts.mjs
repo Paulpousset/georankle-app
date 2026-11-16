@@ -305,7 +305,9 @@ function frontierRound(from, to, level, view) {
 function frontieres(name, rounds, hook = null, opts = {}) {
   const think = opts.think ?? FR.THINK;
   const stepOf = (r) => opts.step ?? FR.step(r.path.length);
-  const roundSeconds = (r) => FR.INTRO + think + r.path.length * stepOf(r) + (opts.hold ?? FR.HOLD);
+  // Manche bonus (voir FrontieresConcept.tsx) : pas de chemin dessiné, 2,4 s de tampon.
+  const drawOf = (r) => (r.bonus ? 0 : r.path.length * stepOf(r));
+  const roundSeconds = (r) => FR.INTRO + think + drawOf(r) + (r.bonus ? 2.4 : opts.hold ?? FR.HOLD);
   // Une réplique par moment fort, jamais en rafale : voice.mjs abandonne une
   // réplique qui arriverait trop tard derrière la précédente.
   // Demande de Paul (15/10) : on demande quels pays traverser, pas combien.
@@ -317,6 +319,13 @@ function frontieres(name, rounds, hook = null, opts = {}) {
     const step = stepOf(r);
     const draw = s0 + FR.INTRO + think;
     // Réflexion courte (rythme éclair) : juste les deux noms.
+    if (r.bonus) {
+      // Boucle ouverte : la voix pose la question et renvoie aux commentaires, sans réponse.
+      voice.push({ text: L(`Bonus ! ${say(a)}, ${say(b)}.`, `Bonus! ${say(a)} to ${say(b)}.`), at: s0 + 0.3, maxLate: 1.5 });
+      voice.push({ text: L('Pas de réponse : à toi de trouver !', 'No answer this time. Your turn!'), at: draw + 0.15, maxLate: 1.2 });
+      s0 += roundSeconds(r);
+      return;
+    }
     const intro = r.choices
       ? L(`${say(a)}, ${say(b)}. A, B ou C ?`, `${say(a)} to ${say(b)}. A, B or C?`)
       : think < 4 ? L(`${say(a)}, ${say(b)}.`, `${say(a)} to ${say(b)}.`)
@@ -332,7 +341,7 @@ function frontieres(name, rounds, hook = null, opts = {}) {
     else voice.push({ text: L(`Par ${list} !`, `Through ${list}!`), at: draw + r.path.length * step + 0.15, maxLate: 1.2 });
     s0 += roundSeconds(r);
   });
-  voice.push({ text: L('Tu avais trouvé ? Dis-le en commentaire.', 'Did you get it? Tell me in the comments.'), at: s0 + 0.1, maxLate: 0.8 });
+  voice.push({ text: opts.outroSay ?? L('Tu avais trouvé ? Dis-le en commentaire.', 'Did you get it? Tell me in the comments.'), at: s0 + 0.1, maxLate: 0.8 });
   voice.push({ text: END_LINE, at: s0 + 2.6 + 0.4, maxLate: 1 });
   for (const r of rounds) console.log('  ', r.path.map((p) => p.name).join(' → '));
   const first = rounds[0].path;
@@ -1065,6 +1074,25 @@ if (REDO) {
         outro: L('Tu as eu le difficile\u00a0?', 'Did you get the hard one?'),
         outroSay: L('Tu avais trouvé le difficile ? Dis-le en commentaire.', 'Did you get the hard one? Tell me in the comments.'),
         post: L(`${r2.path[0].name} → ${r2.path[r2.path.length - 1].name} sans avion : quels pays faut-il traverser ? 🧭`, `${r2.path[0].name} → ${r2.path[r2.path.length - 1].name} without flying: which countries do you cross? 🧭`),
+      });
+    } else if (kind === 'frontieres-bonus') {
+      // Remake des meilleures vidéos (stats du 16/11) : le format « un facile,
+      // puis un dur » de Frontières, le plus vu sur Instagram, avec en plus une
+      // manche BONUS sans réponse. La réponse est laissée aux commentaires :
+      // c'est ce qui fait commenter (Russie → Italie : 15 commentaires) et revoir.
+      const r1 = randomFrontier(3, 3, 'FACILE', usedPairs, FAMOUS);
+      const r2 = randomFrontier(5, 7, 'DIFFICILE', usedPairs);
+      const r3 = { ...randomFrontier(4, 5, 'BONUS', usedPairs), bonus: true, stamp: L('À toi ! 👇', 'Your turn! 👇'), bonusAsk: L('Réponse en commentaire 👇', 'Answer in the comments 👇') };
+      const hook = { id: 'h0', text: L(['Facile, difficile…', 'puis le BONUS 😈'], ['Easy, hard…', 'then the BONUS 😈']), say: L('Un facile, un difficile… et un bonus sans réponse.', 'One easy, one hard… and a bonus with no answer.') };
+      const b0 = r3.path[0].name;
+      const b1 = r3.path[r3.path.length - 1].name;
+      frontieres(`${prefix}-${num}-frontieres-bonus-${slug(r2.path[0].name)}`, [r1, r2, r3], hook, {
+        think: 4.5, hold: 2.4, step: 0.7, bar: true, sound: 'lofi',
+        outro: L('Et le bonus\u00a0?', 'And the bonus?'),
+        outroSub: L(`${b0} → ${b1} : ta réponse en commentaire 👇`, `${b0} → ${b1}: your answer in the comments 👇`),
+        outroSay: L('Le bonus, je te laisse trouver. Ta réponse en commentaire !', 'I’ll let you find the bonus. Drop your answer in the comments!'),
+        post: L(`${r2.path[0].name} → ${r2.path[r2.path.length - 1].name} sans avion, puis le BONUS : ${b0} → ${b1}. Quels pays faut-il traverser ? Réponse en commentaire 👇`,
+          `${r2.path[0].name} → ${r2.path[r2.path.length - 1].name} without flying, then the BONUS: ${b0} → ${b1}. Which countries do you cross? Answer in the comments 👇`),
       });
     } else if (kind === 'echelle') {
       const pairs = randomEchelle();
