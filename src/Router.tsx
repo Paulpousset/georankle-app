@@ -15,6 +15,7 @@ import type { useMatchEngine } from './hooks/useMatchEngine';
 
 import { MainMenu } from './screens/MainMenu';
 import DailyHub from './screens/DailyHub';
+import ImpossibleDaily from './screens/ImpossibleDaily';
 import DailyGameHost from './screens/DailyGameHost';
 import StoryMap from './screens/StoryMap';
 import { ClassicGame } from './screens/ClassicGame';
@@ -261,6 +262,21 @@ export function Router({
           onPlayDaily={(mode) => setDaily({ mode, date: getTodayUTC() })}
           onBack={popPage}
           onOpenPlayer={user ? openPlayer : undefined}
+        />
+      </SafeAreaProvider>
+    );
+  }
+
+  if (currentPage?.name === 'impossible') {
+    return (
+      <SafeAreaProvider>
+        <ImpossibleDaily
+          user={user}
+          onBack={popPage}
+          onOpenAuth={() => {
+            popPage();
+            openAuth('login');
+          }}
         />
       </SafeAreaProvider>
     );
@@ -863,6 +879,7 @@ export function Router({
         onPlayRanked={() => (user ? pushPage({ name: 'ranked' }) : openAuth('login'))}
         onOpenLeague={() => (user ? pushPage({ name: 'league' }) : openAuth('login'))}
         onOpenDaily={() => pushPage({ name: 'daily' })}
+        onOpenImpossible={() => pushPage({ name: 'impossible' })}
         onOpenStory={() => pushPage({ name: 'story' })}
         playType={playType}
         onChangePlayType={setPlayType}

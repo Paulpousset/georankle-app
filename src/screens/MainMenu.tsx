@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { BarChart3, Moon, ShoppingBag, Sun, Users } from 'lucide-react-native';
+import { BarChart3, Moon, ShoppingBag, Skull, Sun, Users } from 'lucide-react-native';
 
 import { AdBanner } from '../components/AdBanner';
 import { useLiftSoundToggle } from '../components/SoundToggle';
@@ -38,6 +38,10 @@ import { MenuTabBar, type MenuTab } from '../components/menu/MenuTabBar';
 import { HomeTab } from './menu/HomeTab';
 import { PlayTab } from './menu/PlayTab';
 import { DuelTab, type DuelSegment } from './menu/DuelTab';
+import { FloatingBubbles, type BubbleSpec } from '../components/menu/FloatingBubbles';
+import { getImpossibleState, impossibleSummary } from '../lib/impossible';
+import { IMPOSSIBLE_RED } from './ImpossibleDaily';
+import { track } from '../lib/analytics';
 
 /**
  * Sous-partie du menu ouverte, remontée dans App pour survivre au lancement
@@ -73,6 +77,8 @@ interface MainMenuProps {
   /** Opens the friend-leagues hub (3 daily challenges, private leaderboards). */
   onOpenLeague: () => void;
   onOpenDaily: () => void;
+  /** « L'Impossible du jour » (bulle flottante de l'Accueil). */
+  onOpenImpossible: () => void;
   onOpenStory: () => void;
   playType: PlayType | null;
   onChangePlayType: (playType: PlayType | null) => void;
@@ -97,6 +103,7 @@ export function MainMenu({
   onPlayRanked,
   onOpenLeague,
   onOpenDaily,
+  onOpenImpossible,
   onOpenStory,
   playType,
   onChangePlayType: setPlayType,
@@ -135,6 +142,54 @@ export function MainMenu({
   // Relit records, révisions, défi et histoire à chaque retour au menu (le
   // menu est remonté après une partie).
   const [refreshKey] = useState(() => Date.now());
+
+  // Bulles flottantes de l'Accueil : progression de l'Impossible du jour.
+  const [impossible, setImpossible] = useState<{ answered: number; correct: number } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    getImpossibleState().then((s) => {
+      if (alive) setImpossible(impossibleSummary(s));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [refreshKey]);
+  // Au défilement, les bulles se rangent à moitié dans le bord.
+  const bubblesTucked = useState(() => new Animated.Value(0))[0];
+  const tuckedRef = useRef(false);
+  const onMenuScroll = useCallback(
+    (y: number) => {
+      const next = y > 80;
+      if (next === tuckedRef.current) return;
+      tuckedRef.current = next;
+      Animated.timing(bubblesTucked, {
+        toValue: next ? 1 : 0,
+        duration: 220,
+        useNativeDriver: false,
+      }).start();
+    },
+    [bubblesTucked],
+  );
+  const bubbles: BubbleSpec[] = [
+    {
+      id: 'impossible',
+      side: 'left',
+      icon: Skull,
+      color: IMPOSSIBLE_RED,
+      label: tr(language, 'Impossible', 'Impossible'),
+      badge: !impossible
+        ? null
+        : impossible.answered === 0
+          ? tr(language, 'NEW', 'NEW')
+          : `${impossible.correct}/6`,
+      pulse: !!impossible && impossible.answered < 6,
+      a11yLabel: tr(language, 'L’Impossible du jour', 'Today’s Impossible'),
+      onPress: () => {
+        track('impossible_bubble_tap', { answered: impossible?.answered ?? 0 });
+        onOpenImpossible();
+      },
+    },
+  ];
 
   // Décor de l'Accueil : la planète se lève derrière le titre.
   const windowWidth = useStageWidth();
@@ -344,106 +399,111 @@ export function MainMenu({
         </View>
       </View>
 
-      <ScrollView
-        ref={scrollRef}
-        contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 20, paddingBottom: 32 }}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {tab === 'home' && (
-          <>
-            {/* La planète se lève derrière le titre (comme la page d'accueil du site). */}
-            <MenuGlobe
-              size={globeSize}
-              isDarkMode={isDarkMode}
-              backgroundColor={c.background}
-              style={{ alignSelf: 'center' }}
-            />
-            <View
-              style={{ alignItems: 'center', marginTop: -globeSize * 0.28, position: 'relative' }}
-            >
-              <View style={{ position: 'absolute', right: -50, top: 0, opacity: 0.5 }}>
-                <CompassRose size={40} color={c.border} />
-              </View>
-              <ScoreText
-                style={{
-                  fontFamily: FONTS.headingBlack,
-                  fontSize: 46,
-                  color: c.text,
-                  letterSpacing: -1,
-                }}
+      <View style={{ flex: 1 }}>
+        <ScrollView
+          ref={scrollRef}
+          onScroll={(e) => onMenuScroll(e.nativeEvent.contentOffset.y)}
+          scrollEventThrottle={32}
+          contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 20, paddingBottom: 32 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {tab === 'home' && (
+            <>
+              {/* La planète se lève derrière le titre (comme la page d'accueil du site). */}
+              <MenuGlobe
+                size={globeSize}
+                isDarkMode={isDarkMode}
+                backgroundColor={c.background}
+                style={{ alignSelf: 'center' }}
+              />
+              <View
+                style={{ alignItems: 'center', marginTop: -globeSize * 0.28, position: 'relative' }}
               >
-                GeoGames
-              </ScoreText>
-              <CoordLabel lat="48°N" lng="2°E" color={c.textFaint} size={10} />
-            </View>
-            <HomeTab
+                <View style={{ position: 'absolute', right: -50, top: 0, opacity: 0.5 }}>
+                  <CompassRose size={40} color={c.border} />
+                </View>
+                <ScoreText
+                  style={{
+                    fontFamily: FONTS.headingBlack,
+                    fontSize: 46,
+                    color: c.text,
+                    letterSpacing: -1,
+                  }}
+                >
+                  GeoGames
+                </ScoreText>
+                <CoordLabel lat="48°N" lng="2°E" color={c.textFaint} size={10} />
+              </View>
+              <HomeTab
+                isDarkMode={isDarkMode}
+                isAuthenticated={isAuthenticated}
+                languagesMode={languagesMode}
+                onOpenDaily={onOpenDaily}
+                onOpenStory={onOpenStory}
+                onOpenSignup={onOpenSignup}
+                onOpenAuth={onOpenAuth}
+                onPlay={onPlay}
+                onHelp={setHelpMode}
+                dailyRef={dailyRef}
+                refreshKey={refreshKey}
+              />
+            </>
+          )}
+
+          {tab === 'play' && (
+            <PlayTab
+              isDarkMode={isDarkMode}
+              languagesMode={languagesMode}
+              onPlay={onPlay}
+              onPlayReview={onPlayReview}
+              onHelp={setHelpMode}
+              refreshKey={refreshKey}
+            />
+          )}
+
+          {tab === 'duel' && (
+            <DuelTab
               isDarkMode={isDarkMode}
               isAuthenticated={isAuthenticated}
               languagesMode={languagesMode}
-              onOpenDaily={onOpenDaily}
-              onOpenStory={onOpenStory}
-              onOpenSignup={onOpenSignup}
+              segment={duelSegment}
+              onChangeSegment={selectDuelSegment}
+              incomingInviteMode={incomingInviteMode}
               onOpenAuth={onOpenAuth}
-              onPlay={onPlay}
-              onHelp={setHelpMode}
-              dailyRef={dailyRef}
-              refreshKey={refreshKey}
+              onOpenSignup={onOpenSignup}
+              onPlayRanked={onPlayRanked}
+              onOpenLeague={onOpenLeague}
+              onPlayCustomOnline={onPlayCustomOnline}
+              onPlayOnline={onPlayOnline}
+              onPlayLocal={() => onPlay('local-builder')}
+              onOpenOnlineModeLeaderboard={onOpenOnlineModeLeaderboard}
             />
-          </>
-        )}
+          )}
 
-        {tab === 'play' && (
-          <PlayTab
-            isDarkMode={isDarkMode}
-            languagesMode={languagesMode}
-            onPlay={onPlay}
-            onPlayReview={onPlayReview}
-            onHelp={setHelpMode}
-            refreshKey={refreshKey}
+          <View
+            style={{
+              height: 1,
+              width: '60%',
+              backgroundColor: c.border,
+              opacity: 0.4,
+              marginTop: 36,
+            }}
           />
-        )}
-
-        {tab === 'duel' && (
-          <DuelTab
-            isDarkMode={isDarkMode}
-            isAuthenticated={isAuthenticated}
-            languagesMode={languagesMode}
-            segment={duelSegment}
-            onChangeSegment={selectDuelSegment}
-            incomingInviteMode={incomingInviteMode}
-            onOpenAuth={onOpenAuth}
-            onOpenSignup={onOpenSignup}
-            onPlayRanked={onPlayRanked}
-            onOpenLeague={onOpenLeague}
-            onPlayCustomOnline={onPlayCustomOnline}
-            onPlayOnline={onPlayOnline}
-            onPlayLocal={() => onPlay('local-builder')}
-            onOpenOnlineModeLeaderboard={onOpenOnlineModeLeaderboard}
-          />
-        )}
-
-        <View
-          style={{
-            height: 1,
-            width: '60%',
-            backgroundColor: c.border,
-            opacity: 0.4,
-            marginTop: 36,
-          }}
-        />
-        <Text
-          style={{
-            marginTop: 10,
-            fontFamily: FONTS.mono,
-            color: c.textFaint,
-            fontSize: 9,
-            letterSpacing: 1,
-          }}
-        >
-          GEOG · v2.0
-        </Text>
-      </ScrollView>
+          <Text
+            style={{
+              marginTop: 10,
+              fontFamily: FONTS.mono,
+              color: c.textFaint,
+              fontSize: 9,
+              letterSpacing: 1,
+            }}
+          >
+            GEOG · v2.0
+          </Text>
+        </ScrollView>
+        {tab === 'home' && <FloatingBubbles bubbles={bubbles} tucked={bubblesTucked} />}
+      </View>
 
       {/* Pub + barre d'onglets : leur hauteur soulève le bouton son flottant. */}
       <View onLayout={(e) => setBottomBarHeight(Math.round(e.nativeEvent.layout.height))}>

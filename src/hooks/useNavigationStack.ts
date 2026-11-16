@@ -16,6 +16,7 @@ export type Page =
   | { name: 'shop'; itemId?: string }
   | { name: 'globe-lab' }
   | { name: 'daily' }
+  | { name: 'impossible' }
   | { name: 'story' }
   | { name: 'admin-notifications' }
   | { name: 'matchmaking'; mode: MatchMode; inviteFriendId?: string; inviteUsername?: string | null }

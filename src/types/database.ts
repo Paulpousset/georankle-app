@@ -886,6 +886,25 @@ export type Database = {
         Returns: Json
       }
       claim_quest: { Args: { p_quest_id: string }; Returns: Json }
+      submit_impossible: {
+        Args: { p_date: string; p_mode: string; p_correct: boolean; p_ms: number }
+        Returns: Json
+      }
+      impossible_leaderboard: {
+        Args: { p_date: string; p_limit?: number }
+        Returns: {
+          user_id: string
+          username: string | null
+          avatar_config: Json | null
+          correct: number
+          answered: number
+          total_ms: number
+        }[]
+      }
+      impossible_day_stats: {
+        Args: { p_date: string }
+        Returns: { game_mode: string; players: number; winners: number }[]
+      }
       claim_rewarded_ad: { Args: never; Returns: Json }
       claim_story_life: { Args: never; Returns: Json }
       buy_story_life: { Args: never; Returns: Json }
