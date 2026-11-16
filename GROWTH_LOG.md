@@ -42,6 +42,25 @@ seuil.
 
 ## Entrées
 
+### 2026-11-13 — rapport hebdo (sans PostHog)
+
+- Pas de `POSTHOG_PERSONAL_API_KEY` dans la session : aucun indicateur produit mesuré. `playgeog.com` est bloqué par le réseau de la session (403 sur CONNECT) : sitemap non mesuré, pas de nouvel essai. PageSpeed sans clé : quota journalier épuisé (HTTP 429 sur les 2 appels), scores non mesurés.
+
+| Mesurable sans clé | Valeur (vs 06/11) |
+|---|---|
+| Commits sur 7 jours | 1 (8), dernier : 12/11 |
+| Pages ajoutées dans `site/content` | 0 (116 fichiers, inchangé) |
+| Cases cochées de la file éditoriale | 0 / 15 |
+| Sitemap, PageSpeed mobile | non mesuré (réseau / quota) |
+| Taux partage/complétion, parrainages, rétention | non mesuré |
+
+Faits saillants :
+1. Semaine la plus calme depuis le début du journal : un seul commit, la boutique « Merveilles & Envols » (6 emblèmes, 5 satellites, 2 packs, migration SQL du 12/11). Rien côté acquisition, partage ni site.
+2. Septième semaine consécutive sans page SEO : 116 fichiers inchangés, file éditoriale intacte (0/15). La Routine « Contenu SEO » n'a toujours rien livré depuis sa mise en place.
+3. Le rapport est aveugle pour la septième fois : ni PostHog, ni site, ni PageSpeed. L'effet du lien « App » dans la barre (03/11) et des vidéos concepts sur `install_cta_pressed` et `campaign_link_opened` reste inconnu.
+
+Décision : (a) arbitrer la Routine « Contenu SEO » cette semaine, soit la réparer (déclencheur, droits d'écriture, garde-fou 600 mots), soit écrire à la main les deux premiers sujets de la file (capitales d'Europe, drapeaux les plus difficiles) pour débloquer la série ; (b) ajouter `POSTHOG_PERSONAL_API_KEY` et autoriser `playgeog.com` et `www.googleapis.com` avec une clé PageSpeed à l'environnement de cette Routine ; (c) file éditoriale non réordonnée, aucune donnée de trafic ne le justifie.
+
 ### 2026-11-09 — Routine « Contenu SEO »
 
 - Base : la branche `claude/seo-2026-11-02` (PR #76), qui contient la pile des PR SEO ouvertes depuis le 29/09 (#6, #15, #33, #55, #73, #76 : six PR, aucune fusionnée) ; `master` y a été fusionné. Les sujets repris sont les deux derniers non traités de la file.
@@ -50,12 +69,31 @@ seuil.
 - Sauté : « Pays les plus petits du monde » reste sans angle propre (voir la note du 12/10). La file n'a plus de sujet non coché ; à réalimenter.
 - Attention : six PR SEO empilées ouvertes ; la production n'a reçu aucune page SEO. Merger la PR la plus récente suffit (elle contient les précédentes).
 
+### 2026-11-06 — rapport hebdo (sans PostHog)
+
+- Pas de `POSTHOG_PERSONAL_API_KEY` dans la session : aucun indicateur produit mesuré. `playgeog.com` est bloqué par le réseau de la session (connexion refusée par le proxy) : sitemap et PageSpeed non mesurés, pas de nouvel essai.
+
+| Mesurable sans clé | Valeur (vs 30/10) |
+|---|---|
+| Commits sur 7 jours | 8 (11), dernier : 05/11 |
+| Pages ajoutées dans `site/content` | 0 (116 fichiers, inchangé) |
+| Cases cochées de la file éditoriale | 0 / 15 |
+| Taux partage/complétion, parrainages, rétention | non mesuré |
+
+Faits saillants :
+1. Semaine produit/vidéo : menu principal en onglets (Accueil, Jouer, Histoire, Duel, Moi), correctifs « Partage équitable », notes v5.7.0, vidéos concepts FR/EN.
+2. Site : lien « App » dans la barre à la place de la bannière Safari, croix visible sur mobile — effet sur `install_cta_pressed` à lire dès que la clé existe.
+3. Sixième semaine consécutive sans page SEO : 116 fichiers inchangés, file éditoriale intacte (0/15).
+
+Décision : la Routine « Contenu SEO » est à vérifier en priorité (déclenchement, droits, garde-fou de 600 mots ?) ; file éditoriale non réordonnée faute de données de trafic. Ajouter `POSTHOG_PERSONAL_API_KEY` et autoriser `playgeog.com` à l'environnement de cette Routine pour des rapports chiffrés.
+
 ### 2026-11-02 — Routine « Contenu SEO »
 
 - Base : la branche `claude/seo-2026-10-26` (PR #73, non fusionnée), car les PR SEO des 29/09 au 26/10 sont toutes ouvertes et s'empilent ; cette PR les contient donc toutes. Les sujets repris sont les suivants dans la file.
 - Livré : 2 guides FR + EN (pays à plusieurs capitales ; Asie centrale sur le globe), 10 fiches pays (rangs 51 à 60), rafraîchissement de `guide-landlocked` (section Asie centrale) et `guide-renamed` (Astana/Nur-Sultan, libellés du jeu revérifiés) redatés au 02/11.
 - Sauté : « Pays les plus petits du monde » (toujours sans angle propre, voir la note du 12/10), « Frontières : les pays qui touchent le plus de voisins » et « Devinez le pays » non traités cette semaine (seuls deux sujets par semaine), à prendre ensuite.
 - Attention : cinq PR SEO ouvertes (#6, #15, #33, #55, #73) depuis cinq semaines, aucune fusionnée ; la production n'a reçu aucune page SEO.
+
 
 ### 2026-10-30 — rapport hebdo (sans PostHog)
 

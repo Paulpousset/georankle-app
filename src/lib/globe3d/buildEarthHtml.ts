@@ -670,11 +670,14 @@ var SAT_BEHAV={
   sat_plane:{face:1,yaw:0},sat_bird:{face:1,yaw:0},sat_rocket:{face:1,yaw:0},
   sat_comet:{face:1,yaw:0},sat_shootingstar:{face:1,yaw:0},
   sat_st_comet:{face:1,yaw:0},sat_st_ship:{face:1,yaw:Math.PI},
+  sat_kite:{spin:0},sat_helicopter:{face:1,yaw:0},sat_zeppelin:{face:1,yaw:0},
+  sat_shuttle:{face:1,yaw:0},sat_phoenix:{face:1,yaw:0},
 };
 var SAT_SCALE={sat_bird:0.56,sat_plane:0.46,sat_iss:0.48,sat_st_ship:0.47,
   sat_balloon:0.45,sat_satellite:0.44,sat_ufo:0.45,sat_paperplane:0.42,
   sat_comet:0.50,sat_rocket:0.43,sat_shootingstar:0.50,sat_st_comet:0.50,
-  sat_moon:0.31,sat_st_moon:0.34};
+  sat_moon:0.31,sat_st_moon:0.34,
+  sat_kite:0.44,sat_helicopter:0.46,sat_zeppelin:0.50,sat_shuttle:0.46,sat_phoenix:0.52};
 var satObj=null,satBehav=null;
 function loadSatellite(loader){
   if(!SKIN||!SKIN.satellite||!loader)return;
