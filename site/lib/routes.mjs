@@ -209,6 +209,14 @@ const THEMATIC = [
     id: 'guide-central-asia',
     paths: { fr: '/guides/asie-centrale-sur-le-globe/', en: '/en/guides/central-asia-on-the-globe/' },
   },
+  {
+    id: 'guide-smallest-countries',
+    paths: { fr: '/guides/pays-les-plus-petits-du-monde/', en: '/en/guides/smallest-countries-in-the-world/' },
+  },
+  {
+    id: 'guide-oceania-capitals-quiz',
+    paths: { fr: '/guides/quiz-capitales-d-oceanie/', en: '/en/guides/oceania-capitals-quiz/' },
+  },
 ];
 
 /**
@@ -356,6 +364,16 @@ export const COUNTRY_PAGES = [
   { cca3: 'SEN', fr: 'senegal', en: 'senegal' },
   { cca3: 'GTM', fr: 'guatemala', en: 'guatemala' },
   { cca3: 'ECU', fr: 'equateur', en: 'ecuador' },
+  { cca3: 'NLD', fr: 'pays-bas', en: 'netherlands' },
+  { cca3: 'KHM', fr: 'cambodge', en: 'cambodia' },
+  { cca3: 'ZWE', fr: 'zimbabwe', en: 'zimbabwe' },
+  { cca3: 'GIN', fr: 'guinee', en: 'guinea' },
+  { cca3: 'BEN', fr: 'benin', en: 'benin' },
+  { cca3: 'RWA', fr: 'rwanda', en: 'rwanda' },
+  { cca3: 'BDI', fr: 'burundi', en: 'burundi' },
+  { cca3: 'BOL', fr: 'bolivie', en: 'bolivia' },
+  { cca3: 'TUN', fr: 'tunisie', en: 'tunisia' },
+  { cca3: 'SSD', fr: 'soudan-du-sud', en: 'south-sudan' },
 ];
 
 const COUNTRY_ROUTES = COUNTRY_PAGES.map((p) => ({

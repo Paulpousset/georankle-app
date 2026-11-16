@@ -624,6 +624,10 @@ const SUBREGION_LABELS = {
   'Southern Asia': { fr: 'Asie du Sud', en: 'Southern Asia' },
   'Eastern Asia': { fr: 'Asie de l’Est', en: 'Eastern Asia' },
   'Central Asia': { fr: 'Asie centrale', en: 'Central Asia' },
+  'Australia and New Zealand': { fr: 'Australie et Nouvelle-Zélande', en: 'Australia and New Zealand' },
+  Melanesia: { fr: 'Mélanésie', en: 'Melanesia' },
+  Micronesia: { fr: 'Micronésie', en: 'Micronesia' },
+  Polynesia: { fr: 'Polynésie', en: 'Polynesia' },
 };
 
 /** Les capitales d'un continent regroupées par sous-région : les « blocs » de révision. */
@@ -811,6 +815,14 @@ const CAPITAL_SETS = {
   'asia-status': {
     codes: ['ISR', 'PSE', 'LKA', 'MYS', 'IDN', 'MMR', 'KAZ', 'ARE', 'TUR', 'IND', 'PAK'],
     name: { fr: 'Capitales d’Asie à statut particulier', en: 'Asian capitals with a special status' },
+  },
+  'oceania-micronesia': {
+    codes: ['KIR', 'FSM', 'MHL', 'PLW', 'NRU'],
+    name: { fr: 'Les cinq pays de Micronésie et leurs capitales', en: 'The five Micronesian countries and their capitals' },
+  },
+  'oceania-melanesia-polynesia': {
+    codes: ['PNG', 'FJI', 'SLB', 'VUT', 'WSM', 'TON', 'TUV'],
+    name: { fr: 'Mélanésie et Polynésie : sept pays et leurs capitales', en: 'Melanesia and Polynesia: seven countries and their capitals' },
   },
 };
 
@@ -1128,6 +1140,72 @@ export function guessOpenersTable(scope, locale) {
   };
 }
 
+/**
+ * Les pays les moins peuplés, avec leur superficie et leur rang de superficie :
+ * l'autre façon d'être « petit », qui ne recoupe qu'en partie la première.
+ */
+/** Une superficie lisible : « 0,49 » pour le Vatican, un entier au-delà de 10 km². */
+function areaText(area, locale) {
+  return area < 10 ? num(Math.round(area * 100) / 100, locale) : num(Math.round(area), locale);
+}
+
+export function leastPopulousTable(scope, locale) {
+  const limit = Number(scope) || 20;
+  const fr = locale === 'fr';
+  const byArea = [...COUNTRIES].sort((a, b) => a.area - b.area);
+  const areaRank = new Map(byArea.map((c, i) => [c.cca3, i + 1]));
+  const list = [...COUNTRIES].sort((a, b) => a.population - b.population).slice(0, limit);
+  const rows = list.map((c, i) => {
+    const continent = CONTINENTS.find((k) => k.match(c));
+    const density = c.population / c.area;
+    const rank = areaRank.get(c.cca3);
+    return (
+      cell(`<strong>${i + 1}</strong>`) +
+      cell(countryName(c, locale)) +
+      cell(fr ? continent.fr : continent.en) +
+      cell(num(c.population, locale)) +
+      cell(areaText(c.area, locale)) +
+      cell(fr ? (rank === 1 ? '1ᵉʳ' : `${rank}ᵉ`) : `#${rank}`) +
+      cell(num(Math.round(density), locale))
+    );
+  });
+  return {
+    html: table(
+      fr
+        ? ['#', 'Pays', 'Continent', 'Population', 'Superficie (km²)', 'Rang de superficie', 'Densité (hab./km²)']
+        : ['#', 'Country', 'Continent', 'Population', 'Area (km²)', 'Area rank', 'Density (people/km²)'],
+      rows,
+    ),
+    items: list.map((c) => countryName(c, locale)),
+    name: fr ? 'Les pays les moins peuplés du monde' : 'The least populous countries in the world',
+  };
+}
+
+/**
+ * Les deux classements côte à côte : à chaque rang, le plus petit pays par la
+ * superficie et le plus petit par la population. En gras, les pays présents
+ * dans les deux listes.
+ */
+export function smallestCompareTable(scope, locale) {
+  const limit = Number(scope) || 20;
+  const fr = locale === 'fr';
+  const byArea = [...COUNTRIES].sort((a, b) => a.area - b.area).slice(0, limit);
+  const byPop = [...COUNTRIES].sort((a, b) => a.population - b.population).slice(0, limit);
+  const inBoth = new Set(byArea.filter((c) => byPop.includes(c)).map((c) => c.cca3));
+  const mark = (c) => (inBoth.has(c.cca3) ? `<strong>${countryName(c, locale)}</strong>` : countryName(c, locale));
+  const rows = byArea.map(
+    (a, i) =>
+      cell(`<strong>${i + 1}</strong>`) +
+      cell(`${mark(a)} (${areaText(a.area, locale)} km²)`) +
+      cell(`${mark(byPop[i])} (${num(byPop[i].population, locale)} ${fr ? 'hab.' : 'people'})`),
+  );
+  return {
+    html: table(fr ? ['#', 'Par la superficie', 'Par la population'] : ['#', 'By area', 'By population'], rows),
+    items: byArea.map((c, i) => `${countryName(c, locale)} / ${countryName(byPop[i], locale)}`),
+    name: fr ? 'Les plus petits pays : superficie contre population' : 'The smallest countries: area versus population',
+  };
+}
+
 export const TABLES = {
   flags: flagsTable,
   capitals: capitalsTable,
@@ -1145,6 +1223,8 @@ export const TABLES = {
   notoriety: notorietyTable,
   landlocked: landlockedTable,
   smallest: smallestTable,
+  'least-populous': leastPopulousTable,
+  'smallest-compare': smallestCompareTable,
   'capital-blocks': capitalBlocksTable,
   'capital-set': capitalSetTable,
   'flag-set': flagSetTable,
