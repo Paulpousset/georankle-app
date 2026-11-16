@@ -147,7 +147,67 @@ export function copyFor(
   return { title: fill(t), body: fill(b) };
 }
 
-type SendResult = { tokens: number; sent: number; invalid: string[] };
+type SendResult = { tokens: number; sent: number; invalid: string[]; errors: string[] };
+
+// deno-lint-ignore no-explicit-any
+type ExpoMessage = Record<string, any>;
+// deno-lint-ignore no-explicit-any
+type Ticket = any;
+
+/** Retries for one Expo request, and the pause before each retry. */
+const RETRY_DELAYS_MS = [1_000, 4_000];
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * POST one batch to Expo. Returns the tickets (one per message, same order)
+ * or an error string. A whole-request failure (network error, 5xx, 429, a body
+ * without `data`) used to be swallowed, which is how the daily reminder went
+ * out to nobody on 7 of 21 days with no trace: now it is retried, then logged.
+ */
+async function postExpo(messages: ExpoMessage[]): Promise<{ tickets: Ticket[] } | { error: string; status?: number; body?: unknown }> {
+  let last: { error: string; status?: number; body?: unknown } = { error: 'not sent' };
+  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+    if (attempt > 0) await sleep(RETRY_DELAYS_MS[attempt - 1]);
+    try {
+      const res = await fetch(EXPO_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(messages),
+      });
+      const text = await res.text();
+      let json: unknown = null;
+      try {
+        json = JSON.parse(text);
+      } catch {
+        /* non-JSON body (gateway error page) */
+      }
+      // deno-lint-ignore no-explicit-any
+      const data = (json as any)?.data;
+      if (res.ok && Array.isArray(data)) return { tickets: data };
+      last = { error: `expo http ${res.status}`, status: res.status, body: json ?? text.slice(0, 500) };
+      // A 4xx other than 429 is a request we built wrong: retrying the same bytes won't help.
+      if (res.status >= 400 && res.status < 500 && res.status !== 429) break;
+    } catch (e) {
+      last = { error: `expo fetch failed: ${String(e)}` };
+    }
+  }
+  console.error('[broadcast] expo request failed', JSON.stringify(last));
+  return last;
+}
+
+/**
+ * Expo refuses a whole request mixing tokens from several Expo projects
+ * (PUSH_TOO_MANY_EXPERIENCE_IDS) and lists the tokens of each project in
+ * `details`. Returns those groups, or null for any other error.
+ */
+export function experienceGroups(body: unknown): string[][] | null {
+  // deno-lint-ignore no-explicit-any
+  const errs: any[] = (body as any)?.errors ?? [];
+  const e = errs.find((x) => x?.code === 'PUSH_TOO_MANY_EXPERIENCE_IDS');
+  if (!e?.details || typeof e.details !== 'object') return null;
+  const groups = Object.values(e.details).filter((g): g is string[] => Array.isArray(g) && g.length > 0);
+  return groups.length ? groups : null;
+}
 
 /** Push to every recipient via the Expo Push API, in batches of 100. */
 async function sendExpo(
@@ -166,36 +226,46 @@ async function sendExpo(
   });
   let sent = 0;
   const invalid: string[] = [];
+  const errors: string[] = [];
+
+  const tally = (msgs: ExpoMessage[], tickets: Ticket[]) => {
+    tickets.forEach((t, idx) => {
+      if (t?.status === 'ok') sent++;
+      else if (t?.details?.error === 'DeviceNotRegistered') invalid.push(msgs[idx].to);
+    });
+  };
 
   for (let i = 0; i < unique.length; i += 100) {
     const chunk = unique.slice(i, i + 100);
-    const messages = chunk.map((r) => ({
+    const messages: ExpoMessage[] = chunk.map((r) => ({
       to: r.push_token,
       ...copyFor(r, title, body, i18n),
       sound: 'default',
       ...(data ? { data } : {}),
     }));
 
-    try {
-      const res = await fetch(EXPO_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify(messages),
-      });
-      const json = await res.json().catch(() => null);
-      // deno-lint-ignore no-explicit-any
-      const tickets: any[] = json?.data ?? [];
-      tickets.forEach((t, idx) => {
-        if (t?.status === 'ok') sent++;
-        else if (t?.details?.error === 'DeviceNotRegistered') invalid.push(chunk[idx].push_token);
-      });
-    } catch (_e) {
-      // A failed chunk is logged via the returned counts (sent stays lower); we
-      // don't abort the whole broadcast for one bad batch.
+    const res = await postExpo(messages);
+    if ('tickets' in res) {
+      tally(messages, res.tickets);
+      continue;
     }
+
+    // Mixed Expo projects: resend each project's tokens on its own.
+    const groups = experienceGroups(res.body);
+    if (groups) {
+      for (const g of groups) {
+        const set = new Set(g);
+        const sub = messages.filter((m) => set.has(m.to));
+        const r2 = await postExpo(sub);
+        if ('tickets' in r2) tally(sub, r2.tickets);
+        else errors.push(r2.error);
+      }
+      continue;
+    }
+    errors.push(res.status ? `${res.error}: ${JSON.stringify(res.body).slice(0, 300)}` : res.error);
   }
 
-  return { tokens: unique.length, sent, invalid };
+  return { tokens: unique.length, sent, invalid, errors };
 }
 
 /** Null out tokens Expo reported as DeviceNotRegistered so we stop hitting them. */
@@ -222,6 +292,8 @@ export interface BroadcastResult {
   recipients: number;
   sent: number;
   dryRun?: boolean;
+  /** Whole-request Expo failures that survived the retries (empty when all went through). */
+  errors?: string[];
 }
 
 /** Resolve → (optionally) send → clean up → log, in one call. */
@@ -233,7 +305,7 @@ export async function runBroadcast(admin: Admin, opts: BroadcastOpts): Promise<B
     return { recipients: unique.size, sent: 0, dryRun: true };
   }
 
-  const { tokens, sent, invalid } = await sendExpo(recipients, opts.title, opts.body, opts.i18n, {
+  const { tokens, sent, invalid, errors } = await sendExpo(recipients, opts.title, opts.body, opts.i18n, {
     type: 'broadcast',
     ...(opts.data ?? {}),
   });
@@ -248,7 +320,8 @@ export async function runBroadcast(admin: Admin, opts: BroadcastOpts): Promise<B
     source: opts.source,
     campaign_id: opts.campaignId ?? null,
     sent_by: opts.sentBy ?? null,
+    error: errors.length ? errors.join(' | ').slice(0, 1000) : null,
   });
 
-  return { recipients: tokens, sent };
+  return { recipients: tokens, sent, errors };
 }

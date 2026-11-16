@@ -8,8 +8,10 @@ import {
   setCampaignEnabled,
   deleteCampaign,
   listLog,
+  failedSends,
   fetchCronHealth,
   CRON_STALE_MINUTES,
+  type LogEntry,
   type Segment,
 } from '../admin';
 import { supabase } from '../supabase';
@@ -215,5 +217,33 @@ describe('fetchCronHealth', () => {
   it('throws on query error so callers can ignore transient failures', async () => {
     sb.__setResult('cron_run_log', { data: null, error: { message: 'rls' } });
     await expect(fetchCronHealth()).rejects.toEqual({ message: 'rls' });
+  });
+});
+
+describe('failedSends', () => {
+  const now = Date.parse('2026-11-16T20:00:00Z');
+  const row = (over: Partial<LogEntry>): LogEntry => ({
+    id: 'x',
+    title: 'Le défi du jour t’attend',
+    body: '',
+    segment: { type: 'daily_pending' },
+    recipients: 64,
+    sent: 0,
+    source: 'campaign',
+    created_at: '2026-11-15T17:00:00Z',
+    ...over,
+  });
+
+  it('flags a recent send that reached nobody', () => {
+    expect(failedSends([row({ id: 'a' })], now).map((l) => l.id)).toEqual(['a']);
+  });
+
+  it('ignores sends that went out, empty segments and old failures', () => {
+    const log = [
+      row({ id: 'ok', sent: 64 }),
+      row({ id: 'empty', recipients: 0 }),
+      row({ id: 'old', created_at: '2026-11-10T17:00:00Z' }),
+    ];
+    expect(failedSends(log, now)).toEqual([]);
   });
 });

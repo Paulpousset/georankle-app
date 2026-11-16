@@ -149,6 +149,19 @@ export async function listLog(limit = 20): Promise<LogEntry[]> {
   return (data ?? []) as LogEntry[];
 }
 
+/**
+ * Sends that reached nobody although they had recipients, within the last
+ * `withinHours`. The daily reminder silently went out to 0 players on 7 of 21
+ * days before the Expo call was retried and logged: the admin screen now flags
+ * any such row instead of burying "0/64 sent" in the history list.
+ */
+export function failedSends(log: LogEntry[], now: number = Date.now(), withinHours = 72): LogEntry[] {
+  const cutoff = now - withinHours * 3_600_000;
+  return log.filter(
+    (l) => l.recipients > 0 && l.sent === 0 && new Date(l.created_at).getTime() >= cutoff,
+  );
+}
+
 /** Minutes without a successful run after which the hourly campaigns cron is stale. */
 export const CRON_STALE_MINUTES = 90;
 

@@ -102,6 +102,9 @@ export type AnalyticsEvent =
   | 'referral_link_opened'
   | 'referral_shared'
   | 'referral_redeemed'
+  // Notifications primer (permission asked from a tap, after a daily)
+  | 'notif_primer_shown'
+  | 'notif_primer_answered'
   // Discovery
   | 'leaderboard_opened'
   // Settings

@@ -546,6 +546,7 @@ export type Database = {
           body: string
           campaign_id: string | null
           created_at: string
+          error: string | null
           id: string
           recipients: number
           segment: Json
@@ -558,6 +559,7 @@ export type Database = {
           body: string
           campaign_id?: string | null
           created_at?: string
+          error?: string | null
           id?: string
           recipients?: number
           segment: Json
@@ -570,6 +572,7 @@ export type Database = {
           body?: string
           campaign_id?: string | null
           created_at?: string
+          error?: string | null
           id?: string
           recipients?: number
           segment?: Json
