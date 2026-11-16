@@ -76,6 +76,7 @@ function generatedPaths(build) {
  *   - `guide`   : article éditorial → JSON-LD `Article` + fil d'Ariane
  *   - `mode`    : page de mode de jeu (phase 2)
  *   - `atlas`   : page continent avec tableau de données (phase 3)
+ *   - `country` : fiche pays, 200 à 400 mots écrits (voir COUNTRY_PAGES)
  */
 const CORE = [
   {
@@ -155,6 +156,67 @@ const THEMATIC = [
     id: 'guide-lookalike-flags',
     paths: { fr: '/guides/drapeaux-qui-se-ressemblent/', en: '/en/guides/similar-flags/' },
   },
+  {
+    id: 'guide-europe-capitals-quiz',
+    paths: { fr: '/guides/quiz-capitales-d-europe/', en: '/en/guides/europe-capitals-quiz/' },
+  },
+  {
+    id: 'guide-hardest-flags',
+    paths: { fr: '/guides/drapeaux-les-plus-difficiles/', en: '/en/guides/hardest-flags-in-the-world/' },
+  },
+  {
+    id: 'guide-population-ranking',
+    paths: { fr: '/guides/pays-par-population/', en: '/en/guides/countries-by-population/' },
+  },
+  {
+    id: 'guide-africa-capitals-quiz',
+    paths: { fr: '/guides/quiz-capitales-d-afrique/', en: '/en/guides/africa-capitals-quiz/' },
+  },
+  {
+    id: 'guide-asia-capitals-quiz',
+    paths: { fr: '/guides/quiz-capitales-d-asie/', en: '/en/guides/asia-capitals-quiz/' },
+  },
+  {
+    id: 'guide-southam-capitals-quiz',
+    paths: { fr: '/guides/quiz-capitales-d-amerique-du-sud/', en: '/en/guides/south-america-capitals-quiz/' },
+  },
+  {
+    id: 'guide-africa-flag-families',
+    paths: { fr: '/guides/familles-de-drapeaux-africains/', en: '/en/guides/african-flag-families/' },
+  },
+  {
+    id: 'guide-area-ranking',
+    paths: { fr: '/guides/pays-par-superficie/', en: '/en/guides/countries-by-area/' },
+  },
+  { id: 'guide-nordic-flags', paths: { fr: '/guides/drapeaux-nordiques/', en: '/en/guides/nordic-flags/' } },
+  {
+    id: 'guide-europe-count',
+    paths: { fr: '/guides/combien-de-pays-en-europe/', en: '/en/guides/how-many-countries-in-europe/' },
+  },
+  {
+    id: 'guide-multi-capitals',
+    paths: { fr: '/guides/pays-a-plusieurs-capitales/', en: '/en/guides/countries-with-several-capitals/' },
+  },
+  {
+    id: 'guide-border-network',
+    paths: { fr: '/guides/reseau-des-frontieres/', en: '/en/guides/land-border-network/' },
+  },
+  {
+    id: 'guide-guess-clues',
+    paths: { fr: '/guides/lire-les-indices-devine-le-pays/', en: '/en/guides/guess-the-country-clues/' },
+  },
+  {
+    id: 'guide-central-asia',
+    paths: { fr: '/guides/asie-centrale-sur-le-globe/', en: '/en/guides/central-asia-on-the-globe/' },
+  },
+  {
+    id: 'guide-smallest-countries',
+    paths: { fr: '/guides/pays-les-plus-petits-du-monde/', en: '/en/guides/smallest-countries-in-the-world/' },
+  },
+  {
+    id: 'guide-oceania-capitals-quiz',
+    paths: { fr: '/guides/quiz-capitales-d-oceanie/', en: '/en/guides/oceania-capitals-quiz/' },
+  },
 ];
 
 /**
@@ -224,6 +286,105 @@ const RANKLE = [
 /** Les ids de la grappe, dans l'ordre d'affichage du bloc « Tout sur Rankle ». */
 export const RANKLE_IDS = RANKLE.map((r) => r.id);
 
+/**
+ * Les fiches pays (depuis le 29/09/2026), à raison de 10 à 20 par semaine, par
+ * population décroissante. Une fiche = une page FR + une page EN de 200 à 400
+ * mots ÉCRITS pour ce pays (`site/content/<langue>/country-<cca3>.html`) ; le
+ * garde-fou de validate.mjs refuse une fiche mince ou trop proche d'une autre.
+ * On n'ajoute ici que les pays dont les deux textes existent.
+ */
+export const COUNTRY_PAGES = [
+  { cca3: 'IND', fr: 'inde', en: 'india' },
+  { cca3: 'CHN', fr: 'chine', en: 'china' },
+  { cca3: 'USA', fr: 'etats-unis', en: 'united-states' },
+  { cca3: 'IDN', fr: 'indonesie', en: 'indonesia' },
+  { cca3: 'PAK', fr: 'pakistan', en: 'pakistan' },
+  { cca3: 'NGA', fr: 'nigeria', en: 'nigeria' },
+  { cca3: 'BRA', fr: 'bresil', en: 'brazil' },
+  { cca3: 'BGD', fr: 'bangladesh', en: 'bangladesh' },
+  { cca3: 'RUS', fr: 'russie', en: 'russia' },
+  { cca3: 'ETH', fr: 'ethiopie', en: 'ethiopia' },
+  { cca3: 'MEX', fr: 'mexique', en: 'mexico' },
+  { cca3: 'JPN', fr: 'japon', en: 'japan' },
+  { cca3: 'EGY', fr: 'egypte', en: 'egypt' },
+  { cca3: 'PHL', fr: 'philippines', en: 'philippines' },
+  { cca3: 'COD', fr: 'rd-congo', en: 'dr-congo' },
+  { cca3: 'VNM', fr: 'viet-nam', en: 'vietnam' },
+  { cca3: 'IRN', fr: 'iran', en: 'iran' },
+  { cca3: 'TUR', fr: 'turquie', en: 'turkey' },
+  { cca3: 'DEU', fr: 'allemagne', en: 'germany' },
+  { cca3: 'THA', fr: 'thailande', en: 'thailand' },
+  { cca3: 'GBR', fr: 'royaume-uni', en: 'united-kingdom' },
+  { cca3: 'TZA', fr: 'tanzanie', en: 'tanzania' },
+  { cca3: 'FRA', fr: 'france', en: 'france' },
+  { cca3: 'ZAF', fr: 'afrique-du-sud', en: 'south-africa' },
+  { cca3: 'ITA', fr: 'italie', en: 'italy' },
+  { cca3: 'KEN', fr: 'kenya', en: 'kenya' },
+  { cca3: 'MMR', fr: 'birmanie', en: 'myanmar' },
+  { cca3: 'COL', fr: 'colombie', en: 'colombia' },
+  { cca3: 'KOR', fr: 'coree-du-sud', en: 'south-korea' },
+  { cca3: 'SDN', fr: 'soudan', en: 'sudan' },
+  { cca3: 'UGA', fr: 'ouganda', en: 'uganda' },
+  { cca3: 'ESP', fr: 'espagne', en: 'spain' },
+  { cca3: 'DZA', fr: 'algerie', en: 'algeria' },
+  { cca3: 'IRQ', fr: 'irak', en: 'iraq' },
+  { cca3: 'ARG', fr: 'argentine', en: 'argentina' },
+  { cca3: 'AFG', fr: 'afghanistan', en: 'afghanistan' },
+  { cca3: 'CAN', fr: 'canada', en: 'canada' },
+  { cca3: 'YEM', fr: 'yemen', en: 'yemen' },
+  { cca3: 'MAR', fr: 'maroc', en: 'morocco' },
+  { cca3: 'AGO', fr: 'angola', en: 'angola' },
+  { cca3: 'UKR', fr: 'ukraine', en: 'ukraine' },
+  { cca3: 'POL', fr: 'pologne', en: 'poland' },
+  { cca3: 'UZB', fr: 'ouzbekistan', en: 'uzbekistan' },
+  { cca3: 'MYS', fr: 'malaisie', en: 'malaysia' },
+  { cca3: 'SAU', fr: 'arabie-saoudite', en: 'saudi-arabia' },
+  { cca3: 'MOZ', fr: 'mozambique', en: 'mozambique' },
+  { cca3: 'GHA', fr: 'ghana', en: 'ghana' },
+  { cca3: 'PER', fr: 'perou', en: 'peru' },
+  { cca3: 'MDG', fr: 'madagascar', en: 'madagascar' },
+  { cca3: 'CIV', fr: 'cote-d-ivoire', en: 'ivory-coast' },
+  { cca3: 'NPL', fr: 'nepal', en: 'nepal' },
+  { cca3: 'CMR', fr: 'cameroun', en: 'cameroon' },
+  { cca3: 'VEN', fr: 'venezuela', en: 'venezuela' },
+  { cca3: 'AUS', fr: 'australie', en: 'australia' },
+  { cca3: 'NER', fr: 'niger', en: 'niger' },
+  { cca3: 'PRK', fr: 'coree-du-nord', en: 'north-korea' },
+  { cca3: 'SYR', fr: 'syrie', en: 'syria' },
+  { cca3: 'MLI', fr: 'mali', en: 'mali' },
+  { cca3: 'BFA', fr: 'burkina-faso', en: 'burkina-faso' },
+  { cca3: 'LKA', fr: 'sri-lanka', en: 'sri-lanka' },
+  { cca3: 'MWI', fr: 'malawi', en: 'malawi' },
+  { cca3: 'ZMB', fr: 'zambie', en: 'zambia' },
+  { cca3: 'KAZ', fr: 'kazakhstan', en: 'kazakhstan' },
+  { cca3: 'TCD', fr: 'tchad', en: 'chad' },
+  { cca3: 'CHL', fr: 'chili', en: 'chile' },
+  { cca3: 'ROU', fr: 'roumanie', en: 'romania' },
+  { cca3: 'SOM', fr: 'somalie', en: 'somalia' },
+  { cca3: 'SEN', fr: 'senegal', en: 'senegal' },
+  { cca3: 'GTM', fr: 'guatemala', en: 'guatemala' },
+  { cca3: 'ECU', fr: 'equateur', en: 'ecuador' },
+  { cca3: 'NLD', fr: 'pays-bas', en: 'netherlands' },
+  { cca3: 'KHM', fr: 'cambodge', en: 'cambodia' },
+  { cca3: 'ZWE', fr: 'zimbabwe', en: 'zimbabwe' },
+  { cca3: 'GIN', fr: 'guinee', en: 'guinea' },
+  { cca3: 'BEN', fr: 'benin', en: 'benin' },
+  { cca3: 'RWA', fr: 'rwanda', en: 'rwanda' },
+  { cca3: 'BDI', fr: 'burundi', en: 'burundi' },
+  { cca3: 'BOL', fr: 'bolivie', en: 'bolivia' },
+  { cca3: 'TUN', fr: 'tunisie', en: 'tunisia' },
+  { cca3: 'SSD', fr: 'soudan-du-sud', en: 'south-sudan' },
+];
+
+const COUNTRY_ROUTES = COUNTRY_PAGES.map((p) => ({
+  id: `country-${p.cca3.toLowerCase()}`,
+  kind: 'country',
+  priority: 0.6,
+  changefreq: 'monthly',
+  paths: { fr: `/pays/${p.fr}/`, en: `/en/country/${p.en}/` },
+  cca3: p.cca3,
+}));
+
 /** Toutes les routes du site, normalisées. */
 export const ROUTES = [
   ...CORE,
@@ -232,6 +393,7 @@ export const ROUTES = [
   ...ATLAS_ROUTES,
   ...THEMATIC.map((g) => ({ kind: 'guide', priority: 0.7, changefreq: 'monthly', ...g })),
   ...RANKLE,
+  ...COUNTRY_ROUTES,
 ];
 
 const BY_ID = new Map(ROUTES.map((r) => [r.id, r]));

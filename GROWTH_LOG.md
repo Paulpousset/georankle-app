@@ -14,25 +14,31 @@ propre, une FAQ, un bouton « Jouer » vers le mode concerné), puis les coche.
 quasi vides après cinq refus AdSense (commit `aa5e5be`). Une page qui ne peut
 pas être écrite sérieusement n'est pas publiée.
 
-- [ ] Quiz capitales d'Europe — les 44 capitales, pièges (Suisse, Pays-Bas, Australie hors périmètre), méthode de mémorisation par blocs
-- [ ] Les drapeaux les plus difficiles du monde — lesquels, pourquoi (paires, tricolores), comment les distinguer
-- [ ] Classement des pays par population — le top 30 avec les chiffres du jeu, ce qui change d'ici 2050
-- [ ] Classement des pays par superficie — top 30, les surprises (Kazakhstan, Algérie, RDC)
-- [ ] Pays les plus petits du monde — micro-États et leur histoire, lien vers le guide micro-États
-- [ ] Capitales d'Afrique — 54 pays, les capitales qui ne sont pas la plus grande ville
-- [ ] Capitales d'Asie — 48 pays, les capitales déplacées (Nur-Sultan/Astana, Naypyidaw, Nusantara)
-- [ ] Capitales d'Amérique du Sud — 12 pays, Sucre/La Paz, Brasília
-- [ ] Drapeaux d'Afrique — couleurs panafricaines, comment reconnaître les familles
-- [ ] Drapeaux nordiques — la croix scandinave et ses variantes
-- [ ] Combien de pays en Europe — le débat (44 à 51), la liste du jeu
-- [ ] Pays qui ont deux capitales (ou plus) — Bolivie, Afrique du Sud, Pays-Bas, Malaisie…
-- [ ] Le jeu du globe : apprendre à situer les pays d'Asie centrale
-- [ ] Frontières : les pays qui touchent le plus de voisins (Chine, Russie, Brésil)
-- [ ] Devinez le pays : comment lire les indices (superficie, population, PIB) comme un géographe
+- [x] Quiz capitales d'Europe (29/09 : 45 pays dans le jeu, pas 44 ; angle « méthode par blocs », la liste existait déjà) — les 44 capitales, pièges (Suisse, Pays-Bas, Australie hors périmètre), méthode de mémorisation par blocs
+- [x] Les drapeaux les plus difficiles du monde (29/09 : angle notoriété, les sosies restent dans le guide existant) — lesquels, pourquoi (paires, tricolores), comment les distinguer
+- [x] Classement des pays par population (05/10 : angle concentration et paliers de mémorisation ; la partie « d'ici 2050 » est SAUTÉE, le dépôt ne contient aucune projection et aucun chiffre n'est inventé) — le top 30 avec les chiffres du jeu, ce qui change d'ici 2050
+- [x] Classement des pays par superficie (05/10 : angle concentration, surprises, projection de Mercator) — top 30, les surprises (Kazakhstan, Algérie, RDC)
+- [x] Pays les plus petits du monde (16/11 : rouvert avec l’angle suggéré le 12/10, « superficie contre population » — 25 pays sous 1 000 km², 38 sous le million d’habitants, 23 dans les deux listes, tableaux `smallest-compare` et `least-populous` calculés sur les données ; l’histoire des micro-États reste dans le guide existant. Note : `countries_stats.json` donne 74,9 km² à Monaco au lieu d’environ 2 km², signalé sur la page plutôt que corrigé, les données du jeu étant hors périmètre) — micro-États et leur histoire, lien vers le guide micro-États
+- [x] Capitales d'Afrique (12/10 : la liste et les capitales déplacées existaient déjà dans l'atlas ; angle « blocs de révision + neuf pays aux noms jumeaux ») — 54 pays, les capitales qui ne sont pas la plus grande ville
+- [x] Capitales d'Asie (12/10 : angle « blocs + onze capitales à statut particulier », tableau `capital-set` ; Nusantara non retenue, le jeu garde Jakarta) — 48 pays, les capitales déplacées (Nur-Sultan/Astana, Naypyidaw, Nusantara)
+- [x] Capitales d'Amérique du Sud (19/10 : angle « trois blocs + villes qui ne sont pas capitales », l'atlas couvrait déjà Sucre/Brasília) — 12 pays, Sucre/La Paz, Brasília
+- [x] Drapeaux d'Afrique (19/10 : l'atlas en images existait ; angle « quatre familles » avec tableaux `flag-set`, 35 pays sur 54, les 19 autres volontairement non classés) — couleurs panafricaines, comment reconnaître les familles
+- [x] Drapeaux nordiques (26/10 : angle « une règle sur la couleur du fond », tableaux `flag-set` et `capital-set` nordic ; Féroé et Åland hors périmètre) — la croix scandinave et ses variantes
+- [x] Combien de pays en Europe (26/10 : de 42 à 51 selon la définition, décomptes calculés par `europe-count` ; le Kosovo, absent du jeu, est le seul chiffre ajouté à la main et signalé comme tel) — le débat (44 à 51), la liste du jeu
+- [x] Pays qui ont deux capitales (ou plus) (02/11 : angle « trois familles » — partage des pouvoirs, capitale constitutionnelle/gouvernementale, capitale déplacée ; 12 pays, tableau `capital-set` ; les capitales multiples sont de la connaissance générale, le jeu ne retient qu'une capitale par pays) — Bolivie, Afrique du Sud, Pays-Bas, Malaisie…
+- [x] Le jeu du globe : apprendre à situer les pays d'Asie centrale (02/11 : trois repères et plan en deux séances, tableau `capital-set` central-asia ; chiffres de densité et parts calculés sur les données)
+- [x] Frontières : les pays qui touchent le plus de voisins (09/11 : le guide des records et le mode existaient déjà ; angle « réseau » — répartition des voisins, 130 + 22 + 2 + 2 + 39 pays selon les groupes reliés par la terre, trajet le plus long de 18 frontières, centre au Proche-Orient ; tableaux `border-graph` calculés sur `BORDER_PAIRS`) — Chine, Russie, Brésil
+- [x] Quiz capitales d’Océanie (16/11 : sujet ajouté à la file le jour même, la file étant épuisée ; angle « quatre blocs tirés des sous-régions du jeu » avec `capital-blocks:oceanie` et deux `capital-set`, cinq capitales qui ne sont pas la plus grande ville, une seule frontière terrestre sur le continent ; l’atlas garde l’histoire de Canberra, Wellington et des atolls) — 14 pays, Micronésie région et pays, Tarawa-Sud, Ngerulmud
+- [ ] Quiz capitales d’Amérique du Nord et des Caraïbes — 23 pays au sens large du site, les sept petites Antilles, Belmopan, capitales qui ne sont pas la grande ville (Belize, Canada, États-Unis)
+- [ ] Les drapeaux d’Asie : familles et sosies — croissants, drapeaux à soleil, Indonésie/Monaco/Pologne, Inde/Niger, tableaux `flag-set`
+- [ ] Les pays les plus densément peuplés — Singapour, Bahreïn, Bangladesh, Rwanda : densités calculées sur les données, ce que la densité dit de la silhouette et des indices de Devine le pays
+- [ ] Plus ou moins : les paires qui trompent — pays où le rang de superficie et le rang de population s’inversent le plus (Mongolie, Islande, Bangladesh), calculé sur les données
+- [ ] Silhouettes : les formes les plus reconnaissables et les plus trompeuses — Italie, Chili, Vietnam ; pays « carrés » d’Afrique ; aucun chiffre inventé, s’appuyer sur superficie, littoral et voisins
+- [x] Devinez le pays : comment lire les indices (superficie, population, PIB) comme un géographe (09/11 : angle « ce que chaque couleur élimine » — bande orange 0,6 à 1,67 reprise de `compareNum`, tableaux `guess-pivots`, simulation des meilleurs premiers essais `guess-openers` ; le chiffre « 1,4 candidat restant » est un plafond, la distance étant ramenée à ses trois couleurs) — superficie, population, PIB par habitant
 
 ### Fiches pays (195, à raison de 10 à 20 par semaine)
 
-Non commencées. La première semaine construit le gabarit (`site/lib/routes.mjs`
+**Avancement : 80 / 195** (16/11 : Pays-Bas, Cambodge, Zimbabwe, Guinée, Bénin, Rwanda, Burundi, Bolivie, Tunisie, Soudan du Sud, rangs 71 à 80 ; prochaine fournée : le suivant par la population, 81ᵉ). Avant : 70 / 195 (09/11 : Malawi, Zambie, Kazakhstan, Tchad, Chili, Roumanie, Somalie, Sénégal, Guatemala, Équateur, rangs 61 à 70 ; prochaine fournée : le suivant par la population, 71ᵉ). Avant : 60 / 195 (02/11 : Népal, Cameroun, Venezuela, Australie, Niger, Corée du Nord, Syrie, Mali, Burkina Faso, Sri Lanka, rangs 51 à 60 ; prochaine fournée : le suivant par la population, 61ᵉ). Avant : 50 / 195 (26/10 : Ukraine, Pologne, Ouzbékistan, Malaisie, Arabie Saoudite, Mozambique, Ghana, Pérou, Madagascar, Côte d’Ivoire, rangs 41 à 50 ; prochaine fournée : le Népal, 51ᵉ). Avant : 40 / 195 (19/10 : Ouganda, Espagne, Algérie, Irak, Argentine, Afghanistan, Canada, Yémen, Maroc, Angola, rangs 31 à 40 ; prochaine fournée : le Ghana ou le suivant par la population, 41ᵉ). Avant : 30 / 195 (12/10 : Royaume-Uni, Tanzanie, France, Afrique du Sud, Italie, Kenya, Birmanie, Colombie, Corée du Sud, Soudan, rangs 21 à 30 ; prochaine fournée : l'Ouganda, 31ᵉ). Avant : 20 / 195 (05/10 : Mexique, Japon, Égypte, Philippines, RD Congo, Viêt Nam, Iran, Turquie, Allemagne, Thaïlande, ranks 11 à 20 ; prochaine fournée : le Royaume-Uni, 21ᵉ). Avancement du 29/09 : 10 / 195 (29/09, les 10 pays les plus peuplés : Inde, Chine, États-Unis, Indonésie, Pakistan, Nigéria, Brésil, Bangladesh, Russie, Éthiopie). Gabarit livré : `COUNTRY_PAGES` dans `routes.mjs`, textes dans `site/content/<langue>/country-<cca3>.html`, garde-fou `checkCountryPages` (≥ 200 mots écrits, ≤ 25 % de phrases communes entre fiches). Prochaine fournée : le Mexique (11ᵉ par la population) et suivants. Le gabarit décrit ci-dessous a servi de base (`site/lib/routes.mjs`
 kind `country`, URL `/pays/<slug>/` et `/en/country/<slug>/`, données lues dans
 `assets/countries_stats.json`, tableau des voisins, drapeau, capitale, bouton
 « Jouer » vers Devinez le pays) puis livre les 10 premières, par ordre de
@@ -41,6 +47,14 @@ langue ; un garde-fou dans `site/lib/validate.mjs` refuse toute fiche sous le
 seuil.
 
 ## Entrées
+
+### 2026-11-16 — Routine « Contenu SEO »
+
+- Base : la branche `claude/seo-2026-11-09` (PR #84), tête de la pile des sept PR SEO ouvertes (#6, #15, #33, #55, #73, #76, #84), avec `master` fusionné (conflit résolu dans ce journal, entrées réordonnées par date). La file ne contenait plus qu’un sujet non coché : il a été traité avec l’angle suggéré le 12/10, et la file a été réalimentée de six sujets, dont un écrit cette semaine.
+- Livré : 2 guides FR + EN (les pays les plus petits du monde, superficie contre population ; quiz capitales d’Océanie en quatre blocs), 10 fiches pays (rangs 71 à 80), nouveaux tableaux `least-populous` et `smallest-compare`, libellés des quatre sous-régions d’Océanie dans `capital-blocks`, deux ensembles `capital-set` (Micronésie ; Mélanésie et Polynésie). Sommaire des guides et 4 pages sœurs par guide retissés.
+- Rafraîchissement : `guide-microstates` (la FAQ donnait 2 km² à Monaco et 21 km² à Nauru en contradiction avec le tableau de la même page ; note sur les données, section « petit par la superficie ou par la population ») et `atlas-capitals-oceanie` (Nauru 21 km² contre 20 dans les données, section « apprendre par blocs »), FR et EN, redatés au 16/11. 39 pages FR/EN restent à `modified:` antérieur à septembre.
+- Données : `assets/countries_stats.json` attribue 74,9 km² à Monaco (valeur usuelle : environ 2 km²). Non corrigé, les données du jeu étant hors périmètre de la Routine ; les deux pages concernées le signalent au lecteur. À corriger côté jeu (la superficie sert aux rangs de Rankle et aux indices de Devine le pays).
+- Attention : sept PR SEO empilées, aucune fusionnée depuis le 29/09 ; la production n’a toujours aucune page SEO. Merger la PR la plus récente suffit, elle contient les précédentes.
 
 ### 2026-11-13 — rapport hebdo (sans PostHog)
 
@@ -61,6 +75,14 @@ Faits saillants :
 
 Décision : (a) arbitrer la Routine « Contenu SEO » cette semaine, soit la réparer (déclencheur, droits d'écriture, garde-fou 600 mots), soit écrire à la main les deux premiers sujets de la file (capitales d'Europe, drapeaux les plus difficiles) pour débloquer la série ; (b) ajouter `POSTHOG_PERSONAL_API_KEY` et autoriser `playgeog.com` et `www.googleapis.com` avec une clé PageSpeed à l'environnement de cette Routine ; (c) file éditoriale non réordonnée, aucune donnée de trafic ne le justifie.
 
+### 2026-11-09 — Routine « Contenu SEO »
+
+- Base : la branche `claude/seo-2026-11-02` (PR #76), qui contient la pile des PR SEO ouvertes depuis le 29/09 (#6, #15, #33, #55, #73, #76 : six PR, aucune fusionnée) ; `master` y a été fusionné. Les sujets repris sont les deux derniers non traités de la file.
+- Livré : 2 guides FR + EN (réseau des frontières ; lire les indices de Devine le pays), 10 fiches pays (rangs 61 à 70), nouveaux tableaux `border-graph`, `guess-pivots` et `guess-openers` dans `site/lib/tables.mjs`.
+- Rafraîchissement : `mode-guess` (deux affirmations sans source — « quatre ou cinq essais », « un pays par continent » — remplacées par les résultats de la simulation) et `guide-borders` (le Brésil à dix voisins vs neuf dans le jeu, « autour de huit » remplacé par la liste exacte), redatés au 09/11. Les 41 autres pages FR/EN à `modified:` ancien n'ont pas été relues cette semaine.
+- Sauté : « Pays les plus petits du monde » reste sans angle propre (voir la note du 12/10). La file n'a plus de sujet non coché ; à réalimenter.
+- Attention : six PR SEO empilées ouvertes ; la production n'a reçu aucune page SEO. Merger la PR la plus récente suffit (elle contient les précédentes).
+
 ### 2026-11-06 — rapport hebdo (sans PostHog)
 
 - Pas de `POSTHOG_PERSONAL_API_KEY` dans la session : aucun indicateur produit mesuré. `playgeog.com` est bloqué par le réseau de la session (connexion refusée par le proxy) : sitemap et PageSpeed non mesurés, pas de nouvel essai.
@@ -78,6 +100,14 @@ Faits saillants :
 3. Sixième semaine consécutive sans page SEO : 116 fichiers inchangés, file éditoriale intacte (0/15).
 
 Décision : la Routine « Contenu SEO » est à vérifier en priorité (déclenchement, droits, garde-fou de 600 mots ?) ; file éditoriale non réordonnée faute de données de trafic. Ajouter `POSTHOG_PERSONAL_API_KEY` et autoriser `playgeog.com` à l'environnement de cette Routine pour des rapports chiffrés.
+
+### 2026-11-02 — Routine « Contenu SEO »
+
+- Base : la branche `claude/seo-2026-10-26` (PR #73, non fusionnée), car les PR SEO des 29/09 au 26/10 sont toutes ouvertes et s'empilent ; cette PR les contient donc toutes. Les sujets repris sont les suivants dans la file.
+- Livré : 2 guides FR + EN (pays à plusieurs capitales ; Asie centrale sur le globe), 10 fiches pays (rangs 51 à 60), rafraîchissement de `guide-landlocked` (section Asie centrale) et `guide-renamed` (Astana/Nur-Sultan, libellés du jeu revérifiés) redatés au 02/11.
+- Sauté : « Pays les plus petits du monde » (toujours sans angle propre, voir la note du 12/10), « Frontières : les pays qui touchent le plus de voisins » et « Devinez le pays » non traités cette semaine (seuls deux sujets par semaine), à prendre ensuite.
+- Attention : cinq PR SEO ouvertes (#6, #15, #33, #55, #73) depuis cinq semaines, aucune fusionnée ; la production n'a reçu aucune page SEO.
+
 
 ### 2026-10-30 — rapport hebdo (sans PostHog)
 
@@ -150,6 +180,44 @@ Faits saillants :
 3. Les indicateurs A1/A2 (`solo_shared`, `referral_shared`, `install_cta_pressed`, `comeback_granted`) restent sans information, faute d'accès PostHog.
 
 Décision : (a) vérifier que la Routine « Contenu SEO » tourne bien le lundi (clé, droits, échecs silencieux) ; (b) fournir `POSTHOG_PERSONAL_API_KEY` à cette Routine pour mesurer l'effet des vidéos sociales sur les installs ; (c) file éditoriale non réordonnée, aucune donnée ne le justifie.
+
+### 2026-10-26 — Contenu SEO de la semaine
+
+- Base : les PR #6, #15, #33 et #55 (SEO des 29/09 au 19/10) sont encore ouvertes et empilées ; la branche fusionne #55 (qui contient les trois autres) pour réutiliser le gabarit `country` et ne reprend aucun de leurs sujets. À fusionner d'un bloc, ou dans l'ordre #6, #15, #33, #55 puis celle-ci.
+- Pages : `/guides/drapeaux-nordiques/` et `/guides/combien-de-pays-en-europe/` + EN (`/en/guides/nordic-flags/`, `/en/guides/how-many-countries-in-europe/`) ; nouveaux tableaux `europe-count` (scénarios et blocs), `flag-set:nordic`, `capital-set:nordic` et `capital-set:europe-borderline`. Ajoutées au sommaire des guides et à deux pages sœurs chacune (drapeaux : `guide-flags`, `atlas-flags-europe` ; Europe : `atlas-countries-europe`, `guide-countries-count`).
+- 10 fiches pays de plus (rangs 41 à 50 par la population), FR + EN. Total : 50.
+- Rafraîchissement : `atlas-countries-europe` (proportion de pays enclavés corrigée : l'Europe est devant l'Afrique, pas derrière ; liste des quatre micro-États précisée) et `atlas-flags-europe` (le blason n'est pas porté par la Tchéquie ; ordre des couleurs de la Serbie et de la Croatie ; croix norvégienne et islandaise décrites), FR + EN, `modified` passé au 26/10.
+- Sauté : « Pays les plus petits du monde » reste en attente d'un angle propre (voir la file).
+
+### 2026-10-19 — Contenu SEO de la semaine
+
+- Base : les PR #6, #15 et #33 (SEO des 29/09, 05/10, 12/10) sont encore ouvertes et empilées ; la branche part de #33 (gabarit `country`) et ne reprend aucun de leurs sujets. À fusionner dans l'ordre #6, #15, #33, puis celle-ci.
+- Pages : `/guides/quiz-capitales-d-amerique-du-sud/` et `/guides/familles-de-drapeaux-africains/` + EN (`/en/guides/south-america-capitals-quiz/`, `/en/guides/african-flag-families/`) ; nouveaux tableaux `flag-set` (4 familles) et 3 ensembles `capital-set` pour l'Amérique du Sud. Ajoutées au sommaire des guides et à 4 pages sœurs (atlas drapeaux d'Afrique, atlas capitales d'Amérique du Sud, guides drapeaux et capitales).
+- 10 fiches pays de plus (rangs 31 à 40 par la population), FR + EN. Total : 40.
+- Rafraîchissement : aucune page n'a un `modified` de plus de 60 jours (la plus ancienne date du 23/08, soit 57 jours), rien relu ni redaté.
+- Sauté : « Pays les plus petits du monde » reste en attente d'un angle propre (voir la file).
+
+### 2026-10-12 — Contenu SEO de la semaine
+
+- Base : les PR #6 (29/09) et #15 (05/10) sont encore ouvertes, #15 contient #6 ; la branche part de #15 pour réutiliser le gabarit `country` et ne reprend aucun de leurs sujets. À fusionner dans l'ordre #15 puis celle-ci.
+- Pages : `/guides/quiz-capitales-d-afrique/` et `/guides/quiz-capitales-d-asie/` + EN (`/en/guides/africa-capitals-quiz/`, `/en/guides/asia-capitals-quiz/`) ; nouveau tableau `capital-set` et libellés de sous-régions africaines et asiatiques pour `capital-blocks`.
+- Sauté : « Pays les plus petits du monde » (redite du guide micro-États, voir la file).
+- 10 fiches pays de plus (rangs 21 à 30 par la population), FR + EN. Total : 30.
+- Rafraîchissement : aucune page n'a un `modified` de plus de 60 jours (la plus ancienne date du 23/08, soit 50 jours), rien relu ni redaté.
+
+### 2026-10-05 — Contenu SEO de la semaine
+
+- Base : la PR #6 (SEO du 29/09) était encore ouverte ; la branche la fusionne pour réutiliser le gabarit `country` sans le dupliquer. Ses deux sujets (capitales d'Europe, drapeaux difficiles) ne sont pas repris.
+- Pages : `/guides/pays-par-population/`, `/guides/pays-par-superficie/` et leurs versions EN (`/en/guides/countries-by-population/`, `/en/guides/countries-by-area/`) ; nouveaux tableaux `population-top` et `area-top` (parts et parts cumulées calculées depuis `countries_stats.json`).
+- 10 fiches pays de plus (rangs 11 à 20 par la population), FR + EN. Total : 20.
+- Rafraîchissement : aucune page n'a un `modified` de plus de 60 jours (la plus ancienne date du 23/08, soit 43 jours), rien relu.
+- Sauté : la partie « ce qui change d'ici 2050 » du sujet population, faute de projection dans les données du dépôt.
+
+### 2026-09-29 — Contenu SEO de la semaine
+
+- Pages : `/guides/quiz-capitales-d-europe/`, `/guides/drapeaux-les-plus-difficiles/` et leurs versions EN.
+- 10 premières fiches pays FR + EN (`/pays/…`, `/en/country/…`), listées dans le sommaire des guides.
+- Rafraîchissement : aucune page n'a un `modified` de plus de 60 jours (la plus ancienne date du 23/08), rien relu cette semaine.
 
 ### 2026-10-02 — rapport hebdo (sans PostHog)
 

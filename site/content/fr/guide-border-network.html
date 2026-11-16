@@ -1,0 +1,92 @@
+title: Le réseau des frontières : 130 pays reliés par la terre, 39 qui ne le sont à personne
+description: Combien de voisins a un pays typique ? Quels pays sont au centre du réseau des frontières, lesquels au bout du monde ? Le graphe des frontières terrestres des 195 pays du jeu, calculé et commenté.
+ogTitle: Le réseau des frontières terrestres : le graphe des 195 pays du jeu
+breadcrumb: Le réseau des frontières
+linkTitle: Le réseau des frontières terrestres
+published: 2026-11-09
+modified: 2026-11-09
+---
+    <article>
+      <header>
+        <h1>Le réseau des frontières : qui touche qui, et jusqu’où va-t-on à pied</h1>
+        <p class="standfirst">Le record de la Chine et de la Russie est connu. Moins connu : les frontières forment un réseau, et ce réseau a un centre, des culs-de-sac, et une distance maximale de dix-huit frontières à franchir.</p>
+        <p class="meta">Guide · données du jeu, novembre 2026</p>
+      </header>
+
+      <p>Le <a href="{{link:guide-borders}}">guide des frontières terrestres</a> raconte les records et les curiosités : les quatorze voisins de la Chine et de la Russie, les pays doublement enclavés, le village de Baarle. Cette page prend l’autre angle : celui d’un mathématicien qui regarderait les frontières comme un <strong>réseau</strong>. Chaque pays est un point, chaque frontière terrestre un trait entre deux points. Les données du jeu décrivent 312 frontières entre les {{countries}} pays ; on peut en tirer des réponses précises à des questions que personne ne se pose, mais qui expliquent pourquoi le <a href="{{link:mode-borders}}">mode Frontières</a> est parfois facile et parfois cruel.</p>
+
+      <p>Une précaution d’abord : le décompte est celui du jeu. La France y est métropolitaine, et les territoires absents des {{countries}} pays (Kosovo, Sahara occidental, Hong Kong…) ne créent aucune liaison. Un tunnel, un pont ou un détroit ne comptent pas non plus : seule la frontière terrestre relie.</p>
+
+      <h2>Le pays typique a trois voisins</h2>
+
+      <p>Si l’on classe les pays par nombre de voisins, la médiane est de <strong>3</strong>, et la moyenne de 3,2 : 624 « bouts de frontière » répartis sur 195 pays. Mais la distribution est tout sauf régulière.</p>
+
+      {{table:border-graph:degrees}}
+
+      <p>Trois enseignements se lisent dans ce tableau. Le premier, c’est la taille du groupe de tête : <strong>39 pays n’ont aucun voisin terrestre</strong>, soit un cinquième du jeu, bien plus que n’importe quel autre nombre. Ce sont presque tous des îles : le Japon, les Philippines, Madagascar, l’Australie, Sri Lanka, Cuba, l’Islande. Le deuxième, c’est que 84 pays, plus de quatre sur dix, ont deux voisins ou moins. Le troisième, c’est le vide entre 9 et 14 : aucun pays n’a dix, onze, douze ou treize voisins. La Chine et la Russie ne sont pas la queue d’une courbe, elles sont <em>hors</em> de la courbe. Derrière elles, le Brésil, la République démocratique du Congo et l’Allemagne plafonnent à neuf.</p>
+
+      <h2>Un continent, deux grands blocs et des fragments</h2>
+
+      <p>Si l’on cherche maintenant quels pays peuvent être reliés à pied, la carte se découpe en groupes séparés.</p>
+
+      {{table:border-graph:groups}}
+
+      <p>Le plus grand groupe, de <strong>130 pays</strong>, rassemble l’essentiel de l’Eurasie et de l’Afrique, plus la Papouasie-Nouvelle-Guinée, rattachée par l’Indonésie. Les <strong>Amériques continentales</strong> forment un second bloc de 22 pays, du Canada à l’Argentine, que rien ne relie au premier. Viennent ensuite deux paires isolées, Haïti avec la République dominicaine sur l’île d’Hispaniola, le Royaume-Uni avec l’Irlande, et enfin les 39 pays seuls. Total : 130 + 22 + 2 + 2 + 39 = 195.</p>
+
+      <p>La conséquence pour le jeu est directe : un trajet entre l’Allemagne et le Brésil n’existe pas, et un trajet entre la Corée du Sud et la Bulgarie existe forcément, puisque les deux sont dans le grand bloc. Quand le mode vous donne deux pays à relier, c’est que le départ et l’arrivée appartiennent au même groupe.</p>
+
+      <h2>Le bout du monde : dix-huit frontières à franchir</h2>
+
+      <p>À l’intérieur du grand bloc, quelle est la distance maximale ? Pas en kilomètres, mais en nombre de frontières à passer, en choisissant toujours le chemin le plus court.</p>
+
+      {{table:border-graph:remote}}
+
+      <p>Les deux pays les plus éloignés l’un de l’autre sont le <strong>Lesotho</strong>, au sud de l’Afrique, et, au choix, la <strong>Papouasie-Nouvelle-Guinée</strong> ou le <strong>Timor oriental</strong>, aux antipodes asiatiques : <strong>dix-huit frontières</strong> à franchir, donc dix-sept pays traversés entre les deux. Tous les pays de la liste sont des extrémités du réseau : une pointe australe (Lesotho, Afrique du Sud, Eswatini, que le jeu nomme Swaziland) et une pointe insulindienne (Indonésie, Brunei, Papouasie-Nouvelle-Guinée, Timor oriental), séparées par toute l’Afrique et toute l’Asie.</p>
+
+      <h2>Le centre : la Jordanie et la Syrie</h2>
+
+      <p>À l’inverse, quels pays sont les mieux placés pour atteindre tous les autres ?</p>
+
+      {{table:border-graph:central}}
+
+      <p>Le centre du réseau n’est ni en Europe ni en Afrique, mais au Proche-Orient. La <strong>Jordanie</strong> et la <strong>Syrie</strong> sont à neuf frontières au plus de n’importe quel autre pays du bloc, et sept autres pays à dix : l’Arabie saoudite, l’Espagne, l’Irak, Israël, le Liban, la Palestine et la Turquie. Rien d’étonnant pour la région qui relie les trois continents ; la présence de l’Espagne est plus surprenante, mais elle s’explique par son lien avec le Maroc, que le jeu compte comme une frontière. Pour le joueur, c’est un conseil pratique : quand il faut traverser un grand espace, passer par le Proche-Orient est rarement une erreur.</p>
+
+      <h2>Ce que ça change quand on joue</h2>
+
+      <p>Trois réflexes découlent de ce réseau. Premièrement, <strong>repérer les carrefours</strong> : les pays à cinq voisins ou plus (57 au total, presque trois sur dix) sont les étapes qui raccourcissent les trajets. L’Allemagne, l’Autriche, la Turquie, la Tanzanie ou la Zambie, à huit ou neuf voisins, en font partie. Deuxièmement, <strong>ne pas chercher de pont là où il n’y en a pas</strong> : l’Amérique centrale est un goulot de sept pays qui seul relie le Mexique à la Colombie. Troisièmement, <strong>penser en blocs</strong> : avant d’écrire un pays, demandez-vous dans quel groupe se trouve l’arrivée.</p>
+
+      <h2>Questions fréquentes</h2>
+
+      <div class="faq-list">
+        <details>
+          <summary>Combien de voisins a un pays en moyenne ?</summary>
+          <div class="faq-body">Un peu plus de trois : les données du jeu comptent 312 frontières entre 195 pays, soit 3,2 voisins par pays. La médiane est de 3.</div>
+        </details>
+        <details>
+          <summary>Combien de pays n’ont aucun voisin terrestre ?</summary>
+          <div class="faq-body">39 sur 195 dans le jeu, presque tous des îles. Ils ne peuvent pas être reliés aux autres par une chaîne de frontières.</div>
+        </details>
+        <details>
+          <summary>Quels sont les deux pays les plus éloignés par voie terrestre ?</summary>
+          <div class="faq-body">Le Lesotho d’un côté, la Papouasie-Nouvelle-Guinée ou le Timor oriental de l’autre : dix-huit frontières à franchir en prenant le chemin le plus court.</div>
+        </details>
+        <details>
+          <summary>Peut-on aller à pied de l’Europe à l’Amérique ?</summary>
+          <div class="faq-body">Non. Le réseau des frontières terrestres du jeu comporte un grand bloc de 130 pays en Eurasie et en Afrique, et un bloc de 22 pays en Amérique, sans aucune frontière entre les deux.</div>
+        </details>
+      </div>
+
+      <div class="play-cta">
+        <h3>Reliez deux pays de frontière en frontière</h3>
+        <p>Le mode Frontières donne un départ, une arrivée et trois vies : c’est ce réseau, en jeu.</p>
+        <a class="btn" href="{{play:mode-borders}}">{{t:playNow}}</a>
+      </div>
+
+      <h2>{{t:readNext}}</h2>
+      <ul>
+        <li><a href="{{link:guide-borders}}">Les frontières terrestres : records, enclaves et curiosités</a></li>
+        <li><a href="{{link:guide-landlocked}}">Les pays enclavés</a></li>
+        <li><a href="{{link:mode-borders}}">Le mode Frontières</a></li>
+        <li><a href="{{link:guide-central-asia}}">L’Asie centrale sur le globe</a></li>
+      </ul>
+    </article>

@@ -1,0 +1,109 @@
+title: Devine le pays : lire les indices comme un géographe (couleurs, bandes et meilleur premier essai)
+description: Ce que signifient vraiment les couleurs de Devine le pays, quels indices éliminent le plus de pays, pourquoi l’espérance de vie ne filtre presque rien, et quels pays ouvrir en premier : tout est calculé sur les 195 pays du jeu.
+ogTitle: Devine le pays : lire les indices et choisir son premier essai
+breadcrumb: Lire les indices de Devine le pays
+linkTitle: Lire les indices de Devine le pays
+published: 2026-11-09
+modified: 2026-11-09
+---
+    <article>
+      <header>
+        <h1>Devine le pays : lire les indices comme un géographe</h1>
+        <p class="standfirst">Neuf indices par essai, des couleurs, des flèches. Combien de pays chacun élimine-t-il vraiment ? Les réponses sont dans les données du jeu, et certaines contredisent l’intuition.</p>
+        <p class="meta">Guide · données et règles du jeu, novembre 2026</p>
+      </header>
+
+      <p>La <a href="{{link:mode-guess}}">page du mode Devine le pays</a> explique les règles et donne le découpage du monde en sous-régions. Celle-ci va plus loin dans la lecture : elle utilise les règles exactes du jeu, reprises de son code, pour calculer ce que chaque couleur permet de conclure. L’idée est simple. Un joueur qui sait qu’une cellule orange sur la population veut dire « la cible est entre 60 % et 167 % de ce chiffre » raisonne en fourchettes, pas au hasard.</p>
+
+      <h2>Les neuf indices et ce que dit chaque couleur</h2>
+
+      <p>Chaque essai affiche neuf cellules. Dans toutes, <strong>la valeur affichée est celle du pays que vous venez de proposer</strong>, pas celle de la cible ; le jeu y ajoute une indication sur la cible.</p>
+
+      <ul>
+        <li><strong>Continent</strong> et <strong>littoral</strong> : seulement « juste » (vert) ou « autre » (rouge). Ce sont les indices les plus tranchants : une réponse fausse élimine d’un coup une grande partie du jeu.</li>
+        <li><strong>Direction</strong> et <strong>distance</strong> : la flèche pointe, parmi huit directions, vers la cible. La distance est verte sous 500 km, orange sous 2 000 km, rouge au-delà. La flèche est orange quand la cible est à moins de 2 000 km, rouge sinon.</li>
+        <li><strong>Population, superficie, PIB par habitant, espérance de vie, nombre de frontières</strong> : une flèche « ▲ plus » ou « ▼ moins » dit si la cible est au-dessus ou au-dessous. La cellule est <strong>verte</strong> si les deux valeurs sont égales, <strong>orange</strong> si le rapport entre votre proposition et la cible reste entre 0,6 et 1,67, <strong>rouge</strong> sinon.</li>
+      </ul>
+
+      <p>La bande orange est donc la clé : elle signifie que la cible vaut entre 60 % et 167 % de votre proposition, c’est-à-dire, grosso modo, qu’elle est dans le même ordre de grandeur, à un facteur 1,67 près dans un sens ou dans l’autre. Rouge veut dire « beaucoup plus » ou « beaucoup moins », et la flèche dit dans quel sens.</p>
+
+      <h2>Ce qu’une couleur orange élimine vraiment</h2>
+
+      <p>Les tableaux qui suivent proposent un pays pivot à différents rangs et comptent combien des autres pays restent dans la bande orange. Tout est calculé sur les données du jeu. Commençons par la <strong>population</strong>.</p>
+
+      {{table:guess-pivots:population}}
+
+      <p>Lecture : si vous proposez l’Inde, un seul pays peut rester orange, la Chine ; tout le reste est rouge, et cela vous apprend peu, puisque la cible est « moins » dans 194 cas sur 195. À l’inverse, si vous proposez un pays de population médiane comme la Biélorussie (9,1 millions d’habitants, au 98ᵉ rang), 43 pays, 22 % de la liste, sont orange. Les extrêmes sont les mauvais pivots : le Vatican n’a aucun pays orange, donc la couleur n’apprend rien de plus que le sens de la flèche. Même logique pour la <strong>superficie</strong>.</p>
+
+      {{table:guess-pivots:area}}
+
+      <p>Les pivots sont l’Érythrée (au rang médian, 33 pays orange) ou la Suède (35). Avec ces valeurs de milieu de tableau, un rouge ou un orange partage vraiment la liste en deux camps de taille raisonnable. Pour le <strong>PIB par habitant</strong>, la bande orange est plus large encore au milieu du classement.</p>
+
+      {{table:guess-pivots:gdp}}
+
+      <p>L’Azerbaïdjan, au rang médian, garde 49 pays orange, soit un quart de la liste. C’est la plus large des trois bandes, parce que le PIB par habitant est réparti sur trois ordres de grandeur, de 216 dollars au Burundi à 288 002 à Monaco, mais que la masse des pays est regroupée au milieu.</p>
+
+      <h2>Le piège de l’espérance de vie</h2>
+
+      <p>Reste le cas le plus étonnant. Appliquons la même règle à l’<strong>espérance de vie</strong>.</p>
+
+      {{table:guess-pivots:life}}
+
+      <p>Quel que soit le pivot, <strong>100 % des autres pays restent orange</strong>. La raison est arithmétique : le pays où l’on vit le moins longtemps (le Nigéria, 54,6 ans) est à 63 % du pays où l’on vit le plus longtemps (Monaco, 86,5 ans), et 63 % est au-dessus du seuil de 60 %. Autrement dit, sur les 194 pays dont l’espérance de vie figure dans les données, <strong>la couleur ne sépare jamais rien</strong> : il ne reste que la flèche ▲ ou ▼, qui coupe la liste en deux par rapport à votre proposition. L’indice reste utile pour départager deux voisins que tout oppose, mais il ne faut pas lui demander plus que ce bit d’information.</p>
+
+      <h2>Quel premier essai choisir ?</h2>
+
+      <p>Reste à savoir par quoi commencer. Nous avons simulé, pour chacun des 195 pays proposés en premier essai, les neuf indices contre chacune des 195 cibles possibles, et regroupé les cibles qui produiraient exactement les mêmes indices. Le nombre moyen de pays restants, en comptant la bonne réponse, mesure la qualité de l’ouverture. Une précision : on retient seulement la couleur de la distance, pas les kilomètres, de sorte que ces nombres sont des plafonds.</p>
+
+      {{table:guess-openers:best}}
+
+      <p>Le meilleur premier essai est la <strong>Géorgie</strong> : en moyenne, il ne reste plus que 1,4 pays compatible avec les indices. Les bonnes ouvertures se situent surtout dans le Caucase, au Proche-Orient et dans les Balkans, avec la Biélorussie et le Gabon. Elles ont en commun de n’être à l’extrême d’aucun indice, comme les pays pivots des tableaux précédents : leurs couleurs se répartissent de façon variée selon la cible, au lieu de donner presque toujours la même réponse. À l’opposé :</p>
+
+      {{table:guess-openers:worst}}
+
+      <p>Les pires ouvertures sont les très petits États des Caraïbes, ainsi que la République démocratique du Congo, avec une dizaine de candidats restants en moyenne. Aller de l’extrême à l’extrême donne trop souvent la même réponse, rouge partout.</p>
+
+      <h2>Une méthode en quatre temps</h2>
+
+      <ol>
+        <li><strong>Ouvrez au milieu</strong> : un pays qui n’est à l’extrême d’aucun indice, par exemple la Géorgie ou l’Azerbaïdjan.</li>
+        <li><strong>Fixez le continent et le littoral</strong> : ce sont les deux indices tout ou rien.</li>
+        <li><strong>Suivez la flèche</strong> et la distance : sous 500 km, vous êtes dans le bon voisinage.</li>
+        <li><strong>Resserrez avec la population puis la superficie</strong>, en proposant à chaque fois un pays médian dans la fourchette qu’il reste.</li>
+      </ol>
+
+      <h2>Questions fréquentes</h2>
+
+      <div class="faq-list">
+        <details>
+          <summary>Que veut dire une cellule orange ?</summary>
+          <div class="faq-body">Sur population, superficie, PIB par habitant, espérance de vie et frontières : que le rapport entre votre proposition et la cible est compris entre 0,6 et 1,67. Sur la distance : moins de 2 000 km.</div>
+        </details>
+        <details>
+          <summary>Quel indice élimine le plus de pays ?</summary>
+          <div class="faq-body">Le continent et le littoral, qui sont tout ou rien. Parmi les indices chiffrés, ce sont la population et la superficie, à condition de partir d’un pays au milieu du classement.</div>
+        </details>
+        <details>
+          <summary>Pourquoi l’espérance de vie est-elle toujours orange ?</summary>
+          <div class="faq-body">Parce que l’écart entre le plus bas (54,6 ans) et le plus haut (86,5 ans) est inférieur à la bande de 0,6 à 1,67. Seule la flèche est informative.</div>
+        </details>
+        <details>
+          <summary>Quel est le meilleur premier pays à proposer ?</summary>
+          <div class="faq-body">D’après la simulation sur les 195 pays : la Géorgie, puis le Gabon et l’Azerbaïdjan. Évitez les petites îles des Caraïbes.</div>
+        </details>
+      </div>
+
+      <div class="play-cta">
+        <h3>Testez l’ouverture par la Géorgie</h3>
+        <p>Le mode Devine le pays se joue dans le navigateur, sans compte.</p>
+        <a class="btn" href="{{play:mode-guess}}">{{t:playNow}}</a>
+      </div>
+
+      <h2>{{t:readNext}}</h2>
+      <ul>
+        <li><a href="{{link:mode-guess}}">Le mode Devine le pays</a></li>
+        <li><a href="{{link:guide-hard-to-place}}">Les pays les plus difficiles à placer</a></li>
+        <li><a href="{{link:guide-population-ranking}}">Les pays par population</a></li>
+        <li><a href="{{link:guide-area-ranking}}">Les pays par superficie</a></li>
+      </ul>
+    </article>

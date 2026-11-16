@@ -1,0 +1,92 @@
+title: The border network: 130 countries linked by land, 39 linked to none
+description: How many neighbours does a typical country have? Which countries sit at the centre of the border network, which at the far end? The land-border graph of the game’s 195 countries, computed and explained.
+ogTitle: The land-border network: the graph of the game’s 195 countries
+breadcrumb: The border network
+linkTitle: The land-border network
+published: 2026-11-09
+modified: 2026-11-09
+---
+    <article>
+      <header>
+        <h1>The border network: who touches whom, and how far you can walk</h1>
+        <p class="standfirst">China and Russia’s record is well known. Less so: borders form a network, and that network has a centre, dead ends, and a longest distance of eighteen borders to cross.</p>
+        <p class="meta">Guide · game data, November 2026</p>
+      </header>
+
+      <p>The <a href="{{link:guide-borders}}">land borders guide</a> covers the records and the oddities: the fourteen neighbours of China and Russia, the doubly landlocked countries, the village of Baarle. This page takes the other angle, that of a mathematician who looks at borders as a <strong>network</strong>. Each country is a point, each land border a line between two points. The game’s data describes 312 borders among its {{countries}} countries, and from them we can draw precise answers to questions nobody asks, but which explain why the <a href="{{link:mode-borders}}">Borders mode</a> is sometimes easy and sometimes cruel.</p>
+
+      <p>One caveat first: the count is the game’s. France is metropolitan there, and territories outside the {{countries}} countries (Kosovo, Western Sahara, Hong Kong…) create no link. A tunnel, a bridge or a strait does not count either: only a land border connects.</p>
+
+      <h2>The typical country has three neighbours</h2>
+
+      <p>Rank countries by number of neighbours and the median is <strong>3</strong>, the average 3.2: 624 “ends of border” spread over 195 countries. But the distribution is anything but regular.</p>
+
+      {{table:border-graph:degrees}}
+
+      <p>Three lessons can be read in this table. The first is the size of the top group: <strong>39 countries have no land neighbour at all</strong>, a fifth of the game and far more than any other number. They are almost all islands: Japan, the Philippines, Madagascar, Australia, Sri Lanka, Cuba, Iceland. The second is that 84 countries, more than four in ten, have two neighbours or fewer. The third is the void between 9 and 14: no country has ten, eleven, twelve or thirteen neighbours. China and Russia are not the tail of a curve, they are <em>off</em> the curve. Behind them, Brazil, DR Congo and Germany peak at nine.</p>
+
+      <h2>Two big blocks and fragments</h2>
+
+      <p>Now ask which countries can be linked on foot, and the map splits into separate groups.</p>
+
+      {{table:border-graph:groups}}
+
+      <p>The largest group, with <strong>130 countries</strong>, holds most of Eurasia and Africa, plus Papua New Guinea, attached through Indonesia. The <strong>mainland Americas</strong> form a second block of 22 countries, from Canada to Argentina, with nothing connecting it to the first. Then come two isolated pairs, Haiti with the Dominican Republic on the island of Hispaniola, and the United Kingdom with Ireland, and finally the 39 countries on their own. Total: 130 + 22 + 2 + 2 + 39 = 195.</p>
+
+      <p>The consequence for the game is direct: a route between Germany and Brazil does not exist, while a route between South Korea and Bulgaria must exist, since both sit in the big block. When the mode gives you two countries to link, it is because start and finish belong to the same group.</p>
+
+      <h2>The far end of the world: eighteen borders to cross</h2>
+
+      <p>Inside the big block, what is the maximum distance? Not in kilometres, but in number of borders crossed, always taking the shortest path.</p>
+
+      {{table:border-graph:remote}}
+
+      <p>The two countries farthest from each other are <strong>Lesotho</strong>, in southern Africa, and either <strong>Papua New Guinea</strong> or <strong>Timor-Leste</strong>, at the Asian antipodes: <strong>eighteen borders</strong> to cross, so seventeen countries passed through in between. Every country on the list is an end of the network: a southern tip (Lesotho, South Africa, Eswatini, which the game lists as Swaziland in French) and an island-Asia tip (Indonesia, Brunei, Papua New Guinea, Timor-Leste), separated by the whole of Africa and Asia.</p>
+
+      <h2>The centre: Jordan and Syria</h2>
+
+      <p>Conversely, which countries are best placed to reach all the others?</p>
+
+      {{table:border-graph:central}}
+
+      <p>The centre of the network is neither in Europe nor in Africa, but in the Middle East. <strong>Jordan</strong> and <strong>Syria</strong> are at most nine borders from any other country in the block, with seven more countries at ten: Saudi Arabia, Spain, Iraq, Israel, Lebanon, Palestine and Türkiye. No surprise for the region that links the three continents; Spain’s presence is more surprising, but it comes from its link with Morocco, which the game counts as a border. For the player it is practical advice: when you have to cross a large space, going through the Middle East is rarely a mistake.</p>
+
+      <h2>What it changes when you play</h2>
+
+      <p>Three habits follow from this network. First, <strong>spot the crossroads</strong>: countries with five neighbours or more (57 in all, almost three in ten) are the stops that shorten routes. Germany, Austria, Türkiye, Tanzania or Zambia, with eight or nine neighbours, are among them. Second, <strong>do not look for a bridge where there is none</strong>: Central America is a bottleneck of seven countries that alone links Mexico to Colombia. Third, <strong>think in blocks</strong>: before typing a country, ask which group the destination is in.</p>
+
+      <h2>Frequently asked questions</h2>
+
+      <div class="faq-list">
+        <details>
+          <summary>How many neighbours does a country have on average?</summary>
+          <div class="faq-body">A little over three: the game’s data counts 312 borders among 195 countries, or 3.2 neighbours per country. The median is 3.</div>
+        </details>
+        <details>
+          <summary>How many countries have no land neighbour?</summary>
+          <div class="faq-body">39 out of 195 in the game, almost all islands. They cannot be linked to the others by a chain of borders.</div>
+        </details>
+        <details>
+          <summary>Which two countries are farthest apart by land?</summary>
+          <div class="faq-body">Lesotho on one side, Papua New Guinea or Timor-Leste on the other: eighteen borders to cross along the shortest path.</div>
+        </details>
+        <details>
+          <summary>Can you walk from Europe to the Americas?</summary>
+          <div class="faq-body">No. The game’s land-border network has one big block of 130 countries in Eurasia and Africa, and a block of 22 countries in the Americas, with no border between them.</div>
+        </details>
+      </div>
+
+      <div class="play-cta">
+        <h3>Link two countries, border by border</h3>
+        <p>The Borders mode gives a start, a finish and three lives: this network, in play.</p>
+        <a class="btn" href="{{play:mode-borders}}">{{t:playNow}}</a>
+      </div>
+
+      <h2>{{t:readNext}}</h2>
+      <ul>
+        <li><a href="{{link:guide-borders}}">Land borders: records, enclaves and oddities</a></li>
+        <li><a href="{{link:guide-landlocked}}">Landlocked countries</a></li>
+        <li><a href="{{link:mode-borders}}">The Borders mode</a></li>
+        <li><a href="{{link:guide-central-asia}}">Central Asia on the globe</a></li>
+      </ul>
+    </article>

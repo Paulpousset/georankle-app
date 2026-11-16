@@ -607,7 +607,605 @@ export function smallestTable(scope, locale) {
   };
 }
 
+const SUBREGION_LABELS = {
+  'Southeast Europe': { fr: 'Europe du Sud-Est', en: 'Southeast Europe' },
+  'Southern Europe': { fr: 'Europe du Sud', en: 'Southern Europe' },
+  'Central Europe': { fr: 'Europe centrale', en: 'Central Europe' },
+  'Western Europe': { fr: 'Europe de l’Ouest', en: 'Western Europe' },
+  'Eastern Europe': { fr: 'Europe de l’Est', en: 'Eastern Europe' },
+  'Northern Europe': { fr: 'Europe du Nord', en: 'Northern Europe' },
+  'Western Africa': { fr: 'Afrique de l’Ouest', en: 'Western Africa' },
+  'Eastern Africa': { fr: 'Afrique de l’Est', en: 'Eastern Africa' },
+  'Middle Africa': { fr: 'Afrique centrale', en: 'Middle Africa' },
+  'Southern Africa': { fr: 'Afrique australe', en: 'Southern Africa' },
+  'Northern Africa': { fr: 'Afrique du Nord', en: 'Northern Africa' },
+  'Western Asia': { fr: 'Asie occidentale', en: 'Western Asia' },
+  'South-Eastern Asia': { fr: 'Asie du Sud-Est', en: 'South-Eastern Asia' },
+  'Southern Asia': { fr: 'Asie du Sud', en: 'Southern Asia' },
+  'Eastern Asia': { fr: 'Asie de l’Est', en: 'Eastern Asia' },
+  'Central Asia': { fr: 'Asie centrale', en: 'Central Asia' },
+  'Australia and New Zealand': { fr: 'Australie et Nouvelle-Zélande', en: 'Australia and New Zealand' },
+  Melanesia: { fr: 'Mélanésie', en: 'Melanesia' },
+  Micronesia: { fr: 'Micronésie', en: 'Micronesia' },
+  Polynesia: { fr: 'Polynésie', en: 'Polynesia' },
+};
+
+/** Les capitales d'un continent regroupées par sous-région : les « blocs » de révision. */
+export function capitalBlocksTable(scope, locale) {
+  const list = scopeCountries(scope);
+  const groups = new Map();
+  for (const c of list) {
+    if (!groups.has(c.subregion)) groups.set(c.subregion, []);
+    groups.get(c.subregion).push(c);
+  }
+  const blocks = [...groups.entries()].sort((a, b) => b[1].length - a[1].length);
+  const rows = blocks.map(([sub, cs]) => {
+    const label = SUBREGION_LABELS[sub]?.[locale] ?? sub;
+    const sorted = [...cs].sort((a, b) => b.population - a.population);
+    return (
+      cell(`<strong>${label}</strong>`) +
+      cell(String(cs.length)) +
+      cell(sorted.map((c) => `${capitalName(c, locale)} (${countryName(c, locale)})`).join(', '))
+    );
+  });
+  return {
+    html: table(
+      locale === 'fr' ? ['Bloc', 'Pays', 'Capitales, du pays le plus peuplé au moins peuplé'] : ['Block', 'Countries', 'Capitals, from the most to the least populous country'],
+      rows,
+    ),
+    items: blocks.map(([sub]) => SUBREGION_LABELS[sub]?.[locale] ?? sub),
+    name: locale === 'fr' ? 'Les capitales par bloc' : 'Capitals by block',
+  };
+}
+
+/** Les drapeaux des pays les moins connus du jeu, avec leur rang de notoriété. */
+export function flagsNotorietyTable(scope, locale) {
+  const limit = Number(scope) || 24;
+  const list = [...COUNTRIES]
+    .filter((c) => NOTORIETY[c.cca3])
+    .sort((a, b) => NOTORIETY[b.cca3].rank - NOTORIETY[a.cca3].rank)
+    .slice(0, limit);
+  const rows = list.map((c) => {
+    const continent = CONTINENTS.find((k) => k.match(c));
+    return (
+      cell(
+        `<img src="${flagUrl(c.cca3)}" alt="${attr(`${locale === 'fr' ? 'Drapeau de' : 'Flag of'} ${countryName(c, locale)}`)}" width="40" height="27" loading="lazy" decoding="async" />`,
+      ) +
+      cell(`<strong>${countryName(c, locale)}</strong>`) +
+      cell(locale === 'fr' ? continent.fr : continent.en) +
+      cell(`${NOTORIETY[c.cca3].rank}${locale === 'fr' ? 'ᵉ' : ''} / ${COUNTRIES.length}`)
+    );
+  });
+  return {
+    html: table(
+      locale === 'fr' ? ['Drapeau', 'Pays', 'Continent', 'Rang de notoriété'] : ['Flag', 'Country', 'Continent', 'Notoriety rank'],
+      rows,
+    ),
+    items: list.map((c) => countryName(c, locale)),
+    name: locale === 'fr' ? 'Les drapeaux des pays les moins connus' : 'Flags of the least familiar countries',
+  };
+}
+
+/** Les familles de drapeaux étudiées dans les guides (cca3, dans l'ordre d'affichage). */
+const FLAG_SETS = {
+  'africa-red-gold-green': {
+    codes: ['ETH', 'GHA', 'SEN', 'MLI', 'GIN', 'CMR', 'BEN', 'TGO', 'COG', 'GNB', 'STP', 'BFA', 'MRT'],
+    name: { fr: 'Les drapeaux africains rouge, or et vert', en: 'African flags in red, gold and green' },
+  },
+  'africa-pan-arab': {
+    codes: ['EGY', 'SDN', 'LBY', 'DZA', 'MAR', 'TUN'],
+    name: { fr: 'Les drapeaux du nord de l’Afrique', en: 'The flags of North Africa' },
+  },
+  nordic: {
+    codes: ['DNK', 'NOR', 'SWE', 'FIN', 'ISL'],
+    name: { fr: 'Les cinq drapeaux nordiques', en: 'The five Nordic flags' },
+  },
+  'africa-borrowed': {
+    codes: ['LBR', 'TCD', 'CIV', 'NER', 'SOM', 'DJI'],
+    name: { fr: 'Drapeaux africains à rapprocher d’autres drapeaux', en: 'African flags that echo other flags' },
+  },
+  'africa-unique': {
+    codes: ['ZAF', 'MOZ', 'KEN', 'BWA', 'UGA', 'MWI', 'ZMB', 'NAM', 'AGO', 'ERI'],
+    name: { fr: 'Dix drapeaux africains sans équivalent', en: 'Ten African flags with no equivalent' },
+  },
+};
+
+/** Drapeau → pays → capitale pour une famille de drapeaux choisie (voir FLAG_SETS). */
+export function flagSetTable(scope, locale) {
+  const set = FLAG_SETS[scope];
+  if (!set) throw new Error(`flag-set : ensemble inconnu « ${scope} »`);
+  const fr = locale === 'fr';
+  const list = set.codes.map((code) => {
+    const c = COUNTRIES.find((x) => x.cca3 === code);
+    if (!c) throw new Error(`flag-set : ${code} absent des données du jeu`);
+    return c;
+  });
+  const rows = list.map(
+    (c) =>
+      cell(
+        `<img src="${flagUrl(c.cca3)}" alt="${attr(`${fr ? 'Drapeau de' : 'Flag of'} ${countryName(c, locale)}`)}" width="40" height="27" loading="lazy" decoding="async" />`,
+      ) +
+      cell(`<strong>${countryName(c, locale)}</strong>`) +
+      cell(capitalName(c, locale)),
+  );
+  return {
+    html: table(fr ? ['Drapeau', 'Pays', 'Capitale'] : ['Flag', 'Country', 'Capital'], rows),
+    items: list.map((c) => countryName(c, locale)),
+    name: set.name[locale],
+  };
+}
+
 /** Le tableau demandé par une directive `{{table:famille:portée}}`. */
+/**
+ * Le classement des N premiers pays selon un champ (`population` ou `area`), avec
+ * la part du total des pays du jeu et la part cumulée. Le total est calculé ici,
+ * sur les pays du jeu : aucune part n'est saisie.
+ */
+function topTable(field, scope, locale) {
+  const limit = Number(scope) || 30;
+  const fr = locale === 'fr';
+  const total = COUNTRIES.reduce((sum, c) => sum + c[field], 0);
+  const list = [...COUNTRIES].sort((a, b) => b[field] - a[field]).slice(0, limit);
+  const pct = (v) => `${(Math.round(v * 1000) / 10).toLocaleString(fr ? 'fr-FR' : 'en-US', { minimumFractionDigits: 1 })} %`;
+  let cumulative = 0;
+  const rows = list.map((c, i) => {
+    cumulative += c[field];
+    const continent = CONTINENTS.find((k) => k.match(c));
+    return (
+      cell(`<strong>${i + 1}</strong>`) +
+      cell(countryName(c, locale)) +
+      cell(fr ? continent.fr : continent.en) +
+      cell(num(Math.round(c[field]), locale)) +
+      cell(pct(c[field] / total)) +
+      cell(pct(cumulative / total))
+    );
+  });
+  const unit = field === 'area' ? (fr ? 'Superficie (km²)' : 'Area (km²)') : fr ? 'Population' : 'Population';
+  return {
+    html: table(
+      ['#', fr ? 'Pays' : 'Country', fr ? 'Continent (jeu)' : 'Continent (game)', unit, fr ? 'Part du total' : 'Share of total', fr ? 'Part cumulée' : 'Cumulative'],
+      rows,
+    ),
+    items: list.map((c) => countryName(c, locale)),
+    name:
+      field === 'area'
+        ? fr ? `Les ${limit} plus vastes pays du monde` : `The ${limit} largest countries in the world`
+        : fr ? `Les ${limit} pays les plus peuplés du monde` : `The ${limit} most populous countries in the world`,
+  };
+}
+
+export const populationTopTable = (scope, locale) => topTable('population', scope, locale);
+export const areaTopTable = (scope, locale) => topTable('area', scope, locale);
+
+
+/** Les ensembles de pays dont les capitales font l'objet d'un guide dédié (cca3, dans l'ordre d'affichage). */
+const CAPITAL_SETS = {
+  'africa-namesakes': {
+    codes: ['GIN', 'GNB', 'GNQ', 'COG', 'COD', 'SDN', 'SSD', 'NER', 'NGA'],
+    name: { fr: 'Les pays africains aux noms jumeaux et leurs capitales', en: 'African countries with twin names and their capitals' },
+  },
+  'southam-andes': {
+    codes: ['VEN', 'COL', 'ECU', 'PER', 'BOL'],
+    name: { fr: 'Capitales du bloc andin et caribéen', en: 'Capitals of the Andean and Caribbean block' },
+  },
+  'southam-cone': {
+    codes: ['CHL', 'ARG', 'URY', 'PRY'],
+    name: { fr: 'Capitales du cône sud', en: 'Capitals of the Southern Cone' },
+  },
+  'southam-atlantic': {
+    codes: ['BRA', 'GUY', 'SUR'],
+    name: { fr: 'Capitales de la façade atlantique', en: 'Capitals of the Atlantic block' },
+  },
+  nordic: {
+    codes: ['DNK', 'NOR', 'SWE', 'FIN', 'ISL'],
+    name: { fr: 'Les cinq pays nordiques du jeu', en: 'The five Nordic countries in the game' },
+  },
+  'europe-borderline': {
+    codes: ['RUS', 'CYP', 'TUR', 'GEO', 'ARM', 'AZE', 'KAZ'],
+    name: { fr: 'Les sept pays à la lisière de l’Europe', en: 'The seven countries on the edge of Europe' },
+  },
+  'multi-capitals': {
+    codes: ['BOL', 'ZAF', 'NLD', 'MYS', 'CIV', 'BEN', 'TZA', 'LKA', 'SWZ', 'CHL', 'BDI', 'MNE'],
+    name: { fr: 'Les douze pays dont les institutions sont réparties entre plusieurs villes', en: 'Twelve countries whose institutions are spread over several cities' },
+  },
+  'central-asia': {
+    codes: ['KAZ', 'UZB', 'TKM', 'KGZ', 'TJK'],
+    name: { fr: 'Les cinq pays d’Asie centrale et leurs capitales', en: 'The five Central Asian countries and their capitals' },
+  },
+  'asia-status': {
+    codes: ['ISR', 'PSE', 'LKA', 'MYS', 'IDN', 'MMR', 'KAZ', 'ARE', 'TUR', 'IND', 'PAK'],
+    name: { fr: 'Capitales d’Asie à statut particulier', en: 'Asian capitals with a special status' },
+  },
+  'oceania-micronesia': {
+    codes: ['KIR', 'FSM', 'MHL', 'PLW', 'NRU'],
+    name: { fr: 'Les cinq pays de Micronésie et leurs capitales', en: 'The five Micronesian countries and their capitals' },
+  },
+  'oceania-melanesia-polynesia': {
+    codes: ['PNG', 'FJI', 'SLB', 'VUT', 'WSM', 'TON', 'TUV'],
+    name: { fr: 'Mélanésie et Polynésie : sept pays et leurs capitales', en: 'Melanesia and Polynesia: seven countries and their capitals' },
+  },
+};
+
+/** Pays → capitale → population → superficie pour un ensemble de pays choisi (voir CAPITAL_SETS). */
+export function capitalSetTable(scope, locale) {
+  const set = CAPITAL_SETS[scope];
+  if (!set) throw new Error(`capital-set : ensemble inconnu « ${scope} »`);
+  const list = set.codes.map((code) => {
+    const c = COUNTRIES.find((x) => x.cca3 === code);
+    if (!c) throw new Error(`capital-set : ${code} absent des données du jeu`);
+    return c;
+  });
+  const rows = list.map(
+    (c) =>
+      cell(`<strong>${countryName(c, locale)}</strong>`) +
+      cell(capitalName(c, locale)) +
+      cell(num(c.population, locale)) +
+      cell(num(Math.round(c.area), locale)),
+  );
+  return {
+    html: table(
+      locale === 'fr' ? ['Pays', 'Capitale du jeu', 'Population', 'Superficie (km²)'] : ['Country', 'Capital in the game', 'Population', 'Area (km²)'],
+      rows,
+    ),
+    items: list.map((c) => `${countryName(c, locale)} — ${capitalName(c, locale)}`),
+    name: set.name[locale],
+  };
+}
+
+/** Pays d'Europe du jeu qui ne sont pas membres de l'ONU (observateur) : seul le Saint-Siège. */
+const NON_UN_EUROPE = ['VAT'];
+/** Les pays que le jeu classe en Asie mais que beaucoup de définitions rattachent à l'Europe. */
+const EUROPE_EDGE_IN_ASIA = ['TUR', 'GEO', 'ARM', 'AZE', 'KAZ'];
+
+/**
+ * Le nombre de pays d'Europe selon la définition retenue. Tous les décomptes
+ * sont calculés sur les données du jeu ; seul le Kosovo, absent du jeu, est
+ * ajouté à la main, et signalé comme tel.
+ */
+export function europeCountTable(scope, locale) {
+  const fr = locale === 'fr';
+  const eu = COUNTRIES.filter((c) => c.region === 'Europe');
+  if (scope === 'blocks') {
+    const groups = new Map();
+    for (const c of eu) groups.set(c.subregion, (groups.get(c.subregion) ?? 0) + 1);
+    const blocks = [...groups.entries()].sort((a, b) => b[1] - a[1]);
+    const rows = blocks.map(([sub, n]) => cell(`<strong>${SUBREGION_LABELS[sub]?.[locale] ?? sub}</strong>`) + cell(String(n)));
+    return {
+      html: table(fr ? ['Bloc', 'Pays dans le jeu'] : ['Block', 'Countries in the game'], rows),
+      items: blocks.map(([sub]) => SUBREGION_LABELS[sub]?.[locale] ?? sub),
+      name: fr ? 'Les pays d’Europe du jeu par bloc' : 'The game’s European countries by block',
+    };
+  }
+  const un = eu.filter((c) => !NON_UN_EUROPE.includes(c.cca3));
+  const strict = un.filter((c) => !['RUS', 'CYP'].includes(c.cca3));
+  const wide = eu.length + EUROPE_EDGE_IN_ASIA.length;
+  const scenarios = [
+    [strict.length, fr ? 'Sans la Russie ni Chypre, sans le Vatican' : 'Without Russia, Cyprus or the Vatican', fr ? 'Définition étroite : seuls les États membres de l’ONU entièrement dans le continent' : 'Narrow definition: only UN members entirely inside the continent'],
+    [un.length, fr ? 'États membres de l’ONU classés en Europe par le jeu' : 'UN member states filed under Europe by the game', fr ? 'Le chiffre de la question « combien de pays » dans son sens courant' : 'The usual answer to “how many countries”'],
+    [eu.length, fr ? 'L’Europe du jeu' : 'The game’s Europe', fr ? 'Les précédents, plus le Saint-Siège (État observateur)' : 'The above, plus the Holy See (an observer state)'],
+    [wide, fr ? 'Avec la Turquie, la Géorgie, l’Arménie, l’Azerbaïdjan et le Kazakhstan' : 'With Türkiye, Georgia, Armenia, Azerbaijan and Kazakhstan', fr ? 'Les cinq pays que le jeu classe en Asie mais que beaucoup de listes comptent aussi' : 'The five countries the game files under Asia but many lists also count'],
+    [wide + 1, fr ? 'Et le Kosovo' : 'And Kosovo', fr ? 'Absent du jeu : ajouté ici à la main, c’est le maximum des listes courantes' : 'Not in the game: added here by hand, the ceiling of common lists'],
+  ];
+  const rows = scenarios.map(([n, label, note]) => cell(`<strong>${n}</strong>`) + cell(label) + cell(note));
+  return {
+    html: table(fr ? ['Pays', 'Définition', 'Précision'] : ['Countries', 'Definition', 'Note'], rows),
+    items: scenarios.map(([n, label]) => `${n} — ${label}`),
+    name: fr ? 'Combien de pays en Europe selon la définition' : 'How many countries in Europe, by definition',
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Le graphe des frontières et les pays pivots de « Devine le pays »   */
+/* ------------------------------------------------------------------ */
+
+const REGION_FR = { Africa: 'Afrique', Asia: 'Asie', Europe: 'Europe', Americas: 'Amériques', Oceania: 'Océanie', Antarctic: 'Antarctique' };
+
+let graphCache;
+/** Composantes connexes, distances et excentricités du réseau des frontières terrestres du jeu. */
+function borderGraph() {
+  if (graphCache) return graphCache;
+  const codes = COUNTRIES.map((c) => c.cca3);
+  const seen = new Set();
+  const groups = [];
+  for (const start of codes) {
+    if (seen.has(start)) continue;
+    const stack = [start];
+    seen.add(start);
+    const members = [];
+    while (stack.length) {
+      const x = stack.pop();
+      members.push(x);
+      for (const n of NEIGHBOURS.get(x)) if (!seen.has(n)) { seen.add(n); stack.push(n); }
+    }
+    groups.push(members);
+  }
+  groups.sort((a, b) => b.length - a.length);
+  const ecc = new Map();
+  const far = new Map();
+  for (const group of groups.slice(0, 1)) {
+    for (const s of group) {
+      const d = new Map([[s, 0]]);
+      const queue = [s];
+      for (let i = 0; i < queue.length; i++) {
+        for (const n of NEIGHBOURS.get(queue[i])) if (!d.has(n)) { d.set(n, d.get(queue[i]) + 1); queue.push(n); }
+      }
+      let max = 0;
+      for (const v of d.values()) if (v > max) max = v;
+      ecc.set(s, max);
+      far.set(s, [...d.entries()].filter(([, v]) => v === max).map(([t]) => t));
+    }
+  }
+  graphCache = { groups, ecc, far };
+  return graphCache;
+}
+
+const byPop = (a, b) => b.population - a.population;
+const nameOf = (cca3, locale) => countryName(COUNTRIES.find((c) => c.cca3 === cca3), locale);
+
+/**
+ * Le réseau des frontières terrestres du jeu : répartition des voisins
+ * (`degrees`), groupes de pays reliés par la terre (`groups`), pays les plus
+ * excentrés (`remote`) et les plus centraux (`central`). Tout est calculé.
+ */
+export function borderGraphTable(scope, locale) {
+  const fr = locale === 'fr';
+  const { groups, ecc, far } = borderGraph();
+  if (scope === 'degrees') {
+    const byDeg = new Map();
+    for (const c of COUNTRIES) {
+      const d = NEIGHBOURS.get(c.cca3).length;
+      byDeg.set(d, [...(byDeg.get(d) ?? []), c]);
+    }
+    const degs = [...byDeg.keys()].sort((a, b) => a - b);
+    const rows = degs.map((d) => {
+      const list = byDeg.get(d).sort(byPop);
+      const shown = list.slice(0, 5).map((c) => countryName(c, locale)).join(', ');
+      return cell(`<strong>${d}</strong>`) + cell(String(list.length)) + cell(list.length > 5 ? `${shown}${fr ? '…' : '…'}` : shown);
+    });
+    return {
+      html: table(fr ? ['Voisins', 'Pays', 'Les plus peuplés'] : ['Neighbours', 'Countries', 'Most populous'], rows),
+      items: degs.map((d) => `${d} — ${byDeg.get(d).length}`),
+      name: fr ? 'Répartition des pays par nombre de voisins' : 'Countries by number of neighbours',
+    };
+  }
+  if (scope === 'groups') {
+    const multi = groups.filter((g) => g.length > 1);
+    const single = groups.filter((g) => g.length === 1);
+    const rows = multi.map((g) => {
+      const regions = [...new Set(g.map((c) => COUNTRIES.find((x) => x.cca3 === c).region))].sort();
+      const label = regions.map((r) => (fr ? REGION_FR[r] ?? r : r)).join(', ');
+      const sample = g.map((c) => COUNTRIES.find((x) => x.cca3 === c)).sort(byPop).slice(0, g.length > 4 ? 4 : g.length).map((c) => countryName(c, locale)).join(', ');
+      return cell(`<strong>${g.length}</strong>`) + cell(label) + cell(g.length > 4 ? `${sample}…` : sample);
+    });
+    const islands = single.map((g) => COUNTRIES.find((x) => x.cca3 === g[0])).sort(byPop);
+    rows.push(
+      cell(`<strong>${single.length}</strong> × 1`) +
+        cell(fr ? 'Aucun voisin terrestre' : 'No land neighbour') +
+        cell(`${islands.slice(0, 4).map((c) => countryName(c, locale)).join(', ')}…`),
+    );
+    return {
+      html: table(fr ? ['Pays dans le groupe', 'Régions du jeu', 'Exemples'] : ['Countries in the group', 'Game regions', 'Examples'], rows),
+      items: [...multi.map((g) => String(g.length)), `${single.length} × 1`],
+      name: fr ? 'Les groupes de pays reliés par la terre' : 'Groups of countries linked by land',
+    };
+  }
+  if (scope === 'remote' || scope === 'central') {
+    const list = [...ecc.keys()];
+    list.sort((a, b) =>
+      scope === 'remote'
+        ? ecc.get(b) - ecc.get(a) || nameOf(a, locale).localeCompare(nameOf(b, locale), fr ? 'fr' : 'en')
+        : ecc.get(a) - ecc.get(b) || nameOf(a, locale).localeCompare(nameOf(b, locale), fr ? 'fr' : 'en'),
+    );
+    const lim = scope === 'remote' ? ecc.get(list[0]) - 1 : ecc.get(list[0]) + 1;
+    const top = list.filter((c) => (scope === 'remote' ? ecc.get(c) >= lim : ecc.get(c) <= lim));
+    const rows = top.map(
+      (c) =>
+        cell(`<strong>${nameOf(c, locale)}</strong>`) +
+        cell(String(ecc.get(c))) +
+        cell(far.get(c).map((t) => nameOf(t, locale)).sort((a, b) => a.localeCompare(b, fr ? 'fr' : 'en')).join(', ')),
+    );
+    return {
+      html: table(fr ? ['Pays', 'Frontières à franchir', 'Pays le plus éloigné'] : ['Country', 'Borders to cross', 'Farthest country'], rows),
+      items: top.map((c) => `${nameOf(c, locale)} — ${ecc.get(c)}`),
+      name:
+        scope === 'remote'
+          ? fr ? 'Les pays les plus éloignés des autres par voie terrestre' : 'The countries farthest from the rest by land'
+          : fr ? 'Les pays les plus centraux du réseau terrestre' : 'The most central countries of the land network',
+    };
+  }
+  throw new Error(`border-graph : scope inconnu « ${scope} »`);
+}
+
+/** Les mêmes bornes que `compareNum` (src/lib/gameLogic.ts) : orange si le rapport est entre 0,6 et 1,67. */
+const ORANGE_LOW = 0.6;
+const ORANGE_HIGH = 1.67;
+
+function guessValues(scope) {
+  if (scope === 'population') return COUNTRIES.map((c) => [c, c.population]);
+  if (scope === 'area') return COUNTRIES.map((c) => [c, c.area]);
+  const key = scope === 'gdp' ? 'gdp_per_capita' : 'life_expectancy';
+  return GAME_COUNTRIES.filter((g) => typeof g.data[key]?.value === 'number' && g.data[key].value > 0).map((g) => [COUNTRIES.find((c) => c.cca3 === g.cca3), g.data[key].value]);
+}
+
+/** Part de la liste où l'indice reste orange pour un pays pivot : ce qu'une couleur élimine vraiment. */
+export function guessPivotsTable(scope, locale) {
+  const fr = locale === 'fr';
+  const vals = guessValues(scope);
+  if (!['population', 'area', 'gdp', 'life'].includes(scope)) throw new Error(`guess-pivots : scope inconnu « ${scope} »`);
+  const sorted = [...vals].sort((a, b) => b[1] - a[1]);
+  const n = sorted.length;
+  const ranks = [1, 5, 10, 25, 50, Math.ceil(n / 2), 150, n].filter((r, i, a) => r <= n && a.indexOf(r) === i);
+  const fmt = (v) => {
+    if (scope === 'life') return `${(Math.round(v * 10) / 10).toLocaleString(fr ? 'fr-FR' : 'en-US', { minimumFractionDigits: 1 })} ${fr ? 'ans' : 'yr'}`;
+    if (scope === 'gdp') return `${num(Math.round(v), locale)} $`;
+    if (scope === 'area') return `${num(Math.round(v * 10) / 10, locale)} km²`;
+    return num(v, locale);
+  };
+  const rows = ranks.map((r) => {
+    const [c, v] = sorted[r - 1];
+    const inBand = vals.filter(([o, w]) => o.cca3 !== c.cca3 && w / v >= ORANGE_LOW && w / v <= ORANGE_HIGH).length;
+    return cell(`<strong>${r}</strong>`) + cell(countryName(c, locale)) + cell(fmt(v)) + cell(String(inBand)) + cell(`${Math.round((inBand / (n - 1)) * 100)} %`);
+  });
+  const heads = fr
+    ? ['Rang', 'Pays proposé', 'Valeur', 'Pays encore orange', 'Part de la liste']
+    : ['Rank', 'Country guessed', 'Value', 'Countries still orange', 'Share of the list'];
+  const names = {
+    population: fr ? 'Population : pays pivots et bande orange' : 'Population: pivot countries and the orange band',
+    area: fr ? 'Superficie : pays pivots et bande orange' : 'Area: pivot countries and the orange band',
+    gdp: fr ? 'PIB par habitant : pays pivots et bande orange' : 'GDP per capita: pivot countries and the orange band',
+    life: fr ? 'Espérance de vie : pays pivots et bande orange' : 'Life expectancy: pivot countries and the orange band',
+  };
+  return { html: table(heads, rows), items: ranks.map((r) => countryName(sorted[r - 1][0], locale)), name: names[scope] };
+}
+
+/** Haversine, relèvement et flèche : les formules de src/lib/geo.ts, reproduites pour simuler les indices. */
+const rad = (d) => (d * Math.PI) / 180;
+function haversineKm(a, b, c, d) {
+  const x = Math.sin(rad(c - a) / 2) ** 2 + Math.cos(rad(a)) * Math.cos(rad(c)) * Math.sin(rad(d - b) / 2) ** 2;
+  return Math.round(6371 * 2 * Math.asin(Math.sqrt(x)));
+}
+function bearingDeg(a, b, c, d) {
+  const dg = rad(d - b);
+  const x = Math.sin(dg) * Math.cos(rad(c));
+  const y = Math.cos(rad(a)) * Math.sin(rad(c)) - Math.sin(rad(a)) * Math.cos(rad(c)) * Math.cos(dg);
+  return ((Math.atan2(x, y) * 180) / Math.PI + 360) % 360;
+}
+/** Comme `compareNum` du jeu : égal, ou orange/rouge et plus/moins. */
+function cmp(g, t, zeroOk = false) {
+  if (zeroOk ? g == null || t == null : !g || !t) return '?';
+  if (g === t) return '=';
+  const r = g / t;
+  return `${r >= ORANGE_LOW && r <= ORANGE_HIGH ? 'o' : 'r'}${g < t ? '+' : '-'}`;
+}
+
+let openersCache;
+/**
+ * Pour chaque pays proposé en premier essai : combien de pays restent
+ * compatibles avec TOUS les indices affichés, en moyenne sur les 195 cibles
+ * possibles. Les indices sont ceux de `buildComparison` (src/lib/gameLogic.ts),
+ * la distance étant ramenée à ses trois couleurs : c'est donc un majorant.
+ */
+function openers() {
+  if (openersCache) return openersCache;
+  const data = new Map(GAME_COUNTRIES.map((g) => [g.cca3, g.data]));
+  const sig = (g, t) => {
+    const same = g.cca3 === t.cca3;
+    const km = haversineKm(g.lat, g.lng, t.lat, t.lng);
+    return [
+      g.region === t.region,
+      same ? 'X' : Math.round(bearingDeg(g.lat, g.lng, t.lat, t.lng) / 45) % 8,
+      same ? 0 : km < 500 ? 1 : km < 2000 ? 2 : 3,
+      cmp(g.population, t.population),
+      cmp(g.area, t.area),
+      cmp(data.get(g.cca3).gdp_per_capita?.value, data.get(t.cca3).gdp_per_capita?.value),
+      g.coastline === t.coastline,
+      cmp(data.get(g.cca3).life_expectancy?.value, data.get(t.cca3).life_expectancy?.value),
+      cmp(g.borders_count, t.borders_count, true),
+    ].join('|');
+  };
+  openersCache = COUNTRIES.map((g) => {
+    const groups = new Map();
+    for (const t of COUNTRIES) {
+      const k = sig(g, t);
+      groups.set(k, (groups.get(k) ?? 0) + 1);
+    }
+    let sq = 0;
+    for (const v of groups.values()) sq += v * v;
+    return { country: g, left: sq / COUNTRIES.length, answers: groups.size };
+  }).sort((a, b) => a.left - b.left || a.country.name.localeCompare(b.country.name, 'fr'));
+  return openersCache;
+}
+
+/** Les meilleurs (`best`) et les pires (`worst`) premiers essais de Devine le pays. */
+export function guessOpenersTable(scope, locale) {
+  const fr = locale === 'fr';
+  const all = openers();
+  const list = scope === 'best' ? all.slice(0, 8) : scope === 'worst' ? all.slice(-6).reverse() : null;
+  if (!list) throw new Error(`guess-openers : scope inconnu « ${scope} »`);
+  const f = (v) => v.toLocaleString(fr ? 'fr-FR' : 'en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const rows = list.map(({ country, left, answers }) => {
+    const rank = all.findIndex((x) => x.country.cca3 === country.cca3) + 1;
+    return cell(`<strong>${countryName(country, locale)}</strong>`) + cell(String(rank)) + cell(f(left)) + cell(String(answers));
+  });
+  return {
+    html: table(
+      fr ? ['Premier essai', 'Rang sur 195', 'Candidats restants (moyenne)', 'Réponses distinctes'] : ['First guess', 'Rank out of 195', 'Candidates left (average)', 'Distinct answers'],
+      rows,
+    ),
+    items: list.map(({ country }) => countryName(country, locale)),
+    name:
+      scope === 'best'
+        ? fr ? 'Les meilleurs premiers essais de Devine le pays' : 'The best first guesses in Guess the Country'
+        : fr ? 'Les pires premiers essais de Devine le pays' : 'The worst first guesses in Guess the Country',
+  };
+}
+
+/**
+ * Les pays les moins peuplés, avec leur superficie et leur rang de superficie :
+ * l'autre façon d'être « petit », qui ne recoupe qu'en partie la première.
+ */
+/** Une superficie lisible : « 0,49 » pour le Vatican, un entier au-delà de 10 km². */
+function areaText(area, locale) {
+  return area < 10 ? num(Math.round(area * 100) / 100, locale) : num(Math.round(area), locale);
+}
+
+export function leastPopulousTable(scope, locale) {
+  const limit = Number(scope) || 20;
+  const fr = locale === 'fr';
+  const byArea = [...COUNTRIES].sort((a, b) => a.area - b.area);
+  const areaRank = new Map(byArea.map((c, i) => [c.cca3, i + 1]));
+  const list = [...COUNTRIES].sort((a, b) => a.population - b.population).slice(0, limit);
+  const rows = list.map((c, i) => {
+    const continent = CONTINENTS.find((k) => k.match(c));
+    const density = c.population / c.area;
+    const rank = areaRank.get(c.cca3);
+    return (
+      cell(`<strong>${i + 1}</strong>`) +
+      cell(countryName(c, locale)) +
+      cell(fr ? continent.fr : continent.en) +
+      cell(num(c.population, locale)) +
+      cell(areaText(c.area, locale)) +
+      cell(fr ? (rank === 1 ? '1ᵉʳ' : `${rank}ᵉ`) : `#${rank}`) +
+      cell(num(Math.round(density), locale))
+    );
+  });
+  return {
+    html: table(
+      fr
+        ? ['#', 'Pays', 'Continent', 'Population', 'Superficie (km²)', 'Rang de superficie', 'Densité (hab./km²)']
+        : ['#', 'Country', 'Continent', 'Population', 'Area (km²)', 'Area rank', 'Density (people/km²)'],
+      rows,
+    ),
+    items: list.map((c) => countryName(c, locale)),
+    name: fr ? 'Les pays les moins peuplés du monde' : 'The least populous countries in the world',
+  };
+}
+
+/**
+ * Les deux classements côte à côte : à chaque rang, le plus petit pays par la
+ * superficie et le plus petit par la population. En gras, les pays présents
+ * dans les deux listes.
+ */
+export function smallestCompareTable(scope, locale) {
+  const limit = Number(scope) || 20;
+  const fr = locale === 'fr';
+  const byArea = [...COUNTRIES].sort((a, b) => a.area - b.area).slice(0, limit);
+  const byPop = [...COUNTRIES].sort((a, b) => a.population - b.population).slice(0, limit);
+  const inBoth = new Set(byArea.filter((c) => byPop.includes(c)).map((c) => c.cca3));
+  const mark = (c) => (inBoth.has(c.cca3) ? `<strong>${countryName(c, locale)}</strong>` : countryName(c, locale));
+  const rows = byArea.map(
+    (a, i) =>
+      cell(`<strong>${i + 1}</strong>`) +
+      cell(`${mark(a)} (${areaText(a.area, locale)} km²)`) +
+      cell(`${mark(byPop[i])} (${num(byPop[i].population, locale)} ${fr ? 'hab.' : 'people'})`),
+  );
+  return {
+    html: table(fr ? ['#', 'Par la superficie', 'Par la population'] : ['#', 'By area', 'By population'], rows),
+    items: byArea.map((c, i) => `${countryName(c, locale)} / ${countryName(byPop[i], locale)}`),
+    name: fr ? 'Les plus petits pays : superficie contre population' : 'The smallest countries: area versus population',
+  };
+}
+
 export const TABLES = {
   flags: flagsTable,
   capitals: capitalsTable,
@@ -625,4 +1223,16 @@ export const TABLES = {
   notoriety: notorietyTable,
   landlocked: landlockedTable,
   smallest: smallestTable,
+  'least-populous': leastPopulousTable,
+  'smallest-compare': smallestCompareTable,
+  'capital-blocks': capitalBlocksTable,
+  'capital-set': capitalSetTable,
+  'flag-set': flagSetTable,
+  'flags-notoriety': flagsNotorietyTable,
+  'population-top': populationTopTable,
+  'area-top': areaTopTable,
+  'europe-count': europeCountTable,
+  'border-graph': borderGraphTable,
+  'guess-pivots': guessPivotsTable,
+  'guess-openers': guessOpenersTable,
 };
