@@ -13,10 +13,10 @@ import type { AvatarConfig, AvatarLayer, CosmeticBundle, CosmeticCategory, Cosme
 /** Rarity tiers: badge colour + base price (aspirational scale). */
 export const RARITY_META: Record<Rarity, { color: string; price: number; labelFr: string; labelEn: string }> = {
   common:    { color: '#8b97a3', price: 50,   labelFr: 'Commun',     labelEn: 'Common' },
-  uncommon:  { color: '#3fae5a', price: 150,  labelFr: 'Peu commun', labelEn: 'Uncommon' },
-  rare:      { color: '#2f86ff', price: 400,  labelFr: 'Rare',       labelEn: 'Rare' },
-  epic:      { color: '#a458ff', price: 800,  labelFr: 'Épique',     labelEn: 'Epic' },
-  legendary: { color: '#ffb02e', price: 1500, labelFr: 'Légendaire', labelEn: 'Legendary' },
+  uncommon:  { color: '#3fae5a', price: 250,  labelFr: 'Peu commun', labelEn: 'Uncommon' },
+  rare:      { color: '#2f86ff', price: 600,  labelFr: 'Rare',       labelEn: 'Rare' },
+  epic:      { color: '#a458ff', price: 1200, labelFr: 'Épique',     labelEn: 'Epic' },
+  legendary: { color: '#ffb02e', price: 2200, labelFr: 'Légendaire', labelEn: 'Legendary' },
 };
 
 /** Sort key so shop sections list items by ascending rarity. */
@@ -323,49 +323,49 @@ export const BUNDLES: CosmeticBundle[] = [
     nameFr: 'Pack Système solaire',
     nameEn: 'Solar System pack',
     itemIds: ['globe_mars', 'orbit_saturn', 'cosmos_galaxy'],
-    price: 1400, // 400 + 800 + 800 = 2000
+    price: 2100, // 600 + 1200 + 1200 = 3000
   },
   {
     id: 'bundle_fireice',
     nameFr: 'Pack Feu & Glace',
     nameEn: 'Fire & Ice pack',
     itemIds: ['globe_lava', 'orbit_fire', 'globe_ice', 'orbit_ice'],
-    price: 2000, // 800 + 1500 + 400 + 150 = 2850
+    price: 3000, // 1200 + 2200 + 600 + 250 = 4250
   },
   {
     id: 'bundle_wonders',
     nameFr: 'Pack Merveilles du monde',
     nameEn: 'World Wonders pack',
     itemIds: ['emblem_moai', 'emblem_goldengate', 'emblem_sydney'],
-    price: 1400, // 400 + 800 + 800 = 2000
+    price: 2100, // 600 + 1200 + 1200 = 3000
   },
   {
     id: 'bundle_explorer',
     nameFr: 'Pack Explorateur',
     nameEn: 'Explorer pack',
     itemIds: ['globe_jungle', 'globe_desert', 'cosmos_deepsea'],
-    price: 500, // 150 + 150 + 400 = 700
+    price: 750, // 250 + 250 + 600 = 1100
   },
   {
     id: 'bundle_retro',
     nameFr: 'Pack Néo-rétro',
     nameEn: 'Retro-future pack',
     itemIds: ['cosmos_synthwave', 'globe_toxic', 'globe_candy'],
-    price: 1900, // 1500 + 800 + 400 = 2700
+    price: 2800, // 2200 + 1200 + 600 = 4000
   },
   {
     id: 'bundle_skies',
     nameFr: 'Pack Envol',
     nameEn: 'Take-off pack',
     itemIds: ['sat_kite', 'sat_helicopter', 'sat_zeppelin'],
-    price: 500, // 150 + 150 + 400 = 700
+    price: 750, // 250 + 250 + 600 = 1100
   },
   {
     id: 'bundle_temples',
     nameFr: 'Pack Temples anciens',
     nameEn: 'Ancient Temples pack',
     itemIds: ['emblem_chichen', 'emblem_angkor', 'emblem_stonehenge'],
-    price: 950, // 400 + 800 + 150 = 1350
+    price: 1400, // 600 + 1200 + 250 = 2050
   },
 ];
 

@@ -20,8 +20,17 @@ export const TOURNAMENT_MODES = [
 ] as const satisfies readonly GameMode[];
 export type TournamentMode = (typeof TOURNAMENT_MODES)[number];
 
-/** Lots par rang (4e à 10e : 100). */
-export const TOURNAMENT_PRIZES = [500, 300, 200, 100, 100, 100, 100, 100, 100, 100] as const;
+/** Lots par rang (4e à 10e : 50). En phase avec `tournament_prize` (SQL). */
+export const TOURNAMENT_PRIZES = [300, 200, 100, 50, 50, 50, 50, 50, 50, 50] as const;
+
+/**
+ * Places payées : la moitié haute du classement, 10 au plus. Avec peu de
+ * joueurs, payer le top 10 revenait à payer tout le monde pour une partie.
+ * En phase avec `claim_tournament_prize` (SQL).
+ */
+export function paidPlaces(players: number): number {
+  return Math.min(TOURNAMENT_PRIZES.length, Math.floor(Math.max(0, players) / 2));
+}
 
 const EPOCH = Date.UTC(2024, 0, 1); // un lundi
 const WEEK = 7 * 86_400_000;
