@@ -889,6 +889,13 @@ export type Database = {
         Returns: Json
       }
       claim_quest: { Args: { p_quest_id: string }; Returns: Json }
+      create_friend_challenge: {
+        Args: { p_mode: string; p_pool_date: string; p_score: number; p_seed: number }
+        Returns: Json
+      }
+      get_friend_challenge: { Args: { p_code: string }; Returns: Json }
+      my_friend_challenges: { Args: { p_limit?: number }; Returns: Json }
+      submit_friend_challenge: { Args: { p_code: string; p_score: number }; Returns: Json }
       claim_rewarded_ad: { Args: never; Returns: Json }
       claim_story_life: { Args: never; Returns: Json }
       buy_story_life: { Args: never; Returns: Json }

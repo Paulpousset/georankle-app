@@ -35,6 +35,7 @@ import { Reveal } from '../components/end/Reveal';
 import { Burst, Confetti, WaveRings } from '../components/end/Confetti';
 import { CountUp } from '../components/end/CountUp';
 import { ScoreText } from '../components/ScoreText';
+import { ChallengeFromDaily } from '../components/ChallengeFromDaily';
 import { NotificationPrimer } from '../components/NotificationPrimer';
 import { ReferralNudge } from '../components/ReferralNudge';
 import { MODE_META } from './DailyHub';
@@ -379,6 +380,7 @@ export default function DailyEnd({ result, streak, streakIncreased, onNext, onSh
                   {btn(tr(language, 'Partager', 'Share'), Share2, onShare, nextMode ? 'secondary' : 'primary')}
                   {btn(tr(language, 'Récap & pièces', 'Recap & coins'), ListChecks, onDetail, 'secondary')}
                 </View>
+                <ChallengeFromDaily result={result} />
                 <NotificationPrimer />
                 <ReferralNudge source="daily_end" />
                 <Text style={{ color: c.textFaint, fontFamily: FONTS.mono, fontSize: 10, textAlign: 'center' }}>

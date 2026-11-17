@@ -5,12 +5,14 @@
  * les matchs rapides d'un seul mode, rangés par famille comme l'onglet Jouer.
  * « Même téléphone » : la partie locale qu'on se passe de main en main.
  */
+import { useState } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import {
   ChevronRight,
   Lock,
   LogIn,
   Monitor,
+  Send,
   SlidersHorizontal,
   Swords,
   Trophy,
@@ -36,6 +38,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { a11yButton } from '../../lib/a11y';
 import { hoverLift } from '../../lib/webHover';
 import { playSfx } from '../../lib/sfx';
+import { FriendChallengePanel } from '../../components/FriendChallengePanel';
 
 export type DuelSegment = 'online' | 'local';
 
@@ -223,12 +226,31 @@ function OnlineList(props: DuelTabProps) {
   const { language } = useLanguage();
   const grid = useMenuGrid();
   const leagueColor = isDarkMode ? PALETTE.chartBlue : PALETTE.oceanBlue;
+  const [challengeOpen, setChallengeOpen] = useState(false);
   const online = MENU_MODES.filter(
     (m) => m.online && (m.featureFlag !== 'languages_mode' || languagesMode),
   );
 
   return (
     <View style={{ gap: 12 }}>
+      <BigCard
+        icon={Send}
+        color={PALETTE.vermilion}
+        title={tr(language, 'Défi entre amis', 'Friend challenge')}
+        subtitle={tr(
+          language,
+          'Même grille · chacun joue quand il veut',
+          'Same grid · each plays whenever they like',
+        )}
+        onPress={() => setChallengeOpen(true)}
+        trailing={ChevronRight}
+        isDarkMode={isDarkMode}
+      />
+      <FriendChallengePanel
+        visible={challengeOpen}
+        isDarkMode={isDarkMode}
+        onClose={() => setChallengeOpen(false)}
+      />
       <BigCard
         icon={Swords}
         color={PALETTE.sand}
