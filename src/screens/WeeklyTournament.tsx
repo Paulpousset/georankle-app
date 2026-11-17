@@ -25,6 +25,7 @@ import { LanguageButton } from '../components/LanguageButton';
 import { AtlasCoin } from '../components/AtlasIcons';
 import {
   TOURNAMENT_PRIZES,
+  paidPlaces,
   claimTournamentPrize,
   fetchTournamentLeaderboard,
   msUntilTournamentEnd,
@@ -251,6 +252,14 @@ export default function WeeklyTournament({ user, onBack, onPlay, onOpenAuth }: P
               </View>
             ))}
           </View>
+          <Text style={{ fontFamily: FONTS.mono, fontSize: 11, color: c.textMuted, marginTop: -4 }}>
+            {tr(
+              language,
+              'Lots pour la moitié haute du classement (10 places au plus) · cette semaine : {0}',
+              'Prizes for the top half of the leaderboard (up to 10 places) · this week: {0}',
+              [paidPlaces(rows.length)],
+            )}
+          </Text>
 
           {/* Classement */}
           <Text

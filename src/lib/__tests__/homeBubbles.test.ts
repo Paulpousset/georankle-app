@@ -10,7 +10,7 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
 
 import { CHEST_REWARDS, chestDay, chestReady, chestReward, nextStreak } from '../chest';
 import { isRushHour, msLeftInRush, nextRushStart } from '../rush';
-import { TOURNAMENT_MODES, msUntilTournamentEnd, tournamentMode, weekStart } from '../tournament';
+import { TOURNAMENT_MODES, TOURNAMENT_PRIZES, msUntilTournamentEnd, paidPlaces, tournamentMode, weekStart } from '../tournament';
 import { MENU_MODES } from '../../data/menuModes';
 
 describe('Coffre du jour', () => {
@@ -69,5 +69,20 @@ describe('Tournoi de la semaine', () => {
 
   it('every tournament mode is a playable solo mode with a menu entry', () => {
     for (const m of TOURNAMENT_MODES) expect(MENU_MODES.some((d) => d.mode === m)).toBe(true);
+  });
+});
+
+describe('lots du tournoi (en phase avec claim_tournament_prize)', () => {
+  it('paie la moitié haute du classement, 10 places au plus', () => {
+    expect(paidPlaces(0)).toBe(0);
+    expect(paidPlaces(1)).toBe(0);
+    expect(paidPlaces(3)).toBe(1);
+    expect(paidPlaces(8)).toBe(4);
+    expect(paidPlaces(12)).toBe(6);
+    expect(paidPlaces(50)).toBe(10);
+  });
+
+  it('garde 300/200/100 puis 50 jusqu’au 10e', () => {
+    expect(TOURNAMENT_PRIZES).toEqual([300, 200, 100, 50, 50, 50, 50, 50, 50, 50]);
   });
 });
