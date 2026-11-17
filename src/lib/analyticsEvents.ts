@@ -102,6 +102,11 @@ export type AnalyticsEvent =
   | 'referral_link_opened'
   | 'referral_shared'
   | 'referral_redeemed'
+  // Friend challenges (async « beat my score »)
+  | 'friend_challenge_created'
+  | 'friend_challenge_shared'
+  | 'friend_challenge_opened'
+  | 'friend_challenge_answered'
   // Notifications primer (permission asked from a tap, after a daily)
   | 'notif_primer_shown'
   | 'notif_primer_answered'
