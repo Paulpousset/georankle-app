@@ -1,16 +1,18 @@
 import { useEffect } from 'react';
-import { Linking } from 'react-native';
+import { Linking, Platform } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import { parseLeagueCode, parseReferralCode } from '../lib/links';
 import { storePendingReferral, redeemPendingReferral } from '../lib/referral';
 import { joinPendingLeague, storePendingLeagueJoin } from '../lib/league';
 import { useAuth } from '../contexts/AuthContext';
 import { track } from '../lib/analytics';
+import { parseChallengeCode, requestOpenChallenge, submitPendingChallengeScore } from '../lib/friendChallenge';
 
 /**
  * The install→reward half of the viral loop.
  *
  * Captures a referral code (`?code=`/`?ref=`) and/or a league invite
- * (`?league=`) from the link that opened the app — cold start
+ * (`?league=`) and/or a friend challenge (`?defi=`) from the link that opened the app — cold start
  * (`getInitialURL`) or while running (`url` event) — stashes them, and
  * redeems/joins as soon as a session exists. Works with both the `geog://`
  * scheme and the https links. `onRedeemed` / `onLeagueJoined` fire once so the
@@ -36,6 +38,9 @@ export function useDeepLinks(
           });
         });
       }
+      // Friend challenge link (`?defi=`): open the grid right away, logged in or not.
+      const challenge = parseChallengeCode(url);
+      if (challenge) requestOpenChallenge(challenge);
       const league = parseLeagueCode(url);
       if (league) {
         storePendingLeagueJoin(league).then(() => {
@@ -47,9 +52,18 @@ export function useDeepLinks(
     };
     Linking.getInitialURL().then(capture);
     const sub = Linking.addEventListener('url', ({ url }) => capture(url));
+    // Tapping « X played your challenge » opens that challenge's results.
+    const tapSub =
+      Platform.OS === 'web'
+        ? null
+        : Notifications.addNotificationResponseReceivedListener((res) => {
+            const data = res.notification.request.content.data as { type?: string; code?: string } | undefined;
+            if (data?.type === 'friend_challenge' && data.code) requestOpenChallenge(data.code);
+          });
     return () => {
       mounted = false;
       sub.remove();
+      tapSub?.remove();
     };
     // Mount-once: the handler closes over onRedeemed which is stable enough here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -64,6 +78,8 @@ export function useDeepLinks(
     joinPendingLeague().then((r) => {
       if (r) onLeagueJoined?.(r.name);
     });
+    // A challenge answered as a guest: record it (and the friendship) now.
+    submitPendingChallengeScore().catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 }

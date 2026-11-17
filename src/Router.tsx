@@ -1,4 +1,4 @@
-import { useState, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { getTodayUTC } from './lib/daily';
@@ -18,6 +18,8 @@ import DailyHub from './screens/DailyHub';
 import ImpossibleDaily from './screens/ImpossibleDaily';
 import WeeklyTournament from './screens/WeeklyTournament';
 import DailyGameHost from './screens/DailyGameHost';
+import ChallengeGameHost from './screens/ChallengeGameHost';
+import { onChallengeIntent, type ChallengeIntent } from './lib/friendChallenge';
 import StoryMap from './screens/StoryMap';
 import { ClassicGame } from './screens/ClassicGame';
 import StreakGame from './screens/StreakGame';
@@ -124,6 +126,13 @@ export function Router({
 }: RouterProps) {
   const { user, isAdmin } = useAuth();
   const { language } = useLanguage();
+  // Friend challenge in progress (a `?defi=` link, the daily end, the Duel tab):
+  // it overlays everything, like a daily. A `key` restarts the host on « Revanche ».
+  const [friendChallenge, setFriendChallenge] = useState<{ intent: ChallengeIntent; n: number } | null>(null);
+  useEffect(
+    () => onChallengeIntent((intent) => setFriendChallenge((prev) => ({ intent, n: (prev?.n ?? 0) + 1 }))),
+    [],
+  );
   // Vitrine de lancement : le mode dont la partie a déjà été confirmée. Remis à
   // zéro dès que le mode affiché change (motif React « ajuster un état quand une
   // prop change »), sinon revenir au menu puis relancer le même mode sauterait
@@ -229,6 +238,25 @@ export function Router({
       <SafeAreaProvider>
         <FfaMatch match={resumeFfa} user={user} onExit={() => setResumeFfa(null)} />
       </SafeAreaProvider>
+    );
+  }
+
+  if (friendChallenge) {
+    return (
+      <>
+        <ChallengeGameHost
+          key={friendChallenge.n}
+          intent={friendChallenge.intent}
+          user={user}
+          onRestart={(intent) => setFriendChallenge((prev) => ({ intent, n: (prev?.n ?? 0) + 1 }))}
+          onRequestLogin={() => openAuth('signup')}
+          onExit={() => {
+            void maybeShowInterstitial();
+            setFriendChallenge(null);
+          }}
+        />
+        <AuthModal visible={showAuthModal} onClose={() => setShowAuthModal(false)} initialMode={authMode} />
+      </>
     );
   }
 

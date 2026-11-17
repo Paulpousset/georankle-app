@@ -6,10 +6,7 @@ import type { User } from '@supabase/supabase-js';
 
 import type { GameMode } from '../types';
 import { completeDaily, getLocalState, seedFor, type DailyResult } from '../lib/daily';
-import { variantForSeed } from '../lib/languages';
-import { challengeForSeed } from '../data/challenges';
 import { isGhostDaily } from '../data/ghostCountries';
-import { ghostCapitalsChallenge } from '../lib/ghostCountries';
 import { prefetchReferralCode, shareDailyResult } from '../lib/shareDaily';
 import { track } from '../lib/analytics';
 import { maybeAskForReview } from '../lib/reviewPrompt';
@@ -18,20 +15,7 @@ import { tr } from '../i18n';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useToast } from '../components/ToastProvider';
 
-import { ClassicGame } from './ClassicGame';
-import StreakGame from './StreakGame';
-import HigherLowerGame from './HigherLowerGame';
-import SilhouetteGame from './SilhouetteGame';
-import PinpointGame from './PinpointGame';
-import ScaleGame from './ScaleGame';
-import SplitGame from './SplitGame';
-import LanguagesFlow from './LanguagesFlow';
-import BordersGame from './BordersGame';
-import GuessCountryGame from './GuessCountryGame';
-import FindCountryGame from './FindCountryGame';
-import RegionGameFlow from './RegionGameFlow';
-import ChallengeQuiz from './ChallengeQuiz';
-import VersusCapitals from './VersusCapitals';
+import { SeededGame } from './seededGame';
 import DailyEnd from './DailyEnd';
 import { afterAdBreak } from '../lib/monetization';
 
@@ -167,165 +151,19 @@ export default function DailyGameHost({
     ).catch(() => {});
   };
 
-  // Exit helper for screens that navigate via setGameMode('menu').
-  const exitOnMenu = (m: GameMode) => {
-    if (m === 'menu') requestExit();
-  };
-
-  const common = {
-    dailySeed: seed,
-    onDailyComplete: handleComplete,
-    isDaily: true,
-    onShare,
-  };
-
-  let screen: React.ReactNode;
-  if (mode === 'classic') {
-    screen = (
-      <ClassicGame
-        user={user}
-        onExit={requestExit}
-        poolDate={date}
-        {...common}
-      />
-    );
-  } else if (mode === 'streak') {
-    screen = (
-      <StreakGame
-        setGameMode={exitOnMenu}
-        poolDate={date}
-        user={user}
-        onDailyScoreChange={reportScore}
-        {...common}
-      />
-    );
-  } else if (mode === 'higherlower') {
-    screen = (
-      <HigherLowerGame
-        setGameMode={exitOnMenu}
-        user={user}
-        onDailyScoreChange={reportScore}
-        poolDate={date}
-        {...common}
-      />
-    );
-  } else if (mode === 'silhouette') {
-    screen = (
-      <SilhouetteGame
-        setGameMode={exitOnMenu}
-        user={user}
-        onDailyScoreChange={reportScore}
-        // Halloween: on its haunted days the slot plays « Pays fantômes » —
-        // same seed, same leaderboard, no server change. Same for the 3 below.
-        ghost={isGhostDaily(date, mode)}
-        {...common}
-      />
-    );
-  } else if (mode === 'pinpoint') {
-    screen = (
-      <PinpointGame
-        setGameMode={exitOnMenu}
-        user={user}
-        onDailyScoreChange={reportScore}
-        ghost={isGhostDaily(date, mode)}
-        {...common}
-      />
-    );
-  } else if (mode === 'scale') {
-    screen = (
-      <ScaleGame
-        setGameMode={exitOnMenu}
-        user={user}
-        onDailyScoreChange={reportScore}
-        ghost={isGhostDaily(date, mode)}
-        {...common}
-      />
-    );
-  } else if (mode === 'split') {
-    screen = (
-      <SplitGame
-        setGameMode={exitOnMenu}
-        user={user}
-        onDailyScoreChange={reportScore}
-        {...common}
-      />
-    );
-  } else if (mode === 'languages') {
-    screen = (
-      <LanguagesFlow
-        setGameMode={exitOnMenu}
-        user={user}
-        // The variant is derived from the day's seed, NOT chosen by the player:
-        // everyone must face the same puzzle for the shared grid to mean anything.
-        variant={variantForSeed(seed)}
-        onDailyScoreChange={reportScore}
-        {...common}
-      />
-    );
-  } else if (mode === 'borders') {
-    screen = (
-      <BordersGame
-        setGameMode={exitOnMenu}
-        user={user}
-        onDailyScoreChange={reportScore}
-        {...common}
-      />
-    );
-  } else if (mode === 'guess') {
-    screen = (
-      <GuessCountryGame
-        onBackToMenu={requestExit}
-        user={user}
-        {...common}
-      />
-    );
-  } else if (mode === 'globe') {
-    screen = (
-      <FindCountryGame
-        setGameMode={exitOnMenu}
-        user={user}
-        onDailyScoreChange={reportScore}
-        {...common}
-      />
-    );
-  } else if (mode === 'regions') {
-    screen = (
-      <RegionGameFlow
-        setGameMode={exitOnMenu}
-        user={user}
-        onDailyScoreChange={reportScore}
-        {...common}
-      />
-    );
-  } else if (mode === 'challenge') {
-    screen = (
-      <ChallengeQuiz
-        // Which of the country quizzes is played is derived from the day's seed,
-        // NOT chosen by the player — same puzzle for everyone, like the variant
-        // in Langues. The quiz's own questions are then seeded from that seed.
-        challenge={isGhostDaily(date, mode) ? ghostCapitalsChallenge() : challengeForSeed(seed)}
-        onExit={requestExit}
-        onDailyScoreChange={reportScore}
-        dailySeed={seed}
-        onDailyComplete={handleComplete}
-        isDaily
-        onShare={onShare}
-      />
-    );
-  } else if (mode === 'quiz-capital' || mode === 'quiz-flag') {
-    const initialGameType = mode === 'quiz-capital' ? 'CAPITAL' : 'FLAG';
-    screen = (
-      <VersusCapitals
-        setGameMode={exitOnMenu}
-        soloMode
-        initialGameType={initialGameType}
-        onDailyScoreChange={reportScore}
-        {...common}
-      />
-    );
-  } else {
-    screen = <View />;
-  }
+  const screen = (
+    <SeededGame
+      mode={mode}
+      seed={seed}
+      date={date}
+      user={user}
+      ghost={isGhostDaily(date, mode)}
+      handleComplete={handleComplete}
+      reportScore={reportScore}
+      requestExit={requestExit}
+      onShare={onShare}
+    />
+  );
 
   return (
     <SafeAreaProvider>
