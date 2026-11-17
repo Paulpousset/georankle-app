@@ -5,6 +5,8 @@
 //   hook    : accroche testée (h0 = accroche d'origine, h1, h2… = tuning.json ;
 //             v1 / v2 pour les vidéos de l'app)
 const CONCEPTS = [
+  // Frontières avec manche bonus sans réponse (remake du 16/11), suivi à part.
+  ['frontieres-bonus', /frontieres-bonus|borders-bonus/],
   ['frontieres', /frontieres|borders/],
   ['devine', /devine/],
   ['rankle', /rankle/],
