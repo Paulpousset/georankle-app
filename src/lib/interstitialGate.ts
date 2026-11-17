@@ -16,6 +16,19 @@ export const MIN_INTERVAL_MS = 6 * 60 * 1000;
 export const DAILY_CAP = 10;
 
 const KEY = 'interstitial_gate_v2';
+const FIRST_SEEN_KEY = 'interstitial_first_seen_v1';
+
+/**
+ * No interstitial during a new player's first days. The first session decides
+ * whether someone comes back (65 % of October's sign-ups played one day or
+ * never), and a full-screen ad there costs far more than the few cents it earns.
+ */
+export const NEW_PLAYER_GRACE_MS = 3 * 24 * 60 * 60 * 1000;
+
+/** Pure: is this device still inside the new-player grace window? */
+export function inNewPlayerGrace(firstSeenAt: number, now: number): boolean {
+  return firstSeenAt > 0 && now - firstSeenAt < NEW_PLAYER_GRACE_MS;
+}
 
 /** When this JS session started — the earliest anchor for the interval. */
 const SESSION_START = Date.now();
@@ -78,15 +91,35 @@ async function write(state: GateState): Promise<void> {
  * rewarded-ad cap window.
  */
 export async function shouldShowAtBreak(): Promise<boolean> {
-  const { show, next } = decide(await read(), Date.now(), SESSION_START);
+  const prev = await read();
+  const now = Date.now();
+  if (inNewPlayerGrace(await firstSeenAt(prev, now), now)) return false;
+  const { show, next } = decide(prev, now, SESSION_START);
   if (show) await write(next);
   return show;
+}
+
+/**
+ * When this device was first seen by the gate. Stamped on first call; a device
+ * that already has gate state (it saw an interstitial before this rule
+ * shipped) is a veteran and gets 0, i.e. no grace.
+ */
+async function firstSeenAt(prev: GateState | null, now: number): Promise<number> {
+  try {
+    const raw = await AsyncStorage.getItem(FIRST_SEEN_KEY);
+    if (raw !== null) return Number(raw) || 0;
+    const stamp = prev ? 0 : now;
+    await AsyncStorage.setItem(FIRST_SEEN_KEY, String(stamp));
+    return stamp;
+  } catch {
+    return 0;
+  }
 }
 
 /** Test hook: clear the persisted state. */
 export async function __resetGate(): Promise<void> {
   try {
-    await AsyncStorage.removeItem(KEY);
+    await AsyncStorage.multiRemove([KEY, FIRST_SEEN_KEY]);
   } catch {
     /* ignore */
   }
