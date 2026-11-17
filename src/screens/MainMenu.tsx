@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { BarChart3, Moon, ShoppingBag, Skull, Sun, Users } from 'lucide-react-native';
+import { BarChart3, Moon, ShoppingBag, Sun, Users } from 'lucide-react-native';
 
 import { AdBanner } from '../components/AdBanner';
 import { useLiftSoundToggle } from '../components/SoundToggle';
@@ -38,10 +38,7 @@ import { MenuTabBar, type MenuTab } from '../components/menu/MenuTabBar';
 import { HomeTab } from './menu/HomeTab';
 import { PlayTab } from './menu/PlayTab';
 import { DuelTab, type DuelSegment } from './menu/DuelTab';
-import { FloatingBubbles, type BubbleSpec } from '../components/menu/FloatingBubbles';
-import { getImpossibleState, impossibleSummary } from '../lib/impossible';
-import { IMPOSSIBLE_RED } from './ImpossibleDaily';
-import { track } from '../lib/analytics';
+import { HomeBubbles } from '../components/menu/HomeBubbles';
 
 /**
  * Sous-partie du menu ouverte, remontée dans App pour survivre au lancement
@@ -79,6 +76,8 @@ interface MainMenuProps {
   onOpenDaily: () => void;
   /** « L'Impossible du jour » (bulle flottante de l'Accueil). */
   onOpenImpossible: () => void;
+  /** « Tournoi de la semaine » (bulle flottante de l'Accueil). */
+  onOpenTournament: () => void;
   onOpenStory: () => void;
   playType: PlayType | null;
   onChangePlayType: (playType: PlayType | null) => void;
@@ -104,6 +103,7 @@ export function MainMenu({
   onOpenLeague,
   onOpenDaily,
   onOpenImpossible,
+  onOpenTournament,
   onOpenStory,
   playType,
   onChangePlayType: setPlayType,
@@ -143,17 +143,6 @@ export function MainMenu({
   // menu est remonté après une partie).
   const [refreshKey] = useState(() => Date.now());
 
-  // Bulles flottantes de l'Accueil : progression de l'Impossible du jour.
-  const [impossible, setImpossible] = useState<{ answered: number; correct: number } | null>(null);
-  useEffect(() => {
-    let alive = true;
-    getImpossibleState().then((s) => {
-      if (alive) setImpossible(impossibleSummary(s));
-    });
-    return () => {
-      alive = false;
-    };
-  }, [refreshKey]);
   // Au défilement, les bulles se rangent à moitié dans le bord.
   const bubblesTucked = useState(() => new Animated.Value(0))[0];
   const tuckedRef = useRef(false);
@@ -170,26 +159,6 @@ export function MainMenu({
     },
     [bubblesTucked],
   );
-  const bubbles: BubbleSpec[] = [
-    {
-      id: 'impossible',
-      side: 'left',
-      icon: Skull,
-      color: IMPOSSIBLE_RED,
-      label: tr(language, 'Impossible', 'Impossible'),
-      badge: !impossible
-        ? null
-        : impossible.answered === 0
-          ? tr(language, 'NEW', 'NEW')
-          : `${impossible.correct}/6`,
-      pulse: !!impossible && impossible.answered < 6,
-      a11yLabel: tr(language, 'L’Impossible du jour', 'Today’s Impossible'),
-      onPress: () => {
-        track('impossible_bubble_tap', { answered: impossible?.answered ?? 0 });
-        onOpenImpossible();
-      },
-    },
-  ];
 
   // Décor de l'Accueil : la planète se lève derrière le titre.
   const windowWidth = useStageWidth();
@@ -502,7 +471,17 @@ export function MainMenu({
             GEOG · v2.0
           </Text>
         </ScrollView>
-        {tab === 'home' && <FloatingBubbles bubbles={bubbles} tucked={bubblesTucked} />}
+        {tab === 'home' && (
+          <HomeBubbles
+            tucked={bubblesTucked}
+            isAuthenticated={isAuthenticated}
+            refreshKey={refreshKey}
+            onOpenImpossible={onOpenImpossible}
+            onOpenTournament={onOpenTournament}
+            onOpenDuel={() => selectDuelSegment('online')}
+            onOpenAuth={onOpenAuth}
+          />
+        )}
       </View>
 
       {/* Pub + barre d'onglets : leur hauteur soulève le bouton son flottant. */}

@@ -1,6 +1,6 @@
 /**
  * Bulles flottantes de l'Accueil : de petits raccourcis ronds posés sur les
- * bords de l'écran, vers 80 % de la hauteur en partant du bas, qui donnent une
+ * bords de l'écran, en haut à gauche et à droite de la planète, qui donnent une
  * raison de revenir chaque jour (« L'Impossible du jour »…).
  *
  * Elles flottent doucement et, dès qu'on fait défiler l'Accueil, se rangent à
@@ -15,7 +15,7 @@ import { FONTS } from '../../theme/typography';
 import { a11yButton } from '../../lib/a11y';
 
 const NATIVE = Platform.OS !== 'web';
-export const BUBBLE_SIZE = 62;
+export const BUBBLE_SIZE = 56;
 
 export interface BubbleSpec {
   id: string;
@@ -136,7 +136,7 @@ function Bubble({
               elevation: 6,
             }}
           >
-            <Icon color="#fff" size={28} />
+            <Icon color="#fff" size={25} />
           </View>
           {!!spec.badge && (
             <View
@@ -202,12 +202,12 @@ export function FloatingBubbles({
         pointerEvents="box-none"
         style={{
           position: 'absolute',
-          // Vers 80 % de la hauteur en partant du bas : à côté de la planète de
-          // l'Accueil sur un téléphone, au-dessus des cartes.
-          top: '17%',
+          // Dans le haut de l'écran (de ~95 % à ~75 % de la hauteur en partant
+          // du bas) : de part et d'autre de la planète de l'Accueil sur un
+          // téléphone, au-dessus des cartes.
+          top: '4%',
           [side]: 8,
-          marginTop: -BUBBLE_SIZE / 2,
-          gap: 18,
+          gap: 12,
           zIndex: 20,
         }}
       >

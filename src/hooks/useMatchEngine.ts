@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { } from 'react-native';
 import { showAlert } from '../lib/alert';
+import { claimRushBonus } from '../lib/rush';
 
 import { supabase } from '../lib/supabase';
 import { tr } from '../i18n';
@@ -210,6 +211,16 @@ export function useMatchEngine({ setGameMode, clearPages }: MatchEngineDeps) {
 
   // ─── Ranked ELO update ──────────────────────────────────────────────────────
 
+  // « Duel 20h » : un duel fini pendant l'heure de pointe rapporte une seconde
+  // fois ses pièces. Chaque joueur réclame sa part ; le serveur vérifie l'heure
+  // de création du match et ne verse qu'une fois.
+  const addRushBonus = (match: Match) => {
+    const createdAt = typeof match.created_at === 'string' ? match.created_at : null;
+    void claimRushBonus(match.id, createdAt).then((bonus) => {
+      if (bonus > 0) setCoinsAwarded((prev) => (prev ?? 0) + bonus);
+    });
+  };
+
   // ELO is computed server-side (SECURITY DEFINER RPC) so it cannot be spoofed
   // by the client. Both clients may call this; the function is idempotent and
   // row-locked, so only the first call mutates ratings.
@@ -230,6 +241,7 @@ export function useMatchEngine({ setGameMode, clearPages }: MatchEngineDeps) {
     const result = (data ?? {}) as RankedResultPayload;
     // When the result was already applied (opponent's client got there first),
     // re-read the caller's standing so the UI still shows the new ELO.
+    addRushBonus(match);
     if (result.already_applied) {
       setRankResult({ eloChange: 0, newElo: result.new_elo ?? 0, oldElo: result.new_elo ?? 0 });
       return;
@@ -267,6 +279,7 @@ export function useMatchEngine({ setGameMode, clearPages }: MatchEngineDeps) {
     if (typeof result.coins_awarded === 'number' && result.coins_awarded > 0) {
       setCoinsAwarded(result.coins_awarded);
     }
+    addRushBonus(match);
   };
 
   // ─── Forfeit (absent opponent) ───────────────────────────────────────────────

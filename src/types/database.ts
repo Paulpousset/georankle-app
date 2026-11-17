@@ -164,6 +164,12 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_chests: {
+        Row: { user_id: string; last_claim: string; streak: number; updated_at: string }
+        Insert: { user_id: string; last_claim: string; streak?: number; updated_at?: string }
+        Update: { user_id?: string; last_claim?: string; streak?: number; updated_at?: string }
+        Relationships: []
+      }
       daily_results: {
         Row: {
           created_at: string
@@ -889,6 +895,13 @@ export type Database = {
         Returns: Json
       }
       claim_quest: { Args: { p_quest_id: string }; Returns: Json }
+      claim_daily_chest: { Args: never; Returns: Json }
+      claim_rush_bonus: { Args: { p_match_id: string }; Returns: Json }
+      claim_tournament_prize: { Args: never; Returns: Json }
+      tournament_leaderboard: {
+        Args: { p_week: string; p_limit?: number }
+        Returns: { user_id: string; username: string | null; best: number; games: number }[]
+      }
       submit_impossible: {
         Args: { p_date: string; p_mode: string; p_correct: boolean; p_ms: number }
         Returns: Json

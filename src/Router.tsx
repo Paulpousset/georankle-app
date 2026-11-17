@@ -16,6 +16,7 @@ import type { useMatchEngine } from './hooks/useMatchEngine';
 import { MainMenu } from './screens/MainMenu';
 import DailyHub from './screens/DailyHub';
 import ImpossibleDaily from './screens/ImpossibleDaily';
+import WeeklyTournament from './screens/WeeklyTournament';
 import DailyGameHost from './screens/DailyGameHost';
 import StoryMap from './screens/StoryMap';
 import { ClassicGame } from './screens/ClassicGame';
@@ -273,6 +274,27 @@ export function Router({
         <ImpossibleDaily
           user={user}
           onBack={popPage}
+          onOpenAuth={() => {
+            popPage();
+            openAuth('login');
+          }}
+        />
+      </SafeAreaProvider>
+    );
+  }
+
+  if (currentPage?.name === 'tournament') {
+    return (
+      <SafeAreaProvider>
+        <WeeklyTournament
+          user={user}
+          onBack={popPage}
+          onPlay={(mode) => {
+            // Les pages passent devant les parties : on quitte le tournoi d'abord.
+            popPage();
+            setReviewIds(null);
+            setGameMode(mode);
+          }}
           onOpenAuth={() => {
             popPage();
             openAuth('login');
@@ -880,6 +902,7 @@ export function Router({
         onOpenLeague={() => (user ? pushPage({ name: 'league' }) : openAuth('login'))}
         onOpenDaily={() => pushPage({ name: 'daily' })}
         onOpenImpossible={() => pushPage({ name: 'impossible' })}
+        onOpenTournament={() => pushPage({ name: 'tournament' })}
         onOpenStory={() => pushPage({ name: 'story' })}
         playType={playType}
         onChangePlayType={setPlayType}
