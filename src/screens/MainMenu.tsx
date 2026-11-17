@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { BarChart3, Moon, ShoppingBag, Sun, Users } from 'lucide-react-native';
@@ -154,7 +154,11 @@ export function MainMenu({
       Animated.timing(bubblesTucked, {
         toValue: next ? 1 : 0,
         duration: 220,
-        useNativeDriver: false,
+        // Même pilote que les animations des bulles (FloatingBubbles) : une
+        // valeur animée en JS sur un nœud déjà passé en natif fait planter
+        // l'app (« Attempting to run JS driven animation on animated node
+        // that has been moved to native »).
+        useNativeDriver: Platform.OS !== 'web',
       }).start();
     },
     [bubblesTucked],
