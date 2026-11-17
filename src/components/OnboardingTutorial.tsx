@@ -101,12 +101,12 @@ export const ONBOARDING_STEPS: TutorialStep[] = [
     icon: CalendarDays,
     accent: DAILY_FLAME,
     targetId: 'daily',
-    titleFr: 'Le Défi du Jour',
-    titleEn: 'Daily Challenge',
+    titleFr: 'Le GeoG du jour',
+    titleEn: 'The Daily GeoG',
     bodyFr:
-      'Chaque jour, un nouveau puzzle pour chaque mode. Revenez quotidiennement pour allonger votre série : c’est le moyen le plus simple de progresser un peu chaque jour.',
+      'Chaque jour, un puzzle, le même pour tout le monde. Jouez-le, comparez votre score avec vos amis et revenez demain pour allonger votre série. Les autres modes ont aussi leur puzzle du jour, en bonus.',
     bodyEn:
-      'Every day brings a fresh puzzle for each mode. Come back daily to grow your streak — the easiest way to improve a little every day.',
+      'One puzzle a day, the same for everyone. Play it, compare your score with friends and come back tomorrow to grow your streak. Every other mode has a daily puzzle too, as a bonus.',
   },
   {
     id: 'profile',

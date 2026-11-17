@@ -32,6 +32,13 @@ import {
 } from '../components/OnboardingTutorial';
 import { ModeIntroCard } from '../components/ModeIntroModal';
 import { getHasSeenTutorial, setHasSeenTutorial } from '../lib/tutorial';
+import { getLocalState, getTodayUTC } from '../lib/daily';
+import {
+  featuredDailyMode,
+  hasAutostarted,
+  markAutostarted,
+  shouldAutostart,
+} from '../lib/featuredDaily';
 import { useStageWidth } from '../lib/stage';
 import { useMyGameGlobe } from '../lib/myGlobe';
 import { MenuTabBar, type MenuTab } from '../components/menu/MenuTabBar';
@@ -74,6 +81,8 @@ interface MainMenuProps {
   /** Opens the friend-leagues hub (3 daily challenges, private leaderboards). */
   onOpenLeague: () => void;
   onOpenDaily: () => void;
+  /** Lance directement un puzzle du jour (le GeoG du jour de l'Accueil). */
+  onPlayDaily: (mode: GameMode) => void;
   /** « L'Impossible du jour » (bulle flottante de l'Accueil). */
   onOpenImpossible: () => void;
   /** « Tournoi de la semaine » (bulle flottante de l'Accueil). */
@@ -102,6 +111,7 @@ export function MainMenu({
   onPlayRanked,
   onOpenLeague,
   onOpenDaily,
+  onPlayDaily,
   onOpenImpossible,
   onOpenTournament,
   onOpenStory,
@@ -214,6 +224,15 @@ export function MainMenu({
       // L'intro de lancement d'abord : le tour s'ouvrirait par-dessus.
       await whenLaunchIntroDone();
       if (cancelled) return;
+      // Tout premier lancement : on joue d'abord le GeoG du jour, sans menu ni
+      // tour. Le tour s'ouvre au retour sur le menu (il n'est pas marqué vu).
+      const [autostarted, dailyState] = await Promise.all([hasAutostarted(), getLocalState()]);
+      if (cancelled) return;
+      if (shouldAutostart(seen, autostarted, dailyState)) {
+        await markAutostarted();
+        if (!cancelled) onPlayDaily(featuredDailyMode(getTodayUTC()));
+        return;
+      }
       // Le tour se fait sur l'Accueil, où vivent ses cibles.
       setPlayType(null);
       // Petit délai : le menu doit être disposé avant qu'on mesure les cibles.
@@ -407,13 +426,11 @@ export function MainMenu({
               <HomeTab
                 isDarkMode={isDarkMode}
                 isAuthenticated={isAuthenticated}
-                languagesMode={languagesMode}
                 onOpenDaily={onOpenDaily}
+                onPlayDaily={onPlayDaily}
                 onOpenStory={onOpenStory}
                 onOpenSignup={onOpenSignup}
                 onOpenAuth={onOpenAuth}
-                onPlay={onPlay}
-                onHelp={setHelpMode}
                 dailyRef={dailyRef}
                 refreshKey={refreshKey}
               />

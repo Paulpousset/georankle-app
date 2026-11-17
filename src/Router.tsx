@@ -929,6 +929,7 @@ export function Router({
         onPlayRanked={() => (user ? pushPage({ name: 'ranked' }) : openAuth('login'))}
         onOpenLeague={() => (user ? pushPage({ name: 'league' }) : openAuth('login'))}
         onOpenDaily={() => pushPage({ name: 'daily' })}
+        onPlayDaily={(mode) => setDaily({ mode, date: getTodayUTC() })}
         onOpenImpossible={() => pushPage({ name: 'impossible' })}
         onOpenTournament={() => pushPage({ name: 'tournament' })}
         onOpenStory={() => pushPage({ name: 'story' })}

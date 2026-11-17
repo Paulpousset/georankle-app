@@ -1,22 +1,40 @@
 /**
- * Onglet « Accueil » : ce qui change chaque jour, et rien d'autre.
+ * Onglet « Accueil » : un seul rendez-vous par jour.
  *
- * Défi du jour (avec sa progression), Mode Histoire là où on s'est arrêté,
- * quêtes du jour pour les joueurs connectés, et deux modes jamais essayés.
- * La liste complète des modes vit dans l'onglet Jouer.
+ * Le GeoG du jour (un puzzle, le même pour tous, partageable) avec la série,
+ * puis les amis (défi en différé), le Mode Histoire là où on s'est arrêté et
+ * les quêtes. La liste complète des modes vit dans l'onglet Jouer, les 14
+ * autres puzzles du jour dans le hub du défi. Voir src/lib/featuredDaily.ts.
  */
 import { useEffect, useState } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
-import { CalendarDays, LogIn, Map, Play, UserPlus, X } from 'lucide-react-native';
+import {
+  CalendarDays,
+  ChevronRight,
+  LogIn,
+  Map,
+  Play,
+  Send,
+  Share2,
+  UserPlus,
+  X,
+} from 'lucide-react-native';
 
 import type { GameMode, Language } from '../../types';
-import { MENU_MODES } from '../../data/menuModes';
 import { STORY_LEVEL_COUNT } from '../../data/story';
 import { GHOST_SCHEDULE } from '../../data/ghostCountries';
-import { DAILY_MODES, getLocalState, getPuzzleNumber, getTodayUTC } from '../../lib/daily';
+import {
+  dailyModeLabel,
+  getLocalState,
+  getPuzzleNumber,
+  getTodayUTC,
+  type DailyState,
+} from '../../lib/daily';
+import { bonusProgress, featuredDailyMode } from '../../lib/featuredDaily';
+import { prefetchReferralCode, shareDailyResult } from '../../lib/shareDaily';
 import { getStorySnapshot } from '../../lib/story';
-import { useUntriedModes } from '../../lib/menuPrefs';
-import { familyColors, MODE_ICONS, ModeTile, useMenuGrid } from '../../components/menu/ModeTiles';
+import { useMenuGrid } from '../../components/menu/ModeTiles';
+import { FriendChallengePanel } from '../../components/FriendChallengePanel';
 import { DailyQuests } from '../../components/DailyQuests';
 import { AtlasFlame } from '../../components/AtlasIcons';
 import { ScoreText } from '../../components/ScoreText';
@@ -34,13 +52,13 @@ export const DAILY_FLAME = '#e8772e';
 interface HomeTabProps {
   isDarkMode: boolean;
   isAuthenticated: boolean;
-  languagesMode: boolean;
+  /** Le hub du défi du jour (les 15 puzzles). */
   onOpenDaily: () => void;
+  /** Lance directement un puzzle du jour (le GeoG du jour). */
+  onPlayDaily: (mode: GameMode) => void;
   onOpenStory: () => void;
   onOpenSignup: () => void;
   onOpenAuth: () => void;
-  onPlay: (mode: GameMode) => void;
-  onHelp: (mode: GameMode) => void;
   /** Le tour guidé de premier lancement vise la carte du défi du jour. */
   dailyRef: React.Ref<View>;
   refreshKey: number;
@@ -75,13 +93,11 @@ function DailyCountdown({ color, language }: { color: string; language: Language
 export function HomeTab({
   isDarkMode,
   isAuthenticated,
-  languagesMode,
   onOpenDaily,
+  onPlayDaily,
   onOpenStory,
   onOpenSignup,
   onOpenAuth,
-  onPlay,
-  onHelp,
   dailyRef,
   refreshKey,
 }: HomeTabProps) {
@@ -90,12 +106,19 @@ export function HomeTab({
   const grid = useMenuGrid();
 
   // Défi du jour : série et modes faits aujourd'hui (cache local, marche déconnecté).
-  const [daily, setDaily] = useState({ streak: 0, todayCount: 0 });
+  const [daily, setDaily] = useState<DailyState>({
+    streak: 0,
+    best: 0,
+    todayCount: 0,
+    results: {},
+  });
   useEffect(() => {
     let alive = true;
     getLocalState().then((s) => {
-      if (alive) setDaily({ streak: s.streak, todayCount: s.todayCount });
+      if (alive) setDaily(s);
     });
+    // Le partage doit s'ouvrir sans attente au tap (voir shareDaily.ts).
+    prefetchReferralCode();
     return () => {
       alive = false;
     };
@@ -120,20 +143,13 @@ export function HomeTab({
   // Inscription : bandeau masquable pour la session seulement.
   const [signupDismissed, setSignupDismissed] = useState(false);
 
-  // « À essayer » : les modes jamais ouverts, les nouveautés d'abord.
-  const candidates = MENU_MODES.filter((m) => m.featureFlag !== 'languages_mode' || languagesMode);
-  const untried = useUntriedModes(
-    candidates.map((m) => m.mode),
-    refreshKey,
-  );
-  const toTry = (untried ?? [])
-    .map((mode) => candidates.find((m) => m.mode === mode)!)
-    .sort((a, b) => Number(!!b.isNew) - Number(!!a.isNew))
-    .slice(0, 2);
+  const [friendsOpen, setFriendsOpen] = useState(false);
 
-  const total = DAILY_MODES.length;
-  const done = Math.min(daily.todayCount, total);
-  const halloween = !!GHOST_SCHEDULE[getTodayUTC()];
+  const today = getTodayUTC();
+  const featured = featuredDailyMode(today);
+  const featuredResult = daily.results[featured];
+  const bonus = bonusProgress(daily, featured);
+  const halloween = !!GHOST_SCHEDULE[today];
   const storyBlue = isDarkMode ? PALETTE.chartBlue : PALETTE.oceanBlue;
 
   return (
@@ -242,10 +258,10 @@ export function HomeTab({
         </View>
       )}
 
-      {/* Défi du jour — la première chose qu'on voit, avec sa progression. */}
+      {/* GeoG du jour : un puzzle, le même pour tous, la première chose qu'on voit. */}
       <TouchableOpacity
         ref={dailyRef}
-        onPress={onOpenDaily}
+        onPress={() => (featuredResult ? onOpenDaily() : onPlayDaily(featured))}
         style={{
           borderRadius: 20,
           borderWidth: 2,
@@ -253,8 +269,10 @@ export function HomeTab({
           backgroundColor: isDarkMode ? 'rgba(232,119,46,0.12)' : 'rgba(232,119,46,0.13)',
           padding: 16,
         }}
-        {...a11yButton(tr(language, 'Défi du Jour', 'Daily Challenge'), {
-          hint: tr(language, 'Ouvrir le défi du jour', 'Open the daily challenge'),
+        {...a11yButton(tr(language, 'GeoG du jour #{0}', 'Daily GeoG #{0}', [getPuzzleNumber()]), {
+          hint: featuredResult
+            ? tr(language, 'Voir les puzzles bonus du jour', "See today's bonus puzzles")
+            : tr(language, 'Jouer le puzzle du jour', "Play today's puzzle"),
         })}
         {...hoverLift}
       >
@@ -269,18 +287,17 @@ export function HomeTab({
               flex: 1,
             }}
           >
-            {tr(language, 'DÉFI DU JOUR', 'DAILY CHALLENGE')} #{getPuzzleNumber()}
+            {tr(language, 'GEOG DU JOUR', 'DAILY GEOG')} #{getPuzzleNumber()}
           </Text>
           <DailyCountdown color={c.textMuted} language={language} />
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
-          <ScoreText
+          <Text
             style={{ fontFamily: FONTS.headingBlack, fontSize: 24, color: c.text, flex: 1 }}
+            numberOfLines={2}
           >
-            {done === 0
-              ? tr(language, '{0} puzzles t’attendent', '{0} puzzles waiting', [total])
-              : tr(language, '{0} sur {1} terminés', '{0} of {1} done', [done, total])}
-          </ScoreText>
+            {dailyModeLabel(featured, language, today)}
+          </Text>
           {daily.streak > 0 && (
             <View
               style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}
@@ -295,57 +312,147 @@ export function HomeTab({
             </View>
           )}
         </View>
-        <View
-          style={{ flexDirection: 'row', gap: 4, marginTop: 12, marginBottom: 12 }}
-          {...a11yImage(
-            tr(language, '{0} défis sur {1} terminés', '{0} of {1} challenges done', [done, total]),
-          )}
+        <Text
+          style={{
+            fontFamily: FONTS.mono,
+            color: c.textMuted,
+            fontSize: 11,
+            marginTop: 4,
+            marginBottom: 14,
+          }}
         >
-          {Array.from({ length: total }, (_, i) => (
-            <View
-              key={i}
-              style={{
-                flex: 1,
-                height: 7,
-                borderRadius: 4,
-                backgroundColor:
-                  i < done
-                    ? DAILY_FLAME
-                    : isDarkMode
-                      ? 'rgba(232,119,46,0.22)'
-                      : 'rgba(192,74,26,0.16)',
-              }}
-            />
-          ))}
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <Text style={{ fontFamily: FONTS.mono, color: c.textMuted, fontSize: 10.5, flex: 1 }}>
-            {halloween
+          {featuredResult
+            ? tr(
+                language,
+                'Ton score : {0}. Reviens demain pour le #{1}.',
+                'Your score: {0}. Back tomorrow for #{1}.',
+                [featuredResult.score, getPuzzleNumber() + 1],
+              )
+            : halloween
               ? tr(
                   language,
                   '🎃 Spécial Halloween : pays fantômes',
                   '🎃 Halloween special: ghost countries',
                 )
-              : tr(language, 'Un puzzle par mode, chaque jour', 'One puzzle per mode, every day')}
-          </Text>
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 6,
-              height: 36,
-              paddingHorizontal: 14,
-              borderRadius: 18,
-              backgroundColor: PALETTE.vermilion,
-            }}
+              : tr(
+                  language,
+                  'Le même puzzle pour tout le monde, une seule fois par jour.',
+                  'The same puzzle for everyone, once a day.',
+                )}
+        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <TouchableOpacity
+            onPress={onOpenDaily}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 2, flex: 1 }}
+            hitSlop={ICON_HIT_SLOP}
+            {...a11yButton(
+              tr(language, 'Puzzles bonus, {0} sur {1}', 'Bonus puzzles, {0} of {1}', [
+                bonus.done,
+                bonus.total,
+              ]),
+            )}
           >
-            <Play color="#fff" fill="#fff" size={13} />
-            <Text style={{ fontFamily: FONTS.monoBold, color: '#fff', fontSize: 12.5 }}>
-              {done === 0 ? tr(language, 'Jouer', 'Play') : tr(language, 'Continuer', 'Continue')}
+            <Text style={{ fontFamily: FONTS.monoBold, color: c.textMuted, fontSize: 11 }}>
+              {tr(language, 'Bonus {0}/{1}', 'Bonus {0}/{1}', [bonus.done, bonus.total])}
             </Text>
-          </View>
+            <ChevronRight color={c.textMuted} size={14} />
+          </TouchableOpacity>
+          {featuredResult ? (
+            <TouchableOpacity
+              onPress={() => shareDailyResult(featuredResult, daily.streak, language, featured)}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                height: 36,
+                paddingHorizontal: 14,
+                borderRadius: 18,
+                backgroundColor: PALETTE.vermilion,
+              }}
+              {...a11yButton(tr(language, 'Partager mon résultat', 'Share my result'))}
+            >
+              <Share2 color="#fff" size={14} />
+              <Text style={{ fontFamily: FONTS.monoBold, color: '#fff', fontSize: 12.5 }}>
+                {tr(language, 'Partager', 'Share')}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                height: 36,
+                paddingHorizontal: 14,
+                borderRadius: 18,
+                backgroundColor: PALETTE.vermilion,
+              }}
+            >
+              <Play color="#fff" fill="#fff" size={13} />
+              <Text style={{ fontFamily: FONTS.monoBold, color: '#fff', fontSize: 12.5 }}>
+                {tr(language, 'Jouer', 'Play')}
+              </Text>
+            </View>
+          )}
         </View>
       </TouchableOpacity>
+
+      {/* Amis : le défi en différé (les joueurs qui ont un ami restent 3 fois plus). */}
+      {isAuthenticated && (
+        <TouchableOpacity
+          onPress={() => setFriendsOpen(true)}
+          style={[
+            styles.countryCard,
+            !isDarkMode && styles.countryCardLight,
+            {
+              padding: 14,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 14,
+              borderWidth: 2,
+              borderColor: PALETTE.vermilion,
+            },
+          ]}
+          {...a11yButton(tr(language, 'Défier un ami', 'Challenge a friend'))}
+          {...hoverLift}
+        >
+          <View
+            style={{
+              backgroundColor: 'rgba(192,74,26,0.14)',
+              padding: 10,
+              borderRadius: 12,
+            }}
+          >
+            <Send color={PALETTE.vermilion} size={22} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontFamily: FONTS.headingBlack, fontSize: 16, color: c.text }}>
+              {tr(language, 'Défie un ami', 'Challenge a friend')}
+            </Text>
+            <Text
+              style={{
+                fontFamily: FONTS.mono,
+                fontSize: 11,
+                color: c.textMuted,
+                marginTop: 2,
+                lineHeight: 15,
+              }}
+            >
+              {tr(
+                language,
+                'Même grille, il joue quand il veut. Ses réponses arrivent ici.',
+                'Same grid, they play whenever. Their answers land here.',
+              )}
+            </Text>
+          </View>
+          <ChevronRight color={c.textMuted} size={18} />
+        </TouchableOpacity>
+      )}
+      <FriendChallengePanel
+        visible={friendsOpen}
+        isDarkMode={isDarkMode}
+        onClose={() => setFriendsOpen(false)}
+      />
 
       {/* Mode Histoire — reprendre la campagne là où on s'est arrêté. */}
       <TouchableOpacity
@@ -446,55 +553,6 @@ export function HomeTab({
 
       {/* Quêtes du jour (comptes seulement : la validation est côté serveur). */}
       {isAuthenticated && <DailyQuests />}
-
-      {/* À essayer : deux modes jamais ouverts, pour faire découvrir l'app. */}
-      {toTry.length > 0 && (
-        <View>
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'baseline',
-              justifyContent: 'space-between',
-              marginBottom: 10,
-              marginTop: 4,
-            }}
-          >
-            <Text style={{ fontFamily: FONTS.headingBlack, fontSize: 19, color: c.text }}>
-              {tr(language, 'À essayer', 'Try this')}
-            </Text>
-            <Text style={{ fontFamily: FONTS.mono, fontSize: 10, color: c.textMuted }}>
-              {tr(language, 'Tu n’y as jamais joué', 'You’ve never played it')}
-            </Text>
-          </View>
-          <View
-            style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              gap: grid.wide ? 14 : 0,
-            }}
-          >
-            {toTry.map((m) => {
-              const Icon = MODE_ICONS[m.mode];
-              if (!Icon) return null;
-              const { accent, tint } = familyColors(m.family, isDarkMode);
-              return (
-                <ModeTile
-                  key={m.mode}
-                  icon={Icon}
-                  accent={accent}
-                  tint={tint}
-                  title={tr(language, m.titleFr, m.titleEn)}
-                  subtitle={tr(language, m.subtitleFr, m.subtitleEn)}
-                  isDarkMode={isDarkMode}
-                  onPress={() => onPlay(m.mode)}
-                  onHelp={() => onHelp(m.mode)}
-                  isNew={m.isNew}
-                />
-              );
-            })}
-          </View>
-        </View>
-      )}
     </View>
   );
 }
