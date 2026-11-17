@@ -22,6 +22,15 @@ export type FrontierRound = {
   choices?: { options: string[]; answer: number };
   /** Texte du tampon de fin de manche (sinon « Le chemin ! »). */
   stamp?: string;
+  /**
+   * Manche bonus sans réponse (boucle ouverte) : départ, arrivée et cases « ? »
+   * des pays à trouver, le compte à rebours, puis rien ne se dessine. La réponse
+   * est laissée aux commentaires (demande de Paul le 16/11 : « un truc en plus
+   * qui la rendra virale »).
+   */
+  bonus?: boolean;
+  /** Bonus : texte affiché sous la carte une fois le temps écoulé. */
+  bonusAsk?: string;
 };
 export type FrontieresProps = {
   hook: string[];
@@ -61,7 +70,11 @@ export const THINK_S = 5.2;
 const HOLD_S = 3.2;
 export const stepS = (r: FrontierRound, p?: { step?: number }) => p?.step ?? (r.path.length > 7 ? 0.6 : 0.9);
 export const thinkOf = (p: { think?: number }) => p.think ?? THINK_S;
-const roundSeconds = (p: FrontieresProps, r: FrontierRound) => INTRO_S + thinkOf(p) + r.path.length * stepS(r, p) + (p.hold ?? HOLD_S);
+/** Temps de dessin du chemin (aucun pour une manche bonus : il ne se dessine pas). */
+export const drawS = (r: FrontierRound, p?: { step?: number }) => (r.bonus ? 0 : r.path.length * stepS(r, p));
+/** Manche bonus : le tampon « À toi » reste un peu, l'écran de fin redit la question. */
+export const BONUS_HOLD_S = 2.4;
+const roundSeconds = (p: FrontieresProps, r: FrontierRound) => INTRO_S + thinkOf(p) + drawS(r, p) + (r.bonus ? BONUS_HOLD_S : p.hold ?? HOLD_S);
 const roundStart = (p: FrontieresProps, i: number) => p.rounds.slice(0, i).reduce((a, r) => a + roundSeconds(p, r), 0.4);
 const endAt = (p: FrontieresProps) => roundStart(p, p.rounds.length) + 2.6;
 export const frontieresSeconds = (p: FrontieresProps) => endAt(p) + 4;
@@ -94,8 +107,9 @@ function Round({ r, idx, total, local, ask, roundWord, look }: { r: FrontierRoun
   const middle = r.path.slice(1, -1);
   const drawStart = INTRO_S + look.think;
   const step = stepS(r, look);
-  const solved = drawStart + r.path.length * step;
-  const filled = Math.floor((local - drawStart) / step) + 1; // nb de pays du chemin déjà posés
+  const solved = drawStart + drawS(r, look);
+  // Bonus : seuls le départ et l'arrivée sont posés, le chemin reste à trouver.
+  const filled = r.bonus ? 1 : Math.floor((local - drawStart) / step) + 1; // nb de pays du chemin déjà posés
   const centers = r.path.map((c) => path.centroid(mainland(byId.get(c.id)!)));
   // Pays en plusieurs morceaux touché par un petit bout (Russie depuis la Pologne
   // = Kaliningrad) : le trait passe par ce bout avant d'aller au centre du pays.
@@ -115,7 +129,7 @@ function Round({ r, idx, total, local, ask, roundWord, look }: { r: FrontierRoun
     if (!v) return [a0[0] + (b0[0] - a0[0]) * f, a0[1] + (b0[1] - a0[1]) * f];
     return f < 0.5 ? [a0[0] + (v[0] - a0[0]) * f * 2, a0[1] + (v[1] - a0[1]) * f * 2] : [v[0] + (b0[0] - v[0]) * (f - 0.5) * 2, v[1] + (b0[1] - v[1]) * (f - 0.5) * 2];
   };
-  const lineLen = interpolate(local, [drawStart, drawStart + r.path.length * step], [0, r.path.length - 1], clamp);
+  const lineLen = r.bonus ? 0 : interpolate(local, [drawStart, drawStart + r.path.length * step], [0, r.path.length - 1], clamp);
   const pts: [number, number][] = [];
   for (let i = 0; i <= Math.floor(lineLen); i++) {
     if (i > 0 && via[i]) pts.push(via[i]!);
@@ -232,6 +246,15 @@ function Round({ r, idx, total, local, ask, roundWord, look }: { r: FrontierRoun
         </div>
       ) : null}
 
+      {/* Bonus : la question renvoyée aux commentaires, sous la chaîne de drapeaux. */}
+      {r.bonus && local >= drawStart ? (
+        <div style={{ position: 'absolute', top: MAP_TOP + MAP_H + 150, left: 40, right: 40, display: 'flex', justifyContent: 'center' }}>
+          <div style={{ background: C.vermilion, color: '#fff', borderRadius: 34, padding: '24px 44px', fontFamily: mono, fontWeight: 700, fontSize: 46, transform: `scale(${spring({ frame: Math.round((local - drawStart) * fps), fps, config: { damping: 10, stiffness: 180 } })})` }}>
+            {r.bonusAsk ?? ask}
+          </div>
+        </div>
+      ) : null}
+
       {/* Chaîne de drapeaux, comme dans l'app */}
       <div style={{ position: 'absolute', top: MAP_TOP + MAP_H + 40, left: 40, right: 40, display: r.choices ? 'none' : 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 12 }}>
         {r.path.map((c, i) => {
@@ -292,9 +315,9 @@ export function FrontieresConcept(p: FrontieresProps) {
           <Hook lines={p.hook} y={60} size={78} />
         </div>
         {p.rounds.map((round, i) => {
-          const at = roundStart(p, i) + INTRO_S + look.think + round.path.length * stepS(round, p) + 0.1;
+          const at = roundStart(p, i) + INTRO_S + look.think + drawS(round, p) + 0.1;
           return t < roundStart(p, i + 1) ? (
-            <Stamp key={i} text={round.stamp ?? tx.path} at={at} top={MAP_TOP + MAP_H - 190} size={round.stamp && round.stamp.length > 10 ? 76 : 96} color={C.green} rotate={-6} />
+            <Stamp key={i} text={round.stamp ?? tx.path} at={at} top={MAP_TOP + MAP_H - 190} size={round.stamp && round.stamp.length > 10 ? 76 : 96} color={round.bonus ? C.vermilion : C.green} rotate={-6} />
           ) : null;
         })}
         {allDone ? (
@@ -316,9 +339,9 @@ export function FrontieresConcept(p: FrontieresProps) {
         return [
           <Sfx key={`w${i}`} at={s0} src={pk?.whoosh ?? sfx('whoosh')} volume={0.6} />,
           ...Array.from({ length: Math.ceil(look.think - 0.2) }, (_, k) => k).map((k) => <Sfx key={`k${i}${k}`} at={s0 + INTRO_S + 0.2 + k} src={pk?.tick ?? app('tick')} volume={0.7} />),
-          ...round.path.slice(1, -1).map((_, j) => <Sfx key={`s${i}${j}`} at={draw + (j + 1) * stepS(round, p)} src={pk?.step(j + 1) ?? app('draw')} volume={pk ? 0.7 : 0.55} />),
-          <Sfx key={`f${i}`} at={draw + round.path.length * stepS(round, p)} src={pk?.found ?? app('found')} volume={0.8} />,
-          <Sfx key={`st${i}`} at={draw + round.path.length * stepS(round, p) + 0.1} src={pk?.stamp ?? app('stamp')} volume={0.8} />,
+          ...(round.bonus ? [] : round.path.slice(1, -1).map((_, j) => <Sfx key={`s${i}${j}`} at={draw + (j + 1) * stepS(round, p)} src={pk?.step(j + 1) ?? app('draw')} volume={pk ? 0.7 : 0.55} />)),
+          round.bonus ? null : <Sfx key={`f${i}`} at={draw + drawS(round, p)} src={pk?.found ?? app('found')} volume={0.8} />,
+          <Sfx key={`st${i}`} at={draw + drawS(round, p) + 0.1} src={pk?.stamp ?? app('stamp')} volume={0.8} />,
         ];
       })}
       <Sfx at={end} src={pk?.win ?? app('win')} volume={0.7} />

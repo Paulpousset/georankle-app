@@ -9,7 +9,14 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   },
 }));
 
-import { decide, MIN_INTERVAL_MS, DAILY_CAP, type GateState } from '../interstitialGate';
+import {
+  decide,
+  inNewPlayerGrace,
+  MIN_INTERVAL_MS,
+  NEW_PLAYER_GRACE_MS,
+  DAILY_CAP,
+  type GateState,
+} from '../interstitialGate';
 
 const START = Date.parse('2026-07-22T08:00:00Z');
 const MIN = 60 * 1000;
@@ -71,5 +78,22 @@ describe('interstitial frequency gate — decide()', () => {
     expect(r.show).toBe(true);
     expect(r.next.day).toBe('2026-07-22');
     expect(r.next.shownToday).toBe(1);
+  });
+});
+
+describe('new-player grace — inNewPlayerGrace()', () => {
+  const T0 = Date.parse('2026-11-16T10:00:00Z');
+
+  it('holds interstitials back during the first days', () => {
+    expect(inNewPlayerGrace(T0, T0 + 60_000)).toBe(true);
+    expect(inNewPlayerGrace(T0, T0 + NEW_PLAYER_GRACE_MS - 1)).toBe(true);
+  });
+
+  it('lifts once the grace window is over', () => {
+    expect(inNewPlayerGrace(T0, T0 + NEW_PLAYER_GRACE_MS)).toBe(false);
+  });
+
+  it('never applies to a veteran device (first seen = 0)', () => {
+    expect(inNewPlayerGrace(0, T0)).toBe(false);
   });
 });

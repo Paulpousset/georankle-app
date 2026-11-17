@@ -32,15 +32,23 @@ Notifications.setNotificationHandler({
 });
 
 /**
- * Ensure the OS notification permission is granted, requesting it once if
- * needed. The in-flight request is memoized so that callers firing at the same
- * time (push registration + daily reminder on launch) share a single native
- * prompt instead of stacking two dialogs.
+ * Ensure the OS notification permission is granted. With `prompt: false` it
+ * only reports the current state and never opens the native dialog.
+ *
+ * Launch and login paths call it with `prompt: false`: asking cold, before the
+ * player has seen why, is how only 22 % of players ended up with a push token
+ * (and on iOS a refusal is for good). The OS dialog now opens from an explicit
+ * tap only: the primer card after a daily (NotificationPrimer), the reminder
+ * toggle in Profile, the league reminder button.
+ *
+ * The in-flight request is memoized so that callers firing at the same time
+ * share a single native prompt instead of stacking two dialogs.
  */
 let permissionRequest: Promise<boolean> | null = null;
-async function ensurePermissionGranted(): Promise<boolean> {
+async function ensurePermissionGranted({ prompt }: { prompt: boolean }): Promise<boolean> {
   const { status } = await Notifications.getPermissionsAsync();
   if (status === 'granted') return true;
+  if (!prompt) return false;
   if (!permissionRequest) {
     permissionRequest = Notifications.requestPermissionsAsync()
       .then((r) => r.status === 'granted')
@@ -50,6 +58,39 @@ async function ensurePermissionGranted(): Promise<boolean> {
       });
   }
   return permissionRequest;
+}
+
+/** OS permission state, for the primer card. `unavailable` on web / simulators. */
+export async function getNotificationPermission(): Promise<'granted' | 'denied' | 'undetermined' | 'unavailable'> {
+  if (Platform.OS === 'web' || !Device.isDevice) return 'unavailable';
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    return status === 'granted' || status === 'denied' ? status : 'undetermined';
+  } catch {
+    return 'unavailable';
+  }
+}
+
+/**
+ * Open the OS dialog (from a tap), then set up everything that waited on it:
+ * the daily reminder and, when signed in, the push token. Returns whether the
+ * permission was granted.
+ */
+export async function requestNotificationsFromTap(
+  language: Language,
+  userId: string | null,
+): Promise<boolean> {
+  if (Platform.OS === 'web') return false;
+  let granted = false;
+  try {
+    granted = await ensurePermissionGranted({ prompt: true });
+  } catch {
+    return false;
+  }
+  if (!granted) return false;
+  await ensureDailyReminder(language);
+  if (userId) await registerForPushNotifications(userId);
+  return true;
 }
 
 /**
@@ -62,7 +103,8 @@ export async function registerForPushNotifications(userId: string): Promise<void
   if (Platform.OS === 'web' || !Device.isDevice) return;
 
   try {
-    if (!(await ensurePermissionGranted())) return;
+    // Never prompts: the token is saved only once the player said yes from a tap.
+    if (!(await ensurePermissionGranted({ prompt: false }))) return;
 
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
@@ -125,7 +167,8 @@ export async function ensureDailyReminder(language: Language = 'fr'): Promise<vo
     // Respect an explicit opt-out; otherwise default ON.
     if (enabled === '0') return;
     const time = (await AsyncStorage.getItem(REMINDER_TIME_KEY)) ?? DEFAULT_REMINDER_TIME;
-    await scheduleDailyReminder(time, language);
+    // Launch path: schedule only if the permission is already there.
+    await scheduleDailyReminder(time, language, { prompt: false });
   } catch (e) {
     log.debug('Ensure daily reminder skipped:', e);
   }
@@ -159,9 +202,11 @@ let schedulingChain: Promise<boolean> = Promise.resolve(false);
 export async function scheduleDailyReminder(
   time: string,
   language: Language = 'fr',
+  { prompt = true }: { prompt?: boolean } = {},
 ): Promise<boolean> {
   if (Platform.OS === 'web') return false;
-  const run = schedulingChain.then(() => doScheduleDailyReminder(time, language), () => doScheduleDailyReminder(time, language));
+  const go = () => doScheduleDailyReminder(time, language, prompt);
+  const run = schedulingChain.then(go, go);
   schedulingChain = run;
   return run;
 }
@@ -221,7 +266,7 @@ export async function enableLeagueReminder(language: Language = 'fr'): Promise<b
 
 async function doEnableLeagueReminder(language: Language): Promise<boolean> {
   try {
-    if (!(await ensurePermissionGranted())) return false;
+    if (!(await ensurePermissionGranted({ prompt: true }))) return false;
 
     // Replace any prior schedule so we never stack reminders.
     const prior = await AsyncStorage.getItem(LEAGUE_REMINDER_ID_KEY);
@@ -268,9 +313,10 @@ export async function disableLeagueReminder(): Promise<void> {
 async function doScheduleDailyReminder(
   time: string,
   language: Language,
+  prompt: boolean,
 ): Promise<boolean> {
   try {
-    if (!(await ensurePermissionGranted())) return false;
+    if (!(await ensurePermissionGranted({ prompt }))) return false;
 
     // Replace any prior schedule so we never stack reminders.
     const prior = await AsyncStorage.getItem(REMINDER_ID_KEY);

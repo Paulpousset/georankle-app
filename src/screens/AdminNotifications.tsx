@@ -33,6 +33,7 @@ import { modeLabel } from '../lib/ranked';
 import { tr } from '../i18n';
 import {
   deleteCampaign,
+  failedSends,
   fetchCronHealth,
   listCampaigns,
   listLog,
@@ -358,6 +359,25 @@ export default function AdminNotifications({
                     'Aucune exécution réussie enregistrée dans cron_run_log. Vérifie le job pg_cron et la fonction run-campaigns.',
                     'No successful run recorded in cron_run_log. Check the pg_cron job and the run-campaigns function.',
                   )}
+            </Text>
+          </View>
+        )}
+
+        {failedSends(log).length > 0 && (
+          <View style={[styles.card, { backgroundColor: '#c0392b1a', borderColor: '#c0392b', gap: 4 }]}>
+            <Text style={{ color: '#c0392b', fontFamily: FONTS.monoBold, fontSize: 13 }}>
+              {t('⚠️ Envoi parti à personne', '⚠️ Send reached nobody')}
+            </Text>
+            {failedSends(log).map((l) => (
+              <Text key={l.id} style={{ color: c.textMuted, fontFamily: FONTS.mono, fontSize: 12 }}>
+                {t('« {0} » · 0/{1} · {2}', '“{0}” · 0/{1} · {2}', [l.title, l.recipients, new Date(l.created_at).toLocaleString()])}
+              </Text>
+            ))}
+            <Text style={{ color: c.textMuted, fontFamily: FONTS.mono, fontSize: 12 }}>
+              {t(
+                'Le détail de l’erreur Expo est dans notification_log.error et les logs de run-campaigns.',
+                'The Expo error is in notification_log.error and the run-campaigns logs.',
+              )}
             </Text>
           </View>
         )}
