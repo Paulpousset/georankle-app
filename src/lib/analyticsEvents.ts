@@ -27,6 +27,15 @@ export type AnalyticsEvent =
   // Watch this rate — a spike means the Storage bucket or the CDN is unhappy.
   | 'language_audio_fallback'
   // Daily challenge
+  | 'impossible_open'
+  | 'impossible_answer'
+  | 'impossible_bubble_tap'
+  | 'chest_claimed'
+  | 'chest_bubble_tap'
+  | 'rush_bonus'
+  | 'rush_bubble_tap'
+  | 'tournament_bubble_tap'
+  | 'tournament_prize'
   | 'daily_opened'
   | 'daily_completed'
   | 'daily_shared'
