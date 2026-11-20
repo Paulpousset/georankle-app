@@ -14,6 +14,9 @@
  *  3. Ces gouttières sont l'espace où les rails publicitaires peuvent enfin
  *     s'afficher. Avant cette mise en scène, SideRailAds était rendu mais
  *     intégralement recouvert par le jeu plein écran : zéro impression possible.
+ *     Tant que le flag `web_ads` est éteint, il n'y a pas de rails : la
+ *     colonne s'élargit alors (stageWidthFor, lib/stage.ts) et ne garde qu'une
+ *     fine marge de décor au lieu de deux grands vides.
  *
  * Sous STAGE_MAX_WIDTH, le composant s'efface complètement (pas de View en
  * plus dans l'arbre) : le comportement mobile est strictement inchangé. Et sur
@@ -29,7 +32,8 @@ import type { ReactNode } from 'react';
 import { Text, View } from 'react-native';
 
 import { useTheme } from '../contexts/ThemeContext';
-import { STAGE_MAX_WIDTH, StageWidthContext, stageChrome } from '../lib/stage';
+import { useFeatureFlag } from '../lib/featureFlags';
+import { STAGE_MAX_WIDTH, StageWidthContext, stageChrome, stageWidthFor } from '../lib/stage';
 import { useViewport } from '../lib/uiScale';
 import { FONTS } from '../theme/typography';
 import { AtlasGlobe } from './AtlasIcons';
@@ -72,9 +76,14 @@ export function DesktopStage({
   // n'est pas celle en px CSS. Voir lib/uiScale.ts.
   const { width, height } = useViewport();
   const { colors, isDarkMode } = useTheme();
+  // Même interrupteur que SideRailAds : sans rails, pas de gouttières à leur
+  // réserver. Faux tant que le flag n'est pas lu, donc la colonne large est
+  // l'état par défaut (aucun saut de mise en page quand les pubs sont off).
+  const adsOn = useFeatureFlag('web_ads');
 
   if (width <= STAGE_MAX_WIDTH) return <>{children}</>;
 
+  const stageWidth = stageWidthFor(width, adsOn);
   const chrome = stageChrome(height);
   const showBar = brand !== undefined && chrome.barHeight > 0;
 
@@ -136,11 +145,11 @@ export function DesktopStage({
         <View
           style={{
             flex: 1,
-            // +2 pour la bordure : `useStageWidth()` promet STAGE_MAX_WIDTH de
+            // +2 pour la bordure : `useStageWidth()` promet stageWidth de
             // contenu, et une View est en box-sizing: border-box — sans ça un
             // écran qui se dimensionne à la scène déborderait de 2 px et se
             // ferait rogner par l'overflow ci-dessous.
-            width: STAGE_MAX_WIDTH + 2,
+            width: stageWidth + 2,
             // Le jeu se dessine jusqu'aux bords de la colonne et pas au-delà —
             // et les coins arrondis rognent le bleu du globe au passage.
             overflow: 'hidden',
@@ -152,7 +161,7 @@ export function DesktopStage({
               : '0 22px 50px rgba(44,24,16,0.28)',
           }}
         >
-          <StageWidthContext.Provider value={STAGE_MAX_WIDTH}>
+          <StageWidthContext.Provider value={stageWidth}>
             {children}
           </StageWidthContext.Provider>
         </View>
