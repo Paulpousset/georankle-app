@@ -1634,14 +1634,14 @@ export default function VersusCapitals({
                 coinsEarned={coinsEarned}
                 coinsCapped={coinsCapped}
                 coinsSyncFailed={coinsSyncFailed}
-                containerStyle={{ alignSelf: 'stretch', maxWidth: 380, width: '100%', marginBottom: 14 }}
+                containerStyle={{ alignSelf: 'center', maxWidth: 380, width: '100%', marginBottom: 14 }}
               />
               </Reveal>
             )}
 
             {soloMode && (
               <Reveal at={END_CHOREO.reward}>
-              <View style={{ alignSelf: 'stretch', maxWidth: 380, width: '100%' }}>
+              <View style={{ alignSelf: 'center', maxWidth: 380, width: '100%' }}>
                 <RunRecap entries={recap} />
               </View>
               </Reveal>
