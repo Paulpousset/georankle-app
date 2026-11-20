@@ -13,6 +13,7 @@ import { Appearance } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getColors, type ThemeColors } from '../theme/colors';
 import { track } from '../lib/analytics';
+import { applySystemBars } from '../lib/systemBars';
 
 interface ThemeContextValue {
   isDarkMode: boolean;
@@ -46,6 +47,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         hydrated.current = true;
       });
   }, []);
+
+  // Android : fond de fenêtre et boutons de navigation suivent le thème de l'app.
+  useEffect(() => {
+    applySystemBars(isDarkMode, colors.background);
+  }, [isDarkMode, colors.background]);
 
   useEffect(() => {
     // Don't persist the initial OS-derived value before hydration has had a

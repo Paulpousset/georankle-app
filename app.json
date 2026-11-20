@@ -3,7 +3,7 @@
     "name": "GeoG",
     "slug": "geog",
     "scheme": "geog",
-    "version": "5.7.0",
+    "version": "5.8.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "runtimeVersion": {
@@ -224,7 +224,17 @@
             "DEFAULT"
           ]
         }
-      ]
+      ],
+      "splash": {
+        "image": "./assets/splash-icon.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#ffffff",
+        "dark": {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#0a1628"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -238,6 +248,9 @@
       "eas": {
         "projectId": "eb89ac82-5303-4bd0-94d5-6cfb80467efd"
       }
+    },
+    "androidNavigationBar": {
+      "enforceContrast": false
     }
   }
 }
