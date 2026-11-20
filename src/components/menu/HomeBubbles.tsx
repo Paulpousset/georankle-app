@@ -1,15 +1,13 @@
 /**
- * Les quatre bulles de l'Accueil et leurs fenêtres :
- *   gauche : L'Impossible du jour, Coffre du jour
- *   droite : Tournoi de la semaine, Duel 20h
+ * Les quatre bulles de l'Accueil, en rangée sous le titre, et leurs fenêtres :
+ * L'Impossible du jour, Coffre du jour, Tournoi de la semaine, Duel 20h.
  * Chaque bulle donne une raison de revenir à un rythme différent (chaque jour,
  * chaque soir, chaque semaine).
  */
 import { useEffect, useState } from 'react';
-import type { Animated } from 'react-native';
 import { Gift, Skull, Swords, Trophy } from 'lucide-react-native';
 
-import { FloatingBubbles, type BubbleSpec } from './FloatingBubbles';
+import { BubbleRow, type BubbleSpec } from './BubbleRow';
 import { DailyChestModal, CHEST_GOLD } from '../DailyChestModal';
 import { RushHourModal, RUSH_GREEN } from '../RushHourModal';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -33,7 +31,8 @@ const IMPOSSIBLE_RED = '#9d1238';
 const TOURNAMENT_BLUE = '#1a4a7a';
 
 interface Props {
-  tucked: Animated.Value;
+  /** Couleur des libellés sous les bulles (texte du thème). */
+  labelColor: string;
   isAuthenticated: boolean;
   refreshKey: number;
   onOpenImpossible: () => void;
@@ -43,7 +42,7 @@ interface Props {
 }
 
 export function HomeBubbles({
-  tucked,
+  labelColor,
   isAuthenticated,
   refreshKey,
   onOpenImpossible,
@@ -94,7 +93,6 @@ export function HomeBubbles({
   const bubbles: BubbleSpec[] = [
     {
       id: 'impossible',
-      side: 'left',
       icon: Skull,
       color: IMPOSSIBLE_RED,
       label: tr(language, 'Impossible', 'Impossible'),
@@ -108,7 +106,6 @@ export function HomeBubbles({
     },
     {
       id: 'chest',
-      side: 'left',
       icon: Gift,
       color: CHEST_GOLD,
       label: tr(language, 'Coffre', 'Chest'),
@@ -122,7 +119,6 @@ export function HomeBubbles({
     },
     {
       id: 'tournament',
-      side: 'right',
       icon: Trophy,
       color: TOURNAMENT_BLUE,
       label: tr(language, 'Tournoi', 'Tournament'),
@@ -136,7 +132,6 @@ export function HomeBubbles({
     },
     {
       id: 'rush',
-      side: 'right',
       icon: Swords,
       color: RUSH_GREEN,
       label: rushLive
@@ -154,7 +149,7 @@ export function HomeBubbles({
 
   return (
     <>
-      <FloatingBubbles bubbles={bubbles} tucked={tucked} />
+      <BubbleRow bubbles={bubbles} labelColor={labelColor} />
       {chest && (
         <DailyChestModal
           visible={chestOpen}

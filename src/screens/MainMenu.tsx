@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { BarChart3, Moon, ShoppingBag, Sun, Users } from 'lucide-react-native';
@@ -143,30 +143,10 @@ export function MainMenu({
   // menu est remonté après une partie).
   const [refreshKey] = useState(() => Date.now());
 
-  // Au défilement, les bulles se rangent à moitié dans le bord.
-  const bubblesTucked = useState(() => new Animated.Value(0))[0];
-  const tuckedRef = useRef(false);
-  const onMenuScroll = useCallback(
-    (y: number) => {
-      const next = y > 80;
-      if (next === tuckedRef.current) return;
-      tuckedRef.current = next;
-      Animated.timing(bubblesTucked, {
-        toValue: next ? 1 : 0,
-        duration: 220,
-        // Même pilote que les animations des bulles (FloatingBubbles) : une
-        // valeur animée en JS sur un nœud déjà passé en natif fait planter
-        // l'app (« Attempting to run JS driven animation on animated node
-        // that has been moved to native »).
-        useNativeDriver: Platform.OS !== 'web',
-      }).start();
-    },
-    [bubblesTucked],
-  );
-
-  // Décor de l'Accueil : la planète se lève derrière le titre.
+  // Décor de l'Accueil : la planète se lève derrière le titre, en demi-dôme
+  // compact tout en haut pour laisser la place à la rangée de bulles.
   const windowWidth = useStageWidth();
-  const globeSize = Math.min(windowWidth * 0.6, 250);
+  const globeSize = Math.min(windowWidth * 0.66, 260);
 
   // Quelle carte « comment jouer » est ouverte depuis un bouton « ? ».
   // Ouverte à la demande : elle ne marque PAS le mode comme vu.
@@ -375,8 +355,6 @@ export function MainMenu({
       <View style={{ flex: 1 }}>
         <ScrollView
           ref={scrollRef}
-          onScroll={(e) => onMenuScroll(e.nativeEvent.contentOffset.y)}
-          scrollEventThrottle={32}
           contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 20, paddingBottom: 32 }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -386,12 +364,13 @@ export function MainMenu({
               {/* La planète se lève derrière le titre (comme la page d'accueil du site). */}
               <MenuGlobe
                 size={globeSize}
+                crop={0.44}
                 isDarkMode={isDarkMode}
                 backgroundColor={c.background}
                 style={{ alignSelf: 'center' }}
               />
               <View
-                style={{ alignItems: 'center', marginTop: -globeSize * 0.28, position: 'relative' }}
+                style={{ alignItems: 'center', marginTop: -globeSize * 0.17, position: 'relative' }}
               >
                 <View style={{ position: 'absolute', right: -50, top: 0, opacity: 0.5 }}>
                   <CompassRose size={40} color={c.border} />
@@ -408,6 +387,15 @@ export function MainMenu({
                 </ScoreText>
                 <CoordLabel lat="48°N" lng="2°E" color={c.textFaint} size={10} />
               </View>
+              <HomeBubbles
+                labelColor={c.text}
+                isAuthenticated={isAuthenticated}
+                refreshKey={refreshKey}
+                onOpenImpossible={onOpenImpossible}
+                onOpenTournament={onOpenTournament}
+                onOpenDuel={() => selectDuelSegment('online')}
+                onOpenAuth={onOpenAuth}
+              />
               <HomeTab
                 isDarkMode={isDarkMode}
                 isAuthenticated={isAuthenticated}
@@ -475,17 +463,6 @@ export function MainMenu({
             GEOG · v2.0
           </Text>
         </ScrollView>
-        {tab === 'home' && (
-          <HomeBubbles
-            tucked={bubblesTucked}
-            isAuthenticated={isAuthenticated}
-            refreshKey={refreshKey}
-            onOpenImpossible={onOpenImpossible}
-            onOpenTournament={onOpenTournament}
-            onOpenDuel={() => selectDuelSegment('online')}
-            onOpenAuth={onOpenAuth}
-          />
-        )}
       </View>
 
       {/* Pub + barre d'onglets : leur hauteur soulève le bouton son flottant. */}
