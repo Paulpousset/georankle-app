@@ -397,6 +397,9 @@ export function OnboardingTutorial({ visible, steps, measureTarget, onFinish }: 
               paddingHorizontal: 14,
               zIndex: 20,
               elevation: 20,
+              // L'elevation sert seulement à passer devant la carte sur Android ;
+              // son ombre se voyait à travers le fond translucide (halo gris).
+              shadowColor: 'transparent',
             }}
             {...a11yButton(tr(language, 'Passer le tutoriel', 'Skip tutorial'))}
           >

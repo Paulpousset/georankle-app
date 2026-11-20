@@ -1,4 +1,4 @@
-import { KeyboardAvoidingView, Modal, Platform, ScrollView, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, ScrollView, TouchableOpacity, View } from 'react-native';
 import { X } from 'lucide-react-native';
 
 import Auth from '../screens/Auth';
@@ -20,14 +20,16 @@ export function AuthModal({ visible, onClose, initialMode = 'login' }: AuthModal
   const c = getColors(isDarkMode);
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
+      {/* Android en edge-to-edge : adjustResize ne redimensionne plus rien, le
+          clavier recouvrait le formulaire. `padding` sur les deux plateformes, et
+          le voile sombre porté par le conteneur pour couvrir aussi cette marge. */}
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)' }}
+        behavior="padding"
       >
         <ScrollView
           contentContainerStyle={{
             flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 16,
-            backgroundColor: 'rgba(0,0,0,0.7)',
           }}
           keyboardShouldPersistTaps="handled"
         >

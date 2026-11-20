@@ -153,9 +153,16 @@ function Bubble({
                 borderColor: spec.color,
                 alignItems: 'center',
                 justifyContent: 'center',
+                // Android dessine les vues « elevation » par-dessus leurs sœurs :
+                // sans ça, la pastille passait SOUS la bulle (elevation 6).
+                elevation: 7,
+                shadowColor: 'transparent',
               }}
             >
-              <Text style={{ fontFamily: FONTS.monoBold, fontSize: 10, color: spec.color }}>
+              <Text
+                maxFontSizeMultiplier={1.2}
+                style={{ fontFamily: FONTS.monoBold, fontSize: 10, color: spec.color, includeFontPadding: false }}
+              >
                 {spec.badge}
               </Text>
             </View>
@@ -174,6 +181,7 @@ function Bubble({
       >
         <Text
           numberOfLines={1}
+          maxFontSizeMultiplier={1.2}
           style={{ fontFamily: FONTS.monoBold, fontSize: 9, color: '#fff', letterSpacing: 0.4 }}
         >
           {spec.label}

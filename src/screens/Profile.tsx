@@ -456,7 +456,8 @@ export default function Profile({ onBack, onLoggedOut, onEditAvatar, onOpenShop,
       ) : (
         <KeyboardAvoidingView
           style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          // Android en edge-to-edge : sans `behavior`, le clavier recouvre le champ pseudo.
+          behavior="padding"
         >
         <ScrollView
           contentContainerStyle={styles.content}
@@ -831,7 +832,7 @@ const styles = StyleSheet.create({
     paddingLeft: 14,
     paddingRight: 6,
   },
-  nameInput: { flex: 1, height: 48, fontSize: 16, fontFamily: FONTS.mono },
+  nameInput: { flex: 1, height: 48, paddingVertical: 0, fontSize: 16, fontFamily: FONTS.mono },
   nameError: { fontSize: 11, fontFamily: FONTS.mono, marginTop: 6, marginLeft: 4 },
   nameSaveBtn: { width: 40, height: 36, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   sectionHeadRow: {

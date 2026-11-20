@@ -94,5 +94,8 @@ const styles = StyleSheet.create({
     opacity: 0.85,
     zIndex: 50,
     elevation: 4,
+    // Bouton semi-transparent (opacity 0.85) : sur Android l'ombre d'elevation
+    // apparaissait à travers, en anneau sombre. On garde l'ordre d'empilement.
+    shadowColor: 'transparent',
   },
 });

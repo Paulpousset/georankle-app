@@ -11,7 +11,7 @@
  * Mounted once at the app root as a sibling of the Router (like ModeIntroGate).
  */
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Modal, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { User } from 'lucide-react-native';
 
 import { tr } from '../i18n';
@@ -95,7 +95,10 @@ export function UsernameGate() {
 
   return (
     <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={() => {}}>
-      <View
+      {/* Le clavier ouvert recouvrait le bouton « Continuer » (Android edge-to-edge :
+          la fenêtre n'est plus redimensionnée, il faut pousser le contenu soi-même). */}
+      <KeyboardAvoidingView
+        behavior="padding"
         style={{
           flex: 1,
           justifyContent: 'center',
@@ -180,7 +183,7 @@ export function UsernameGate() {
               maxLength={USERNAME_MAX}
               returnKeyType="done"
               onSubmitEditing={save}
-              style={{ flex: 1, height: 48, color: c.text, fontSize: 16, fontFamily: FONTS.mono }}
+              style={{ flex: 1, height: 48, paddingVertical: 0, color: c.text, fontSize: 16, fontFamily: FONTS.mono }}
               accessibilityLabel={tr(language, 'Pseudo', 'Username')}
             />
           </View>
@@ -224,7 +227,7 @@ export function UsernameGate() {
             )}
           </TouchableOpacity>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

@@ -39,7 +39,13 @@ export function NotificationDot({ count = 0, show = false, color = BADGE_RED, of
         { backgroundColor: color, top: offset, right: offset },
       ]}
     >
-      {hasCount && <Text style={styles.text}>{count > 9 ? '9+' : count}</Text>}
+      {hasCount && (
+        // Pastille de hauteur fixe (17) : sans plafond, le chiffre agrandi par la
+        // police système était rogné ; `includeFontPadding` le recentre sur Android.
+        <Text style={styles.text} maxFontSizeMultiplier={1.15}>
+          {count > 9 ? '9+' : count}
+        </Text>
+      )}
     </View>
   );
 }
@@ -66,5 +72,6 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontFamily: FONTS.monoBold,
     lineHeight: 12,
+    includeFontPadding: false,
   },
 });
