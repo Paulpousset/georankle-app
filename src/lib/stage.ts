@@ -28,6 +28,37 @@ import { useWindowDimensions } from 'react-native';
  */
 export const STAGE_MAX_WIDTH = 900;
 
+/**
+ * Sans publicité web (flag `web_ads` à false, le cas aujourd'hui), les
+ * gouttières de 2 × 220 px n'ont plus rien à accueillir : ce n'était que du
+ * vide laissé pour les rails. La colonne s'élargit alors jusqu'à ne garder
+ * qu'une fine marge de décor de chaque côté, plafonnée pour qu'un écran de
+ * 2560 px ne transforme pas un jeu de téléphone en bandeau illisible.
+ *
+ * 1200 : au-delà, les grilles à largeur fluide (tuiles de Devine le pays,
+ * globe du menu) grossissent sans rien apporter.
+ */
+export const STAGE_MAX_WIDTH_NO_ADS = 1200;
+
+/** Marge de décor gardée de chaque côté de la colonne quand il n'y a pas de pub. */
+export const STAGE_GUTTER_NO_ADS = 32;
+
+/**
+ * Largeur de la colonne de jeu pour une fenêtre (en unités de mise en page)
+ * de plus de STAGE_MAX_WIDTH. Pure — testée unitairement.
+ *
+ * Avec pubs : STAGE_MAX_WIDTH pile, railSize() (lib/adsWeb.ts) compte dessus.
+ * Sans pubs : la fenêtre moins une fine marge, jamais moins que la colonne
+ * historique ni plus que STAGE_MAX_WIDTH_NO_ADS.
+ */
+export function stageWidthFor(viewportWidth: number, adsEnabled: boolean): number {
+  if (adsEnabled) return STAGE_MAX_WIDTH;
+  return Math.min(
+    STAGE_MAX_WIDTH_NO_ADS,
+    Math.max(STAGE_MAX_WIDTH, viewportWidth - STAGE_GUTTER_NO_ADS * 2),
+  );
+}
+
 /** null = pas de mise en scène, la fenêtre fait office de scène. */
 export const StageWidthContext = createContext<number | null>(null);
 

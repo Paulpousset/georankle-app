@@ -5,7 +5,14 @@
  * L'invariant qui compte : l'habillage se paie sur ce qui DÉPASSE la hauteur
  * garantie aux écrans (UI_SCALE_MIN_HEIGHT), jamais dessus.
  */
-import { STAGE_MIN_GAME_HEIGHT, stageChrome } from '../stage';
+import {
+  STAGE_GUTTER_NO_ADS,
+  STAGE_MAX_WIDTH,
+  STAGE_MAX_WIDTH_NO_ADS,
+  STAGE_MIN_GAME_HEIGHT,
+  stageChrome,
+  stageWidthFor,
+} from '../stage';
 
 describe('stageChrome', () => {
   it('ne prend rien sur une fenêtre qui tient tout juste', () => {
@@ -40,5 +47,26 @@ describe('stageChrome', () => {
     for (let h = 660; h <= 1200; h += 10) {
       expect(stageChrome(h).barHeight).toBeLessThanOrEqual((h - 600) / 2);
     }
+  });
+});
+
+describe('stageWidthFor', () => {
+  it('garde la colonne de 900 quand les pubs web sont actives (railSize en dépend)', () => {
+    for (const w of [901, 1340, 1710, 2560]) expect(stageWidthFor(w, true)).toBe(STAGE_MAX_WIDTH);
+  });
+
+  it("sans pubs, n'a jamais moins que la colonne historique", () => {
+    expect(stageWidthFor(901, false)).toBe(STAGE_MAX_WIDTH);
+    expect(stageWidthFor(940, false)).toBe(STAGE_MAX_WIDTH);
+  });
+
+  it('sans pubs, remplit la fenêtre en ne gardant qu’une fine marge', () => {
+    expect(stageWidthFor(1100, false)).toBe(1100 - STAGE_GUTTER_NO_ADS * 2);
+    expect(stageWidthFor(1264, false)).toBe(1200);
+  });
+
+  it('sans pubs, plafonne sur les très grands écrans', () => {
+    expect(stageWidthFor(1710, false)).toBe(STAGE_MAX_WIDTH_NO_ADS);
+    expect(stageWidthFor(2560, false)).toBe(STAGE_MAX_WIDTH_NO_ADS);
   });
 });

@@ -657,7 +657,7 @@ const styles = StyleSheet.create({
   learnBtnText: { fontFamily: FONTS.monoBold, fontSize: 11.5 },
   nextBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    marginTop: 18, paddingVertical: 14, paddingHorizontal: 28, borderRadius: 14, alignSelf: 'stretch',
+    marginTop: 18, paddingVertical: 14, paddingHorizontal: 28, borderRadius: 14, alignSelf: 'center',
     maxWidth: 500, width: '100%',
   },
   nextBtnText: { color: '#fff', fontFamily: FONTS.monoBold, fontSize: 16 },

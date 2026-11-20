@@ -671,18 +671,18 @@ export default function StreakGame({
                 coinsEarned={coinsEarned}
                 coinsCapped={coinsCapped}
                 coinsSyncFailed={coinsSyncFailed}
-                containerStyle={{ alignSelf: 'stretch', maxWidth: 380, marginBottom: 14 }}
+                containerStyle={{ alignSelf: 'center', maxWidth: 380, width: '100%', marginBottom: 14 }}
               />
               </Reveal>
               <Reveal at={END_CHOREO.reward}>
-              <View style={{ alignSelf: 'stretch', maxWidth: 380, marginBottom: 18 }}>
+              <View style={{ alignSelf: 'center', maxWidth: 380, width: '100%', marginBottom: 18 }}>
                 <RunRecap entries={recap} mistakesFirst={false} maxHeight={200} />
               </View>
               </Reveal>
               {/* La série s'arrête à la première erreur : il n'y a pas de
                   « même partie » à rejouer, seulement une nouvelle tentative. */}
               <Reveal at={END_CHOREO.actions}>
-              <View style={{ alignSelf: 'stretch', maxWidth: 380 }}>
+              <View style={{ alignSelf: 'center', maxWidth: 380, width: '100%' }}>
                 <SoloEndActions
                   onShare={isDaily ? onShare : undefined}
                   onNewGame={isDaily ? undefined : resetGame}
