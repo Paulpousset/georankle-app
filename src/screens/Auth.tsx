@@ -815,7 +815,7 @@ const styles = StyleSheet.create({
     borderColor: PALETTE.tan,
   },
   icon: { marginRight: 10 },
-  input: { flex: 1, height: 50, color: PALETTE.sepia, fontSize: 16, fontFamily: FONTS.mono },
+  input: { flex: 1, height: 50, paddingVertical: 0, color: PALETTE.sepia, fontSize: 16, fontFamily: FONTS.mono },
   fieldError: {
     color: PALETTE.dangerRed,
     fontSize: 12,

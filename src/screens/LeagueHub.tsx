@@ -122,6 +122,7 @@ export default function LeagueHub({ onBack, onOpenLeague, currentUserId }: Leagu
   const inputStyle = {
     flex: 1,
     height: 46,
+    paddingVertical: 0,
     borderRadius: 13,
     borderWidth: 1,
     paddingHorizontal: 14,

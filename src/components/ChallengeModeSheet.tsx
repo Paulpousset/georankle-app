@@ -17,6 +17,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { getColors } from '../theme/colors';
 import { FONTS } from '../theme/typography';
+import { useSheetBottomPadding } from '../hooks/useSheetBottomPadding';
 
 /** Online duel modes, in main-menu order. */
 const CHALLENGE_MODES: MatchMode[] = [
@@ -35,6 +36,7 @@ export function ChallengeModeSheet({ visible, username, onClose, onPick }: Chall
   const { language } = useLanguage();
   const { isDarkMode } = useTheme();
   const c = getColors(isDarkMode);
+  const sheetPadBottom = useSheetBottomPadding(28);
   const languagesOn = useFeatureFlag('languages_mode');
   const modes = CHALLENGE_MODES.filter((m) => m !== 'languages' || languagesOn);
 
@@ -42,7 +44,7 @@ export function ChallengeModeSheet({ visible, username, onClose, onPick }: Chall
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityRole="button" accessibilityLabel={tr(language, 'Fermer', 'Close')}>
         <Pressable
-          style={[styles.sheet, { backgroundColor: c.background, borderColor: c.border }]}
+          style={[styles.sheet, { backgroundColor: c.background, borderColor: c.border, paddingBottom: sheetPadBottom }]}
           onPress={(e) => e.stopPropagation()}
         >
           <View style={[styles.handle, { backgroundColor: c.border }]} />

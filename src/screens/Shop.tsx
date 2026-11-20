@@ -38,6 +38,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { a11yButton, announce, ICON_HIT_SLOP } from '../lib/a11y';
+import { useSheetBottomPadding } from '../hooks/useSheetBottomPadding';
 import type { AvatarConfig, CosmeticBundle, CosmeticCategory, CosmeticPart } from '../types';
 
 interface ShopProps {
@@ -117,6 +118,7 @@ export default function Shop({ onBack, onEditAvatar, onOpenGlobeLab, initialItem
   const { language } = useLanguage();
   const userId = user?.id ?? '';
   const c = getColors(isDarkMode);
+  const sheetPadBottom = useSheetBottomPadding(40);
   // Pre-rendered 3D layer pack for tiles + live three.js scene for the preview.
   const avatar3d = useFeatureFlag('avatar_3d');
   const WorldRenderer = avatar3d ? WorldAvatar3D : WorldAvatar;
@@ -722,7 +724,7 @@ export default function Shop({ onBack, onEditAvatar, onOpenGlobeLab, initialItem
         onRequestClose={() => setPreviewPart(null)}
       >
         <Pressable style={styles.overlay} onPress={() => setPreviewPart(null)}>
-          <Pressable style={[styles.sheet, { backgroundColor: c.card, borderColor: c.border }]} onPress={() => {}}>
+          <Pressable style={[styles.sheet, { backgroundColor: c.card, borderColor: c.border, paddingBottom: sheetPadBottom }]} onPress={() => {}}>
 
             {/* drag handle */}
             <View style={[styles.handle, { backgroundColor: c.border }]} />

@@ -19,11 +19,13 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { LANGUAGE_CODES, LOCALES } from '../i18n/locales';
 import { a11yButton } from '../lib/a11y';
 import { tr } from '../i18n';
+import { useSheetBottomPadding } from '../hooks/useSheetBottomPadding';
 
 export function LanguagePickerModal() {
   const { isDarkMode } = useTheme();
   const { language, languagePickerOpen, closeLanguagePicker, chooseLanguage } = useLanguage();
   const c = getColors(isDarkMode);
+  const sheetPadBottom = useSheetBottomPadding(24);
 
   return (
     <Modal
@@ -34,7 +36,7 @@ export function LanguagePickerModal() {
     >
       <Pressable style={styles.backdrop} onPress={closeLanguagePicker}>
         <Pressable
-          style={[styles.sheet, { backgroundColor: c.background, borderColor: c.border }]}
+          style={[styles.sheet, { backgroundColor: c.background, borderColor: c.border, paddingBottom: sheetPadBottom }]}
           onPress={(e) => e.stopPropagation()}
         >
           <View style={styles.header}>

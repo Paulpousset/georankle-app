@@ -134,6 +134,8 @@ export function MenuTabBar({
             <AvatarPreview3D config={avatar ?? null} size={CENTER - 6} />
           </View>
           <Text
+            maxFontSizeMultiplier={1.2}
+            numberOfLines={1}
             style={{ fontFamily: FONTS.monoBold, fontSize: 9.5, color: c.textMuted, marginTop: 3 }}
           >
             {tr(language, 'Histoire', 'Story')}
@@ -188,7 +190,11 @@ const TabButton = forwardRef<View, TabButtonProps>(function TabButton(
         <Icon color={tint} size={22} />
         <NotificationDot show={notify} />
       </View>
-      <Text style={{ fontFamily: FONTS.monoBold, fontSize: 9.5, color: tint }}>{label}</Text>
+      {/* Plafond de taille : avec la police système agrandie (fréquent sur Android),
+          « Connexion » débordait et la barre poussait le globe Histoire. */}
+      <Text maxFontSizeMultiplier={1.2} numberOfLines={1} style={{ fontFamily: FONTS.monoBold, fontSize: 9.5, color: tint }}>
+        {label}
+      </Text>
     </TouchableOpacity>
   );
 });

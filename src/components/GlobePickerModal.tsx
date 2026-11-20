@@ -25,6 +25,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { tr } from '../i18n';
 import { a11yButton } from '../lib/a11y';
+import { useSheetBottomPadding } from '../hooks/useSheetBottomPadding';
 import type { AvatarConfig, CosmeticPart } from '../types';
 
 interface GlobePickerModalProps {
@@ -61,6 +62,7 @@ export function GlobePickerModal({ visible, onClose, current, onPick, onOpenShop
   const { isDarkMode } = useTheme();
   const { language } = useLanguage();
   const c = getColors(isDarkMode);
+  const sheetPadBottom = useSheetBottomPadding(20);
   const t = (fr: string, en: string, args?: readonly unknown[]) => tr(language, fr, en, args);
 
   const [owned, setOwned] = useState<Set<string> | null>(null);
@@ -97,7 +99,7 @@ export function GlobePickerModal({ visible, onClose, current, onPick, onOpenShop
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable
-          style={[styles.sheet, { backgroundColor: c.background, borderColor: c.border }]}
+          style={[styles.sheet, { backgroundColor: c.background, borderColor: c.border, paddingBottom: sheetPadBottom }]}
           onPress={(e) => e.stopPropagation()}
         >
           <View style={styles.header}>
