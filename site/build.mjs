@@ -34,6 +34,8 @@ import {
   ROUTES,
   alternates,
   href,
+  indexable,
+  retiredModeRedirects,
   routesIn,
 } from './lib/routes.mjs';
 import { renderPage, attr, ADSENSE_HEAD } from './lib/layout.mjs';
@@ -190,7 +192,7 @@ function buildAppShell(locale) {
 
   const head = `<title>${attr(copy.title)}</title>
     <meta name="description" content="${attr(copy.description)}" />
-    <link rel="canonical" href="${canonical}" />
+    <link rel="canonical" href="${canonical}" />${indexable('play', locale) ? '' : '\n    <meta name="robots" content="noindex, follow" />'}
 ${alternates('play')
   .map((a) => `    <link rel="alternate" hreflang="${a.hreflang}" href="${ORIGIN}${a.path}" />`)
   .join('\n')}
@@ -212,7 +214,7 @@ ${alternates('play')
 ${LOCALES.filter((l) => l !== locale)
   .map((l) => `    <meta property="og:locale:alternate" content="${LOCALE_META[l].ogLocale}" />`)
   .join('\n')}
-${ADSENSE_HEAD}
+${indexable('play', locale) ? ADSENSE_HEAD : ''}
     <!-- Le pont web → app. Un lien de parrainage (?code=) ou d'invitation de
          ligue (?league=) atterrit ici : si l'application est installée, elle
          doit prendre le relais, sinon le code n'est jamais crédité ni la ligue
@@ -353,7 +355,7 @@ for (const locale of LOCALES) {
         lastmod: todayFromRoutes(),
         changefreq: r.changefreq,
         priority: r.priority,
-        indexable: true,
+        indexable: indexable(r.id, locale),
       });
       continue;
     }
@@ -411,6 +413,7 @@ for (const locale of LOCALES) {
           jsonLd,
           body,
           ads: page.meta.ads !== 'false',
+          noindex: !indexable(r.id, locale) || page.meta.noindex === 'true',
         });
 
     emit(fileFor(r.paths[locale]), html);
@@ -423,7 +426,7 @@ for (const locale of LOCALES) {
       lastmod: page.meta.modified,
       changefreq: r.changefreq,
       priority: r.priority,
-      indexable: page.meta.noindex !== 'true',
+      indexable: indexable(r.id, locale) && page.meta.noindex !== 'true',
     });
   }
 }
@@ -575,7 +578,9 @@ function checkVercelRoutes() {
   // dérivée des slugs des JSON, un slug changé sans sa redirection casserait
   // des liens partagés et laisserait des 404 dans la Search Console.
   const declared = new Map((conf.redirects || []).map((r) => [r.source, r]));
-  for (const rule of retiredRedirects()) {
+  // Les pages de mode regroupées le 23/11/2026 : l'ancienne URL renvoie à la
+  // page du groupe, à l'ancre du mode (voir MODE_GROUPS dans routes.mjs).
+  for (const rule of [...retiredRedirects(), ...retiredModeRedirects()]) {
     const hit = declared.get(rule.source);
     if (!hit || hit.destination !== rule.destination || hit.permanent !== true) {
       holes.push(`redirects: ${rule.source} → ${rule.destination} (permanent)`);

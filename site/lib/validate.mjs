@@ -10,7 +10,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { ORIGIN, ROOT } from './paths.mjs';
-import { LOCALES, ROUTES, alternates, href } from './routes.mjs';
+import { LOCALES, ROUTES, alternates, href, indexable } from './routes.mjs';
 
 /**
  * Réciprocité des `hreflang` : si A déclare B, B doit déclarer A, et chaque
@@ -19,13 +19,15 @@ import { LOCALES, ROUTES, alternates, href } from './routes.mjs';
 function checkHreflang(published) {
   const errors = [];
   for (const r of ROUTES) {
-    const locales = LOCALES.filter((l) => r.paths[l]);
-    for (const locale of locales) {
-      const key = `${r.id}|${locale}`;
-      if (!published.has(key)) {
+    for (const locale of LOCALES.filter((l) => r.paths[l])) {
+      if (!published.has(`${r.id}|${locale}`)) {
         errors.push(`route ${r.id} déclarée en ${locale} mais aucune page générée`);
-        continue;
       }
+    }
+    // Seules les pages indexables portent des hreflang (voir `indexable`).
+    const locales = LOCALES.filter((l) => indexable(r.id, l));
+    for (const locale of locales) {
+      if (!published.has(`${r.id}|${locale}`)) continue;
       const alts = alternates(r.id);
       const self = alts.find((a) => a.path === r.paths[locale] && a.hreflang !== 'x-default');
       if (!self) errors.push(`${r.id}/${locale} : auto-référence hreflang absente`);
