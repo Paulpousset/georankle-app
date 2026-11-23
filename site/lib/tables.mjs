@@ -12,6 +12,7 @@
  */
 import { CONTINENTS, countriesOf } from './continents.mjs';
 import { MODES } from './modes.mjs';
+import { href } from './routes.mjs';
 import { COUNTRIES, GAME_COUNTRIES, NEIGHBOURS, NOTORIETY, RANKS, THEMES, capitalName, countryName, flagUrl, num } from './data.mjs';
 import { strings } from './strings.mjs';
 import { attr } from './layout.mjs';
@@ -465,7 +466,7 @@ export function modesTable(scope, locale) {
   void scope;
   const rows = MODES.map((m) => {
     const label = (m[locale] || m.fr).name;
-    const slug = (m[locale] || m.fr).slug;
+    const slug = href(m.id, locale);
     return cell(`<strong><a href="${slug}">${label}</a></strong>`) + cell(MODE_PITCH[m.id][locale] || MODE_PITCH[m.id].fr);
   });
   return {

@@ -376,6 +376,206 @@
       "source": "/:locale(es|pt|de|it|ru|tr|pl|nl|id|vi|th|uk|ro|el)/:slug(contact|contacto|contato|contatti|epikoinonia|iletisim|kontak|kontakt|kontakty|lien-he)",
       "destination": "/:locale/#contact",
       "permanent": true
+    },
+    {
+      "source": "/jeu-drapeaux/",
+      "destination": "/quiz-geographie/#flags",
+      "permanent": true
+    },
+    {
+      "source": "/jeu-drapeaux",
+      "destination": "/quiz-geographie/#flags",
+      "permanent": true
+    },
+    {
+      "source": "/en/flag-game/",
+      "destination": "/en/geography-quiz/#flags",
+      "permanent": true
+    },
+    {
+      "source": "/en/flag-game",
+      "destination": "/en/geography-quiz/#flags",
+      "permanent": true
+    },
+    {
+      "source": "/quiz-capitales/",
+      "destination": "/quiz-geographie/#capitals",
+      "permanent": true
+    },
+    {
+      "source": "/quiz-capitales",
+      "destination": "/quiz-geographie/#capitals",
+      "permanent": true
+    },
+    {
+      "source": "/en/capitals-quiz/",
+      "destination": "/en/geography-quiz/#capitals",
+      "permanent": true
+    },
+    {
+      "source": "/en/capitals-quiz",
+      "destination": "/en/geography-quiz/#capitals",
+      "permanent": true
+    },
+    {
+      "source": "/globe-3d/",
+      "destination": "/jeux-de-carte/#globe",
+      "permanent": true
+    },
+    {
+      "source": "/globe-3d",
+      "destination": "/jeux-de-carte/#globe",
+      "permanent": true
+    },
+    {
+      "source": "/en/3d-globe/",
+      "destination": "/en/map-games/#globe",
+      "permanent": true
+    },
+    {
+      "source": "/en/3d-globe",
+      "destination": "/en/map-games/#globe",
+      "permanent": true
+    },
+    {
+      "source": "/silhouettes-pays/",
+      "destination": "/quiz-geographie/#silhouettes",
+      "permanent": true
+    },
+    {
+      "source": "/silhouettes-pays",
+      "destination": "/quiz-geographie/#silhouettes",
+      "permanent": true
+    },
+    {
+      "source": "/en/country-shapes/",
+      "destination": "/en/geography-quiz/#silhouettes",
+      "permanent": true
+    },
+    {
+      "source": "/en/country-shapes",
+      "destination": "/en/geography-quiz/#silhouettes",
+      "permanent": true
+    },
+    {
+      "source": "/jeu-frontieres/",
+      "destination": "/jeux-de-carte/#borders",
+      "permanent": true
+    },
+    {
+      "source": "/jeu-frontieres",
+      "destination": "/jeux-de-carte/#borders",
+      "permanent": true
+    },
+    {
+      "source": "/en/borders-game/",
+      "destination": "/en/map-games/#borders",
+      "permanent": true
+    },
+    {
+      "source": "/en/borders-game",
+      "destination": "/en/map-games/#borders",
+      "permanent": true
+    },
+    {
+      "source": "/devine-le-pays/",
+      "destination": "/quiz-geographie/#guess",
+      "permanent": true
+    },
+    {
+      "source": "/devine-le-pays",
+      "destination": "/quiz-geographie/#guess",
+      "permanent": true
+    },
+    {
+      "source": "/en/guess-the-country/",
+      "destination": "/en/geography-quiz/#guess",
+      "permanent": true
+    },
+    {
+      "source": "/en/guess-the-country",
+      "destination": "/en/geography-quiz/#guess",
+      "permanent": true
+    },
+    {
+      "source": "/plus-ou-moins-pays/",
+      "destination": "/jeux-de-carte/#higherlower",
+      "permanent": true
+    },
+    {
+      "source": "/plus-ou-moins-pays",
+      "destination": "/jeux-de-carte/#higherlower",
+      "permanent": true
+    },
+    {
+      "source": "/en/higher-or-lower-countries/",
+      "destination": "/en/map-games/#higherlower",
+      "permanent": true
+    },
+    {
+      "source": "/en/higher-or-lower-countries",
+      "destination": "/en/map-games/#higherlower",
+      "permanent": true
+    },
+    {
+      "source": "/duels-en-ligne/",
+      "destination": "/defi-du-jour/#online",
+      "permanent": true
+    },
+    {
+      "source": "/duels-en-ligne",
+      "destination": "/defi-du-jour/#online",
+      "permanent": true
+    },
+    {
+      "source": "/en/online-duels/",
+      "destination": "/en/daily-challenge/#online",
+      "permanent": true
+    },
+    {
+      "source": "/en/online-duels",
+      "destination": "/en/daily-challenge/#online",
+      "permanent": true
+    },
+    {
+      "source": "/mode-classe/",
+      "destination": "/defi-du-jour/#ranked",
+      "permanent": true
+    },
+    {
+      "source": "/mode-classe",
+      "destination": "/defi-du-jour/#ranked",
+      "permanent": true
+    },
+    {
+      "source": "/en/ranked-mode/",
+      "destination": "/en/daily-challenge/#ranked",
+      "permanent": true
+    },
+    {
+      "source": "/en/ranked-mode",
+      "destination": "/en/daily-challenge/#ranked",
+      "permanent": true
+    },
+    {
+      "source": "/mode-histoire/",
+      "destination": "/quiz-geographie/#story",
+      "permanent": true
+    },
+    {
+      "source": "/mode-histoire",
+      "destination": "/quiz-geographie/#story",
+      "permanent": true
+    },
+    {
+      "source": "/en/story-mode/",
+      "destination": "/en/geography-quiz/#story",
+      "permanent": true
+    },
+    {
+      "source": "/en/story-mode",
+      "destination": "/en/geography-quiz/#story",
+      "permanent": true
     }
   ],
   "rewrites": [

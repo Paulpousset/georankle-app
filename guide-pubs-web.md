@@ -1,4 +1,4 @@
-# Pubs sur le web — état et marche à suivre (mis à jour le 20/09/2026)
+# Pubs sur le web — état et marche à suivre (mis à jour le 23/11/2026)
 
 ## Où on en est
 
@@ -167,6 +167,51 @@ mise à jour au 20/09/2026.
 **4. Reste vrai après ce correctif** : pas d'Auto ads, pas de pub sur mobile,
 pas de pub sur `/privacy` ni sur le 404. Les slot ids d'`adsWeb.ts` sont
 toujours à vérifier.
+
+## Le 23/11/2026 — préparation du sixième examen
+
+Audit des pages sources (rendu complet, sans JavaScript). Ce qui restait après
+le correctif du 20/09 : un site de 146 URL dont l'essentiel était soit généré,
+soit fait en série.
+
+**1. Les 36 pages atlas sont sorties de l'index.** Leur substance est un tableau
+généré depuis les données du jeu (pays, capitales, drapeaux par continent),
+avec ~450 mots de texte autour. Elles restent en ligne et liées depuis les
+guides, mais portent `noindex, follow`, sortent du sitemap, perdent leurs
+hreflang et **n'ont plus le script AdSense**.
+
+**2. Les quatorze langues générées aussi** (accueil, `/xx/play`,
+confidentialité) : leurs phrases sont assemblées depuis les catalogues de
+l'app et se recoupent. Même traitement. Le jeu lui-même marche toujours dans
+ces langues ; les pubs in-game chargent leur script elles-mêmes (`adsWeb.ts`).
+Règle unique dans `indexable()` (site/lib/routes.mjs).
+
+**3. Les 24 pages de mode deviennent 6.** Douze modes × deux langues, 420 à
+540 mots chacune, toutes sur le même plan autour d'un bouton « Jouer » : le
+profil « pages en série ». Regroupées en trois pages longues par langue, plus
+Rankle qui garde la sienne (elle porte sa grappe de quatre pages) :
+
+| Page | FR | EN | Modes |
+| --- | --- | --- | --- |
+| Quiz de géographie | `/quiz-geographie/` | `/en/geography-quiz/` | drapeaux, capitales, silhouettes, devine le pays, histoire |
+| Jeux de carte | `/jeux-de-carte/` | `/en/map-games/` | globe 3D, frontières, plus ou moins |
+| Défi du jour, duels, classé | `/defi-du-jour/` | `/en/daily-challenge/` | défi du jour, duels en ligne, mode classé |
+
+1 300 à 2 400 mots de texte par page, hors tableaux. Les tableaux de 195
+lignes (drapeaux, capitales, superficies, voisins, population) n'y sont plus :
+c'est du contenu généré, déjà présent dans les pages atlas. Les anciennes URL
+redirigent en 308 vers la page du groupe, à l'ancre du mode (`#flags`,
+`#globe`…) — `retiredModeRedirects()`, recopié dans vercel.json et vérifié au
+build. `{{link:mode-flags}}` dans un fragment résout tout seul vers l'ancre.
+
+**Résultat** : sitemap 146 → 52 URL, toutes écrites à la main, toutes en FR et
+EN.
+
+**À faire par Paul** : après le déploiement, vérifier que
+https://playgeog.com/sitemap.xml compte 52 URL et que /jeu-drapeaux/ redirige
+vers /quiz-geographie/#flags. Puis **attendre deux à trois semaines** (le temps
+que Google réexplore et que le trafic venu des annuaires de jeux quotidiens
+apparaisse) avant de cliquer sur « Demander un examen ».
 
 ## Répartition cible des formats
 

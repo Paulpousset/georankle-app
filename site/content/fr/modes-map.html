@@ -1,0 +1,183 @@
+title: Jeux de carte du monde : globe 3D, frontières et plus ou moins
+description: Trois jeux pour apprendre la carte du monde : localiser un pays sur un globe 3D, relier deux pays de frontière en frontière, comparer deux pays. Règles et stratégies, gratuit.
+ogTitle: Jeux de carte du monde — globe 3D, frontières, plus ou moins
+breadcrumb: Jeux de carte
+published: 2026-11-23
+modified: 2026-11-23
+---
+    <article>
+      <header>
+        <h1>Jeux de carte du monde : globe, frontières et comparaisons</h1>
+        <p class="standfirst">Savoir qu’un pays existe ne suffit pas : encore faut-il le placer, connaître ses voisins et avoir une idée de sa taille. Ces trois modes travaillent la carte elle-même.</p>
+      </header>
+
+      <p>Les quiz à choix multiples testent ce que l’on sait <em>d’un</em> pays. Les jeux de carte testent ce que l’on sait des pays <em>les uns par rapport aux autres</em> : où ils se trouvent, lesquels se touchent, lequel est le plus peuplé ou le plus étendu. C’est la partie de la géographie qui s’oublie le moins une fois acquise, parce qu’elle repose sur une image mentale plutôt que sur une liste.</p>
+
+      <p>Le <strong>globe 3D</strong> part de la localisation brute : un nom, un globe à faire tourner, un point à poser. Le <strong>jeu des frontières</strong> demande de relier deux pays par le chemin terrestre le plus court, ce qui oblige à connaître les voisinages exacts et pas seulement la région. <strong>Plus ou moins</strong>, enfin, travaille les ordres de grandeur : population, superficie et autres classements, deux pays à la fois.</p>
+
+      <p>Les trois modes se complètent bien. Un joueur qui place correctement un pays sur le globe mais ne connaît pas ses voisins progressera vite aux frontières ; celui qui connaît la carte mais se trompe sur les tailles trouvera dans Plus ou moins de quoi corriger ses intuitions.</p>
+
+      <nav class="toc" aria-label="Sommaire">
+      <ul>
+        <li><a href="#globe">Placer les pays sur une carte : le globe 3D</a></li>
+        <li><a href="#borders">Le jeu des frontières terrestres</a></li>
+        <li><a href="#higherlower">Plus ou moins : lequel de ces deux pays est au-dessus ?</a></li>
+      </ul>
+      </nav>
+
+      <section id="globe">
+      <h2>Placer les pays sur une carte : le globe 3D</h2>
+      <p>Un nom de pays s’affiche. Il faut le trouver sur un vrai globe qu’on fait tourner du doigt — pas sur une carte plate où l’Afrique paraît plus petite que le Groenland.</p>
+
+      <figure class="shot">
+        <picture>
+          <source srcset="/shots/04-globe-480.webp" type="image/webp" />
+          <img src="/shots/04-globe-480.png" alt="Le mode Globe 3D de GeoG : localiser l’Uruguay sur un globe de style atlas ancien" loading="lazy" decoding="async" width="480" height="1040" />
+        </picture>
+        <figcaption>Le mode Globe 3D de GeoG : localiser l’Uruguay sur un globe de style atlas ancien</figcaption>
+      </figure>
+<p><strong>Un nom de pays apparaît, vous faites pivoter le globe et vous touchez le bon territoire.</strong> Un doigt pour tourner, deux pour zoomer ; sur ordinateur, la souris et la molette font la même chose.</p>
+
+      <p>Le choix de la sphère plutôt que de la carte n’est pas décoratif. Toute projection plane déforme : la plus répandue, celle de Mercator, gonfle les hautes latitudes au point de faire paraître le Groenland aussi grand que l’Afrique, alors qu’il est quatorze fois plus petit. Un globe ne ment pas sur les surfaces, et il apprend au passage les positions relatives réelles — que la Norvège est à la latitude de l’Alaska, que la Sicile est plus au sud que Tunis.</p>
+
+      <p>Les <strong>micro-États</strong> sont pris en charge : Monaco, Saint-Marin, le Vatican, Nauru, Tuvalu et quelques autres sont trop petits pour être touchés à l’échelle du globe, et apparaissent donc sous forme de point cliquable dès qu’on zoome suffisamment.</p>
+
+      <p>Le score combine la justesse et le temps. Comme partout dans le jeu, une partie solo peut être limitée à un continent.</p>
+
+<h3>Les six continents en un coup d’œil</h3>
+<p>Avant de chercher un pays sur le globe, il faut savoir dans quel quart du monde regarder. Voici la répartition des {{countries}} pays du jeu, avec les extrêmes de chaque continent.</p>
+
+      {{table:continents:all}}
+
+      <div class="play-cta">
+        <h3>Faites tourner le globe</h3>
+        <p>Le mode Globe 3D se lance directement dans le navigateur.</p>
+        <a class="btn" href="{{play:mode-globe}}">{{t:playNow}}</a>
+      </div>
+      </section>
+
+      <section id="borders">
+      <h2>Le jeu des frontières terrestres</h2>
+      <p>Deux pays, un trajet à trouver. Chaque étape doit partager une frontière terrestre avec la précédente — et le plus court chemin n’est presque jamais celui qu’on imagine.</p>
+
+      <figure class="shot">
+        <picture>
+          <source srcset="/shots/08-frontieres-480.webp" type="image/webp" />
+          <img src="/shots/08-frontieres-480.png" alt="Le mode Frontières de GeoG : relier deux pays par leurs frontières terrestres" loading="lazy" decoding="async" width="480" height="1040" />
+        </picture>
+        <figcaption>Le mode Frontières de GeoG : relier deux pays par leurs frontières terrestres</figcaption>
+      </figure>
+<p><strong>Le jeu vous donne un pays de départ et un pays d’arrivée.</strong> À vous de les relier en écrivant des pays intermédiaires, chacun devant toucher le précédent par une frontière terrestre. Le globe met votre chaîne en surbrillance au fur et à mesure : on voit le trajet se dessiner.</p>
+
+      <p>Trois règles seulement :</p>
+
+      <ul>
+        <li>chaque pays saisi doit partager une frontière <em>terrestre</em> avec le dernier de la chaîne — les détroits et les tunnels ne comptent pas ;</li>
+        <li>un pays non voisin coûte une vie, et vous en avez trois par trajet ;</li>
+        <li><strong>moins d’étapes = plus de points.</strong></li>
+      </ul>
+
+      <p>Ce qui rend le mode addictif, c’est qu’il révèle des adjacences qu’on ne soupçonne pas. La Chine touche l’Afghanistan. La Russie touche la Corée du Nord. Le Maroc et la Mauritanie sont voisins. Et il existe des culs-de-sac absolus : depuis l’Australie ou depuis Madagascar, aucun trajet terrestre n’existe.</p>
+
+      <p>Le décompte des voisins est celui du jeu : la <strong>France y est métropolitaine</strong> (pas de frontière avec le Brésil ou le Suriname via la Guyane), et les territoires qui ne figurent pas parmi les {{countries}} pays — Kosovo, Sahara occidental, Hong Kong — ne créent pas de liaison.</p>
+
+<p>Les voisins de chaque pays, et les records de frontières, sont dans le guide des <a href="{{link:guide-borders}}">frontières terrestres</a>.</p>
+
+      <div class="play-cta">
+        <h3>Trouvez le chemin le plus court</h3>
+        <p>Trois vies, un globe, et deux pays à relier.</p>
+        <a class="btn" href="{{play:mode-borders}}">{{t:playNow}}</a>
+      </div>
+      </section>
+
+      <section id="higherlower">
+      <h2>Plus ou moins : lequel de ces deux pays est au-dessus ?</h2>
+      <p>Deux pays, un critère, une seule question : lequel est devant ? Le gagnant reste en piste, un nouveau pays arrive, et la chaîne continue jusqu’à la première erreur.</p>
+
+      <figure class="shot">
+        <picture>
+          <source srcset="/shots/23-plus-ou-moins-480.webp" type="image/webp" />
+          <img src="/shots/23-plus-ou-moins-480.png" alt="Le mode Plus ou Moins de GeoG : Australie ou Russie, lequel a le point culminant le plus haut ?" loading="lazy" decoding="async" width="480" height="1040" />
+        </picture>
+        <figcaption>Le mode Plus ou Moins de GeoG : Australie ou Russie, lequel a le point culminant le plus haut ?</figcaption>
+      </figure>
+<p><strong>Deux pays s’affichent avec un critère</strong> — population, superficie, arrivées de touristes, PIB… — et vous désignez celui qui a la valeur la plus élevée.</p>
+
+      <p>Le pays gagnant reste à l’écran, un nouveau challenger arrive, et la chaîne se poursuit. <strong>Une seule erreur met fin à la série</strong> : tout l’enjeu est d’aller le plus loin possible.</p>
+
+      <p>La difficulté monte toute seule, parce que le jeu resserre progressivement les écarts. Comparer la Chine et le Luxembourg est trivial ; comparer le Kenya et le Soudan sur la population l’est beaucoup moins. Et le <strong>critère change à chaque question</strong> : un pays qui vient de gagner sur la superficie peut perdre au tour suivant sur le tourisme.</p>
+
+      <p>C’est le mode qui installe le mieux les ordres de grandeur. Après quelques parties, on sait instinctivement que le Nigéria pèse plus lourd que l’Allemagne en population, que l’Algérie est plus vaste que le Groenland, ou que la France reçoit plus de touristes que les États-Unis.</p>
+
+      <div class="play-cta">
+        <h3>Lancez une chaîne</h3>
+        <p>Jusqu’où irez-vous avant la première erreur ?</p>
+        <a class="btn" href="{{play:mode-higherlower}}">{{t:playNow}}</a>
+      </div>
+      </section>
+
+      <h2>Questions fréquentes</h2>
+
+      <div class="faq-list">
+        <details>
+          <summary>Pourquoi un globe plutôt qu’une carte ?</summary>
+          <div class="faq-body">Parce que toute carte plate déforme. La projection de Mercator, la plus répandue, fait paraître le Groenland aussi grand que l’Afrique alors qu’il est quatorze fois plus petit. Un globe donne les vraies surfaces et les vraies positions relatives.</div>
+        </details>
+        <details>
+          <summary>Peut-on cliquer sur les tout petits pays ?</summary>
+          <div class="faq-body">Oui. Monaco, Saint-Marin, le Vatican, Nauru, Tuvalu et les autres micro-États apparaissent comme des points cliquables dès qu’on zoome assez près.</div>
+        </details>
+        <details>
+          <summary>Le globe fonctionne-t-il dans un navigateur ?</summary>
+          <div class="faq-body">Oui, sans installation ni plugin. Il fonctionne aussi hors ligne dans l’application mobile.</div>
+        </details>
+        <details>
+          <summary>Peut-on s’entraîner sur un seul continent ?</summary>
+          <div class="faq-body">Oui : le mode solo permet de restreindre la partie à l’Europe, l’Afrique, l’Asie, l’Amérique du Nord, l’Amérique du Sud ou l’Océanie.</div>
+        </details>
+        <details>
+          <summary>Quel pays a le plus de voisins ?</summary>
+          <div class="faq-body">La Chine et la Russie, avec quatorze frontières terrestres chacune. Le Brésil suit avec neuf, tout comme la République démocratique du Congo et l’Allemagne.</div>
+        </details>
+        <details>
+          <summary>Pourquoi la France n’a-t-elle que huit voisins ?</summary>
+          <div class="faq-body">Parce que le jeu retient la France métropolitaine. En comptant la Guyane, il faudrait ajouter le Brésil et le Suriname. La même convention s’applique au mode Silhouette.</div>
+        </details>
+        <details>
+          <summary>Peut-on relier n’importe quels deux pays ?</summary>
+          <div class="faq-body">Non. Les pays insulaires — Madagascar, l’Islande, le Japon, la quasi-totalité de l’Océanie et des Caraïbes — n’ont aucune frontière terrestre : le jeu ne les propose donc jamais comme étape.</div>
+        </details>
+        <details>
+          <summary>Les frontières maritimes comptent-elles ?</summary>
+          <div class="faq-body">Non, uniquement les frontières terrestres. Le tunnel sous la Manche, par exemple, ne fait pas du Royaume-Uni un voisin de la France dans le jeu.</div>
+        </details>
+        <details>
+          <summary>Le critère change-t-il à chaque question ?</summary>
+          <div class="faq-body">Oui. Un pays qui vient de gagner sur la population peut perdre au tour suivant sur la superficie ou le tourisme. C’est ce qui empêche de jouer machinalement.</div>
+        </details>
+        <details>
+          <summary>Combien de fois peut-on se tromper ?</summary>
+          <div class="faq-body">Une seule : la série s’arrête à la première erreur. Le score est la longueur de la chaîne.</div>
+        </details>
+        <details>
+          <summary>Quels critères sont utilisés ?</summary>
+          <div class="faq-body">Les mêmes {{themes}} que Rankle : population, superficie, PIB, tourisme, longueur de côtes, sites UNESCO, et une trentaine d’autres indicateurs publics.</div>
+        </details>
+      </div>
+
+      <div class="play-cta">
+        <h3>Prêt ?</h3>
+        <p>Gratuit, sans compte, dans le navigateur — ou sur <a href="https://apps.apple.com/app/id6779650018">iPhone</a> et <a href="https://play.google.com/store/apps/details?id=com.paulpousset.geog">Android</a>.</p>
+        <a class="btn" href="{{play:mode-globe}}">{{t:playNow}}</a>
+      </div>
+
+      <h2>{{t:readNext}}</h2>
+      <ul>
+        <li><a href="{{link:guide-hard-to-place}}">Les pays les plus difficiles à placer sur une carte</a></li>
+        <li><a href="{{link:mode-silhouettes}}">Le jeu des silhouettes</a></li>
+        <li><a href="{{link:guide-borders}}">Les frontières terrestres : records et curiosités</a></li>
+        <li><a href="{{link:guide-landlocked}}">Les pays enclavés et doublement enclavés</a></li>
+        <li><a href="{{link:mode-guess}}">Devine le pays</a></li>
+        <li><a href="{{link:mode-rankle}}">Rankle : classer des pays selon un critère</a></li>
+      </ul>
+    </article>

@@ -262,6 +262,7 @@ export function renderPage({
   jsonLd = [],
   body,
   ads = true,
+  noindex = false,
 }) {
   const s = strings(locale);
   const meta = LOCALE_META[locale];
@@ -276,7 +277,7 @@ export function renderPage({
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${attr(title)}</title>
   <meta name="description" content="${attr(description)}" />
-  <link rel="canonical" href="${canonical}" />
+  <link rel="canonical" href="${canonical}" />${noindex ? '\n  <meta name="robots" content="noindex, follow" />' : ''}
 ${hreflangBlock(routeId)}
   <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -300,7 +301,7 @@ ${FONTS}
   <link rel="stylesheet" href="/guides.css" />
 ${blocks}
   <script defer src="/site-analytics.js"></script>${
-    ads
+    ads && !noindex
       ? `
 ${ADSENSE_HEAD}
   <!-- Emplacements injectés par ads-content.js, uniquement au-dessus de 1120px.
