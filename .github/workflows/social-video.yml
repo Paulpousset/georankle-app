@@ -40,7 +40,7 @@ on:
       record:
         description: Filmer l'app (décoché = seulement les formats animés, globe et plus ou moins)
         type: boolean
-        default: true
+        default: false
 
 # contents: write pour publier les shorts en release (lisibles depuis le
 # téléphone, sans dézipper d'artefact).
@@ -74,7 +74,7 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Build `recording` (APK)
-        if: github.event.inputs.record != 'false'
+        if: github.event.inputs.record == 'true'
         env:
           REBUILD: ${{ github.event.inputs.rebuild || 'false' }}
         run: |
@@ -101,14 +101,14 @@ jobs:
           sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-color-emoji ffmpeg
 
       - name: Activer KVM
-        if: github.event.inputs.record != 'false'
+        if: github.event.inputs.record == 'true'
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
       - name: Tournage dans l'émulateur
-        if: github.event.inputs.record != 'false'
+        if: github.event.inputs.record == 'true'
         uses: reactivecircus/android-emulator-runner@v2
         env:
           LANGS: ${{ github.event.inputs.langs || 'fr en' }}
